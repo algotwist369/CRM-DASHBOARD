@@ -1,0 +1,135 @@
+// Customer Segments
+export const CUSTOMER_SEGMENTS = {
+  VIP: 'vip',
+  REGULAR: 'regular',
+  NEW: 'new',
+  INACTIVE: 'inactive',
+  HIGH_VALUE: 'high_value',
+  FREQUENT: 'frequent',
+  OCCASIONAL: 'occasional',
+  CORPORATE: 'corporate',
+  STUDENT: 'student',
+  SENIOR: 'senior',
+  OTHER: 'other',
+}
+
+// Customer segment display names
+export const CUSTOMER_SEGMENT_DISPLAY_NAMES = {
+  [CUSTOMER_SEGMENTS.VIP]: 'VIP Customer',
+  [CUSTOMER_SEGMENTS.REGULAR]: 'Regular Customer',
+  [CUSTOMER_SEGMENTS.NEW]: 'New Customer',
+  [CUSTOMER_SEGMENTS.INACTIVE]: 'Inactive Customer',
+  [CUSTOMER_SEGMENTS.HIGH_VALUE]: 'High Value Customer',
+  [CUSTOMER_SEGMENTS.FREQUENT]: 'Frequent Customer',
+  [CUSTOMER_SEGMENTS.OCCASIONAL]: 'Occasional Customer',
+  [CUSTOMER_SEGMENTS.CORPORATE]: 'Corporate Customer',
+  [CUSTOMER_SEGMENTS.STUDENT]: 'Student Customer',
+  [CUSTOMER_SEGMENTS.SENIOR]: 'Senior Customer',
+  [CUSTOMER_SEGMENTS.OTHER]: 'Other',
+}
+
+// Customer segment descriptions
+export const CUSTOMER_SEGMENT_DESCRIPTIONS = {
+  [CUSTOMER_SEGMENTS.VIP]: 'Premium customers with special privileges and benefits',
+  [CUSTOMER_SEGMENTS.REGULAR]: 'Regular customers who visit frequently',
+  [CUSTOMER_SEGMENTS.NEW]: 'New customers who have recently joined',
+  [CUSTOMER_SEGMENTS.INACTIVE]: 'Customers who haven\'t visited in a while',
+  [CUSTOMER_SEGMENTS.HIGH_VALUE]: 'Customers with high spending patterns',
+  [CUSTOMER_SEGMENTS.FREQUENT]: 'Customers who visit very frequently',
+  [CUSTOMER_SEGMENTS.OCCASIONAL]: 'Customers who visit occasionally',
+  [CUSTOMER_SEGMENTS.CORPORATE]: 'Business or corporate customers',
+  [CUSTOMER_SEGMENTS.STUDENT]: 'Student customers with special pricing',
+  [CUSTOMER_SEGMENTS.SENIOR]: 'Senior customers with special pricing',
+  [CUSTOMER_SEGMENTS.OTHER]: 'Other customer segments',
+}
+
+// Customer segment colors
+export const CUSTOMER_SEGMENT_COLORS = {
+  [CUSTOMER_SEGMENTS.VIP]: 'gold',
+  [CUSTOMER_SEGMENTS.REGULAR]: 'blue',
+  [CUSTOMER_SEGMENTS.NEW]: 'green',
+  [CUSTOMER_SEGMENTS.INACTIVE]: 'gray',
+  [CUSTOMER_SEGMENTS.HIGH_VALUE]: 'purple',
+  [CUSTOMER_SEGMENTS.FREQUENT]: 'orange',
+  [CUSTOMER_SEGMENTS.OCCASIONAL]: 'yellow',
+  [CUSTOMER_SEGMENTS.CORPORATE]: 'indigo',
+  [CUSTOMER_SEGMENTS.STUDENT]: 'pink',
+  [CUSTOMER_SEGMENTS.SENIOR]: 'teal',
+  [CUSTOMER_SEGMENTS.OTHER]: 'gray',
+}
+
+// Customer segment icons
+export const CUSTOMER_SEGMENT_ICONS = {
+  [CUSTOMER_SEGMENTS.VIP]: 'crown',
+  [CUSTOMER_SEGMENTS.REGULAR]: 'user',
+  [CUSTOMER_SEGMENTS.NEW]: 'user-plus',
+  [CUSTOMER_SEGMENTS.INACTIVE]: 'user-times',
+  [CUSTOMER_SEGMENTS.HIGH_VALUE]: 'dollar-sign',
+  [CUSTOMER_SEGMENTS.FREQUENT]: 'clock',
+  [CUSTOMER_SEGMENTS.OCCASIONAL]: 'calendar',
+  [CUSTOMER_SEGMENTS.CORPORATE]: 'building',
+  [CUSTOMER_SEGMENTS.STUDENT]: 'graduation-cap',
+  [CUSTOMER_SEGMENTS.SENIOR]: 'user-friends',
+  [CUSTOMER_SEGMENTS.OTHER]: 'users',
+}
+
+// Customer segment priority (higher number = higher priority)
+export const CUSTOMER_SEGMENT_PRIORITY = {
+  [CUSTOMER_SEGMENTS.VIP]: 5,
+  [CUSTOMER_SEGMENTS.HIGH_VALUE]: 4,
+  [CUSTOMER_SEGMENTS.CORPORATE]: 4,
+  [CUSTOMER_SEGMENTS.FREQUENT]: 3,
+  [CUSTOMER_SEGMENTS.REGULAR]: 3,
+  [CUSTOMER_SEGMENTS.STUDENT]: 2,
+  [CUSTOMER_SEGMENTS.SENIOR]: 2,
+  [CUSTOMER_SEGMENTS.NEW]: 2,
+  [CUSTOMER_SEGMENTS.OCCASIONAL]: 1,
+  [CUSTOMER_SEGMENTS.INACTIVE]: 1,
+  [CUSTOMER_SEGMENTS.OTHER]: 1,
+}
+
+// Customer segment categories
+export const CUSTOMER_SEGMENT_CATEGORIES = {
+  PREMIUM: 'premium',
+  STANDARD: 'standard',
+  SPECIAL: 'special',
+  INACTIVE: 'inactive',
+}
+
+// Customer segment to category mapping
+export const CUSTOMER_SEGMENT_CATEGORY_MAPPING = {
+  [CUSTOMER_SEGMENTS.VIP]: CUSTOMER_SEGMENT_CATEGORIES.PREMIUM,
+  [CUSTOMER_SEGMENTS.HIGH_VALUE]: CUSTOMER_SEGMENT_CATEGORIES.PREMIUM,
+  [CUSTOMER_SEGMENTS.CORPORATE]: CUSTOMER_SEGMENT_CATEGORIES.PREMIUM,
+  [CUSTOMER_SEGMENTS.FREQUENT]: CUSTOMER_SEGMENT_CATEGORIES.STANDARD,
+  [CUSTOMER_SEGMENTS.REGULAR]: CUSTOMER_SEGMENT_CATEGORIES.STANDARD,
+  [CUSTOMER_SEGMENTS.OCCASIONAL]: CUSTOMER_SEGMENT_CATEGORIES.STANDARD,
+  [CUSTOMER_SEGMENTS.STUDENT]: CUSTOMER_SEGMENT_CATEGORIES.SPECIAL,
+  [CUSTOMER_SEGMENTS.SENIOR]: CUSTOMER_SEGMENT_CATEGORIES.SPECIAL,
+  [CUSTOMER_SEGMENTS.NEW]: CUSTOMER_SEGMENT_CATEGORIES.SPECIAL,
+  [CUSTOMER_SEGMENTS.INACTIVE]: CUSTOMER_SEGMENT_CATEGORIES.INACTIVE,
+  [CUSTOMER_SEGMENTS.OTHER]: CUSTOMER_SEGMENT_CATEGORIES.STANDARD,
+}
+
+// Available customer segments for selection
+export const AVAILABLE_CUSTOMER_SEGMENTS = Object.values(CUSTOMER_SEGMENTS).map(segment => ({
+  value: segment,
+  label: CUSTOMER_SEGMENT_DISPLAY_NAMES[segment],
+  description: CUSTOMER_SEGMENT_DESCRIPTIONS[segment],
+  color: CUSTOMER_SEGMENT_COLORS[segment],
+  icon: CUSTOMER_SEGMENT_ICONS[segment],
+  priority: CUSTOMER_SEGMENT_PRIORITY[segment],
+  category: CUSTOMER_SEGMENT_CATEGORY_MAPPING[segment],
+}))
+
+export default {
+  CUSTOMER_SEGMENTS,
+  CUSTOMER_SEGMENT_DISPLAY_NAMES,
+  CUSTOMER_SEGMENT_DESCRIPTIONS,
+  CUSTOMER_SEGMENT_COLORS,
+  CUSTOMER_SEGMENT_ICONS,
+  CUSTOMER_SEGMENT_PRIORITY,
+  CUSTOMER_SEGMENT_CATEGORIES,
+  CUSTOMER_SEGMENT_CATEGORY_MAPPING,
+  AVAILABLE_CUSTOMER_SEGMENTS,
+}
