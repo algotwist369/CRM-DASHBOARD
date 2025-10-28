@@ -3,12 +3,10 @@
 const Admin = require("../models/Admin");
 const Manager = require("../models/Manager");
 const Staff = require("../models/Staff");
-const Business = require("../models/Business");
 const Otp = require("../models/OTP");
 const { hashPassword, comparePassword } = require("../utils/hashPassword");
 const { createAccessToken, createRefreshToken, verifyRefreshToken } = require("../utils/generateToken");
 const { createAndSendOTP, verifyOTP: verifyOTPUtil } = require("../utils/sendOTP");
-const { setCache, getCache, deleteCache } = require("../utils/cache");
 
 // ================== Admin Register ==================
 const registerAdmin = async (req, res, next) => {
