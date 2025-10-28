@@ -1,93 +1,102 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Button } from '../../../../components'
+import {
+  HiOutlineHome,
+  HiOutlineOfficeBuilding,
+  HiOutlineUserGroup,
+  HiOutlineChartBar,
+  HiOutlineCog,
+  HiOutlineChevronRight,
+  HiOutlineChevronLeft,
+  HiOutlineChevronDown,
+} from 'react-icons/hi'
+import { FaUserCircle } from 'react-icons/fa';
+import { RiLogoutBoxRLine } from "react-icons/ri";
+
+
+import authService from '../../../../services/auth/authService';
 
 const AdminSidebar = ({ isCollapsed, onToggle }) => {
   const location = useLocation()
   const [activeSubmenu, setActiveSubmenu] = useState(null)
 
+
+  const handleLogout = () => {
+    authService.logout()
+  }
+
+  useEffect(() => {
+    try {
+      const getProfile = async () => {
+        const profile = authService.getCurrentUser();
+        console.log("Profile:", profile);
+      };
+      getProfile();
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    }
+  }, [])
+
   const navigationItems = [
     {
       name: 'Dashboard',
       href: '/admin/dashboard',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" />
-        </svg>
-      )
+      icon: <HiOutlineHome className="w-5 h-5" />,
     },
     {
       name: 'Businesses',
       href: '/admin/businesses',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      ),
+      icon: <HiOutlineOfficeBuilding className="w-5 h-5" />,
       submenu: [
         { name: 'All Businesses', href: '/admin/businesses' },
-        { name: 'Create Business', href: '/admin/businesses/create' }
-      ]
+        { name: 'Create Business', href: '/admin/businesses/create' },
+      ],
     },
     {
       name: 'Managers',
       href: '/admin/managers',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-        </svg>
-      ),
+      icon: <HiOutlineUserGroup className="w-5 h-5" />,
       submenu: [
         { name: 'All Managers', href: '/admin/managers' },
-        { name: 'Create Manager', href: '/admin/managers/create' }
-      ]
+        { name: 'Create Manager', href: '/admin/managers/create' },
+      ],
     },
     {
       name: 'Reports',
       href: '/admin/reports',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
+      icon: <HiOutlineChartBar className="w-5 h-5" />,
     },
     {
       name: 'Settings',
       href: '/admin/settings',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      )
-    }
+      icon: <HiOutlineCog className="w-5 h-5" />,
+    },
   ]
 
   const handleSubmenuToggle = (itemName) => {
     setActiveSubmenu(activeSubmenu === itemName ? null : itemName)
   }
 
-  const isActiveRoute = (href) => {
-    return location.pathname === href || location.pathname.startsWith(href + '/')
-  }
+  const isActiveRoute = (href) =>
+    location.pathname === href || location.pathname.startsWith(href + '/')
 
-  const isSubmenuActive = (submenuItems) => {
-    return submenuItems.some(item => isActiveRoute(item.href))
-  }
+  const isSubmenuActive = (submenuItems) =>
+    submenuItems.some((item) => isActiveRoute(item.href))
 
   return (
-    <div className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} flex flex-col min-h-screen`}>
-      {/* Logo */}
+    <div
+      className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
+        } flex flex-col min-h-screen`}
+    >
+      {/* Logo Section */}
       <div className="flex items-center justify-between p-4 border-b border-gray-700">
         {!isCollapsed && (
           <div className="flex items-center">
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+              <HiOutlineHome className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-xl font-bold">CRM Admin</h1>
+            <h1 className="text-xl font-bold tracking-wide">CRM Admin</h1>
           </div>
         )}
         <Button
@@ -97,13 +106,9 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
           className="text-gray-400 hover:text-white"
         >
           {isCollapsed ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <HiOutlineChevronRight className="w-5 h-5" />
           ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <HiOutlineChevronLeft className="w-5 h-5" />
           )}
         </Button>
       </div>
@@ -116,10 +121,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
               to={item.href}
               onClick={() => item.submenu && handleSubmenuToggle(item.name)}
               className={({ isActive }) =>
-                `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive || isActiveRoute(item.href) || (item.submenu && isSubmenuActive(item.submenu))
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ||
+                  isActiveRoute(item.href) ||
+                  (item.submenu && isSubmenuActive(item.submenu))
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                 }`
               }
             >
@@ -128,16 +134,10 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
                 <>
                   <span className="ml-3">{item.name}</span>
                   {item.submenu && (
-                    <svg
-                      className={`ml-auto w-4 h-4 transition-transform ${
-                        activeSubmenu === item.name ? 'rotate-90' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <HiOutlineChevronDown
+                      className={`ml-auto w-4 h-4 transition-transform ${activeSubmenu === item.name ? 'rotate-180' : ''
+                        }`}
+                    />
                   )}
                 </>
               )}
@@ -151,10 +151,9 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
                     key={subItem.name}
                     to={subItem.href}
                     className={({ isActive }) =>
-                      `block px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isActive || isActiveRoute(subItem.href)
-                          ? 'bg-primary-500 text-white'
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      `block px-3 py-2 rounded-lg text-sm transition-colors ${isActive || isActiveRoute(subItem.href)
+                        ? 'bg-primary-500 text-white'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                       }`
                     }
                   >
@@ -172,21 +171,30 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
         {!isCollapsed ? (
           <div className="flex items-center">
             <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+              <FaUserCircle className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Admin User</p>
-              <p className="text-xs text-gray-400 truncate">admin@elitehair.com</p>
+              <p className="text-sm font-medium text-white truncate">
+                Admin User
+              </p>
+              <p className="text-xs text-gray-400 truncate">
+                admin@elitehair.com
+              </p>
             </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-gray-400 hover:text-white"
+            >
+              <RiLogoutBoxRLine className='w-6 h-6 text-red-500' />
+            </Button>
           </div>
         ) : (
           <div className="flex justify-center">
             <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+              <FaUserCircle className="w-5 h-5 text-white" />
             </div>
           </div>
         )}

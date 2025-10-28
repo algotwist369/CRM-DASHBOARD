@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { Button, Dropdown } from '../../../../components'
+import { Button } from '../../../../components'
+import { FaBell } from "react-icons/fa";
 
-const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
+const AdminHeader = () => {
   const [notifications] = useState([
     {
       id: 1,
@@ -50,23 +51,6 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
       <div className="flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onSidebarToggle}
-            className="mr-4 text-gray-600 hover:text-gray-900"
-          >
-            {isSidebarCollapsed ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-          </Button>
-
           {/* Breadcrumb */}
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
             <span>Admin</span>
@@ -106,9 +90,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               onClick={() => setNotificationMenuOpen(!notificationMenuOpen)}
               className="relative text-gray-600 hover:text-gray-900"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828z" />
-              </svg>
+              <FaBell className='text-2xl'/>
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                   {unreadCount}

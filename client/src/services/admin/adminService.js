@@ -1,5 +1,5 @@
 import apiClient from '../api/client'
-import { endpoints } from '../../../constants/api/endpoints'
+import { endpoints } from '../../constants/api/endpoints'
 
 class AdminService {
   // Get admin dashboard data
