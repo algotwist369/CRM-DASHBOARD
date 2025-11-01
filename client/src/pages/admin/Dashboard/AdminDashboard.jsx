@@ -1,80 +1,53 @@
 import React, { useState, useEffect } from "react";
+import adminService from "../../../services/admin/adminService";
 
 const AdminDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Simulate fetching dashboard data (dummy JSON)
   useEffect(() => {
-    const dummyData = {
-      stats: {
-        businesses: {
-          total: 8,
-          salon: 3,
-          spa: 3,
-          hotel: 2,
-        },
-        managers: 12,
-        staff: 48,
-        totalRevenue: "₹4,32,500",
-        totalCustomers: 325,
-        recentTransactions: 40,
-      },
-      analytics: {
-        revenueGrowth: "12%",
-        customerGrowth: "8%",
-        avgTransaction: "₹1,200",
-      },
-      recentBusinesses: [
-        {
-          id: "b1",
-          name: "Bliss Spa",
-          type: "spa",
-          branch: "Lucknow",
-          businessLink: "/business/bliss-spa",
-          managersCount: 2,
-          staffCount: 8,
-        },
-        {
-          id: "b2",
-          name: "Elite Salon",
-          type: "salon",
-          branch: "Kanpur",
-          businessLink: "/business/elite-salon",
-          managersCount: 1,
-          staffCount: 6,
-        },
-        {
-          id: "b3",
-          name: "Urban Hotel",
-          type: "hotel",
-          branch: "Varanasi",
-          businessLink: "/business/urban-hotel",
-          managersCount: 3,
-          staffCount: 10,
-        },
-      ],
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await adminService.getDashboard();
+        if (res.success) {
+          setDashboard(res.data.data || res.data); // support {success, data} or direct data
+        } else {
+          setError(res.error || "Failed to load dashboard");
+        }
+      } catch (e) {
+        setError("Failed to load dashboard");
+      } finally {
+        setLoading(false);
+      }
     };
-
-    setTimeout(() => setDashboard(dummyData), 500);
+    fetchDashboard();
   }, []);
 
-  if (!dashboard)
+  if (loading)
     return (
       <div className="flex justify-center items-center h-screen text-gray-600">
         Loading dashboard...
       </div>
     );
+  if (error) {
+    return (
+      <div className="p-6 text-red-600">{error}</div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen text-gray-800">
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <StatCard title="Total Businesses" value={dashboard.stats.businesses.total} />
-        <StatCard title="Managers" value={dashboard.stats.managers} />
-        <StatCard title="Staff" value={dashboard.stats.staff} />
-        <StatCard title="Revenue (30 days)" value={dashboard.stats.totalRevenue} />
-        <StatCard title="Customers (30 days)" value={dashboard.stats.totalCustomers} />
-        <StatCard title="Recent Transactions" value={dashboard.stats.recentTransactions} />
+        <StatCard title="Total Businesses" value={dashboard?.stats?.businesses?.total ?? 0} />
+        <StatCard title="Managers" value={dashboard?.stats?.managers ?? 0} />
+        <StatCard title="Staff" value={dashboard?.stats?.staff ?? 0} />
+        <StatCard title="Revenue (30 days)" value={dashboard?.stats?.totalRevenue ?? 0} />
+        <StatCard title="Customers (30 days)" value={dashboard?.stats?.totalCustomers ?? 0} />
+        <StatCard title="Recent Transactions" value={dashboard?.stats?.recentTransactions ?? 0} />
       </div>
 
       {/* Business Type Breakdown */}
@@ -85,19 +58,19 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-3 text-center">
           <div>
             <p className="text-2xl font-bold text-gray-800">
-              {dashboard.stats.businesses.salon}
+              {dashboard?.stats?.businesses?.salon ?? 0}
             </p>
             <p className="text-gray-500">Salons</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-gray-800">
-              {dashboard.stats.businesses.spa}
+              {dashboard?.stats?.businesses?.spa ?? 0}
             </p>
             <p className="text-gray-500">Spas</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-gray-800">
-              {dashboard.stats.businesses.hotel}
+              {dashboard?.stats?.businesses?.hotel ?? 0}
             </p>
             <p className="text-gray-500">Hotels</p>
           </div>
@@ -120,7 +93,7 @@ const AdminDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {dashboard.recentBusinesses.map((b) => (
+            {(dashboard?.recentBusinesses || []).map((b) => (
               <tr key={b.id} className="border-b hover:bg-gray-50">
                 <td className="py-2 font-medium text-gray-800">{b.name}</td>
                 <td className="py-2 capitalize">{b.type}</td>

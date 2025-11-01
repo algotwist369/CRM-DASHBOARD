@@ -86,8 +86,9 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
 
   return (
     <div
-      className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
-        } flex flex-col min-h-screen`}
+      className={`bg-gray-900 text-white transition-all duration-300 flex flex-col min-h-screen overflow-hidden
+      fixed inset-y-0 left-0 z-50 transform ${isCollapsed ? '-translate-x-full' : 'translate-x-0'} 
+      ${isCollapsed ? 'lg:w-16' : 'lg:w-64'} lg:static lg:inset-auto lg:transform-none`}
     >
       {/* Logo Section */}
       <div className="flex items-center justify-between p-4 border-b border-gray-700">
@@ -119,15 +120,22 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
           <div key={item.name}>
             <NavLink
               to={item.href}
-              onClick={() => item.submenu && handleSubmenuToggle(item.name)}
-              className={({ isActive }) =>
-                `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ||
-                  isActiveRoute(item.href) ||
-                  (item.submenu && isSubmenuActive(item.submenu))
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`
-              }
+              onClick={(e) => {
+                if (item.submenu) {
+                  e.preventDefault()
+                  handleSubmenuToggle(item.name)
+                }
+              }}
+              className={({ isActive }) => {
+                const isParentActive = isActive || isActiveRoute(item.href)
+                const hasActiveChild = item.submenu && isSubmenuActive(item.submenu)
+                const base = 'flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
+                if (isParentActive) return `${base} bg-primary-600 text-white active:bg-primary-700`
+                if (hasActiveChild) return `${base} bg-primary-600/80 text-white hover:bg-primary-600`
+                return `${base} text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700`
+              }}
+              aria-current={({ isActive }) => (isActive ? 'page' : undefined)}
+              aria-expanded={item.submenu ? activeSubmenu === item.name : undefined}
             >
               <span className="flex-shrink-0">{item.icon}</span>
               {!isCollapsed && (
@@ -150,12 +158,12 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
                   <NavLink
                     key={subItem.name}
                     to={subItem.href}
-                    className={({ isActive }) =>
-                      `block px-3 py-2 rounded-lg text-sm transition-colors ${isActive || isActiveRoute(subItem.href)
-                        ? 'bg-primary-500 text-white'
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                      }`
-                    }
+                    className={({ isActive }) => {
+                      const base = 'block px-3 py-2 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
+                      return (isActive || isActiveRoute(subItem.href))
+                        ? `${base} bg-primary-500 text-white active:bg-primary-600`
+                        : `${base} text-gray-400 hover:bg-gray-800 hover:text-white active:bg-gray-700`
+                    }}
                   >
                     {subItem.name}
                   </NavLink>

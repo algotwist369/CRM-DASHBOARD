@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FaStore, FaPhone, FaEnvelope, FaGlobe, FaMapMarkerAlt, FaBuilding } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import businessService from "../../../../services/admin/businessService";
 
 const CreateBusiness = () => {
   const navigate = useNavigate();
@@ -59,10 +60,13 @@ const CreateBusiness = () => {
 
     try {
       setLoading(true);
-      // Dummy API simulation
-      await new Promise((res) => setTimeout(res, 1000));
-      toast.success(`${formData.type} created successfully`);
-      navigate("/admin/dashboard");
+      const res = await businessService.createBusiness(formData);
+      if (res.success) {
+        toast.success(`${formData.type} created successfully`);
+        navigate("/admin/businesses");
+      } else {
+        toast.error(res.error || 'Failed to create business');
+      }
     } catch (error) {
       toast.error("Failed to create business");
     } finally {

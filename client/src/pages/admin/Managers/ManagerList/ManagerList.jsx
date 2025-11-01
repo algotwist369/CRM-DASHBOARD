@@ -1,27 +1,47 @@
 import React, { useState, useEffect } from "react";
 import { FiEdit, FiTrash2, FiEye, FiSearch } from "react-icons/fi";
 import { AiOutlineUserAdd } from "react-icons/ai";
+import businessService from "../../../../services/admin/businessService";
+import { useNavigate } from "react-router-dom";
 
 const ManagerList = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [managers, setManagers] = useState([
-    {
-      id: 1,
-      name: "Amit Sharma",
-      username: "amit001",
-      email: "amit@example.com",
-      phone: "9876543210",
-      business: "VandV Agro Pvt Ltd",
-    },
-    {
-      id: 2,
-      name: "Priya Singh",
-      username: "priya007",
-      email: "priya@example.com",
-      phone: "9123456789",
-      business: "FreshMart Organics",
-    },
-  ]);
+  const [managers, setManagers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchManagers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await businessService.getBusinesses({ page: 1, limit: 50 });
+        if (res.success) {
+          const businesses = res.data?.data || [];
+          const flattened = businesses.flatMap((b) =>
+            (b.managers || []).map((m) => ({
+              id: m._id || m.id,
+              name: m.name,
+              username: m.username,
+              email: m.email,
+              phone: m.phone,
+              business: b.name,
+              businessId: b.id || b._id,
+            }))
+          );
+          setManagers(flattened);
+        } else {
+          setError(res.error || "Failed to load managers");
+        }
+      } catch (e) {
+        setError("Failed to load managers");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchManagers();
+  }, []);
 
   const handleDelete = (id) => {
     if (window.confirm("Are you sure you want to delete this manager?")) {
@@ -38,7 +58,7 @@ const ManagerList = () => {
       {/* Header */}
       <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center sticky top-0 z-20">
         <h1 className="text-2xl font-semibold text-gray-800">Manager List</h1>
-        <button className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-lg">
+        <button onClick={() => navigate('/admin/managers/create')} className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-lg">
           <AiOutlineUserAdd className="text-lg" />
           Create Manager
         </button>
@@ -46,6 +66,7 @@ const ManagerList = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto px-6 py-6">
+        {error && <div className="mb-4 text-sm text-red-600">{error}</div>}
         {/* Analytics Section */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white shadow rounded-lg p-4">
@@ -125,7 +146,7 @@ const ManagerList = () => {
                     colSpan="6"
                     className="p-4 text-center text-gray-500 font-medium"
                   >
-                    No managers found
+                    {loading ? 'Loading managers…' : 'No managers found'}
                   </td>
                 </tr>
               )}
@@ -134,7 +155,7 @@ const ManagerList = () => {
         </div>
       </main>
 
-     
+       
     </div>
   );
 };

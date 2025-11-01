@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
+import businessService from "../../../../services/admin/businessService"
 
 const EditBusiness = () => {
   const navigate = useNavigate()
@@ -22,24 +23,25 @@ const EditBusiness = () => {
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
-  // Simulated fetch (replace with real API)
   useEffect(() => {
     const fetchBusiness = async () => {
-      // Simulate fetching data
-      const data = {
-        type: "salon",
-        name: "Elite Hair Studio",
-        branch: "Downtown",
-        address: "123 Main Street",
-        city: "Mumbai",
-        state: "Maharashtra",
-        country: "India",
-        phone: "9876543210",
-        email: "elite@example.com",
-        website: "https://elitehair.com",
-        description: "Luxury hair and beauty services",
+      const res = await businessService.getBusiness(id)
+      const data = res?.data?.data || res?.data
+      if (data) {
+        setFormData({
+          type: data.type || "",
+          name: data.name || "",
+          branch: data.branch || "",
+          address: data.address || "",
+          city: data.city || "",
+          state: data.state || "",
+          country: data.country || "India",
+          phone: data.phone || "",
+          email: data.email || "",
+          website: data.website || "",
+          description: data.description || "",
+        })
       }
-      setFormData(data)
     }
 
     fetchBusiness()
@@ -71,12 +73,13 @@ const EditBusiness = () => {
     setLoading(true)
 
     try {
-      // Simulate update API
-      setTimeout(() => {
-        setLoading(false)
-        alert("Business updated successfully!")
-        navigate("/dashboard/businesses")
-      }, 1000)
+      const res = await businessService.updateBusiness(id, formData)
+      setLoading(false)
+      if (res.success) {
+        navigate("/admin/businesses")
+      } else {
+        alert(res.error || "Failed to update business.")
+      }
     } catch (error) {
       setLoading(false)
       alert("Failed to update business.")

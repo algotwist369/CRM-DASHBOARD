@@ -1,4 +1,3 @@
-// authController.js - Handles authentication (Admin register/login, Manager login, OTP, refresh tokens)
 
 const Admin = require("../models/Admin");
 const Manager = require("../models/Manager");
@@ -14,7 +13,7 @@ const registerAdmin = async (req, res, next) => {
         const { companyName, name, email, phone, password } = req.body;
 
         // Check if already exists
-        const exists = await Admin.findOne({ $or: [{ email }, { phone }] });
+        const exists = await Admin.findOne({ $or: [{ email }, { phone }] }).select('_id').lean();
         if (exists) {
             return res.status(400).json({ success: false, message: "Email or phone already registered" });
         }
@@ -46,7 +45,7 @@ const login = async (req, res, next) => {
 
         // Admin login with email/password
         if (email && password) {
-            const admin = await Admin.findOne({ email });
+            const admin = await Admin.findOne({ email }).select('_id password').lean();
             if (!admin) return res.status(404).json({ success: false, message: "Admin not found" });
 
             const isMatch = await comparePassword(password, admin.password);
@@ -55,16 +54,17 @@ const login = async (req, res, next) => {
             const accessToken = createAccessToken({ id: admin._id, role: "admin" });
             const refreshToken = createRefreshToken({ id: admin._id, role: "admin" });
 
-            admin.refreshToken = refreshToken;
-            await admin.save();
-
+            // Do not persist refresh tokens to DB to keep login fast and stateless
             return res.json({ success: true, accessToken, refreshToken });
         }
 
         // Manager login with username/pin
         if (username && pin) {
             // Try manager login first
-            const manager = await Manager.findOne({ username, pin }).populate("business");
+            const manager = await Manager.findOne({ username, pin })
+                .select('_id business')
+                .populate({ path: 'business', select: 'name', options: { lean: true } })
+                .lean();
             if (manager) {
                 const accessToken = createAccessToken({ id: manager._id, role: "manager" });
                 const refreshToken = createRefreshToken({ id: manager._id, role: "manager" });
@@ -78,7 +78,10 @@ const login = async (req, res, next) => {
             }
 
             // Try staff login if manager not found
-            const staff = await Staff.findOne({ username, pin }).populate("business manager");
+            const staff = await Staff.findOne({ username, pin })
+                .select('_id business manager')
+                .populate([{ path: 'business', select: 'name', options: { lean: true } }, { path: 'manager', select: 'name', options: { lean: true } }])
+                .lean();
             if (staff) {
                 const accessToken = createAccessToken({ id: staff._id, role: "staff" });
                 const refreshToken = createRefreshToken({ id: staff._id, role: "staff" });

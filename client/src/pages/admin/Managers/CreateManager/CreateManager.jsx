@@ -8,6 +8,8 @@ import {
   FiBriefcase,
   FiChevronDown,
 } from "react-icons/fi";
+import businessService from "../../../../services/admin/businessService";
+import adminService from "../../../../services/admin/adminService";
 
 const CreateManager = () => {
   const [formData, setFormData] = useState({
@@ -23,14 +25,15 @@ const CreateManager = () => {
   const [loading, setLoading] = useState(false);
   const [businesses, setBusinesses] = useState([]);
 
-  // Fetch all businesses (will replace with real API later)
+  // Fetch all businesses
   useEffect(() => {
-    // Temporary mock data
-    setBusinesses([
-      { _id: "673b91f88a12345", name: "Elite Hair Studio" },
-      { _id: "673b91f88a67890", name: "Serenity Spa" },
-      { _id: "673b91f88a99887", name: "Grand Palace Hotel" },
-    ]);
+    const fetchBusinesses = async () => {
+      const res = await businessService.getBusinesses({ page: 1, limit: 100 });
+      if (res.success) {
+        setBusinesses(res.data?.data || []);
+      }
+    };
+    fetchBusinesses();
   }, []);
 
   // Validation
@@ -88,14 +91,8 @@ const CreateManager = () => {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/manager", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-      if (data.success) {
+      const res = await adminService.createManager(formData);
+      if (res.success) {
         toast.success("Manager created successfully!");
         setFormData({
           name: "",
@@ -106,7 +103,7 @@ const CreateManager = () => {
           phone: "",
         });
       } else {
-        toast.error(data.message || "Failed to create manager");
+        toast.error(res.error || "Failed to create manager");
       }
     } catch (error) {
       toast.error("Something went wrong. Try again later.");

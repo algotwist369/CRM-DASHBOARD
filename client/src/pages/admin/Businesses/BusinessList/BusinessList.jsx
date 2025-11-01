@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FaPlus,
   FaEdit,
@@ -9,71 +9,57 @@ import {
   FaBuilding,
   FaUserTie,
 } from "react-icons/fa";
+import businessService from "../../../../services/admin/businessService";
+import { useNavigate } from "react-router-dom";
 
 const BusinessList = () => {
-  // ✅ Dummy Data (Mock API Response)
-  const dummyData = {
-    admin: {
-      name: "Ankit Pathak",
-      companyName: "VandV Agro Pvt Ltd",
-      email: "ankit@vandvagro.com",
-    },
-    stats: {
-      businesses: { total: 3, salon: 1, spa: 1, hotel: 1 },
-      managers: 6,
-      staff: 28,
-      totalRevenue: "₹4,50,000",
-      totalCustomers: 120,
-      recentTransactions: 25,
-    },
-    analytics: {
-      monthlyRevenue: [
-        { month: "July", revenue: 85000 },
-        { month: "August", revenue: 92000 },
-        { month: "September", revenue: 105000 },
-        { month: "October", revenue: 138000 },
-      ],
-    },
-    recentBusinesses: [
-      {
-        id: 1,
-        name: "Relax & Renew Spa",
-        type: "spa",
-        branch: "Lucknow",
-        businessLink: "#",
-        managersCount: 2,
-        staffCount: 10,
-      },
-      {
-        id: 2,
-        name: "Hotel Silver Star",
-        type: "hotel",
-        branch: "Kanpur",
-        businessLink: "#",
-        managersCount: 3,
-        staffCount: 12,
-      },
-      {
-        id: 3,
-        name: "Glow Beauty Salon",
-        type: "salon",
-        branch: "Varanasi",
-        businessLink: "#",
-        managersCount: 1,
-        staffCount: 6,
-      },
-    ],
-  };
+  const navigate = useNavigate();
+  const [businesses, setBusinesses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const [businesses, setBusinesses] = useState(dummyData.recentBusinesses);
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params = { page: 1, limit: 20 };
+        if (debouncedSearch) params.search = debouncedSearch;
+        const res = await businessService.getBusinesses(params);
+        if (res.success) {
+          const list = res.data?.data || res.data?.businesses || [];
+          setBusinesses(list);
+        } else {
+          setError(res.error || "Failed to load businesses");
+        }
+      } catch (e) {
+        setError("Failed to load businesses");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBusinesses();
+  }, [debouncedSearch]);
 
-  // ✅ CRUD Handlers (Mock Actions)
-  const handleAdd = () => alert("Add New Business");
-  const handleEdit = (id) => alert(`Edit Business ID: ${id}`);
-  const handleView = (id) => alert(`View Business ID: ${id}`);
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this business?")) {
-      setBusinesses(businesses.filter((b) => b.id !== id));
+  // Debounce search input
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  // ✅ Handlers
+  const handleAdd = () => navigate('/admin/businesses/create');
+  const handleEdit = (id) => navigate(`/admin/businesses/${id}/edit`);
+  const handleView = (id) => navigate(`/admin/businesses/${id}`);
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this business?")) return;
+    const res = await businessService.deleteBusiness(id);
+    if (res.success) {
+      setBusinesses((prev) => prev.filter((b) => (b.id || b._id) !== id));
+    } else {
+      alert(res.error || 'Delete failed');
     }
   };
 
@@ -84,32 +70,41 @@ const BusinessList = () => {
         <h1 className="text-2xl font-semibold text-gray-800">
           Admin Dashboard
         </h1>
-        <p className="text-gray-500">
-          Welcome back, {dummyData.admin.name} 👋
-        </p>
+        {error && <p className="text-red-600 text-sm">{error}</p>}
       </header>
+
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search businesses by name or branch..."
+          className="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
 
       {/* Analytics Cards */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <AnalyticsCard
           icon={<FaBuilding className="text-gray-500 text-xl" />}
           title="Total Businesses"
-          value={dummyData.stats.businesses.total}
+          value={businesses.length}
         />
         <AnalyticsCard
           icon={<FaUsers className="text-gray-500 text-xl" />}
           title="Total Customers"
-          value={dummyData.stats.totalCustomers}
+          value={"—"}
         />
         <AnalyticsCard
           icon={<FaUserTie className="text-gray-500 text-xl" />}
           title="Active Staff"
-          value={dummyData.stats.staff}
+          value={"—"}
         />
         <AnalyticsCard
           icon={<FaChartBar className="text-gray-500 text-xl" />}
           title="Total Revenue"
-          value={dummyData.stats.totalRevenue}
+          value={"—"}
         />
       </section>
 
@@ -140,32 +135,32 @@ const BusinessList = () => {
               </tr>
             </thead>
             <tbody>
-              {businesses.map((b) => (
+              {(loading ? [] : businesses).map((b) => (
                 <tr
-                  key={b.id}
+                  key={b.id || b._id}
                   className="hover:bg-gray-50 transition-all text-gray-600"
                 >
                   <td className="px-4 py-3 border-b">{b.name}</td>
                   <td className="px-4 py-3 border-b capitalize">{b.type}</td>
                   <td className="px-4 py-3 border-b">{b.branch}</td>
-                  <td className="px-4 py-3 border-b">{b.managersCount}</td>
-                  <td className="px-4 py-3 border-b">{b.staffCount}</td>
+                  <td className="px-4 py-3 border-b">{b.managersCount ?? b.managers?.length ?? 0}</td>
+                  <td className="px-4 py-3 border-b">{b.staffCount ?? b.staff?.length ?? 0}</td>
                   <td className="px-4 py-3 border-b">
                     <div className="flex gap-3">
                       <button
-                        onClick={() => handleView(b.id)}
+                        onClick={() => handleView(b.id || b._id)}
                         className="text-blue-500 hover:text-blue-700"
                       >
                         <FaEye />
                       </button>
                       <button
-                        onClick={() => handleEdit(b.id)}
+                        onClick={() => handleEdit(b.id || b._id)}
                         className="text-green-500 hover:text-green-700"
                       >
                         <FaEdit />
                       </button>
                       <button
-                        onClick={() => handleDelete(b.id)}
+                        onClick={() => handleDelete(b.id || b._id)}
                         className="text-red-500 hover:text-red-700"
                       >
                         <FaTrash />
@@ -176,6 +171,9 @@ const BusinessList = () => {
               ))}
             </tbody>
           </table>
+          {loading && (
+            <div className="p-4 text-sm text-gray-500">Loading businesses…</div>
+          )}
         </div>
       </section>
 
@@ -187,17 +185,8 @@ const BusinessList = () => {
             Monthly Revenue Analytics
           </h2>
         </div>
-
         <ul className="space-y-2 text-gray-600">
-          {dummyData.analytics.monthlyRevenue.map((item) => (
-            <li
-              key={item.month}
-              className="flex justify-between border-b py-2 text-sm"
-            >
-              <span>{item.month}</span>
-              <span>₹{item.revenue.toLocaleString()}</span>
-            </li>
-          ))}
+          <li className="text-sm text-gray-500">(Analytics coming soon)</li>
         </ul>
       </section>
     </div>

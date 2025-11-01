@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { AdminSidebar, AdminHeader } from './components'
+import authService from '../../services/auth/authService'
 
 const AdminLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -9,21 +10,18 @@ const AdminLayout = () => {
   const location = useLocation()
 
   useEffect(() => {
-    // Simulate authentication check
     const checkAuth = async () => {
       try {
-        // In a real app, this would check for valid admin tokens
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Mock authentication check
-        const isAuthenticated = true // This would come from your auth context
-        const userRole = 'admin' // This would come from your auth context
-        
-        if (!isAuthenticated || userRole !== 'admin') {
+        const token = authService.getToken()
+        const role = authService.getUserRole()
+        if (!token) {
+          navigate('/auth/login')
+          return
+        }
+        if (role !== 'admin') {
           navigate('/unauthorized')
           return
         }
-        
         setIsLoading(false)
       } catch (error) {
         console.error('Authentication check failed:', error)
@@ -65,7 +63,7 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen overflow-hidden bg-gray-50 flex">
       {/* Sidebar */}
       <AdminSidebar
         isCollapsed={sidebarCollapsed}
@@ -73,7 +71,7 @@ const AdminLayout = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'} flex-1 flex flex-col overflow-hidden min-w-0`}>
         {/* Header */}
         <AdminHeader
           onSidebarToggle={handleSidebarToggle}

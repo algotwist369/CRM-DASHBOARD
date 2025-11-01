@@ -15,9 +15,11 @@ class AuthService {
       // Store auth data
       localStorage.setItem('authToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken || '');
-      if (user) {
-        localStorage.setItem('userRole', user.role || 'user');
-        localStorage.setItem('userId', user.id || '');
+      // Ensure role is set for admin email/password logins even if server doesn't return user
+      const roleToStore = user?.role || 'admin';
+      localStorage.setItem('userRole', roleToStore);
+      if (user?.id) {
+        localStorage.setItem('userId', user.id);
       }
 
       return { success: true, user: user || { role: 'admin' }, token: accessToken };
