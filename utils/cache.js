@@ -58,13 +58,34 @@ const getCache = async (key) => {
 
 const deleteCache = async (key) => {
     try {
-        // Try Redis first
-        const redisResult = await cacheManager.del(key);
+        // Check if key contains wildcard
+        const hasWildcard = key.includes('*');
         
-        // Also delete from memory cache
-        memoryCache.del(key);
-        
-        return redisResult;
+        if (hasWildcard) {
+            // Use delPattern for wildcard keys
+            const redisResult = await cacheManager.delPattern(key);
+            
+            // For memory cache, we need to manually find and delete matching keys
+            if (memoryCache.keys) {
+                const pattern = new RegExp('^' + key.replace(/\*/g, '.*') + '$');
+                const keys = memoryCache.keys();
+                keys.forEach(k => {
+                    if (pattern.test(k)) {
+                        memoryCache.del(k);
+                    }
+                });
+            }
+            
+            return redisResult;
+        } else {
+            // Try Redis first
+            const redisResult = await cacheManager.del(key);
+            
+            // Also delete from memory cache
+            memoryCache.del(key);
+            
+            return redisResult;
+        }
     } catch (error) {
         // Don't log Redis connection errors as they're expected when Redis is not available
         if (!error.message.includes('Stream isn\'t writeable') && 

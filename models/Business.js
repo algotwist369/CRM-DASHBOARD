@@ -60,13 +60,17 @@ const businessSchema = new mongoose.Schema(
 // Compound indexes
 businessSchema.index({ type: 1, branch: 1 });
 businessSchema.index({ admin: 1, type: 1 });
+businessSchema.index({ admin: 1, isActive: 1 }); // Critical for dashboard queries
 
 // Generate business link before saving
 businessSchema.pre('save', async function(next) {
     if (!this.businessLink) {
         const admin = await mongoose.model('Admin').findById(this.admin);
         if (admin) {
-            this.businessLink = `${admin.companyName.toLowerCase().replace(/\s+/g, '')}_${this._id}`;
+            const cleanCompanyName = admin.companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            // Extract last 3 digits from businessId for shorter link
+            const shortId = this._id.toString().slice(-3);
+            this.businessLink = `${cleanCompanyName}_${shortId}`;
         }
     }
     next();

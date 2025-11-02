@@ -8,7 +8,9 @@
  */
 const generateBusinessLink = (companyName, businessId) => {
     const cleanCompanyName = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return `${cleanCompanyName}_${businessId}`;
+    // Extract last 3 digits from businessId ObjectId for shorter link
+    const shortId = businessId.toString().slice(-3);
+    return `${cleanCompanyName}_${shortId}`;
 };
 
 /**
