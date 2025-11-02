@@ -39,3 +39,4 @@ router.get("/analytics/insights", customerController.getCustomerInsights);
 router.post("/analytics/target", customerController.getTargetCustomers);
 
 module.exports = router;
+    

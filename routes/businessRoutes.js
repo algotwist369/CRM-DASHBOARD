@@ -6,6 +6,9 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 
 // ================== Public Routes (No Authentication Required) ==================
 
+// Get all public businesses (for home page listing)
+router.get("/public/list", businessController.getPublicBusinesses);
+
 // Get business info by business link (public for appointment booking)
 router.get("/info/:businessLink", businessController.getBusinessInfoByLink);
 

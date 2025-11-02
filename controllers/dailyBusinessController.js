@@ -270,7 +270,8 @@ const getBusinessAnalytics = async (req, res, next) => {
 
         const dailyRecords = await DailyBusiness.find(query)
             .sort({ date: -1 })
-            .populate('business', 'name type branch');
+            .populate('business', 'name type branch')
+            .populate('staffPerformance.staff', 'name role email phone');
 
         const analytics = generateBusinessAnalytics(dailyRecords, period);
 

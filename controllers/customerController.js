@@ -428,27 +428,46 @@ const getCustomerTimeline = async (req, res, next) => {
             .populate('staff', 'name role')
             .sort({ appointmentDate: -1 });
         
-        const transactions = await Transaction.find({ customer: customerId })
+        // Transactions don't have a customer field, they have customerPhone
+        // Find transactions by customer phone number
+        const transactions = await Transaction.find({ 
+            customerPhone: customer.phone,
+            business: manager.business._id
+        })
             .populate('staff', 'name role')
             .sort({ transactionDate: -1 });
         
         // Combine and sort timeline events
         const timeline = [
-            ...appointments.map(apt => ({
-                type: 'appointment',
-                date: apt.appointmentDate,
-                title: `Appointment - ${apt.status}`,
-                description: `${apt.services.map(s => s.serviceName).join(', ')} with ${apt.staff?.name || 'TBD'}`,
-                data: apt.toObject()
-            })),
-            ...transactions.map(txn => ({
-                type: 'transaction',
-                date: txn.transactionDate,
-                title: `Transaction - ${txn.paymentStatus}`,
-                description: `${txn.services.map(s => s.serviceName).join(', ')} - ₹${txn.finalPrice}`,
-                data: txn.toObject()
-            }))
-        ].sort((a, b) => new Date(b.date) - new Date(a.date));
+            ...appointments.map(apt => {
+                const services = Array.isArray(apt.services) 
+                    ? apt.services.map(s => s?.serviceName || s).join(', ')
+                    : apt.serviceName || 'Service';
+                return {
+                    type: 'appointment',
+                    date: apt.appointmentDate,
+                    title: `Appointment - ${apt.status || 'Scheduled'}`,
+                    description: `${services} with ${apt.staff?.name || 'TBD'}`,
+                    data: apt.toObject()
+                };
+            }),
+            ...transactions.map(txn => {
+                const services = Array.isArray(txn.services) 
+                    ? txn.services.map(s => s?.serviceName || s).join(', ')
+                    : txn.serviceName || 'Service';
+                return {
+                    type: 'transaction',
+                    date: txn.transactionDate,
+                    title: `Transaction - ${txn.paymentStatus || 'Completed'}`,
+                    description: `${services} - ₹${txn.finalPrice || txn.basePrice || 0}`,
+                    data: txn.toObject()
+                };
+            })
+        ].sort((a, b) => {
+            const dateA = a.date ? new Date(a.date) : new Date(0);
+            const dateB = b.date ? new Date(b.date) : new Date(0);
+            return dateB - dateA;
+        });
         
         return res.json({
             success: true,

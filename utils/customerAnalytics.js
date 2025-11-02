@@ -13,22 +13,24 @@ const Transaction = require("../models/Transaction");
 const getCustomerAnalytics = async (businessId, filters = {}) => {
     const { startDate, endDate } = filters;
     
-    // Base query
-    let baseQuery = { business: businessId };
-    
-    // Date filters
-    if (startDate && endDate) {
-        baseQuery.createdAt = {
-            $gte: new Date(startDate),
-            $lte: new Date(endDate)
-        };
-    }
-    
-    // Get total customers
-    const totalCustomers = await Customer.countDocuments(baseQuery);
-    
-    // Get customer segments
+    // Get customer segments (without date filter - segments should always show all customers)
     const segments = await getCustomerSegments(businessId);
+    
+    // Get total customers (always count all customers for the business, not filtered by date)
+    const totalCustomers = await Customer.countDocuments({ business: businessId });
+    
+    // Get new customers in date range (if date filter provided)
+    let newCustomersInRange = segments.new;
+    if (startDate && endDate) {
+        newCustomersInRange = await Customer.countDocuments({
+            business: businessId,
+            'stats.totalVisits': 1,
+            createdAt: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            }
+        });
+    }
     
     // Get customer lifecycle data
     const lifecycleData = await getCustomerLifecycleData(businessId, filters);
@@ -48,7 +50,7 @@ const getCustomerAnalytics = async (businessId, filters = {}) => {
     return {
         overview: {
             totalCustomers,
-            newCustomers: segments.new,
+            newCustomers: newCustomersInRange,
             returningCustomers: segments.returning,
             loyalCustomers: segments.loyal,
             inactiveCustomers: segments.inactive
@@ -72,10 +74,24 @@ const getCustomerSegments = async (businessId) => {
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
     const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
     
+    // Check if business has any customers first
+    const totalCustomers = await Customer.countDocuments({ business: businessId });
+    
+    if (totalCustomers === 0) {
+        return {
+            new: 0,
+            returning: 0,
+            loyal: 0,
+            inactive: 0,
+            highValue: 0,
+            recent: 0
+        };
+    }
+    
     const segments = {
         new: await Customer.countDocuments({
             business: businessId,
-            'stats.totalVisits': 1
+            'stats.totalVisits': { $exists: true, $eq: 1 }
         }),
         returning: await Customer.countDocuments({
             business: businessId,
@@ -87,7 +103,10 @@ const getCustomerSegments = async (businessId) => {
         }),
         inactive: await Customer.countDocuments({
             business: businessId,
-            'stats.lastVisit': { $lt: ninetyDaysAgo }
+            $or: [
+                { 'stats.lastVisit': { $exists: false } },
+                { 'stats.lastVisit': { $lt: ninetyDaysAgo } }
+            ]
         }),
         highValue: await Customer.countDocuments({
             business: businessId,
@@ -124,11 +143,11 @@ const getCustomerLifecycleData = async (businessId, filters = {}) => {
         {
             $group: {
                 _id: null,
-                avgFirstVisit: { $avg: '$stats.totalVisits' },
-                avgTotalSpent: { $avg: '$stats.totalSpent' },
-                avgLoyaltyPoints: { $avg: '$stats.loyaltyPoints' },
-                avgRating: { $avg: '$stats.averageRating' },
-                totalRevenue: { $sum: '$stats.totalSpent' }
+                avgFirstVisit: { $avg: { $ifNull: ['$stats.totalVisits', 0] } },
+                avgTotalSpent: { $avg: { $ifNull: ['$stats.totalSpent', 0] } },
+                avgLoyaltyPoints: { $avg: { $ifNull: ['$stats.loyaltyPoints', 0] } },
+                avgRating: { $avg: { $ifNull: ['$stats.averageRating', 0] } },
+                totalRevenue: { $sum: { $ifNull: ['$stats.totalSpent', 0] } }
             }
         }
     ]);
@@ -150,36 +169,61 @@ const getCustomerLifecycleData = async (businessId, filters = {}) => {
  */
 const getCustomerValueAnalysis = async (businessId, filters = {}) => {
     const customers = await Customer.find({ business: businessId })
-        .select('stats.totalSpent stats.totalVisits stats.loyaltyPoints')
-        .sort({ 'stats.totalSpent': -1 });
+        .select('stats.totalSpent stats.totalVisits stats.loyaltyPoints stats.averageRating');
     
     if (customers.length === 0) {
         return {
+            avgFirstVisit: 0,
+            avgTotalSpent: 0,
+            totalRevenue: 0,
+            avgRating: 0,
+            avgLoyaltyPoints: 0,
             topCustomers: [],
             valueDistribution: {},
             averageValue: 0
         };
     }
     
+    // Calculate averages from customer stats
+    const totalSpent = customers.reduce((sum, c) => sum + (c.stats.totalSpent || 0), 0);
+    const totalVisits = customers.reduce((sum, c) => sum + (c.stats.totalVisits || 0), 0);
+    const totalRating = customers.reduce((sum, c) => sum + (c.stats.averageRating || 0), 0);
+    const totalLoyaltyPoints = customers.reduce((sum, c) => sum + (c.stats.loyaltyPoints || 0), 0);
+    
     // Get top 10 customers
-    const topCustomers = customers.slice(0, 10).map(customer => ({
-        id: customer._id,
-        totalSpent: customer.stats.totalSpent,
-        totalVisits: customer.stats.totalVisits,
-        loyaltyPoints: customer.stats.loyaltyPoints,
-        averageSpent: customer.stats.totalSpent / customer.stats.totalVisits
-    }));
+    const topCustomers = customers
+        .slice()
+        .sort((a, b) => (b.stats.totalSpent || 0) - (a.stats.totalSpent || 0))
+        .slice(0, 10)
+        .map(customer => ({
+            id: customer._id,
+            totalSpent: customer.stats.totalSpent || 0,
+            totalVisits: customer.stats.totalVisits || 0,
+            loyaltyPoints: customer.stats.loyaltyPoints || 0,
+            averageSpent: customer.stats.totalVisits > 0 
+                ? (customer.stats.totalSpent || 0) / customer.stats.totalVisits 
+                : 0
+        }));
     
     // Value distribution
     const valueRanges = {
-        low: customers.filter(c => c.stats.totalSpent < 1000).length,
-        medium: customers.filter(c => c.stats.totalSpent >= 1000 && c.stats.totalSpent < 5000).length,
-        high: customers.filter(c => c.stats.totalSpent >= 5000).length
+        low: customers.filter(c => (c.stats.totalSpent || 0) < 1000).length,
+        medium: customers.filter(c => (c.stats.totalSpent || 0) >= 1000 && (c.stats.totalSpent || 0) < 5000).length,
+        high: customers.filter(c => (c.stats.totalSpent || 0) >= 5000).length
     };
     
-    const averageValue = customers.reduce((sum, c) => sum + c.stats.totalSpent, 0) / customers.length;
+    const averageValue = customers.length > 0 ? totalSpent / customers.length : 0;
+    const avgFirstVisit = customers.length > 0 ? totalVisits / customers.length : 0;
+    const avgTotalSpent = customers.length > 0 ? totalSpent / customers.length : 0;
+    const avgRating = customers.length > 0 ? totalRating / customers.length : 0;
+    const avgLoyaltyPoints = customers.length > 0 ? totalLoyaltyPoints / customers.length : 0;
     
     return {
+        avgFirstVisit,
+        avgTotalSpent,
+        totalRevenue: totalSpent,
+        avgRating,
+        avgLoyaltyPoints,
         topCustomers,
         valueDistribution: valueRanges,
         averageValue
@@ -265,8 +309,10 @@ const getCustomerGrowthData = async (businessId, filters = {}) => {
     const { startDate, endDate, groupBy = 'month' } = filters;
     
     let dateFormat = '%Y-%m';
-    if (groupBy === 'week') dateFormat = '%Y-%U';
-    if (groupBy === 'day') dateFormat = '%Y-%m-%d';
+    if (groupBy === 'weekly' || groupBy === 'week') dateFormat = '%Y-%U';
+    if (groupBy === 'daily' || groupBy === 'day') dateFormat = '%Y-%m-%d';
+    if (groupBy === 'yearly' || groupBy === 'year') dateFormat = '%Y';
+    if (groupBy === 'monthly' || groupBy === 'month') dateFormat = '%Y-%m';
     
     const matchQuery = { business: businessId };
     if (startDate && endDate) {
@@ -286,14 +332,25 @@ const getCustomerGrowthData = async (businessId, filters = {}) => {
                         date: '$createdAt'
                     }
                 },
-                newCustomers: { $sum: 1 },
-                totalSpent: { $sum: '$stats.totalSpent' }
+                count: { $sum: 1 },
+                totalSpent: { $sum: { $ifNull: ['$stats.totalSpent', 0] } }
             }
         },
         { $sort: { _id: 1 } }
     ]);
     
-    return growthData;
+    // Calculate cumulative total
+    let cumulativeTotal = 0;
+    const growthWithTotal = growthData.map(item => {
+        cumulativeTotal += item.count;
+        return {
+            ...item,
+            period: item._id,
+            total: cumulativeTotal
+        };
+    });
+    
+    return growthWithTotal;
 };
 
 /**
@@ -357,7 +414,18 @@ const getTargetCustomers = async (businessId, criteria) => {
     if (criteria.location?.state) query['address.state'] = criteria.location.state;
     if (criteria.location?.pincode) query['address.pincode'] = criteria.location.pincode;
     
-    const customers = await Customer.find(query).select('_id name email phone');
+    // Get customers with additional details for better targeting
+    const customers = await Customer.find(query)
+        .select('_id name email phone dateOfBirth gender address stats.totalVisits stats.totalSpent stats.lastVisit preferences.preferredServices')
+        .lean();
+    
+    // Sort by relevance for targeting (by default, sort by total spent descending)
+    customers.sort((a, b) => {
+        const aSpent = a.stats?.totalSpent || 0;
+        const bSpent = b.stats?.totalSpent || 0;
+        return bSpent - aSpent;
+    });
+    
     return customers;
 };
 
@@ -375,26 +443,102 @@ const getCustomerInsights = async (businessId) => {
     const { segments } = analytics;
     const totalCustomers = segments.new + segments.returning + segments.loyal + segments.inactive;
     
-    if (segments.inactive > totalCustomers * 0.3) {
-        insights.push("High percentage of inactive customers detected");
-        recommendations.push("Launch a win-back campaign for inactive customers");
+    if (totalCustomers === 0) {
+        insights.push("No customer data available");
+        recommendations.push("Start acquiring customers through marketing campaigns");
+        return {
+            insights,
+            recommendations,
+            analytics
+        };
     }
     
-    if (segments.new > segments.returning) {
-        insights.push("Good customer acquisition but low retention");
-        recommendations.push("Focus on improving customer retention strategies");
+    // Segment-based insights
+    const inactivePercentage = (segments.inactive / totalCustomers) * 100;
+    if (inactivePercentage > 30) {
+        insights.push(`High percentage of inactive customers (${inactivePercentage.toFixed(1)}%)`);
+        recommendations.push("Launch a win-back campaign for inactive customers with special offers");
+    } else if (segments.inactive > 0) {
+        insights.push(`${segments.inactive} inactive customers identified (${inactivePercentage.toFixed(1)}%)`);
+        recommendations.push("Consider sending personalized offers to re-engage inactive customers");
     }
     
-    if (segments.loyal < totalCustomers * 0.1) {
-        insights.push("Low percentage of loyal customers");
-        recommendations.push("Implement loyalty program to increase customer retention");
+    const newPercentage = (segments.new / totalCustomers) * 100;
+    const returningPercentage = (segments.returning / totalCustomers) * 100;
+    
+    if (segments.new > segments.returning && segments.new > 0) {
+        insights.push(`Good customer acquisition (${newPercentage.toFixed(1)}% new customers) but low retention (${returningPercentage.toFixed(1)}% returning)`);
+        recommendations.push("Focus on improving customer retention strategies - follow up with new customers after first visit");
+    }
+    
+    const loyalPercentage = (segments.loyal / totalCustomers) * 100;
+    if (loyalPercentage < 10 && segments.loyal > 0) {
+        insights.push(`Low percentage of loyal customers (${loyalPercentage.toFixed(1)}%)`);
+        recommendations.push("Implement a loyalty program with rewards to increase customer retention");
+    } else if (loyalPercentage >= 10) {
+        insights.push(`Strong loyalty base with ${loyalPercentage.toFixed(1)}% loyal customers`);
+        recommendations.push("Reward loyal customers with exclusive offers and VIP treatment");
     }
     
     // Analyze customer value
     const { value } = analytics;
-    if (value.averageValue < 1000) {
-        insights.push("Low average customer value");
-        recommendations.push("Create upselling campaigns to increase customer value");
+    if (value && value.averageValue !== undefined) {
+        if (value.averageValue < 1000) {
+            insights.push(`Low average customer value (${value.averageValue.toFixed(0)} per customer)`);
+            recommendations.push("Create upselling campaigns and bundle offers to increase customer value");
+        } else if (value.averageValue >= 1000 && value.averageValue < 3000) {
+            insights.push(`Moderate customer value (₹${value.averageValue.toFixed(0)} per customer)`);
+            recommendations.push("Continue upselling strategies and introduce premium service packages");
+        } else {
+            insights.push(`Strong customer value (₹${value.averageValue.toFixed(0)} per customer)`);
+            recommendations.push("Maintain premium offerings and consider introducing VIP membership tiers");
+        }
+    }
+    
+    // Analyze retention
+    const { retention } = analytics;
+    if (retention) {
+        const retentionRate = totalCustomers > 0 ? ((retention.last30Days / totalCustomers) * 100) : 0;
+        if (retentionRate < 20) {
+            insights.push(`Low customer retention rate (${retentionRate.toFixed(1)}% active in last 30 days)`);
+            recommendations.push("Improve customer engagement through regular communication and personalized offers");
+        }
+    }
+    
+    // Growth insights
+    const { growth } = analytics;
+    if (growth && growth.length > 0) {
+        const recentGrowth = growth[growth.length - 1];
+        const previousGrowth = growth.length > 1 ? growth[growth.length - 2] : null;
+        
+        if (previousGrowth && recentGrowth.count > previousGrowth.count) {
+            const growthRate = ((recentGrowth.count - previousGrowth.count) / previousGrowth.count) * 100;
+            insights.push(`Positive customer growth trend: ${growthRate.toFixed(1)}% increase`);
+            recommendations.push("Leverage growth momentum by expanding marketing channels and referral programs");
+        } else if (previousGrowth && recentGrowth.count < previousGrowth.count) {
+            insights.push("Declining customer acquisition detected");
+            recommendations.push("Review marketing strategies and customer acquisition channels");
+        }
+    }
+    
+    // Preferences insights
+    const { preferences } = analytics;
+    if (preferences && preferences.preferredServices && preferences.preferredServices.length > 0) {
+        const topService = preferences.preferredServices[0];
+        insights.push(`Most popular service: ${topService._id || topService.name || 'N/A'} (${topService.count || 0} customers)`);
+        recommendations.push(`Promote ${topService._id || topService.name || 'top services'} more aggressively in marketing campaigns`);
+    }
+    
+    // Default recommendations if none generated
+    if (recommendations.length === 0) {
+        recommendations.push("Continue monitoring customer behavior and engagement metrics");
+        recommendations.push("Regularly review and update marketing strategies based on customer feedback");
+    }
+    
+    // Default insights if none generated
+    if (insights.length === 0) {
+        insights.push(`Total customer base: ${totalCustomers} customers`);
+        insights.push(`Customer segments are well balanced`);
     }
     
     return {
