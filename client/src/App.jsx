@@ -13,8 +13,9 @@ import { Login, Register, ForgotPassword, ResetPassword, OTPVerification } from 
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard/AdminDashboard'
-import { BusinessList, CreateBusiness, EditBusiness, BusinessDetails } from './pages/admin/Businesses'
-import { ManagerList, CreateManager } from './pages/admin/Managers'
+import { BusinessList, CreateBusiness, EditBusiness, BusinessDetails, BusinessAnalytics, BusinessStaff, BusinessDailyRecords } from './pages/admin/Businesses'
+import { ManagerList, CreateManager, ManagerDetails, EditManager } from './pages/admin/Managers'
+import { NotificationsList } from './pages/admin/Notifications'
 import AdminReports from './pages/admin/Reports/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings/AdminSettings'
 
@@ -65,12 +66,18 @@ function App() {
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="notifications" element={<NotificationsList />} />
                 <Route path="businesses" element={<BusinessList />} />
                 <Route path="businesses/create" element={<CreateBusiness />} />
-                <Route path="businesses/:id" element={<BusinessDetails />} />
+                <Route path="businesses/:id/analytics" element={<BusinessAnalytics />} />
+                <Route path="businesses/:id/staff" element={<BusinessStaff />} />
+                <Route path="businesses/:id/daily-records" element={<BusinessDailyRecords />} />
                 <Route path="businesses/:id/edit" element={<EditBusiness />} />
+                <Route path="businesses/:id" element={<BusinessDetails />} />
                 <Route path="managers" element={<ManagerList />} />
                 <Route path="managers/create" element={<CreateManager />} />
+                <Route path="managers/:id/edit" element={<EditManager />} />
+                <Route path="managers/:id" element={<ManagerDetails />} />
                 <Route path="reports" element={<AdminReports />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />

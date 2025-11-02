@@ -7,11 +7,13 @@ const Transaction = require("../models/Transaction");
 const { setCache, getCache, deleteCache, getOrSet } = require("../utils/cache");
 const { cacheKeys } = require("../config/redis");
 const { generateBusinessAnalytics, formatCurrency } = require("../utils/businessUtils");
+const { notifyNewBusinessCreated, notifyNewManagerCreated, notifyBusinessDeleted } = require("../utils/adminNotifications");
 
 // ================== Admin Dashboard ==================
 const getAdminDashboard = async (req, res, next) => {
     try {
         const adminId = req.user.id;
+        const { recentBusinessesPage = 1, recentBusinessesLimit = 5 } = req.query;
         const cacheKey = cacheKeys.adminDashboard(adminId);
 
         // Use getOrSet for optimal caching
@@ -21,7 +23,8 @@ const getAdminDashboard = async (req, res, next) => {
             
             // Get businesses count by type with optimized query
             const businesses = await Business.find({ admin: adminId, isActive: true })
-                .select('type managers staff')
+                .select('type name branch businessLink managers staff')
+                .sort({ createdAt: -1 }) // Sort by newest first
                 .lean(); // Use lean() for better performance
             
             const businessStats = {
@@ -73,19 +76,45 @@ const getAdminDashboard = async (req, res, next) => {
                     recentTransactions: recentTransactions.length
                 },
                 analytics,
-                recentBusinesses: businesses.slice(0, 5).map(b => ({
-                    id: b._id,
-                    name: b.name,
-                    type: b.type,
-                    branch: b.branch,
-                    businessLink: b.businessLink,
-                    managersCount: b.managers.length,
-                    staffCount: b.staff.length
-                }))
+                businesses: businesses // Return all businesses for pagination
             };
         }, 300); // Cache for 5 minutes
 
-        return res.json({ success: true, data: dashboard });
+        // Apply pagination to recent businesses (after caching)
+        const page = parseInt(recentBusinessesPage);
+        const limit = parseInt(recentBusinessesLimit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = page * limit;
+        
+        const paginatedBusinesses = dashboard.businesses.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(dashboard.businesses.length / limit);
+        
+        const recentBusinesses = paginatedBusinesses.map(b => ({
+            id: b._id,
+            name: b.name,
+            type: b.type,
+            branch: b.branch,
+            businessLink: b.businessLink,
+            managersCount: b.managers.length,
+            staffCount: b.staff.length
+        }));
+
+        // Remove the businesses array from response and add pagination
+        const { businesses, ...restDashboard } = dashboard;
+        
+        return res.json({ 
+            success: true, 
+            data: {
+                ...restDashboard,
+                recentBusinesses,
+                pagination: {
+                    currentPage: page,
+                    limit,
+                    total: dashboard.businesses.length,
+                    totalPages
+                }
+            }
+        });
     } catch (err) {
         next(err);
     }
@@ -141,6 +170,9 @@ const createBusiness = async (req, res, next) => {
                 timezone: "Asia/Kolkata"
             }
         });
+
+        // Create notification
+        await notifyNewBusinessCreated(adminId, business);
 
         // Invalidate cache
         await deleteCache(`admin:${adminId}:businesses`);
@@ -303,6 +335,9 @@ const deleteBusiness = async (req, res, next) => {
         // Soft delete - set isActive to false
         await Business.findByIdAndUpdate(id, { isActive: false });
 
+        // Create notification
+        await notifyBusinessDeleted(adminId, business.name);
+
         // Invalidate cache
         await deleteCache(`admin:${adminId}:businesses`);
         await deleteCache(`admin:${adminId}:dashboard`);
@@ -353,6 +388,9 @@ const createManager = async (req, res, next) => {
             $push: { managers: manager._id }
         });
 
+        // Create notification
+        await notifyNewManagerCreated(adminId, manager, business);
+
         // Invalidate cache
         await deleteCache(`admin:${adminId}:businesses`);
         await deleteCache(`admin:${adminId}:dashboard`);
@@ -370,6 +408,226 @@ const createManager = async (req, res, next) => {
         });
     } catch (err) {
         next(err);
+    }
+};
+
+
+// ================== Get Managers ==================
+const getManagers = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { page = 1, limit = 10, search } = req.query;
+        const cacheKey = `admin:${adminId}:managers:${page}:${limit}:${search}`;
+
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", ...cachedData });
+        }
+
+        // Get all businesses for this admin first
+        const businesses = await Business.find({ admin: adminId }).select('_id');
+        const businessIds = businesses.map(b => b._id);
+
+        let query = { business: { $in: businessIds }, isActive: true };
+
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { username: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const managers = await Manager.find(query)
+            .populate('business', 'name type branch')
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .sort({ createdAt: -1 });
+
+        const total = await Manager.countDocuments(query);
+
+        const response = {
+            success: true,
+            data: managers.map(manager => ({
+                id: manager._id,
+                name: manager.name,
+                username: manager.username,
+                email: manager.email,
+                phone: manager.phone,
+                business: manager.business?.name || '—',
+                businessId: manager.business?._id || null,
+                businessType: manager.business?.type || null,
+                businessBranch: manager.business?.branch || null,
+                isActive: manager.isActive,
+                createdAt: manager.createdAt
+            })),
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        };
+
+        await setCache(cacheKey, response, 120);
+
+        return res.json(response);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ================== Get Manager by ID ==================
+const getManagerById = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { id } = req.params;
+
+        const manager = await Manager.findById(id).populate('business');
+        if (!manager) {
+            return res.status(404).json({ success: false, message: "Manager not found" });
+        }
+
+        // Check if manager belongs to admin's business
+        const business = await Business.findOne({ _id: manager.business, admin: adminId });
+        if (!business) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        // Get staff count for this manager's business
+        const staffCount = await Staff.countDocuments({ business: manager.business._id, isActive: true });
+
+        return res.json({
+            success: true,
+            data: {
+                id: manager._id,
+                name: manager.name,
+                username: manager.username,
+                email: manager.email,
+                phone: manager.phone,
+                business: {
+                    id: manager.business._id,
+                    name: manager.business.name,
+                    type: manager.business.type,
+                    branch: manager.business.branch,
+                    businessLink: manager.business.businessLink
+                },
+                permissions: manager.permissions,
+                staffCount,
+                isActive: manager.isActive,
+                createdAt: manager.createdAt,
+                updatedAt: manager.updatedAt
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ================== Update Manager ==================
+const updateManager = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { id } = req.params;
+        const { name, email, phone, username, pin, permissions } = req.body;
+
+        const manager = await Manager.findById(id).populate('business');
+        if (!manager) {
+            return res.status(404).json({ success: false, message: "Manager not found" });
+        }
+
+        // Check if manager belongs to admin's business
+        const business = await Business.findOne({ _id: manager.business._id, admin: adminId });
+        if (!business) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        // Check if username is being changed and if it already exists
+        if (username && username !== manager.username) {
+            const exists = await Manager.findOne({ username, _id: { $ne: id } });
+            if (exists) {
+                return res.status(400).json({ success: false, message: "Username already taken" });
+            }
+        }
+
+        // Validate PIN if provided
+        if (pin !== undefined && !/^\d{4}$/.test(pin)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "PIN must be exactly 4 digits" 
+            });
+        }
+
+        // Update manager
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (phone !== undefined) updateData.phone = phone;
+        if (username !== undefined) updateData.username = username;
+        if (pin !== undefined) updateData.pin = pin;
+        if (permissions !== undefined) updateData.permissions = permissions;
+
+        const updatedManager = await Manager.findByIdAndUpdate(id, updateData, { new: true }).populate('business');
+
+        // Invalidate cache
+        await deleteCache(`admin:${adminId}:managers:*`);
+        await deleteCache(`admin:${adminId}:dashboard`);
+
+        return res.json({
+            success: true,
+            message: "Manager updated successfully",
+            data: {
+                id: updatedManager._id,
+                name: updatedManager.name,
+                username: updatedManager.username,
+                email: updatedManager.email,
+                phone: updatedManager.phone,
+                // Don't return PIN for security
+                pinUpdated: pin !== undefined
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ================== Delete Manager ==================
+const deleteManager = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { id } = req.params;
+
+        const manager = await Manager.findById(id).populate('business');
+        if (!manager) {
+            return res.status(404).json({ success: false, message: "Manager not found" });
+        }
+
+        // Check if manager belongs to admin's business
+        const business = await Business.findOne({ _id: manager.business._id, admin: adminId });
+        if (!business) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        // Soft delete manager
+        await Manager.findByIdAndUpdate(id, { isActive: false });
+
+        // Remove manager from business managers array
+        await Business.findByIdAndUpdate(manager.business._id, {
+            $pull: { managers: manager._id }
+        });
+
+        // Invalidate cache
+        await deleteCache(`admin:${adminId}:managers:*`);
+        await deleteCache(`admin:${adminId}:dashboard`);
+        await deleteCache(`business:${manager.business._id}:*`);
+
+        return res.json({
+            success: true,
+            message: "Manager deleted successfully"
+        });
+    } catch (error) {
+        next(error);
     }
 };
 
@@ -408,5 +666,9 @@ module.exports = {
     updateBusiness,
     deleteBusiness,
     createManager,
+    getManagers,
+    getManagerById,
+    updateManager,
+    deleteManager,
     getBusinessLink
 };

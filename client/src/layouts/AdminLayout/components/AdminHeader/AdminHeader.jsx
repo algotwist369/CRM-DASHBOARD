@@ -1,55 +1,101 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../../components'
 import { FaBell } from "react-icons/fa";
 import { HiMenu, HiX } from 'react-icons/hi'
+import apiClient from '../../../../services/api/client'
 
 const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
-  const [notifications] = useState([
-    {
-      id: 1,
-      title: 'New business registration',
-      message: 'Elite Hair Studio has registered for the platform',
-      time: '2 minutes ago',
-      unread: true
-    },
-    {
-      id: 2,
-      title: 'System maintenance',
-      message: 'Scheduled maintenance will occur tonight at 2 AM',
-      time: '1 hour ago',
-      unread: true
-    },
-    {
-      id: 3,
-      title: 'Monthly report ready',
-      message: 'Your monthly analytics report is now available',
-      time: '3 hours ago',
-      unread: false
-    }
-  ])
-
+  const navigate = useNavigate()
+  const [notifications, setNotifications] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
 
-  const unreadCount = notifications.filter(n => n.unread).length
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await apiClient.get('/admin/notifications/recent?limit=5')
+      if (response.data.success) {
+        setNotifications(response.data.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/admin/notifications/unread-count')
+      if (response.data.success) {
+        setUnreadCount(response.data.count || 0)
+      }
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Fetch notifications when dropdown opens
+    if (notificationMenuOpen) {
+      fetchNotifications()
+    }
+  }, [notificationMenuOpen, fetchNotifications])
+
+  useEffect(() => {
+    // Fetch unread count on mount
+    fetchUnreadCount()
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000)
+    return () => clearInterval(interval)
+  }, [fetchUnreadCount])
 
   const handleLogout = () => {
     // In a real app, this would clear auth tokens and redirect
     console.log('Logging out...')
   }
 
-  const handleNotificationClick = (notificationId) => {
-    // In a real app, this would mark notification as read
-    console.log('Notification clicked:', notificationId)
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      try {
+        await apiClient.put(`/admin/notifications/${notification._id}/read`)
+        // Update local state
+        setNotifications(prev => 
+          prev.map(n => n._id === notification._id ? { ...n, isRead: true } : n)
+        )
+        // Update unread count
+        setUnreadCount(prev => Math.max(0, prev - 1))
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error)
+      }
+    }
   }
 
-  const formatTime = (timeString) => {
-    return timeString
+  const formatTime = (dateString) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInSeconds = Math.floor((now - date) / 1000)
+    
+    if (diffInSeconds < 60) {
+      return 'Just now'
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60)
+      return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600)
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`
+    } else {
+      const days = Math.floor(diffInSeconds / 86400)
+      return `${days} ${days === 1 ? 'day' : 'days'} ago`
+    }
   }
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 sticky top-0 z-30 w-full">
-      <div className="flex items-center justify-between">
+    <header className="w-full h-16 bg-white/90 backdrop-blur border-b border-gray-200 flex-shrink-0">
+      <div className="h-full px-4 flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center">
           {/* Sidebar toggle (mobile) */}
@@ -79,7 +125,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-64 lg:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <svg
                 className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
@@ -115,29 +161,43 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
                   <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      onClick={() => handleNotificationClick(notification.id)}
-                      className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                        notification.unread ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start">
-                        <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                          notification.unread ? 'bg-blue-500' : 'bg-gray-300'
-                        }`}></div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-gray-900">{notification.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                          <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
+                  {loading ? (
+                    <div className="p-8 text-center text-gray-500">Loading notifications...</div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">No notifications</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification._id}
+                        onClick={() => handleNotificationClick(notification)}
+                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                          !notification.isRead ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start">
+                          <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${
+                            !notification.isRead ? 'bg-blue-500' : 'bg-gray-300'
+                          }`}></div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900">{notification.title}</h4>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{notification.message}</p>
+                            <p className="text-xs text-gray-500 mt-2">{formatTime(notification.createdAt)}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
                 <div className="p-4 border-t border-gray-200">
-                  <Button variant="outline" size="sm" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => {
+                      setNotificationMenuOpen(false)
+                      navigate('/admin/notifications')
+                    }}
+                  >
                     View All Notifications
                   </Button>
                 </div>

@@ -20,7 +20,11 @@ export const endpoints = {
     updateBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     deleteBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     businessLink: (id) => `${API_BASE_URL}/admin/business/${id}/link`,
+    managers: `${API_BASE_URL}/admin/managers`,
+    manager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
     createManager: `${API_BASE_URL}/admin/manager`,
+    updateManager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
+    deleteManager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
   },
 
   // Manager endpoints

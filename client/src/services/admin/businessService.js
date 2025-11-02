@@ -83,13 +83,25 @@ class BusinessService {
   // Get business staff
   async getBusinessStaff(businessId, params = {}) {
     try {
-      const endpoint = buildEndpoint(API_ENDPOINTS.BUSINESS.STAFF(businessId), params)
-      const response = await apiClient.get(endpoint)
+      const response = await apiClient.get(endpoints.business.getStaff(businessId), { params })
       return { success: true, data: response.data }
     } catch (error) {
       return { 
         success: false, 
         error: error.response?.data?.message || 'Failed to fetch business staff' 
+      }
+    }
+  }
+
+  // Get business daily records
+  async getBusinessDailyRecords(businessId, params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.business.getDailyRecords(businessId), { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch daily records' 
       }
     }
   }
@@ -139,8 +151,7 @@ class BusinessService {
   // Get business analytics
   async getBusinessAnalytics(businessId, params = {}) {
     try {
-      const endpoint = buildEndpoint(API_ENDPOINTS.BUSINESS.ANALYTICS(businessId), params)
-      const response = await apiClient.get(endpoint)
+      const response = await apiClient.get(endpoints.business.getAnalytics(businessId), { params })
       return { success: true, data: response.data }
     } catch (error) {
       return { 

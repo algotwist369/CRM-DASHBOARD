@@ -63,7 +63,7 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <AdminSidebar
         isCollapsed={sidebarCollapsed}
@@ -71,7 +71,7 @@ const AdminLayout = () => {
       />
 
       {/* Main Content */}
-      <div className={`${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'} flex-1 flex flex-col overflow-hidden min-w-0`}>
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <AdminHeader
           onSidebarToggle={handleSidebarToggle}
@@ -86,7 +86,7 @@ const AdminLayout = () => {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-4 py-3">
+        <footer className="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
               <span>© 2024 Elite Hair Studio CRM</span>

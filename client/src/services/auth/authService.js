@@ -68,11 +68,19 @@ class AuthService {
   // Refresh token
   async refreshToken() {
     try {
-      const response = await apiClient.post(endpoints.auth.refresh)
-      const { token } = response.data
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (!refreshToken) {
+        throw new Error('No refresh token available')
+      }
+      
+      const response = await apiClient.post(endpoints.auth.refresh, { token: refreshToken })
+      const { accessToken, refreshToken: newRefreshToken } = response.data
 
-      localStorage.setItem('authToken', token)
-      return { success: true, token }
+      localStorage.setItem('authToken', accessToken)
+      if (newRefreshToken) {
+        localStorage.setItem('refreshToken', newRefreshToken)
+      }
+      return { success: true, token: accessToken }
     } catch (error) {
       // If refresh fails, logout user
       this.logout()

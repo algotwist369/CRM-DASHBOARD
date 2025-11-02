@@ -66,7 +66,12 @@ class CacheManager {
             const value = await this.redis.get(key);
             return value ? JSON.parse(value) : null;
         } catch (error) {
-            console.error('Cache get error:', error);
+            // Suppress Redis connection errors as they're expected when Redis is not available
+            if (!error.message.includes('Stream isn\'t writeable') && 
+                !error.message.includes('ECONNREFUSED') && 
+                !error.message.includes('enableOfflineQueue')) {
+                console.error('Cache get error:', error);
+            }
             return null;
         }
     }
@@ -144,7 +149,12 @@ class CacheManager {
             
             return value;
         } catch (error) {
-            console.error('Cache getOrSet error:', error);
+            // Suppress Redis connection errors as they're expected when Redis is not available
+            if (!error.message.includes('Stream isn\'t writeable') && 
+                !error.message.includes('ECONNREFUSED') && 
+                !error.message.includes('enableOfflineQueue')) {
+                console.error('Cache getOrSet error:', error);
+            }
             // Fallback to direct fetch
             return await fetchFunction();
         }

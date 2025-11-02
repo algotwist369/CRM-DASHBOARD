@@ -164,8 +164,25 @@ const getReports = async (req, res, next) => {
 // ================== Get Analytics ==================
 const getAnalytics = async (req, res, next) => {
     try {
-        const revenueData = await revenueTrends(req, res, next);
-        const staffData = await staffPerformance(req, res, next);
+        const managerId = req.user.role === "manager" ? req.user.id : null;
+        const match = managerId ? { manager: managerId } : {};
+
+        // Revenue trends
+        const revenueData = await DailyBusiness.aggregate([
+            { $match: match },
+            { $group: { _id: "$date", totalIncome: { $sum: "$totalIncome" } } },
+            { $sort: { _id: 1 } },
+        ]);
+
+        // Staff performance (only for managers)
+        let staffData = [];
+        if (managerId) {
+            staffData = await Transaction.aggregate([
+                { $match: { manager: managerId } },
+                { $group: { _id: "$staff", totalRevenue: { $sum: "$amount" }, customers: { $sum: 1 } } },
+                { $sort: { totalRevenue: -1 } },
+            ]);
+        }
         
         return res.json({
             success: true,

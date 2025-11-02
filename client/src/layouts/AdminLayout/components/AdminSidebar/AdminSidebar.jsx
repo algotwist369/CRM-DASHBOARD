@@ -7,6 +7,7 @@ import {
   HiOutlineUserGroup,
   HiOutlineChartBar,
   HiOutlineCog,
+  HiOutlineBell,
   HiOutlineChevronRight,
   HiOutlineChevronLeft,
   HiOutlineChevronDown,
@@ -63,6 +64,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       ],
     },
     {
+      name: 'Notifications',
+      href: '/admin/notifications',
+      icon: <HiOutlineBell className="w-5 h-5" />,
+    },
+    {
       name: 'Reports',
       href: '/admin/reports',
       icon: <HiOutlineChartBar className="w-5 h-5" />,
@@ -86,7 +92,7 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
 
   return (
     <div
-      className={`bg-gray-900 text-white transition-all duration-300 flex flex-col min-h-screen overflow-hidden
+      className={`bg-gray-900 text-white transition-all duration-300 flex flex-col h-screen lg:h-full overflow-hidden
       fixed inset-y-0 left-0 z-50 transform ${isCollapsed ? '-translate-x-full' : 'translate-x-0'} 
       ${isCollapsed ? 'lg:w-16' : 'lg:w-64'} lg:static lg:inset-auto lg:transform-none`}
     >
@@ -115,7 +121,7 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navigationItems.map((item) => (
           <div key={item.name}>
             <NavLink

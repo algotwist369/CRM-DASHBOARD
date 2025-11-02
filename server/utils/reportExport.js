@@ -3,56 +3,99 @@
 
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
-const fs = require('fs-extra');
-const path = require('path');
 
-// Export JSON array to CSV file 
-const exportToCSV = async (data, fields, destPath) => {
-    await fs.ensureDir(path.dirname(destPath));
+// Export JSON array to CSV string
+const exportToCSV = async (data) => {
+    if (!Array.isArray(data) || data.length === 0) {
+        return 'No data available';
+    }
 
-    const opts = { fields };
-    const parser = new Parser(opts);
-    const csv = parser.parse(data);
+    // Define fields based on DailyBusiness schema
+    const fields = [
+        'date',
+        'business.name',
+        'business.type',
+        'business.branch',
+        'manager.name',
+        'manager.username',
+        'totalCustomers',
+        'totalIncome',
+        'totalExpenses',
+        'netProfit',
+        'isCompleted'
+    ];
 
-    await fs.writeFile(destPath, csv, 'utf8');
-    return destPath;
+    try {
+        const opts = { fields };
+        const parser = new Parser(opts);
+        const csv = parser.parse(data);
+        return csv;
+    } catch (err) {
+        console.error('CSV export error:', err);
+        return 'Error generating CSV';
+    }
 }
 
-// Export JSON array to simple PDF table
-const exportToPDF = async (data, columns, destPath, options = {}) => {
-    await fs.ensureDir(path.dirname(destPath));
+// Export JSON array to PDF buffer
+const exportToPDF = async (data) => {
+    if (!Array.isArray(data) || data.length === 0) {
+        return Buffer.from('No data available');
+    }
+
     return new Promise((resolve, reject) => {
-        const doc = new PDFDocument({ margin: 40, size: 'A4' });
-        const stream = fs.createWriteStream(destPath);
-        doc.pipe(stream);
+        try {
+            const doc = new PDFDocument({ margin: 40, size: 'A4' });
+            const chunks = [];
+            
+            doc.on('data', (chunk) => chunks.push(chunk));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', reject);
 
-        // Title
-        doc.fontSize(18).text(options.title || 'Report', { align: 'center' });
-        doc.moveDown();
+            // Title
+            doc.fontSize(18).text('Business Reports', { align: 'center' });
+            doc.moveDown();
 
-        // Header row
-        doc.fontSize(10);
-        const colSpacing = Math.floor((doc.page.width - doc.options.margins.left - doc.options.margins.right) / columns.length);
+            // Table headers
+            doc.fontSize(10);
+            const headers = ['Date', 'Manager', 'Customers', 'Income', 'Expenses', 'Profit'];
+            const colWidth = (doc.page.width - 80) / headers.length;
+            let yPos = doc.y;
 
-        // draw headers
-        columns.forEach((col, i) => {
-            doc.text(String(col).toUpperCase(), doc.options.margins.left + i * colSpacing, doc.y, { width: colSpacing, continued: i !== columns.length - 1 });
-        });
-        doc.moveDown(0.5);
-
-        // rows
-        data.forEach((row) => {
-            columns.forEach((col, i) => {
-                let text = row[col] == null ? '' : String(row[col]);
-                doc.text(text, doc.options.margins.left + i * colSpacing, doc.y, { width: colSpacing, continued: i !== columns.length - 1 });
+            headers.forEach((header, i) => {
+                doc.text(header, 40 + i * colWidth, yPos, { width: colWidth - 5 });
             });
-            doc.moveDown(0.5);
-        });
+            yPos += 20;
+            doc.moveTo(40, yPos).lineTo(doc.page.width - 40, yPos).stroke();
+            yPos += 10;
 
-        doc.end();
+            // Table rows
+            data.forEach((row) => {
+                const values = [
+                    new Date(row.date || row.createdAt).toLocaleDateString(),
+                    row.manager?.username || row.manager?.name || '—',
+                    row.totalCustomers || '0',
+                    `₹${(row.totalIncome || 0).toLocaleString('en-IN')}`,
+                    `₹${(row.totalExpenses || 0).toLocaleString('en-IN')}`,
+                    `₹${(row.netProfit || 0).toLocaleString('en-IN')}`
+                ];
 
-        stream.on('finish', () => resolve(destPath));
-        stream.on('error', (err) => reject(err));
+                values.forEach((val, i) => {
+                    doc.text(val, 40 + i * colWidth, yPos, { width: colWidth - 5 });
+                });
+                yPos += 20;
+
+                // Check if need new page
+                if (yPos > doc.page.height - 60) {
+                    doc.addPage();
+                    yPos = 50;
+                }
+            });
+
+            doc.end();
+        } catch (err) {
+            console.error('PDF export error:', err);
+            reject(err);
+        }
     });
 }
 
