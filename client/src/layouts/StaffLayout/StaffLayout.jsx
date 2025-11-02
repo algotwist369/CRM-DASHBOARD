@@ -91,7 +91,7 @@ const StaffLayout = () => {
         <footer className="bg-white border-t border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
-              <span>© 2024 Elite Hair Studio CRM</span>
+              <span>© 2024 RAMA CRM CRM</span>
               <span>•</span>
               <span>Staff Portal</span>
             </div>

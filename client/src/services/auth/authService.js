@@ -1,5 +1,6 @@
 import apiClient from '../api/client'
 import { endpoints } from '../../constants/api/endpoints'
+import { decodeToken } from '../../utils/auth/tokenUtils'
 
 class AuthService {
   // Login user
@@ -25,6 +26,50 @@ class AuthService {
       return { success: true, user: user || { role: 'admin' }, token: accessToken };
     } catch (error) {
       console.error('Login error in authService:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Login failed',
+      };
+    }
+  }
+
+  // Login manager with username and PIN
+  async loginManager(credentials) {
+    try {
+      const response = await apiClient.post(endpoints.auth.login, credentials);
+      const { accessToken, refreshToken, business } = response.data;
+
+      if (!accessToken) {
+        return { success: false, error: 'Invalid response from server' };
+      }
+
+      // Decode token to get user ID
+      const decoded = decodeToken(accessToken);
+      const userId = decoded?.id || null;
+
+      // Store auth data
+      localStorage.setItem('authToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken || '');
+      localStorage.setItem('userRole', 'manager');
+      if (userId) {
+        localStorage.setItem('userId', userId);
+      }
+      
+      // Create user object with business info
+      const user = {
+        id: userId,
+        role: 'manager',
+        business: business || null
+      };
+
+      return { 
+        success: true, 
+        user, 
+        token: accessToken,
+        business: business 
+      };
+    } catch (error) {
+      console.error('Manager login error in authService:', error);
       return {
         success: false,
         error: error.response?.data?.message || 'Login failed',

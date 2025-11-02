@@ -1,10 +1,77 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { FiEdit, FiTrash2, FiEye, FiSearch } from "react-icons/fi";
+import React, { useState, useEffect, useCallback, memo } from "react";
+import { FiEdit, FiTrash2, FiEye, FiSearch, FiUser, FiPhone, FiMail, FiLock, FiBriefcase, FiChevronDown } from "react-icons/fi";
 import { AiOutlineUserAdd } from "react-icons/ai";
 import { FaSpinner } from "react-icons/fa";
 import adminService from "../../../../services/admin/adminService";
+import businessService from "../../../../services/admin/businessService";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import Modal from "../../../../components/common/Modal/Modal";
+
+// Initial form data
+const INITIAL_FORM_DATA = {
+  name: "",
+  username: "",
+  pin: "",
+  businessId: "",
+  email: "",
+  phone: "",
+  permissions: {
+    canManageStaff: true,
+    canViewReports: true,
+    canManageDailyBusiness: true,
+    canManageTransactions: true,
+  },
+};
+
+// Memoized Icon Input Field Component
+const IconInputField = memo(({ label, name, value, onChange, error, type = "text", placeholder, icon: Icon, required = false }) => (
+  <div>
+    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">
+      {label}{required && " *"}
+    </label>
+    <div className="flex items-center border border-gray-300 rounded-lg p-1.5 sm:p-2">
+      <Icon className="text-gray-400 mr-2 text-sm" />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        maxLength={type === "password" ? 4 : undefined}
+        className="w-full focus:outline-none text-sm"
+      />
+    </div>
+    {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
+  </div>
+));
+
+// Memoized Select Field Component
+const SelectField = memo(({ label, name, value, onChange, error, options, required = false, icon: Icon }) => (
+  <div>
+    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">
+      {label}{required && " *"}
+    </label>
+    <div className="relative">
+      {Icon && <Icon className="absolute top-3 left-3 text-gray-400 text-sm z-10" />}
+      <FiChevronDown className="absolute top-3 right-3 text-gray-400 text-sm pointer-events-none" />
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        className={`w-full border ${error ? "border-red-500" : "border-gray-300"} rounded-lg p-1.5 sm:p-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none appearance-none ${Icon ? "pl-10 pr-8" : "px-3"}`}
+      >
+        <option value="">Select {label}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+    {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
+  </div>
+));
 
 const ManagerList = () => {
   const navigate = useNavigate();
@@ -16,6 +83,30 @@ const ManagerList = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  
+  // Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingManager, setEditingManager] = useState(null);
+  
+  // Form states
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+  const [showPinSection, setShowPinSection] = useState(false);
+
+  // Fetch businesses for dropdown
+  const fetchBusinesses = useCallback(async () => {
+    try {
+      const res = await businessService.getBusinesses({ page: 1, limit: 100 });
+      if (res.success) {
+        setBusinesses(res.data?.data || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch businesses:", e);
+    }
+  }, []);
 
   const fetchManagers = useCallback(async () => {
     try {
@@ -39,6 +130,10 @@ const ManagerList = () => {
       setLoading(false);
     }
   }, [page, search]);
+
+  useEffect(() => {
+    fetchBusinesses();
+  }, [fetchBusinesses]);
 
   useEffect(() => {
     fetchManagers();
@@ -69,9 +164,140 @@ const ManagerList = () => {
     navigate(`/admin/managers/${manager.id}`);
   };
 
-  const handleEdit = (manager) => {
-    navigate(`/admin/managers/${manager.id}/edit`);
-  };
+  const handleAdd = useCallback(() => {
+    setFormData(INITIAL_FORM_DATA);
+    setFormErrors({});
+    setShowPinSection(false);
+    setIsCreateModalOpen(true);
+  }, []);
+
+  const handleEdit = useCallback(async (manager) => {
+    setSubmitting(true);
+    try {
+      const res = await adminService.getManager(manager.id);
+      const data = res?.data?.data || res?.data;
+      if (data) {
+        setFormData({
+          name: data.name || "",
+          username: data.username || "",
+          pin: "",
+          businessId: data.business?._id || data.businessId || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          permissions: data.permissions || {
+            canManageStaff: true,
+            canViewReports: true,
+            canManageDailyBusiness: true,
+            canManageTransactions: true,
+          },
+        });
+        setEditingManager(data);
+        setFormErrors({});
+        setShowPinSection(false);
+        setIsEditModalOpen(true);
+      }
+    } catch (error) {
+      toast.error("Failed to load manager details");
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  const handleChange = useCallback((e) => {
+    const { name, value, type, checked } = e.target;
+    
+    // Handle permissions checkboxes
+    if (name.startsWith('permission_')) {
+      const permissionName = name.replace('permission_', '');
+      setFormData((prev) => ({
+        ...prev,
+        permissions: {
+          ...prev.permissions,
+          [permissionName]: checked
+        }
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+    
+    // Clear error for this field
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  }, [formErrors]);
+
+  const validateForm = useCallback(() => {
+    const errors = {};
+    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.username.trim()) errors.username = "Username is required";
+    if (isCreateModalOpen && !/^\d{4}$/.test(formData.pin)) {
+      errors.pin = "PIN must be exactly 4 digits";
+    }
+    if (isEditModalOpen && showPinSection && formData.pin && !/^\d{4}$/.test(formData.pin)) {
+      errors.pin = "PIN must be exactly 4 digits";
+    }
+    if (formData.phone && !/^[6-9]\d{9}$/.test(formData.phone)) {
+      errors.phone = "Enter a valid 10-digit Indian phone number";
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = "Invalid email format";
+    }
+    if (isCreateModalOpen && !formData.businessId.trim()) {
+      errors.businessId = "Please select a business";
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [formData, isCreateModalOpen, isEditModalOpen, showPinSection]);
+
+  const handleCreateSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    try {
+      setSubmitting(true);
+      const res = await adminService.createManager(formData);
+      if (res.success) {
+        toast.success("Manager created successfully!");
+        setIsCreateModalOpen(false);
+        setFormData(INITIAL_FORM_DATA);
+        await fetchManagers();
+      } else {
+        toast.error(res.error || "Failed to create manager");
+      }
+    } catch (error) {
+      toast.error("Failed to create manager");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [formData, validateForm, fetchManagers]);
+
+  const handleEditSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    try {
+      setSubmitting(true);
+      const submitData = { ...formData };
+      // Only send PIN if the PIN section is shown and PIN is provided
+      if (!showPinSection || !submitData.pin) {
+        delete submitData.pin;
+      }
+      
+      const res = await adminService.updateManager(editingManager.id || editingManager._id, submitData);
+      if (res.success) {
+        toast.success("Manager updated successfully!");
+        setIsEditModalOpen(false);
+        setEditingManager(null);
+        await fetchManagers();
+      } else {
+        toast.error(res.error || "Failed to update manager");
+      }
+    } catch (error) {
+      toast.error("Failed to update manager");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [formData, editingManager, showPinSection, validateForm, fetchManagers]);
 
   return (
     <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
@@ -82,7 +308,7 @@ const ManagerList = () => {
           <p className="text-sm text-gray-600">Manage all business managers</p>
         </div>
         <button 
-          onClick={() => navigate('/admin/managers/create')} 
+          onClick={handleAdd} 
           className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
         >
           <AiOutlineUserAdd className="text-lg" />
@@ -172,7 +398,8 @@ const ManagerList = () => {
                         </button>
                         <button
                           onClick={() => handleEdit(manager)}
-                          className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition-colors"
+                          disabled={submitting}
+                          className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 disabled:opacity-50 transition-colors"
                           title="Edit Manager"
                         >
                           <FiEdit />
@@ -226,6 +453,245 @@ const ManagerList = () => {
           </div>
         </div>
       )}
+
+      {/* Create Manager Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setFormData(INITIAL_FORM_DATA);
+          setFormErrors({});
+        }}
+        title="Add New Manager"
+        size="xl"
+      >
+        <form onSubmit={handleCreateSubmit} className="space-y-3 sm:space-y-4">
+          <IconInputField
+            label="Full Name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            error={formErrors.name}
+            placeholder="Enter manager name"
+            icon={FiUser}
+            required
+          />
+          
+          <IconInputField
+            label="Username"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            error={formErrors.username}
+            placeholder="Unique username"
+            icon={FiUser}
+            required
+          />
+          
+          <IconInputField
+            label="4-Digit PIN"
+            name="pin"
+            value={formData.pin}
+            onChange={handleChange}
+            error={formErrors.pin}
+            type="password"
+            placeholder="Enter 4-digit PIN"
+            icon={FiLock}
+            required
+          />
+          
+          <SelectField
+            label="Business"
+            name="businessId"
+            value={formData.businessId}
+            onChange={handleChange}
+            error={formErrors.businessId}
+            options={businesses.map(biz => ({ value: biz._id || biz.id, label: biz.name }))}
+            icon={FiBriefcase}
+            required
+          />
+          
+          <IconInputField
+            label="Email (optional)"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={formErrors.email}
+            type="email"
+            placeholder="manager@example.com"
+            icon={FiMail}
+          />
+          
+          <IconInputField
+            label="Phone Number"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            error={formErrors.phone}
+            placeholder="Enter 10-digit number"
+            icon={FiPhone}
+          />
+          
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5 rounded-lg font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
+          >
+            {submitting ? "Creating..." : "Create Manager"}
+          </button>
+        </form>
+      </Modal>
+
+      {/* Edit Manager Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingManager(null);
+          setFormData(INITIAL_FORM_DATA);
+          setFormErrors({});
+          setShowPinSection(false);
+        }}
+        title="Edit Manager"
+        size="xl"
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-3 sm:space-y-4">
+          <IconInputField
+            label="Full Name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            error={formErrors.name}
+            placeholder="Enter manager name"
+            icon={FiUser}
+            required
+          />
+          
+          <IconInputField
+            label="Username"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            error={formErrors.username}
+            placeholder="Unique username"
+            icon={FiUser}
+            required
+          />
+          
+          <IconInputField
+            label="Email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={formErrors.email}
+            type="email"
+            placeholder="manager@example.com"
+            icon={FiMail}
+          />
+          
+          <IconInputField
+            label="Phone Number"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            error={formErrors.phone}
+            placeholder="Enter 10-digit number"
+            icon={FiPhone}
+          />
+          
+          {/* Change PIN Section */}
+          <div className="border-t border-gray-200 pt-3">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700">Change PIN</h3>
+                <p className="text-xs text-gray-500">Optional: Update manager login PIN</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPinSection(!showPinSection);
+                  setFormData(prev => ({ ...prev, pin: "" }));
+                  setFormErrors(prev => ({ ...prev, pin: "" }));
+                }}
+                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                {showPinSection ? "Cancel" : "Change PIN"}
+              </button>
+            </div>
+            
+            {showPinSection && (
+              <IconInputField
+                label="New PIN (4 digits)"
+                name="pin"
+                value={formData.pin}
+                onChange={handleChange}
+                error={formErrors.pin}
+                type="password"
+                placeholder="••••"
+                icon={FiLock}
+              />
+            )}
+          </div>
+
+          {/* Permissions Section */}
+          <div className="border-t border-gray-200 pt-3">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Manager Permissions</h3>
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="permission_canManageStaff"
+                  checked={formData.permissions.canManageStaff}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Manage Staff</span>
+              </label>
+              
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="permission_canViewReports"
+                  checked={formData.permissions.canViewReports}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">View Reports</span>
+              </label>
+              
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="permission_canManageDailyBusiness"
+                  checked={formData.permissions.canManageDailyBusiness}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Manage Daily Business</span>
+              </label>
+              
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="permission_canManageTransactions"
+                  checked={formData.permissions.canManageTransactions}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Manage Transactions</span>
+              </label>
+            </div>
+          </div>
+          
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5 rounded-lg font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
+          >
+            {submitting ? "Updating..." : "Update Manager"}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 };

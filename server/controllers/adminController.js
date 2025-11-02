@@ -50,16 +50,47 @@ const getAdminDashboard = async (req, res, next) => {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             
-            const recentTransactions = await Transaction.find({
-                business: { $in: businesses.map(b => b._id) },
-                transactionDate: { $gte: thirtyDaysAgo }
-            }).select('finalPrice customerPhone').lean();
+            // Only query transactions if there are businesses
+            let recentTransactions = [];
+            if (businesses.length > 0) {
+                recentTransactions = await Transaction.find({
+                    business: { $in: businesses.map(b => b._id) },
+                    transactionDate: { $gte: thirtyDaysAgo, $exists: true, $ne: null }
+                }).select('finalPrice customerPhone transactionDate business').lean();
+            }
 
             const totalRevenue = recentTransactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
             const totalCustomers = new Set(recentTransactions.map(t => t.customerPhone)).size;
 
-            // Generate business analytics
-            const analytics = generateBusinessAnalytics(businesses, recentTransactions);
+            // Create simple analytics for admin dashboard
+            // Note: generateBusinessAnalytics expects daily business records, not businesses
+            const analytics = {
+                period: 'monthly',
+                totalRevenue: totalRevenue,
+                totalCustomers: totalCustomers,
+                averageRevenuePerCustomer: totalCustomers > 0 ? totalRevenue / totalCustomers : 0,
+                recentTransactions: recentTransactions.length,
+                revenueByBusiness: {}
+            };
+
+            // Calculate revenue by business type
+            // Create a map of business IDs to types for efficient lookup
+            const businessTypeMap = {};
+            businesses.forEach(business => {
+                businessTypeMap[business._id.toString()] = business.type;
+            });
+
+            // Calculate revenue by business type
+            recentTransactions.forEach(transaction => {
+                const businessId = transaction.business?.toString();
+                if (businessId && businessTypeMap[businessId]) {
+                    const businessType = businessTypeMap[businessId];
+                    if (!analytics.revenueByBusiness[businessType]) {
+                        analytics.revenueByBusiness[businessType] = 0;
+                    }
+                    analytics.revenueByBusiness[businessType] += (transaction.finalPrice || 0);
+                }
+            });
 
             return {
                 admin: {

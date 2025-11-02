@@ -6,6 +6,91 @@ const Transaction = require("../models/Transaction");
 const { setCache, getCache } = require("../utils/cache");
 const { generateBusinessAnalytics } = require("../utils/businessUtils");
 
+// ================== Get All Public Businesses (Public) ==================
+const getPublicBusinesses = async (req, res, next) => {
+    try {
+        const { page = 1, limit = 20, search, type } = req.query;
+        
+        const cacheKey = `public:businesses:${page}:${limit}:${search || ''}:${type || ''}`;
+        
+        // Try cache first
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", ...cachedData });
+        }
+        
+        // Build query - only active businesses that allow online booking
+        let query = { 
+            isActive: true,
+            'settings.appointmentSettings.allowOnlineBooking': true
+        };
+        
+        // Filter by type if provided
+        if (type && ['salon', 'spa', 'hotel', 'restaurant', 'clinic'].includes(type)) {
+            query.type = type;
+        }
+        
+        // Search by name, branch, or city
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { branch: { $regex: search, $options: 'i' } },
+                { city: { $regex: search, $options: 'i' } },
+                { businessLink: { $regex: search, $options: 'i' } }
+            ];
+        }
+        
+        const businesses = await Business.find(query)
+            .select('name type branch address city state country phone email website description settings businessLink createdAt')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .lean();
+        
+        const total = await Business.countDocuments(query);
+        
+        // Format businesses for public display
+        const formattedBusinesses = businesses.map(business => ({
+            id: business._id,
+            name: business.name,
+            type: business.type,
+            branch: business.branch,
+            address: business.address,
+            city: business.city,
+            state: business.state,
+            country: business.country,
+            phone: business.phone,
+            email: business.email,
+            website: business.website,
+            description: business.description,
+            businessLink: business.businessLink,
+            workingHours: business.settings?.workingHours,
+            appointmentSettings: {
+                allowOnlineBooking: business.settings?.appointmentSettings?.allowOnlineBooking,
+                slotDuration: business.settings?.appointmentSettings?.slotDuration
+            }
+        }));
+        
+        const response = {
+            success: true,
+            data: formattedBusinesses,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        };
+        
+        // Cache for 5 minutes
+        await setCache(cacheKey, response, 300);
+        
+        return res.json(response);
+    } catch (err) {
+        next(err);
+    }
+};
+
 // ================== Get Business Info by Link (Public) ==================
 const getBusinessInfoByLink = async (req, res, next) => {
     try {
@@ -271,6 +356,7 @@ const getBusinessAnalytics = async (req, res, next) => {
 };
 
 module.exports = {
+    getPublicBusinesses,
     getBusinessInfoByLink,
     getBusinessById,
     getBusinessStaff,

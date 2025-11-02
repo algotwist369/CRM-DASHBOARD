@@ -627,12 +627,18 @@ const getAppointments = async (req, res, next) => {
             };
         }
         
+        // Default sort to newest first (by createdAt) if no sort specified
+        const sortOrder = req.query.sortOrder || 'desc'
+        const sortBy = req.query.sortBy || 'createdAt'
+        const sortObj = {}
+        sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1
+        
         const appointments = await Appointment.find(query)
             .populate('customer', 'name email phone')
             .populate('staff', 'name role specialization')
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
-            .sort({ appointmentDate: 1, startTime: 1 });
+            .sort(sortObj);
         
         const total = await Appointment.countDocuments(query);
         

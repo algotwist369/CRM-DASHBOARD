@@ -80,7 +80,7 @@ const PublicFooter = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold">Elite Hair Studio</h3>
+                <h3 className="text-xl font-bold">RAMA CRM</h3>
                 <p className="text-sm text-gray-400">Premium Hair Services</p>
               </div>
             </div>
@@ -162,7 +162,7 @@ const PublicFooter = () => {
         <div className="mt-8 pt-8 border-t border-gray-800">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <p className="text-gray-400 text-sm">
-              © {currentYear} Elite Hair Studio. All rights reserved.
+              © {currentYear} RAMA CRM. All rights reserved.
             </p>
             <div className="flex items-center space-x-6 mt-4 md:mt-0">
               <Link to="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">

@@ -2,17 +2,17 @@ import apiClient from '../api/client'
 import { endpoints } from '../../constants/api/endpoints'
 
 class AdminService {
-  // Get admin dashboard data
+  // Get admin dashboard
   async getDashboard(page = 1, limit = 5) {
     try {
       const response = await apiClient.get(endpoints.admin.dashboard, {
-        params: { recentBusinessesPage: page, recentBusinessesLimit: limit }
+        params: { page, limit }
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch dashboard data' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch dashboard'
       }
     }
   }
@@ -23,74 +23,48 @@ class AdminService {
       const response = await apiClient.post(endpoints.admin.createManager, managerData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to create manager' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create manager'
       }
     }
   }
 
-  // Get business link
-  async getBusinessLink(businessId) {
+  // Get daily business records (Admin access)
+  async getDailyBusinessRecords(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.admin.businessLink(businessId))
+      const response = await apiClient.get(endpoints.dailyBusiness.list, { params })
       return { success: true, data: response.data }
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business link' 
+        error: error.response?.data?.message || 'Failed to fetch daily business records' 
       }
     }
   }
 
-  // Get managers list
-  async getManagers(params = {}) {
+  // Get daily summary (Admin access)
+  async getDailySummary(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.admin.managers, { params })
+      const response = await apiClient.get(endpoints.dailyBusiness.getSummary, { params })
       return { success: true, data: response.data }
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Failed to fetch managers' 
+        error: error.response?.data?.message || 'Failed to fetch daily summary' 
       }
     }
   }
 
-  // Get manager by ID
-  async getManager(managerId) {
+  // Get business analytics (Admin access)
+  async getBusinessAnalytics(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.admin.manager(managerId))
+      const response = await apiClient.get(endpoints.dailyBusiness.getAnalytics, { params })
       return { success: true, data: response.data }
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Failed to fetch manager' 
-      }
-    }
-  }
-
-  // Update manager
-  async updateManager(managerId, managerData) {
-    try {
-      const response = await apiClient.put(endpoints.admin.updateManager(managerId), managerData)
-      return { success: true, data: response.data }
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update manager' 
-      }
-    }
-  }
-
-  // Delete manager
-  async deleteManager(managerId) {
-    try {
-      const response = await apiClient.delete(endpoints.admin.deleteManager(managerId))
-      return { success: true, data: response.data }
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to delete manager' 
+        error: error.response?.data?.message || 'Failed to fetch business analytics' 
       }
     }
   }

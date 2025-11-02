@@ -87,7 +87,7 @@ const Login = () => {
   }
 
   return (
-    <div className='min-h-screen flex flex-col justify-center items-center px-4'>
+    <div className='max-h-screen flex flex-col justify-center items-center px-4'>
       <div className='w-full max-w-md bg-white shadow-lg rounded-xl p-8'>
         <h2 className='text-center text-2xl font-semibold text-gray-800 mb-1'>
           Welcome Back 👋
@@ -185,15 +185,26 @@ const Login = () => {
         </form>
 
         {/* Register Link */}
-        <p className='mt-6 text-center text-gray-600 text-sm'>
-          Don’t have an account?{' '}
-          <Link
-            to='/auth/register'
-            className='font-medium text-gray-800 hover:underline'
-          >
-            Create one
-          </Link>
-        </p>
+        <div className='mt-6 space-y-2'>
+          <p className='text-center text-gray-600 text-sm'>
+            Don't have an account?{' '}
+            <Link
+              to='/auth/register'
+              className='font-medium text-gray-800 hover:underline'
+            >
+              Create one
+            </Link>
+          </p>
+          <p className='text-center text-gray-600 text-sm'>
+            Are you a manager?{' '}
+            <Link
+              to='/auth/manager-login'
+              className='font-medium text-gray-800 hover:underline'
+            >
+              Manager Login
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

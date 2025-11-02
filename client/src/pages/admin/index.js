@@ -8,6 +8,9 @@ export * from './Businesses'
 // Manager Management
 export * from './Managers'
 
+// Daily Business Management
+export * from './DailyBusiness'
+
 // Notifications
 export * from './Notifications'
 

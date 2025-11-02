@@ -52,6 +52,7 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       submenu: [
         { name: 'All Businesses', href: '/admin/businesses' },
         { name: 'Create Business', href: '/admin/businesses/create' },
+        { name: 'Daily Business', href: '/admin/daily-business' },
       ],
     },
     {
