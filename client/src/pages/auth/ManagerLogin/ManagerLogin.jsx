@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   AiOutlineUser,
@@ -16,6 +16,18 @@ const ManagerLogin = () => {
   })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+
+  // Load remembered credentials on mount
+  useEffect(() => {
+    const remembered = authService.getRememberedCredentials('manager')
+    if (remembered) {
+      setFormData(prev => ({
+        ...prev,
+        username: remembered.username,
+        rememberMe: remembered.rememberMe
+      }))
+    }
+  }, [])
 
   // Realtime validation on each input change
   const validateField = (field, value) => {
@@ -74,7 +86,8 @@ const ManagerLogin = () => {
     try {
       const result = await authService.loginManager({
         username: formData.username.trim(),
-        pin: formData.pin
+        pin: formData.pin,
+        rememberMe: formData.rememberMe
       })
 
       if (result.success) {

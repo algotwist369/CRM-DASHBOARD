@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, memo } from "react";
-import { FiEdit, FiTrash2, FiEye, FiSearch, FiUser, FiPhone, FiMail, FiLock, FiBriefcase, FiChevronDown } from "react-icons/fi";
+import React, { useState, useEffect, useCallback, memo, useMemo } from "react";
+import { FiEdit, FiTrash2, FiEye, FiSearch, FiUser, FiPhone, FiMail, FiLock, FiBriefcase, FiChevronDown, FiRefreshCw, FiArrowLeft, FiCopy, FiCheck } from "react-icons/fi";
 import { AiOutlineUserAdd } from "react-icons/ai";
 import { FaSpinner } from "react-icons/fa";
 import adminService from "../../../../services/admin/adminService";
@@ -7,6 +7,23 @@ import businessService from "../../../../services/admin/businessService";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Modal from "../../../../components/common/Modal/Modal";
+
+// Debounce hook for search optimization
+const useDebounce = (value, delay = 500) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 // Initial form data
 const INITIAL_FORM_DATA = {
@@ -23,6 +40,196 @@ const INITIAL_FORM_DATA = {
     canManageTransactions: true,
   },
 };
+
+// Copy Button Component
+const CopyButton = memo(({ text, label }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success(`${label} copied!`);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1 hover:bg-gray-200 rounded transition-colors"
+      title={`Copy ${label}`}
+    >
+      {copied ? (
+        <FiCheck className="text-green-600 text-sm" />
+      ) : (
+        <FiCopy className="text-gray-500 text-sm" />
+      )}
+    </button>
+  );
+});
+
+// Loading Skeleton Component
+const SkeletonRow = memo(() => (
+  <tr className="animate-pulse">
+    <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+    <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+    <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+    <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-40"></div></td>
+    <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
+    <td className="px-4 py-3"><div className="h-4 bg-gray-200 rounded w-36"></div></td>
+    <td className="px-4 py-3"><div className="h-6 bg-gray-200 rounded-full w-16"></div></td>
+    <td className="px-4 py-3"><div className="h-8 bg-gray-200 rounded w-24 mx-auto"></div></td>
+  </tr>
+));
+
+// Memoized Manager Row Component
+const ManagerRow = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEditing }) => (
+  <tr className="hover:bg-gray-50 transition-colors">
+    <td className="px-4 py-3 text-gray-700 font-medium">{manager.name}</td>
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-1">
+        <span className="text-gray-600">{manager.username}</span>
+        <CopyButton text={manager.username} label="Username" />
+      </div>
+    </td>
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-1">
+        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300 text-gray-700">
+          {manager.pin || '••••'}
+        </span>
+        {manager.pin && <CopyButton text={manager.pin} label="PIN" />}
+      </div>
+    </td>
+    <td className="px-4 py-3 text-gray-600">{manager.email || '—'}</td>
+    <td className="px-4 py-3 text-gray-600">{manager.phone || '—'}</td>
+    <td className="px-4 py-3">
+      <div>
+        <p className="text-gray-700 font-medium">{manager.business}</p>
+        {manager.businessBranch && (
+          <p className="text-xs text-gray-500">{manager.businessBranch}</p>
+        )}
+      </div>
+    </td>
+    <td className="px-4 py-3">
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        manager.isActive 
+          ? 'bg-green-100 text-green-800' 
+          : 'bg-red-100 text-red-800'
+      }`}>
+        {manager.isActive ? 'Active' : 'Inactive'}
+      </span>
+    </td>
+    <td className="px-4 py-3">
+      <div className="flex justify-center gap-2">
+        <button
+          onClick={() => onView(manager)}
+          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+          title="View Details"
+        >
+          <FiEye />
+        </button>
+        <button
+          onClick={() => onEdit(manager)}
+          disabled={isEditing}
+          className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 disabled:opacity-50 transition-colors"
+          title="Edit Manager"
+        >
+          <FiEdit />
+        </button>
+        <button
+          onClick={() => onDelete(manager.id)}
+          disabled={isDeleting}
+          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
+          title="Delete Manager"
+        >
+          {isDeleting ? <FaSpinner className="animate-spin" /> : <FiTrash2 />}
+        </button>
+      </div>
+    </td>
+  </tr>
+));
+
+// Mobile Card Component for Responsive Design
+const ManagerCard = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEditing }) => (
+  <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3 shadow-sm">
+    <div className="flex justify-between items-start mb-3">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-semibold text-gray-800">{manager.name}</h3>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+            manager.isActive 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {manager.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 mb-1">
+          <p className="text-sm text-gray-500">@{manager.username}</p>
+          <CopyButton text={manager.username} label="Username" />
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded border border-gray-300 text-gray-700">
+            PIN: {manager.pin || '••••'}
+          </span>
+          {manager.pin && <CopyButton text={manager.pin} label="PIN" />}
+        </div>
+      </div>
+      <div className="flex gap-2 ml-2">
+        <button
+          onClick={() => onView(manager)}
+          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+          title="View"
+        >
+          <FiEye className="text-sm" />
+        </button>
+        <button
+          onClick={() => onEdit(manager)}
+          disabled={isEditing}
+          className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 disabled:opacity-50 transition-colors"
+          title="Edit"
+        >
+          <FiEdit className="text-sm" />
+        </button>
+        <button
+          onClick={() => onDelete(manager.id)}
+          disabled={isDeleting}
+          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
+          title="Delete"
+        >
+          {isDeleting ? <FaSpinner className="animate-spin text-sm" /> : <FiTrash2 className="text-sm" />}
+        </button>
+      </div>
+    </div>
+    <div className="space-y-2 text-sm">
+      {manager.email && (
+        <div className="flex items-center gap-2 text-gray-600">
+          <FiMail className="text-gray-400" />
+          <span>{manager.email}</span>
+        </div>
+      )}
+      {manager.phone && (
+        <div className="flex items-center gap-2 text-gray-600">
+          <FiPhone className="text-gray-400" />
+          <span>{manager.phone}</span>
+        </div>
+      )}
+      <div className="flex items-center gap-2 text-gray-600">
+        <FiBriefcase className="text-gray-400" />
+        <div>
+          <span className="font-medium">{manager.business}</span>
+          {manager.businessBranch && (
+            <span className="text-xs text-gray-500 ml-1">({manager.businessBranch})</span>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+));
 
 // Memoized Icon Input Field Component
 const IconInputField = memo(({ label, name, value, onChange, error, type = "text", placeholder, icon: Icon, required = false }) => (
@@ -73,9 +280,32 @@ const SelectField = memo(({ label, name, value, onChange, error, options, requir
   </div>
 ));
 
+// Table Header Component
+const TableHeader = memo(() => (
+  <thead className="bg-gray-50 border-b border-gray-200">
+    <tr>
+      {['Name', 'Username', 'PIN', 'Email', 'Phone', 'Business', 'Status'].map(header => (
+        <th key={header} className="px-4 py-3 text-left font-semibold text-gray-700">{header}</th>
+      ))}
+      <th className="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
+    </tr>
+  </thead>
+));
+
+// Empty State Component
+const EmptyState = memo(({ search }) => (
+  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+    <p className="text-lg font-medium mb-2">No managers found</p>
+    <p className="text-sm">
+      {search ? "Try adjusting your search criteria." : "Create your first manager to get started."}
+    </p>
+  </div>
+));
+
 const ManagerList = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500); // Debounce search input
   const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(null);
@@ -95,9 +325,13 @@ const ManagerList = () => {
   const [submitting, setSubmitting] = useState(false);
   const [businesses, setBusinesses] = useState([]);
   const [showPinSection, setShowPinSection] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch businesses for dropdown
+  // Lazy load businesses only when needed (for dropdown)
   const fetchBusinesses = useCallback(async () => {
+    // Skip if already loaded
+    if (businesses.length > 0) return;
+    
     try {
       const res = await businessService.getBusinesses({ page: 1, limit: 100 });
       if (res.success) {
@@ -105,22 +339,24 @@ const ManagerList = () => {
       }
     } catch (e) {
       console.error("Failed to fetch businesses:", e);
+      toast.error("Failed to load businesses");
     }
-  }, []);
+  }, [businesses.length]);
 
   const fetchManagers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const params = { page, limit: 20 };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       
       const res = await adminService.getManagers(params);
       if (res.success) {
-        const data = res.data?.data || [];
+        // Response structure: { success, data: [...], pagination: {...} }
+        const data = res.data || [];
         setManagers(data);
-        setTotalPages(res.data?.pagination?.pages || 1);
-        setTotal(res.data?.pagination?.total || 0);
+        setTotalPages(res.pagination?.pages || 1);
+        setTotal(res.pagination?.total || 0);
       } else {
         setError(res.error || "Failed to load managers");
       }
@@ -129,15 +365,27 @@ const ManagerList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, debouncedSearch]);
 
-  useEffect(() => {
-    fetchBusinesses();
-  }, [fetchBusinesses]);
-
+  // Only fetch managers on mount
   useEffect(() => {
     fetchManagers();
   }, [fetchManagers]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    if (debouncedSearch !== search) {
+      setPage(1);
+    }
+  }, [debouncedSearch, search]);
+
+  // Memoize business options for dropdown
+  const businessOptions = useMemo(() => {
+    return businesses.map(biz => ({ 
+      value: biz._id || biz.id, 
+      label: biz.name 
+    }));
+  }, [businesses]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this manager?")) {
@@ -169,11 +417,16 @@ const ManagerList = () => {
     setFormErrors({});
     setShowPinSection(false);
     setIsCreateModalOpen(true);
-  }, []);
+    // Fetch businesses when opening create modal
+    fetchBusinesses();
+  }, [fetchBusinesses]);
 
   const handleEdit = useCallback(async (manager) => {
     setSubmitting(true);
     try {
+      // Fetch businesses for dropdown
+      fetchBusinesses();
+      
       const res = await adminService.getManager(manager.id);
       const data = res?.data?.data || res?.data;
       if (data) {
@@ -201,7 +454,23 @@ const ManagerList = () => {
     } finally {
       setSubmitting(false);
     }
-  }, []);
+  }, [fetchBusinesses]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchManagers();
+      toast.success("Managers list refreshed");
+    } catch (error) {
+      toast.error("Failed to refresh");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchManagers]);
+
+  const handleBack = useCallback(() => {
+    navigate("/admin/dashboard");
+  }, [navigate]);
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -230,12 +499,12 @@ const ManagerList = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = "Name is required";
     if (!formData.username.trim()) errors.username = "Username is required";
-    if (isCreateModalOpen && !/^\d{4}$/.test(formData.pin)) {
+    
+    const needsPinValidation = isCreateModalOpen || (isEditModalOpen && showPinSection && formData.pin);
+    if (needsPinValidation && !/^\d{4}$/.test(formData.pin)) {
       errors.pin = "PIN must be exactly 4 digits";
     }
-    if (isEditModalOpen && showPinSection && formData.pin && !/^\d{4}$/.test(formData.pin)) {
-      errors.pin = "PIN must be exactly 4 digits";
-    }
+    
     if (formData.phone && !/^[6-9]\d{9}$/.test(formData.phone)) {
       errors.phone = "Enter a valid 10-digit Indian phone number";
     }
@@ -245,55 +514,38 @@ const ManagerList = () => {
     if (isCreateModalOpen && !formData.businessId.trim()) {
       errors.businessId = "Please select a business";
     }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [formData, isCreateModalOpen, isEditModalOpen, showPinSection]);
 
-  const handleCreateSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      setSubmitting(true);
-      const res = await adminService.createManager(formData);
-      if (res.success) {
-        toast.success("Manager created successfully!");
-        setIsCreateModalOpen(false);
-        setFormData(INITIAL_FORM_DATA);
-        await fetchManagers();
-      } else {
-        toast.error(res.error || "Failed to create manager");
-      }
-    } catch (error) {
-      toast.error("Failed to create manager");
-    } finally {
-      setSubmitting(false);
-    }
-  }, [formData, validateForm, fetchManagers]);
-
-  const handleEditSubmit = useCallback(async (e) => {
+  const handleSubmit = useCallback(async (e, isEdit = false) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     try {
       setSubmitting(true);
       const submitData = { ...formData };
-      // Only send PIN if the PIN section is shown and PIN is provided
-      if (!showPinSection || !submitData.pin) {
+      
+      if (isEdit && (!showPinSection || !submitData.pin)) {
         delete submitData.pin;
       }
       
-      const res = await adminService.updateManager(editingManager.id || editingManager._id, submitData);
+      const res = isEdit 
+        ? await adminService.updateManager(editingManager.id || editingManager._id, submitData)
+        : await adminService.createManager(submitData);
+        
       if (res.success) {
-        toast.success("Manager updated successfully!");
-        setIsEditModalOpen(false);
-        setEditingManager(null);
+        toast.success(`Manager ${isEdit ? 'updated' : 'created'} successfully!`);
+        isEdit ? setIsEditModalOpen(false) : setIsCreateModalOpen(false);
+        setFormData(INITIAL_FORM_DATA);
+        if (isEdit) setEditingManager(null);
         await fetchManagers();
       } else {
-        toast.error(res.error || "Failed to update manager");
+        toast.error(res.error || `Failed to ${isEdit ? 'update' : 'create'} manager`);
       }
     } catch (error) {
-      toast.error("Failed to update manager");
+      toast.error(`Failed to ${isEdit ? 'update' : 'create'} manager`);
     } finally {
       setSubmitting(false);
     }
@@ -307,13 +559,32 @@ const ManagerList = () => {
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">Managers</h1>
           <p className="text-sm text-gray-600">Manage all business managers</p>
         </div>
-        <button 
-          onClick={handleAdd} 
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-        >
-          <AiOutlineUserAdd className="text-lg" />
-          Add Manager
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button 
+            onClick={handleBack} 
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+            title="Back to Dashboard"
+          >
+            <FiArrowLeft className="text-base sm:text-lg" />
+            <span className="hidden sm:inline">Back</span>
+          </button>
+          <button 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
+            title="Refresh List"
+          >
+            <FiRefreshCw className={`text-base sm:text-lg ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <button 
+            onClick={handleAdd} 
+            className="flex items-center gap-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+          >
+            <AiOutlineUserAdd className="text-base sm:text-lg" />
+            <span className="hidden sm:inline">Add Manager</span>
+          </button>
+        </div>
       </div>
 
       {error && <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">{error}</div>}
@@ -337,92 +608,82 @@ const ManagerList = () => {
       {/* Search Bar */}
       <div className="bg-white border shadow-sm rounded-xl overflow-hidden mb-6">
         <div className="flex items-center px-4 py-3">
-          <FiSearch className="text-gray-400 text-xl mr-3" />
+          <FiSearch className="text-gray-400 text-lg sm:text-xl mr-2 sm:mr-3 flex-shrink-0" />
           <input
             type="text"
-            placeholder="Search managers by name, username, email, or phone..."
+            placeholder="Search managers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent focus:outline-none text-gray-700"
+            className="flex-1 bg-transparent focus:outline-none text-gray-700 text-sm sm:text-base placeholder:text-sm sm:placeholder:text-base"
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="text-gray-400 hover:text-gray-600 ml-2 text-sm"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white border shadow-sm rounded-xl overflow-hidden">
+      {/* Desktop Table View (hidden on mobile) */}
+      <div className="hidden md:block bg-white border shadow-sm rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <TableHeader />
+              <tbody className="divide-y divide-gray-200">
+                {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
+              </tbody>
+            </table>
+          </div>
+        ) : managers.length === 0 ? (
+          <EmptyState search={search} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <TableHeader />
+              <tbody className="divide-y divide-gray-200">
+                {managers.map((manager) => (
+                  <ManagerRow
+                    key={manager.id}
+                    manager={manager}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    isDeleting={deleting === manager.id}
+                    isEditing={submitting}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Card View (visible on mobile only) */}
+      <div className="md:hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <FaSpinner className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : managers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-            <p className="text-lg font-medium mb-2">No managers found</p>
-            <p className="text-sm">Create your first manager to get started.</p>
+          <div className="bg-white border rounded-xl p-8">
+            <EmptyState search={search} />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Username</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Phone</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Business</th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {managers.map((manager) => (
-                  <tr key={manager.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-700 font-medium">{manager.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{manager.username}</td>
-                    <td className="px-4 py-3 text-gray-600">{manager.email || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{manager.phone || '—'}</td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="text-gray-700 font-medium">{manager.business}</p>
-                        {manager.businessBranch && (
-                          <p className="text-xs text-gray-500">{manager.businessBranch}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => handleView(manager)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                          title="View Details"
-                        >
-                          <FiEye />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(manager)}
-                          disabled={submitting}
-                          className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 disabled:opacity-50 transition-colors"
-                          title="Edit Manager"
-                        >
-                          <FiEdit />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(manager.id)}
-                          disabled={deleting === manager.id}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
-                          title="Delete Manager"
-                        >
-                          {deleting === manager.id ? (
-                            <FaSpinner className="animate-spin" />
-                          ) : (
-                            <FiTrash2 />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          managers.map((manager) => (
+            <ManagerCard
+              key={manager.id}
+              manager={manager}
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              isDeleting={deleting === manager.id}
+              isEditing={submitting}
+            />
+          ))
         )}
       </div>
 
@@ -465,7 +726,7 @@ const ManagerList = () => {
         title="Add New Manager"
         size="xl"
       >
-        <form onSubmit={handleCreateSubmit} className="space-y-3 sm:space-y-4">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-3 sm:space-y-4">
           <IconInputField
             label="Full Name"
             name="name"
@@ -506,7 +767,7 @@ const ManagerList = () => {
             value={formData.businessId}
             onChange={handleChange}
             error={formErrors.businessId}
-            options={businesses.map(biz => ({ value: biz._id || biz.id, label: biz.name }))}
+            options={businessOptions}
             icon={FiBriefcase}
             required
           />
@@ -555,7 +816,7 @@ const ManagerList = () => {
         title="Edit Manager"
         size="xl"
       >
-        <form onSubmit={handleEditSubmit} className="space-y-3 sm:space-y-4">
+        <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-3 sm:space-y-4">
           <IconInputField
             label="Full Name"
             name="name"

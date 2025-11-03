@@ -9,6 +9,7 @@ import {
   FaChartLine,
   FaBuilding
 } from 'react-icons/fa'
+import { FiRefreshCw, FiArrowLeft } from 'react-icons/fi'
 import { toast } from 'react-hot-toast'
 import adminService from '../../../../services/admin/adminService'
 
@@ -20,6 +21,7 @@ const AdminDailyBusinessList = () => {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [businessFilter, setBusinessFilter] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -87,6 +89,22 @@ const AdminDailyBusinessList = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }))
   }
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await fetchRecords()
+      toast.success('Records refreshed successfully')
+    } catch (error) {
+      toast.error('Failed to refresh records')
+    } finally {
+      setRefreshing(false)
+    }
+  }, [fetchRecords])
+
+  const handleBack = useCallback(() => {
+    navigate('/admin/dashboard')
+  }, [navigate])
+
   // Get unique businesses from records
   const businesses = Array.from(
     new Set(
@@ -110,13 +128,30 @@ const AdminDailyBusinessList = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Daily Business Records</h1>
             <p className="text-gray-600 mt-1">View all daily business records across businesses</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button 
+              onClick={handleBack} 
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+              title="Back to Dashboard"
+            >
+              <FiArrowLeft className="text-base sm:text-lg" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+            <button 
+              onClick={handleRefresh} 
+              disabled={refreshing}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
+              title="Refresh Records"
+            >
+              <FiRefreshCw className={`text-base sm:text-lg ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
             <Link
               to="/admin/daily-business/analytics"
-              className="flex items-center justify-center gap-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors text-sm font-medium"
             >
               <FaChartLine />
-              <span>Analytics</span>
+              <span className="hidden sm:inline">Analytics</span>
             </Link>
           </div>
         </div>

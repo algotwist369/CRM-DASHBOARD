@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { store, persistor } from './store'
 import { PersistGate } from 'redux-persist/integration/react'
+import { SocketProvider } from './contexts/SocketContext'
 
 // Layouts
 import { AuthLayout, AdminLayout, ManagerLayout, StaffLayout, PublicLayout } from './layouts'
@@ -55,7 +56,8 @@ function App() {
       <PersistGate loading={null} persistor={persistor}>
         <QueryClientProvider client={queryClient}>
           <Router>
-          <div className="App">
+            <SocketProvider>
+              <div className="App">
             <Routes>
               {/* Auth Routes */}
               <Route path="/auth" element={<AuthLayout />}>
@@ -157,9 +159,10 @@ function App() {
               {/* Legacy Routes for backward compatibility */}
               <Route path="/login" element={<Navigate to="/auth/login" replace />} />
               <Route path="/register" element={<Navigate to="/auth/register" replace />} />
-            </Routes>
-            <Toaster position="bottom-right" />
-          </div>
+              </Routes>
+              <Toaster position="bottom-right" />
+            </div>
+          </SocketProvider>
         </Router>
         </QueryClientProvider>
       </PersistGate>

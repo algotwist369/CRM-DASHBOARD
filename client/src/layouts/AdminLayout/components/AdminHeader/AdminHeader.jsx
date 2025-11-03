@@ -4,9 +4,11 @@ import { Button } from '../../../../components'
 import { FaBell } from "react-icons/fa";
 import { HiMenu, HiX } from 'react-icons/hi'
 import apiClient from '../../../../services/api/client'
+import { useSocket } from '../../../../contexts/SocketContext'
 
 const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
   const navigate = useNavigate()
+  const { socket, connected } = useSocket()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -45,13 +47,53 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
     }
   }, [notificationMenuOpen, fetchNotifications])
 
+  // Initial fetch of unread count
   useEffect(() => {
-    // Fetch unread count on mount
     fetchUnreadCount()
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000)
-    return () => clearInterval(interval)
   }, [fetchUnreadCount])
+
+  // Real-time socket listener for new notifications
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    // Listen for new notifications
+    const handleNewNotification = (data) => {
+      console.log('📬 New notification received:', data);
+      
+      // Update unread count
+      if (data.unreadCount !== undefined) {
+        setUnreadCount(data.unreadCount);
+      }
+      
+      // If notification menu is open, prepend new notification
+      if (notificationMenuOpen && data.notification) {
+        setNotifications(prev => [data.notification, ...prev.slice(0, 4)]);
+      }
+      
+      // Show browser notification if supported
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(data.notification?.title || 'New Notification', {
+          body: data.notification?.message,
+          icon: '/favicon.ico',
+          badge: '/favicon.ico'
+        });
+      }
+    };
+
+    socket.on('notification:new', handleNewNotification);
+
+    // Cleanup
+    return () => {
+      socket.off('notification:new', handleNewNotification);
+    };
+  }, [socket, connected, notificationMenuOpen])
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, [])
 
   const handleLogout = () => {
     // In a real app, this would clear auth tokens and redirect

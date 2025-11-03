@@ -14,6 +14,7 @@ import {
   FaLink,
   FaFilter,
 } from "react-icons/fa";
+import { FiRefreshCw, FiArrowLeft } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import businessService from "../../../../services/admin/businessService";
 import adminService from "../../../../services/admin/adminService";
@@ -46,8 +47,26 @@ const TABLE_COLUMNS = [
   { key: "link", label: "Business Link" },
   { key: "managers", label: "Managers" },
   { key: "staff", label: "Staff" },
+  { key: "isActive", label: "Status" },
   { key: "actions", label: "Actions" },
 ];
+
+// Utility function to check if business is new (created within 2 days)
+const isNewBusiness = (createdAt) => {
+  if (!createdAt) return false;
+  const created = new Date(createdAt);
+  const now = new Date();
+  const diffInMs = now - created;
+  const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+  return diffInDays <= 2;
+};
+
+// Memoized NEW Badge Component
+const NewBadge = memo(() => (
+  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse">
+    NEW
+  </span>
+));
 
 // Memoized Analytics Card Component
 const AnalyticsCard = memo(({ title, value, icon: Icon }) => (
@@ -66,7 +85,7 @@ const AnalyticsCard = memo(({ title, value, icon: Icon }) => (
 const FormField = memo(({ label, name, value, onChange, error, type = "text", placeholder, required = false, options, rows }) => {
   const baseLabelClass = "block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1";
   const baseInputClass = `w-full border ${error ? "border-red-500" : "border-gray-300"} rounded-lg p-2 sm:p-2.5 text-sm focus:ring-2 focus:ring-primary-500`;
-  
+
   if (type === "select") {
     return (
       <div>
@@ -81,7 +100,7 @@ const FormField = memo(({ label, name, value, onChange, error, type = "text", pl
       </div>
     );
   }
-  
+
   if (type === "textarea") {
     return (
       <div>
@@ -98,7 +117,7 @@ const FormField = memo(({ label, name, value, onChange, error, type = "text", pl
       </div>
     );
   }
-  
+
   return (
     <div>
       <label className={baseLabelClass}>{label}{required && " *"}</label>
@@ -134,6 +153,113 @@ const IconInputField = memo(({ label, name, value, onChange, error, type = "text
   </div>
 ));
 
+// Memoized Business Row Component for Desktop
+const BusinessRow = memo(({ business, onView, onEdit, onDelete }) => (
+  <tr className="hover:bg-gray-50 transition-all text-gray-600">
+    <td className="px-4 py-3 border-b">
+      <div className="flex items-center gap-2">
+        <span>{business.name}</span>
+        {isNewBusiness(business.createdAt) && <NewBadge />}
+      </div>
+    </td>
+    <td className="px-4 py-3 border-b capitalize">{business.type}</td>
+    <td className="px-4 py-3 border-b">{business.branch}</td>
+    <td className="px-4 py-3 border-b">
+      {business.businessLink ? (
+        <a
+          href={`/${business.businessLink}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+        >
+          <FaLink className="text-xs" />
+          <span className="text-xs">{business.businessLink}</span>
+        </a>
+      ) : (
+        <span className="text-gray-400 text-xs">—</span>
+      )}
+    </td>
+    <td className="px-4 py-3 border-b">{business.managersCount ?? business.managers?.length ?? 0}</td>
+    <td className="px-4 py-3 border-b">{business.staffCount ?? business.staff?.length ?? 0}</td>
+    <td className="px-4 py-3 border-b">
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        business.isActive 
+          ? 'bg-green-100 text-green-800' 
+          : 'bg-red-100 text-red-800'
+      }`}>
+        {business.isActive ? 'Active' : 'Inactive'}
+      </span>
+    </td>
+    <td className="px-4 py-3 border-b">
+      <div className="flex gap-3">
+        <button onClick={() => onView(business.id || business._id)} className="text-blue-500 hover:text-blue-700" title="View">
+          <FaEye />
+        </button>
+        <button onClick={() => onEdit(business.id || business._id)} className="text-green-500 hover:text-green-700" title="Edit">
+          <FaEdit />
+        </button>
+        <button onClick={() => onDelete(business.id || business._id)} className="text-red-500 hover:text-red-700" title="Delete">
+          <FaTrash />
+        </button>
+      </div>
+    </td>
+  </tr>
+));
+
+// Memoized Business Card Component for Mobile
+const BusinessCard = memo(({ business, onView, onEdit, onDelete }) => (
+  <div className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+    <div className="flex justify-between items-start mb-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-semibold text-gray-800 truncate">{business.name}</h3>
+          {isNewBusiness(business.createdAt) && <NewBadge />}
+        </div>
+        <p className="text-sm text-gray-500 capitalize">{business.type}</p>
+      </div>
+    </div>
+    <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+      <div>
+        <span className="text-gray-500">Branch:</span>
+        <p className="font-medium text-gray-700">{business.branch || "—"}</p>
+      </div>
+      <div>
+        <span className="text-gray-500">Managers:</span>
+        <p className="font-medium text-gray-700">{business.managersCount ?? business.managers?.length ?? 0}</p>
+      </div>
+      <div>
+        <span className="text-gray-500">Staff:</span>
+        <p className="font-medium text-gray-700">{business.staffCount ?? business.staff?.length ?? 0}</p>
+      </div>
+      {business.businessLink && (
+        <div className="col-span-2">
+          <span className="text-gray-500">Business Link:</span>
+          <a
+            href={`/${business.businessLink}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium"
+          >
+            <FaLink className="text-xs" />
+            {business.businessLink}
+          </a>
+        </div>
+      )}
+    </div>
+    <div className="flex gap-3 border-t border-gray-100 pt-3">
+      <button onClick={() => onView(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:bg-blue-50 py-2 rounded-lg transition-colors">
+        <FaEye /> View
+      </button>
+      <button onClick={() => onEdit(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-green-600 hover:bg-green-50 py-2 rounded-lg transition-colors">
+        <FaEdit /> Edit
+      </button>
+      <button onClick={() => onDelete(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors">
+        <FaTrash /> Delete
+      </button>
+    </div>
+  </div>
+));
+
 const BusinessList = () => {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState([]);
@@ -143,13 +269,15 @@ const BusinessList = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState("");
   const [dashboardStats, setDashboardStats] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, limit: 20 });
-  
+
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingBusiness, setEditingBusiness] = useState(null);
-  
+
   // Form states
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [formErrors, setFormErrors] = useState({});
@@ -160,13 +288,13 @@ const BusinessList = () => {
     try {
       setLoading(true);
       setError(null);
-      const params = { 
-        page: pagination.currentPage, 
-        limit: pagination.limit 
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.limit
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (filterType) params.type = filterType;
-      
+
       const res = await businessService.getBusinesses(params);
       if (res.success) {
         const list = res.data?.data || res.data?.businesses || [];
@@ -182,7 +310,7 @@ const BusinessList = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filterType]);
+  }, [pagination.currentPage, pagination.limit, debouncedSearch, filterType]);
 
   // Fetch dashboard stats once
   const fetchDashboardStats = useCallback(async () => {
@@ -196,18 +324,15 @@ const BusinessList = () => {
     }
   }, []);
 
+  // Single effect for fetching businesses
   useEffect(() => {
     fetchBusinesses();
   }, [fetchBusinesses]);
 
+  // Fetch dashboard stats once on mount
   useEffect(() => {
     fetchDashboardStats();
-  }, []);
-
-  // Trigger fetch on page change
-  useEffect(() => {
-    fetchBusinesses();
-  }, [pagination.currentPage]);
+  }, [fetchDashboardStats]);
 
   // Debounce search input
   useEffect(() => {
@@ -220,6 +345,27 @@ const BusinessList = () => {
     setFormData(INITIAL_FORM_DATA);
     setFormErrors({});
     setIsCreateModalOpen(true);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchBusinesses();
+      await fetchDashboardStats();
+      toast.success('Business data refreshed successfully');
+    } catch (error) {
+      toast.error('Failed to refresh data');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchBusinesses, fetchDashboardStats]);
+
+  const handleBack = useCallback(() => {
+    navigate('/admin/dashboard');
+  }, [navigate]);
+
+  const toggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev);
   }, []);
 
   const handleEdit = useCallback(async (id) => {
@@ -253,7 +399,7 @@ const BusinessList = () => {
   }, []);
 
   const handleView = useCallback((id) => navigate(`/admin/businesses/${id}`), [navigate]);
-  
+
   const handleDelete = useCallback(async (id) => {
     if (!window.confirm("Are you sure you want to delete this business?")) return;
     try {
@@ -272,10 +418,15 @@ const BusinessList = () => {
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  }, [formErrors]);
+    setFormErrors((prev) => {
+      if (prev[name]) {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      }
+      return prev;
+    });
+  }, []);
 
   const validateForm = useCallback(() => {
     const errors = {};
@@ -292,9 +443,9 @@ const BusinessList = () => {
   }, [formData]);
 
   const refreshBusinesses = useCallback(async () => {
-    const params = { 
-      page: pagination.currentPage, 
-      limit: pagination.limit 
+    const params = {
+      page: pagination.currentPage,
+      limit: pagination.limit
     };
     if (debouncedSearch) params.search = debouncedSearch;
     if (filterType) params.type = filterType;
@@ -381,7 +532,7 @@ const BusinessList = () => {
   }, [dashboardStats]);
 
   // Memoized business type options
-  const businessTypeOptions = useMemo(() => 
+  const businessTypeOptions = useMemo(() =>
     BUSINESS_TYPES.map(type => ({
       value: type,
       label: type.charAt(0).toUpperCase() + type.slice(1)
@@ -396,32 +547,119 @@ const BusinessList = () => {
     <div className="p-3 sm:p-6 bg-gray-50 min-h-screen text-gray-800">
       {/* Header */}
       <header className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
-          Business Dashboard
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
+            Business Dashboard
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+              title="Back to Dashboard"
+            >
+              <FiArrowLeft className="text-base sm:text-lg" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
+              title="Refresh Data"
+            >
+              <FiRefreshCw className={`text-base sm:text-lg ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <button
+              onClick={toggleFilters}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm font-medium ${showFilters
+                  ? 'bg-primary-600 text-white hover:bg-primary-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              title={showFilters ? "Hide Filters" : "Show Filters"}
+            >
+              <FaFilter className="text-base sm:text-lg" />
+              <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Filters'}</span>
+            </button>
+          </div>
+        </div>
         {error && <p className="text-red-600 text-sm">{error}</p>}
       </header>
 
-      {/* Search and Filter */}
-      <div className="mb-4 flex flex-col sm:flex-row gap-3">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search businesses..."
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        />
-        <select
-          value={filterType}
-          onChange={(e) => handleFilterChange(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-        >
-          <option value="">All Types</option>
-          <option value="salon">Salon</option>
-          <option value="spa">Spa</option>
-          <option value="hotel">Hotel</option>
-        </select>
-      </div>
+      {/* Collapsible Search and Filter */}
+      {showFilters && (
+        <div className="mb-4 bg-white border border-gray-200 rounded-xl shadow-sm p-4 animate-fadeIn">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <FaFilter className="text-primary-600" />
+            Filter Businesses
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Search</label>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, branch, or location..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div className="sm:w-48">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Business Type</label>
+              <select
+                value={filterType}
+                onChange={(e) => handleFilterChange(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">All Types</option>
+                <option value="salon">Salon</option>
+                <option value="spa">Spa</option>
+                <option value="hotel">Hotel</option>
+              </select>
+            </div>
+            {(search || filterType) && (
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setFilterType('');
+                    setPagination(prev => ({ ...prev, currentPage: 1 }));
+                  }}
+                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
+          </div>
+          {(search || filterType) && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-500">Active filters:</span>
+              {search && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs">
+                  Search: "{search}"
+                  <button
+                    onClick={() => setSearch('')}
+                    className="hover:bg-blue-200 rounded-full p-0.5"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {filterType && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs capitalize">
+                  Type: {filterType}
+                  <button
+                    onClick={() => setFilterType('')}
+                    className="hover:bg-green-200 rounded-full p-0.5"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Analytics Cards */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -461,45 +699,17 @@ const BusinessList = () => {
             </thead>
             <tbody>
               {businesses.map((b) => (
-                <tr key={b.id || b._id} className="hover:bg-gray-50 transition-all text-gray-600">
-                  <td className="px-4 py-3 border-b">{b.name}</td>
-                  <td className="px-4 py-3 border-b capitalize">{b.type}</td>
-                  <td className="px-4 py-3 border-b">{b.branch}</td>
-                  <td className="px-4 py-3 border-b">
-                    {b.businessLink ? (
-                      <a 
-                        href={`/${b.businessLink}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        <FaLink className="text-xs" />
-                        <span className="text-xs">{b.businessLink}</span>
-                      </a>
-                    ) : (
-                      <span className="text-gray-400 text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 border-b">{b.managersCount ?? b.managers?.length ?? 0}</td>
-                  <td className="px-4 py-3 border-b">{b.staffCount ?? b.staff?.length ?? 0}</td>
-                  <td className="px-4 py-3 border-b">
-                    <div className="flex gap-3">
-                      <button onClick={() => handleView(b.id || b._id)} className="text-blue-500 hover:text-blue-700" title="View">
-                        <FaEye />
-                      </button>
-                      <button onClick={() => handleEdit(b.id || b._id)} className="text-green-500 hover:text-green-700" title="Edit">
-                        <FaEdit />
-                      </button>
-                      <button onClick={() => handleDelete(b.id || b._id)} className="text-red-500 hover:text-red-700" title="Delete">
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <BusinessRow
+                  key={b.id || b._id}
+                  business={b}
+                  onView={handleView}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
               ))}
               {loading && (
                 <tr>
-                  <td colSpan={7} className="p-4 text-center text-sm text-gray-500">Loading businesses…</td>
+                  <td colSpan={8} className="p-4 text-center text-sm text-gray-500">Loading businesses…</td>
                 </tr>
               )}
             </tbody>
@@ -512,7 +722,10 @@ const BusinessList = () => {
             <div key={b.id || b._id} className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-800 truncate">{b.name}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-gray-800 truncate">{b.name}</h3>
+                    {isNewBusiness(b.createdAt) && <NewBadge />}
+                  </div>
                   <p className="text-sm text-gray-500 capitalize">{b.type}</p>
                 </div>
               </div>
@@ -529,10 +742,16 @@ const BusinessList = () => {
                   <span className="text-gray-500">Staff:</span>
                   <p className="font-medium text-gray-700">{b.staffCount ?? b.staff?.length ?? 0}</p>
                 </div>
+
+                <div>
+                  <span className="text-gray-500">Status:</span>
+                  <p className="font-medium text-gray-700">{b.isActive ? "Active" : "Inactive"}</p>
+                </div>
+
                 {b.businessLink && (
                   <div className="col-span-2">
                     <span className="text-gray-500">Business Link:</span>
-                    <a 
+                    <a
                       href={`/${b.businessLink}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -608,7 +827,7 @@ const BusinessList = () => {
             options={businessTypeOptions}
             required
           />
-          
+
           <IconInputField
             label="Business Name"
             name="name"
@@ -619,7 +838,7 @@ const BusinessList = () => {
             icon={FaBuilding}
             required
           />
-          
+
           <FormField
             label="Branch"
             name="branch"
@@ -627,7 +846,7 @@ const BusinessList = () => {
             onChange={handleChange}
             placeholder="e.g., Main Branch"
           />
-          
+
           <FormField
             label="Address"
             name="address"
@@ -637,7 +856,7 @@ const BusinessList = () => {
             rows={2}
             placeholder="Enter address"
           />
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {ADDRESS_FIELDS.map((field) => (
               <FormField
@@ -650,7 +869,7 @@ const BusinessList = () => {
               />
             ))}
           </div>
-          
+
           <IconInputField
             label="Phone"
             name="phone"
@@ -660,7 +879,7 @@ const BusinessList = () => {
             placeholder="10-digit phone number"
             icon={FaPhone}
           />
-          
+
           <IconInputField
             label="Email"
             name="email"
@@ -671,7 +890,7 @@ const BusinessList = () => {
             placeholder="Business email"
             icon={FaEnvelope}
           />
-          
+
           <IconInputField
             label="Website"
             name="website"
@@ -681,7 +900,7 @@ const BusinessList = () => {
             placeholder="https://example.com"
             icon={FaGlobe}
           />
-          
+
           <FormField
             label="Description"
             name="description"
@@ -691,7 +910,7 @@ const BusinessList = () => {
             rows={2}
             placeholder="Write something about your business"
           />
-          
+
           <button
             type="submit"
             disabled={submitting}
@@ -720,7 +939,7 @@ const BusinessList = () => {
             options={businessTypeOptions}
             required
           />
-          
+
           <IconInputField
             label="Business Name"
             name="name"
@@ -731,7 +950,7 @@ const BusinessList = () => {
             icon={FaBuilding}
             required
           />
-          
+
           <FormField
             label="Branch"
             name="branch"
@@ -739,7 +958,7 @@ const BusinessList = () => {
             onChange={handleChange}
             placeholder="e.g., Main Branch"
           />
-          
+
           <FormField
             label="Address"
             name="address"
@@ -749,7 +968,7 @@ const BusinessList = () => {
             rows={2}
             placeholder="Enter address"
           />
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {ADDRESS_FIELDS.map((field) => (
               <FormField
@@ -762,7 +981,7 @@ const BusinessList = () => {
               />
             ))}
           </div>
-          
+
           <IconInputField
             label="Phone"
             name="phone"
@@ -772,7 +991,7 @@ const BusinessList = () => {
             placeholder="10-digit phone number"
             icon={FaPhone}
           />
-          
+
           <IconInputField
             label="Email"
             name="email"
@@ -783,7 +1002,7 @@ const BusinessList = () => {
             placeholder="Business email"
             icon={FaEnvelope}
           />
-          
+
           <IconInputField
             label="Website"
             name="website"
@@ -793,7 +1012,7 @@ const BusinessList = () => {
             placeholder="https://example.com"
             icon={FaGlobe}
           />
-          
+
           <FormField
             label="Description"
             name="description"
@@ -803,7 +1022,7 @@ const BusinessList = () => {
             rows={2}
             placeholder="Write something about your business"
           />
-          
+
           <button
             type="submit"
             disabled={submitting}

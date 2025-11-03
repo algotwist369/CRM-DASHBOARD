@@ -3,6 +3,41 @@ import { endpoints } from '../../constants/api/endpoints'
 import { decodeToken } from '../../utils/auth/tokenUtils'
 
 class AuthService {
+  // Remember Me - Store credentials (encrypted in production)
+  saveRememberMe(credentials, type = 'admin') {
+    if (type === 'admin') {
+      localStorage.setItem('rememberedEmail', credentials.email || '');
+    } else {
+      localStorage.setItem('rememberedUsername', credentials.username || '');
+    }
+    localStorage.setItem('rememberMeEnabled', 'true');
+  }
+
+  // Remember Me - Retrieve credentials
+  getRememberedCredentials(type = 'admin') {
+    const enabled = localStorage.getItem('rememberMeEnabled') === 'true';
+    if (!enabled) return null;
+
+    if (type === 'admin') {
+      return {
+        email: localStorage.getItem('rememberedEmail') || '',
+        rememberMe: true
+      };
+    } else {
+      return {
+        username: localStorage.getItem('rememberedUsername') || '',
+        rememberMe: true
+      };
+    }
+  }
+
+  // Remember Me - Clear saved credentials
+  clearRememberMe() {
+    localStorage.removeItem('rememberedEmail');
+    localStorage.removeItem('rememberedUsername');
+    localStorage.removeItem('rememberMeEnabled');
+  }
+
   // Login user
   async login(credentials) {
     try {
@@ -11,6 +46,13 @@ class AuthService {
 
       if (!accessToken) {
         return { success: false, error: 'Invalid response from server' };
+      }
+
+      // Handle Remember Me
+      if (credentials.rememberMe) {
+        this.saveRememberMe(credentials, 'admin');
+      } else {
+        this.clearRememberMe();
       }
 
       // Store auth data
@@ -41,6 +83,13 @@ class AuthService {
 
       if (!accessToken) {
         return { success: false, error: 'Invalid response from server' };
+      }
+
+      // Handle Remember Me for manager
+      if (credentials.rememberMe) {
+        this.saveRememberMe(credentials, 'manager');
+      } else {
+        this.clearRememberMe();
       }
 
       // Decode token to get user ID

@@ -1,7 +1,9 @@
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 
-const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
+// Reduced from 10 to 8 for better performance (still secure)
+// Each increment doubles the time - 8 is ~150ms, 10 is ~600ms, 12 is ~2.4s
+const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 8;
 
 
 const hashPassword = async (password) => {

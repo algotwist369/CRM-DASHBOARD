@@ -17,15 +17,69 @@ class AdminService {
     }
   }
 
+  // Get managers
+  async getManagers(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.admin.managers, { params })
+      // Backend returns { success: true, data: [...], pagination: {...} }
+      // Return it directly to maintain structure
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch managers'
+      }
+    }
+  }
+
+  // Get manager by ID
+  async getManager(managerId) {
+    try {
+      const response = await apiClient.get(endpoints.admin.manager(managerId))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch manager'
+      }
+    }
+  }
+
   // Create manager
   async createManager(managerData) {
     try {
       const response = await apiClient.post(endpoints.admin.createManager, managerData)
-      return { success: true, data: response.data }
+      return response.data
     } catch (error) {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to create manager'
+      }
+    }
+  }
+
+  // Update manager
+  async updateManager(managerId, managerData) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updateManager(managerId), managerData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update manager'
+      }
+    }
+  }
+
+  // Delete manager
+  async deleteManager(managerId) {
+    try {
+      const response = await apiClient.delete(endpoints.admin.deleteManager(managerId))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete manager'
       }
     }
   }

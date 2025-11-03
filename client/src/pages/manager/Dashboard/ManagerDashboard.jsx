@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaSync } from "react-icons/fa";
+import { 
+  FaArrowLeft,
+  FaUsers,
+  FaMoneyBillWave,
+  FaChartLine,
+  FaExchangeAlt,
+  FaBuilding,
+  FaCalendarDay,
+  FaCalendarAlt
+} from "react-icons/fa";
+import { HiRefresh } from "react-icons/hi";
 import managerService from "../../../services/manager/managerService";
 
 const ManagerDashboard = () => {
@@ -24,7 +34,7 @@ const ManagerDashboard = () => {
   const [currentPage, setCurrentPage] = useState(getInitialPage);
   const [itemsPerPage] = useState(5);
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -42,27 +52,27 @@ const ManagerDashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = useCallback((newPage) => {
     setCurrentPage(newPage);
     // Update URL without causing navigation
     window.history.pushState({ page: newPage }, '', `?page=${newPage}`);
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchDashboard();
-  };
+  }, [fetchDashboard]);
 
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     navigate(-1);
-  };
+  }, [navigate]);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -91,8 +101,8 @@ const ManagerDashboard = () => {
     });
   };
 
-  // Calculate analytics from stats
-  const calculateAnalytics = () => {
+  // Memoized analytics calculation
+  const analytics = useMemo(() => {
     if (!dashboard?.stats) return null;
 
     const stats = dashboard.stats;
@@ -101,178 +111,171 @@ const ManagerDashboard = () => {
     return {
       averageDailyRevenue: stats.monthlyRevenue / Math.max(daysInMonth, 1),
       averageDailyCustomers: stats.monthlyCustomers / Math.max(daysInMonth, 1),
-      // Simple growth calculation (could be improved with historical data)
       growthRate: 0, // Placeholder - would need historical data
       netProfit: stats.monthlyRevenue // Simplified - would need expense data
     };
-  };
+  }, [dashboard?.stats]);
 
-  const analytics = calculateAnalytics();
-
-  // Paginate recent transactions
-  const paginatedTransactions = () => {
+  // Memoized paginated transactions
+  const paginatedTransactions = useMemo(() => {
     if (!dashboard?.recentTransactions) return [];
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return dashboard.recentTransactions.slice(startIndex, endIndex);
-  };
+  }, [dashboard?.recentTransactions, currentPage, itemsPerPage]);
 
   const totalTransactions = dashboard?.recentTransactions?.length || 0;
   const totalPages = Math.ceil(totalTransactions / itemsPerPage);
 
-  if (loading)
+  // Memoized stat cards data
+  const statCards = useMemo(() => [
+    { icon: FaUsers, title: "Total Staff", value: dashboard?.stats?.staffCount ?? 0, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+    { icon: FaMoneyBillWave, title: "Today's Revenue", value: formatCurrency(dashboard?.stats?.todayRevenue), iconBg: "bg-green-100", iconColor: "text-green-600" },
+    { icon: FaChartLine, title: "Today's Customers", value: dashboard?.stats?.todayCustomers ?? 0, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
+    { icon: FaCalendarAlt, title: "Monthly Revenue", value: formatCurrency(dashboard?.stats?.monthlyRevenue), iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+    { icon: FaCalendarDay, title: "Monthly Customers", value: dashboard?.stats?.monthlyCustomers ?? 0, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
+    { icon: FaExchangeAlt, title: "Today's Transactions", value: dashboard?.stats?.totalTransactions ?? 0, iconBg: "bg-pink-100", iconColor: "text-pink-600" }
+  ], [dashboard?.stats]);
+
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen text-gray-600">
-        Loading dashboard...
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     );
+  }
+  
   if (error) {
     return (
-      <div className="p-6 text-red-600">{error}</div>
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          {error}
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen text-gray-800">
-      {/* Welcome Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3">
             <button
               onClick={handleGoBack}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
+              className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
               title="Go Back"
             >
-              <FaArrowLeft className="text-gray-700 text-xl" />
+              <FaArrowLeft className="text-gray-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-2">
-                Welcome back, {dashboard?.manager?.name}! 
-                <span className="text-gray-500 underline"> • {dashboard?.business?.name}</span>
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">Manager Dashboard</h1>
+              <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                Welcome, <span className="font-medium">{dashboard?.manager?.name}</span> • {dashboard?.business?.name}
               </p>
             </div>
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm font-medium"
             title="Refresh Dashboard"
           >
-            <FaSync className={`text-gray-700 ${refreshing ? 'animate-spin' : ''}`} />
-            <span className="text-sm font-medium text-gray-700">Refresh</span>
+            <HiRefresh className={`text-gray-700 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <StatCard title="Total Staff" value={dashboard?.stats?.staffCount ?? 0} />
-        <StatCard title="Today's Revenue" value={formatCurrency(dashboard?.stats?.todayRevenue)} />
-        <StatCard title="Today's Customers" value={dashboard?.stats?.todayCustomers ?? 0} />
-        <StatCard title="Monthly Revenue" value={formatCurrency(dashboard?.stats?.monthlyRevenue)} />
-        <StatCard title="Monthly Customers" value={dashboard?.stats?.monthlyCustomers ?? 0} />
-        <StatCard title="Today's Transactions" value={dashboard?.stats?.totalTransactions ?? 0} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        {statCards.map((stat, index) => (
+          <StatCard key={index} {...stat} />
+        ))}
       </div>
 
       {/* Business Info and Analytics Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {/* Business Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Business Information
-          </h2>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Business Name</span>
-              <span className="font-semibold text-gray-800">
-                {dashboard?.business?.name || '-'}
-              </span>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <FaBuilding className="text-white text-sm" />
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Type</span>
-              <span className="font-semibold text-gray-800 capitalize">
-                {dashboard?.business?.type || '-'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Branch</span>
-              <span className="font-semibold text-gray-800">
-                {dashboard?.business?.branch || '-'}
-              </span>
-            </div>
-            <div className="flex justify-between items-start border-t pt-3">
-              <span className="text-gray-600">Address</span>
-              <span className="font-semibold text-gray-800 text-right">
-                {dashboard?.business?.address || '-'}
-              </span>
-            </div>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800">Business Information</h2>
+          </div>
+          <div className="space-y-2">
+            <InfoRow label="Business Name" value={dashboard?.business?.name || '—'} />
+            <InfoRow label="Type" value={dashboard?.business?.type ? dashboard.business.type.charAt(0).toUpperCase() + dashboard.business.type.slice(1) : '—'} />
+            <InfoRow label="Branch" value={dashboard?.business?.branch || '—'} />
+            <InfoRow label="Address" value={dashboard?.business?.address || '—'} isBorder />
           </div>
         </div>
 
         {/* Analytics Summary */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Performance Summary (This Month)
-          </h2>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Average Daily Revenue</span>
-              <span className="font-semibold text-gray-800">
-                {analytics?.averageDailyRevenue ? formatCurrency(analytics.averageDailyRevenue) : "₹0"}
-              </span>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <FaChartLine className="text-white text-sm" />
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Average Daily Customers</span>
-              <span className="font-semibold text-gray-800">
-                {analytics?.averageDailyCustomers?.toFixed(1) ?? "0"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Growth Rate</span>
-              <span className={`font-semibold ${analytics?.growthRate > 0 ? 'text-green-600' : analytics?.growthRate < 0 ? 'text-red-600' : 'text-gray-800'}`}>
-                {analytics?.growthRate?.toFixed(1) ?? "0"}%
-              </span>
-            </div>
-            <div className="flex justify-between items-center border-t pt-3">
-              <span className="text-gray-600">Total Monthly Revenue</span>
-              <span className="font-semibold text-gray-800">
-                {formatCurrency(dashboard?.stats?.monthlyRevenue)}
-              </span>
-            </div>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800">Performance Summary</h2>
+          </div>
+          <div className="space-y-2">
+            <InfoRow 
+              label="Avg Daily Revenue" 
+              value={analytics?.averageDailyRevenue ? formatCurrency(analytics.averageDailyRevenue) : "₹0"} 
+            />
+            <InfoRow 
+              label="Avg Daily Customers" 
+              value={analytics?.averageDailyCustomers?.toFixed(1) ?? "0"} 
+            />
+            <InfoRow 
+              label="Growth Rate" 
+              value={`${analytics?.growthRate?.toFixed(1) ?? "0"}%`} 
+            />
+            <InfoRow 
+              label="Total Monthly Revenue" 
+              value={formatCurrency(dashboard?.stats?.monthlyRevenue)} 
+              isBorder 
+            />
           </div>
         </div>
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-700 mb-4">
-          Recent Transactions
-        </h2>
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <FaExchangeAlt className="text-white text-sm" />
+          </div>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-800">Recent Transactions</h2>
+        </div>
+        
         {dashboard?.recentTransactions && dashboard.recentTransactions.length > 0 ? (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-t border-gray-100">
-                <thead>
-                  <tr className="text-left text-gray-600 text-sm border-b">
-                    <th className="py-2">Customer</th>
-                    <th className="py-2">Service</th>
-                    <th className="py-2">Amount</th>
-                    <th className="py-2">Date</th>
-                    <th className="py-2">Time</th>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-y border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Service</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedTransactions().map((t) => (
-                    <tr key={t.id} className="border-b hover:bg-gray-50">
-                      <td className="py-2 font-medium text-gray-800">{t.customerName || '-'}</td>
-                      <td className="py-2 text-gray-700">{t.serviceName || '-'}</td>
-                      <td className="py-2 font-semibold text-gray-800">
-                        {formatCurrency(t.finalPrice)}
-                      </td>
-                      <td className="py-2 text-gray-600">{formatDate(t.transactionDate)}</td>
-                      <td className="py-2 text-gray-600">{formatTime(t.transactionDate)}</td>
-                    </tr>
+                  {paginatedTransactions.map((t) => (
+                    <TransactionRow
+                      key={t.id}
+                      transaction={t}
+                      formatCurrency={formatCurrency}
+                      formatDate={formatDate}
+                      formatTime={formatTime}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -280,25 +283,25 @@ const ManagerDashboard = () => {
             
             {/* Pagination Controls */}
             {totalTransactions > itemsPerPage && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-200">
+                <div className="text-xs sm:text-sm text-gray-600">
                   Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalTransactions)} of {totalTransactions} transactions
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
-                  <span className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-md">
+                  <span className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                   </button>
@@ -307,8 +310,9 @@ const ManagerDashboard = () => {
             )}
           </>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            No transactions found for today
+          <div className="text-center py-12">
+            <p className="text-4xl mb-3">📊</p>
+            <p className="text-sm text-gray-500">No transactions found</p>
           </div>
         )}
       </div>
@@ -316,12 +320,38 @@ const ManagerDashboard = () => {
   );
 };
 
-// Small Reusable Stat Card
-const StatCard = ({ title, value }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 text-center hover:shadow-md transition">
-    <h3 className="text-gray-500 text-sm">{title}</h3>
-    <p className="text-2xl font-semibold text-gray-800 mt-2">{value}</p>
+// Simple Stat Card Component
+const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
+  <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+    <div className="flex items-center gap-3 sm:gap-4">
+      <div className={`${iconBg} p-2 sm:p-3 rounded-lg flex-shrink-0`}>
+        <Icon className={`${iconColor} text-xl sm:text-2xl`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs sm:text-sm text-gray-600 mb-0.5 truncate">{title}</p>
+        <p className="text-lg sm:text-xl font-semibold text-gray-800 truncate">{value}</p>
+      </div>
+    </div>
   </div>
-);
+));
+
+// Simple Info Row Component
+const InfoRow = memo(({ label, value, isBorder }) => (
+  <div className={`flex justify-between items-center py-2 ${isBorder ? 'border-t border-gray-100 pt-3' : ''}`}>
+    <span className="text-sm text-gray-600">{label}</span>
+    <span className="text-sm font-medium text-gray-800">{value}</span>
+  </div>
+));
+
+// Simple Transaction Row Component
+const TransactionRow = memo(({ transaction, formatCurrency, formatDate, formatTime }) => (
+  <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+    <td className="px-4 py-3 text-sm font-medium text-gray-800">{transaction.customerName || '—'}</td>
+    <td className="px-4 py-3 text-sm text-gray-600">{transaction.serviceName || '—'}</td>
+    <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatCurrency(transaction.finalPrice)}</td>
+    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(transaction.transactionDate)}</td>
+    <td className="px-4 py-3 text-sm text-gray-600">{formatTime(transaction.transactionDate)}</td>
+  </tr>
+));
 
 export default ManagerDashboard;
