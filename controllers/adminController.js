@@ -484,6 +484,7 @@ const getManagers = async (req, res, next) => {
                 id: manager._id,
                 name: manager.name,
                 username: manager.username,
+                pin: manager.pin, // Include PIN for admin view
                 email: manager.email,
                 phone: manager.phone,
                 business: manager.business?.name || '—',
@@ -535,6 +536,7 @@ const getManagerById = async (req, res, next) => {
                 id: manager._id,
                 name: manager.name,
                 username: manager.username,
+                pin: manager.pin, // Include PIN for admin view
                 email: manager.email,
                 phone: manager.phone,
                 business: {
@@ -614,7 +616,6 @@ const updateManager = async (req, res, next) => {
                 username: updatedManager.username,
                 email: updatedManager.email,
                 phone: updatedManager.phone,
-                // Don't return PIN for security
                 pinUpdated: pin !== undefined
             }
         });

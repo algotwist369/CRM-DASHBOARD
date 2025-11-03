@@ -1,6 +1,7 @@
 // adminNotifications.js - Utility for creating admin notifications
 
 const AdminNotification = require("../models/AdminNotification");
+const { emitToUser } = require("../config/socket");
 
 /**
  * Create a system notification for an admin
@@ -23,6 +24,12 @@ const createAdminNotification = async (adminId, title, message, options = {}) =>
             actionUrl: options.actionUrl,
             actionText: options.actionText,
             metadata: options.metadata || {}
+        });
+
+        // Emit real-time notification via Socket.IO
+        emitToUser(adminId.toString(), 'notification:new', {
+            notification: notification.toObject(),
+            unreadCount: await AdminNotification.countDocuments({ admin: adminId, isRead: false })
         });
 
         return notification;
