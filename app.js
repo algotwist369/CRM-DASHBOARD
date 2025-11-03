@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
+const path = require("path");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 
 // Routes
@@ -18,6 +19,15 @@ const appointmentRoutes = require("./routes/appointmentRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
+const serviceRoutes = require("./routes/serviceRoutes");
+const invoiceRoutes = require("./routes/invoiceRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
+const campaignRoutes = require("./routes/campaignRoutes");
+const campaignSchedulerRoutes = require("./routes/campaignSchedulerRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
+const businessSettingsRoutes = require("./routes/businessSettingsRoutes");
+const loyaltyRoutes = require("./routes/loyaltyRoutes");
 
 const app = express();
 
@@ -108,6 +118,26 @@ app.use(express.urlencoded({
 
 app.use(cookieParser());
 
+// ================== Static Files (Uploads) ==================
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '7d', // Cache static files for 7 days
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+        // Set proper CORS headers for uploaded images
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+        
+        // Set caching based on file type
+        if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg') || 
+            filePath.endsWith('.png') || filePath.endsWith('.gif') || 
+            filePath.endsWith('.webp')) {
+            res.set('Cache-Control', 'public, max-age=604800'); // 7 days for images
+        }
+    }
+}));
+
 // ================== Routes ==================
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
@@ -117,9 +147,17 @@ app.use("/api/staff", staffRoutes);
 app.use("/api/daily-business", dailyBusinessRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/customers", customerRoutes);
-// done up to here
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/campaigns", campaignRoutes);
+app.use("/api/campaign-scheduler", campaignSchedulerRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/settings", businessSettingsRoutes);
+app.use("/api/loyalty", loyaltyRoutes);
 
 // ================== Health Check ==================
 app.get("/", (req, res) => res.send("Backend is running ✅"));

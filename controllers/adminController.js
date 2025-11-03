@@ -6,7 +6,7 @@ const Staff = require("../models/Staff");
 const Transaction = require("../models/Transaction");
 const { setCache, getCache, deleteCache, getOrSet } = require("../utils/cache");
 const { cacheKeys } = require("../config/redis");
-const { generateBusinessAnalytics, formatCurrency } = require("../utils/businessUtils");
+const { formatCurrency } = require("../utils/businessUtils");
 const { notifyNewBusinessCreated, notifyNewManagerCreated, notifyBusinessDeleted } = require("../utils/adminNotifications");
 
 // ================== Admin Dashboard ==================
@@ -155,30 +155,89 @@ const getAdminDashboard = async (req, res, next) => {
 const createBusiness = async (req, res, next) => {
     try {
         const { 
+            // Basic Information
             type, 
             name, 
             branch, 
             address, 
             city, 
             state, 
-            country, 
-            phone, 
+            country,
+            zipCode,
+            phone,
+            alternatePhone,
             email, 
             website, 
             description,
+            
+            // Location & Maps
+            googleMapsUrl, // NEW: Google Maps URL for auto lat/lng extraction
+            
+            // Images
+            images, // { logo, banner, gallery, thumbnail }
+            
+            // Social Media
+            socialMedia, // { facebook, instagram, twitter, linkedin, youtube, whatsapp, telegram }
+            
+            // Registration & Legal
+            registration, // { gstNumber, panNumber, registrationNumber, licenseNumber, taxId, registrationDate, expiryDate }
+            
+            // Category & Tags
+            category,
+            subCategory,
+            tags,
+            specialties,
+            
+            // Payment Methods
+            paymentMethods, // { cash, card, upi, netBanking, wallet }
+            
+            // Bank Details
+            bankDetails, // { accountName, accountNumber, bankName, ifscCode, branch, upiId, qrCode }
+            
+            // Business Capacity
+            capacity, // { seating, parking, rooms, area }
+            
+            // Ratings & Reviews
+            ratings, // { average, total, distribution }
+            
+            // Features & Amenities
+            features,
+            amenities,
+            
+            // SEO & Marketing
+            seo, // { metaTitle, metaDescription, metaKeywords, ogImage }
+            
+            // Subscription
+            subscription, // { plan, startDate, endDate, features }
+            
+            // Statistics
+            statistics, // { totalCustomers, totalAppointments, totalRevenue, totalOrders, averageRating }
+            
+            // Notification Preferences
+            notificationPreferences, // { email, sms, whatsapp, push }
+            
+            // Custom Fields
+            customFields, // Flexible key-value pairs
+            
+            // Holidays
+            holidays, // [{ name, date }]
+            
+            // Settings
             settings 
         } = req.body;
         const adminId = req.user.id;
 
-        // Validate business type
-        if (!['salon', 'spa', 'hotel'].includes(type)) {
+        // Validate business type - now supports more types
+        const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
+        if (!validTypes.includes(type)) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Invalid business type. Must be salon, spa, or hotel" 
+                message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
             });
         }
 
-        const business = await Business.create({
+        // Prepare business data
+        const businessData = {
             admin: adminId,
             type,
             name,
@@ -186,21 +245,82 @@ const createBusiness = async (req, res, next) => {
             address,
             city,
             state,
-            country: country || "India",
-            phone,
-            email,
-            website,
-            description,
-            settings: settings || {
-                workingHours: {
-                    open: "09:00",
-                    close: "18:00",
-                    days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-                },
-                currency: "INR",
-                timezone: "Asia/Kolkata"
-            }
-        });
+            country: country || "India"
+        };
+
+        // Add optional fields only if provided
+        if (zipCode) businessData.zipCode = zipCode;
+        if (phone) businessData.phone = phone;
+        if (alternatePhone) businessData.alternatePhone = alternatePhone;
+        if (email) businessData.email = email;
+        if (website) businessData.website = website;
+        if (description) businessData.description = description;
+        
+        // NEW: Google Maps URL - coordinates will be auto-extracted by pre-save hook
+        if (googleMapsUrl) businessData.googleMapsUrl = googleMapsUrl;
+        
+        // Images
+        if (images) businessData.images = images;
+        
+        // Social Media
+        if (socialMedia) businessData.socialMedia = socialMedia;
+        
+        // Registration
+        if (registration) businessData.registration = registration;
+        
+        // Category & Tags
+        if (category) businessData.category = category;
+        if (subCategory) businessData.subCategory = subCategory;
+        if (tags) businessData.tags = tags;
+        if (specialties) businessData.specialties = specialties;
+        
+        // Payment Methods
+        if (paymentMethods) businessData.paymentMethods = paymentMethods;
+        
+        // Bank Details
+        if (bankDetails) businessData.bankDetails = bankDetails;
+        
+        // Capacity
+        if (capacity) businessData.capacity = capacity;
+        
+        // Ratings
+        if (ratings) businessData.ratings = ratings;
+        
+        // Features & Amenities
+        if (features) businessData.features = features;
+        if (amenities) businessData.amenities = amenities;
+        
+        // SEO
+        if (seo) businessData.seo = seo;
+        
+        // Subscription
+        if (subscription) businessData.subscription = subscription;
+        
+        // Statistics
+        if (statistics) businessData.statistics = statistics;
+        
+        // Notification Preferences
+        if (notificationPreferences) businessData.notificationPreferences = notificationPreferences;
+        
+        // Custom Fields
+        if (customFields) businessData.customFields = customFields;
+        
+        // Holidays
+        if (holidays) businessData.holidays = holidays;
+        
+        // Settings with defaults
+        businessData.settings = settings || {
+            workingHours: {
+                open: "09:00",
+                close: "18:00",
+                days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+            },
+            currency: "INR",
+            timezone: "Asia/Kolkata"
+        };
+
+        // Create business - pre-save hook will extract lat/lng from googleMapsUrl
+        const business = await Business.create(businessData);
 
         // Create notification
         await notifyNewBusinessCreated(adminId, business);
@@ -217,7 +337,9 @@ const createBusiness = async (req, res, next) => {
                 name: business.name,
                 type: business.type,
                 branch: business.branch,
-                businessLink: business.businessLink
+                businessLink: business.businessLink,
+                location: business.location, // Include extracted coordinates
+                googleMapsUrl: business.googleMapsUrl
             }
         });
     } catch (err) {
@@ -241,7 +363,7 @@ const getBusinesses = async (req, res, next) => {
         let query = { admin: adminId, isActive: true };
 
         // Filter by type
-        if (type && ['salon', 'spa', 'hotel'].includes(type)) {
+        if (type && ['salon', 'spa', 'hotel','restaurant','retail','gym','clinic','cafe','studio','education','automotive','others'].includes(type)) {
             query.type = type;
         }
 
@@ -274,11 +396,22 @@ const getBusinesses = async (req, res, next) => {
                 state: business.state,
                 phone: business.phone,
                 email: business.email,
+                website: business.website,
                 businessLink: business.businessLink,
                 isActive: business.isActive,
+                // NEW: Include location and maps data
+                location: business.location,
+                googleMapsUrl: business.googleMapsUrl,
+                // Include images for display
+                images: business.images,
+                // Social media links
+                socialMedia: business.socialMedia,
+                // Counts
                 managersCount: business.managers.length,
                 staffCount: business.staff.length,
-                createdAt: business.createdAt
+                // Timestamps
+                createdAt: business.createdAt,
+                updatedAt: business.updatedAt
             })),
             pagination: {
                 total,
@@ -331,11 +464,23 @@ const updateBusiness = async (req, res, next) => {
             return res.status(404).json({ success: false, message: "Business not found" });
         }
 
+        // Validate business type if being updated
+        if (updates.type) {
+            const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
+            if (!validTypes.includes(updates.type)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
+                });
+            }
+        }
+
+        // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
         const updatedBusiness = await Business.findByIdAndUpdate(
             id, 
             { ...updates, updatedAt: new Date() }, 
-            { new: true }
-        ).populate('managers', 'name username');
+            { new: true, runValidators: true }
+        ).populate('managers', 'name username email phone isActive');
 
         // Invalidate cache
         await deleteCache(`admin:${adminId}:businesses`);
@@ -344,7 +489,20 @@ const updateBusiness = async (req, res, next) => {
         return res.json({ 
             success: true, 
             message: "Business updated successfully", 
-            data: updatedBusiness 
+            data: {
+                id: updatedBusiness._id,
+                name: updatedBusiness.name,
+                type: updatedBusiness.type,
+                branch: updatedBusiness.branch,
+                businessLink: updatedBusiness.businessLink,
+                location: updatedBusiness.location,
+                googleMapsUrl: updatedBusiness.googleMapsUrl,
+                images: updatedBusiness.images,
+                socialMedia: updatedBusiness.socialMedia,
+                isActive: updatedBusiness.isActive,
+                managers: updatedBusiness.managers,
+                updatedAt: updatedBusiness.updatedAt
+            }
         });
     } catch (err) {
         next(err);

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const AdminNotification = require("../models/AdminNotification");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
+const { emitToUser } = require("../config/socket");
 
 // ================== Get Admin Notifications ==================
 const getAdminNotifications = async (req, res, next) => {
@@ -89,7 +90,16 @@ const markAsRead = async (req, res, next) => {
         // Invalidate cache
         await deleteCache(`admin:${adminId}:notifications`);
 
-        return res.json({ success: true, message: "Notification marked as read" });
+        // Get updated unread count
+        const unreadCount = await AdminNotification.countDocuments({ admin: adminId, isRead: false });
+
+        // 🔥 Emit real-time Socket.IO event
+        emitToUser(adminId.toString(), 'admin:notification:read', {
+            notificationId: id,
+            unreadCount
+        });
+
+        return res.json({ success: true, message: "Notification marked as read", unreadCount });
     } catch (err) {
         next(err);
     }
@@ -108,7 +118,12 @@ const markAllAsRead = async (req, res, next) => {
         // Invalidate cache
         await deleteCache(`admin:${adminId}:notifications`);
 
-        return res.json({ success: true, message: "All notifications marked as read" });
+        // 🔥 Emit real-time Socket.IO event
+        emitToUser(adminId.toString(), 'admin:notification:all-read', {
+            unreadCount: 0
+        });
+
+        return res.json({ success: true, message: "All notifications marked as read", unreadCount: 0 });
     } catch (err) {
         next(err);
     }
@@ -128,7 +143,44 @@ const deleteNotification = async (req, res, next) => {
         // Invalidate cache
         await deleteCache(`admin:${adminId}:notifications`);
 
-        return res.json({ success: true, message: "Notification deleted" });
+        // Get updated unread count
+        const unreadCount = await AdminNotification.countDocuments({ admin: adminId, isRead: false });
+
+        // 🔥 Emit real-time Socket.IO event
+        emitToUser(adminId.toString(), 'admin:notification:deleted', {
+            notificationId: id,
+            unreadCount
+        });
+
+        return res.json({ success: true, message: "Notification deleted", unreadCount });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Delete All Notifications ==================
+const deleteAllNotifications = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+
+        // Delete all notifications for this admin
+        const result = await AdminNotification.deleteMany({ admin: adminId });
+
+        // Invalidate cache
+        await deleteCache(`admin:${adminId}:notifications`);
+
+        // 🔥 Emit real-time Socket.IO event
+        emitToUser(adminId.toString(), 'admin:notification:all-deleted', {
+            unreadCount: 0,
+            deletedCount: result.deletedCount
+        });
+
+        return res.json({ 
+            success: true, 
+            message: `All notifications deleted (${result.deletedCount} removed)`,
+            deletedCount: result.deletedCount,
+            unreadCount: 0
+        });
     } catch (err) {
         next(err);
     }
@@ -159,6 +211,7 @@ module.exports = {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    deleteAllNotifications,
     getRecentNotifications
 };
 

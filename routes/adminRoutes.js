@@ -17,6 +17,7 @@ router.get("/notifications/unread-count", adminNotificationController.getUnreadC
 router.get("/notifications/recent", adminNotificationController.getRecentNotifications);
 router.put("/notifications/:id/read", adminNotificationController.markAsRead);
 router.put("/notifications/read-all", adminNotificationController.markAllAsRead);
+router.delete("/notifications/all", adminNotificationController.deleteAllNotifications);
 router.delete("/notifications/:id", adminNotificationController.deleteNotification);
 
 // ================== Business Management ==================
