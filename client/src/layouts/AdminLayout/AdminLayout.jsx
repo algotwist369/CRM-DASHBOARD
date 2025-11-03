@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { AdminSidebar, AdminHeader } from './components'
 import authService from '../../services/auth/authService'
+import SocketDebugPanel from '../../components/debug/SocketDebugPanel'
 
 const AdminLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -115,6 +116,9 @@ const AdminLayout = () => {
           onClick={() => handleSidebarCollapse(true)}
         ></div>
       )}
+
+      {/* Socket.IO Debug Panel (Development Only) */}
+      {import.meta.env.DEV && <SocketDebugPanel />}
     </div>
   )
 }

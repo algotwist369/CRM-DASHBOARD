@@ -45,6 +45,7 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on('connect', () => {
         console.log('✅ Socket connected:', newSocket.id);
+        console.log('🔌 Socket transport:', newSocket.io.engine.transport.name);
         setConnected(true);
         setError(null);
       });

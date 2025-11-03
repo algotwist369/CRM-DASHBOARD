@@ -1,138 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../../components'
-import { FaBell } from "react-icons/fa";
 import { HiMenu, HiX } from 'react-icons/hi'
-import apiClient from '../../../../services/api/client'
-import { useSocket } from '../../../../contexts/SocketContext'
+import AdminNotificationBell from '../../../../components/notifications/AdminNotificationBell'
 
 const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
   const navigate = useNavigate()
-  const { socket, connected } = useSocket()
-  const [notifications, setNotifications] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
-
-  const fetchNotifications = useCallback(async () => {
-    try {
-      setLoading(true)
-      const response = await apiClient.get('/admin/notifications/recent?limit=5')
-      if (response.data.success) {
-        setNotifications(response.data.data || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/admin/notifications/unread-count')
-      if (response.data.success) {
-        setUnreadCount(response.data.count || 0)
-      }
-    } catch (error) {
-      console.error('Failed to fetch unread count:', error)
-    }
-  }, [])
-
-  useEffect(() => {
-    // Fetch notifications when dropdown opens
-    if (notificationMenuOpen) {
-      fetchNotifications()
-    }
-  }, [notificationMenuOpen, fetchNotifications])
-
-  // Initial fetch of unread count
-  useEffect(() => {
-    fetchUnreadCount()
-  }, [fetchUnreadCount])
-
-  // Real-time socket listener for new notifications
-  useEffect(() => {
-    if (!socket || !connected) return;
-
-    // Listen for new notifications
-    const handleNewNotification = (data) => {
-      console.log('📬 New notification received:', data);
-      
-      // Update unread count
-      if (data.unreadCount !== undefined) {
-        setUnreadCount(data.unreadCount);
-      }
-      
-      // If notification menu is open, prepend new notification
-      if (notificationMenuOpen && data.notification) {
-        setNotifications(prev => [data.notification, ...prev.slice(0, 4)]);
-      }
-      
-      // Show browser notification if supported
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(data.notification?.title || 'New Notification', {
-          body: data.notification?.message,
-          icon: '/favicon.ico',
-          badge: '/favicon.ico'
-        });
-      }
-    };
-
-    socket.on('notification:new', handleNewNotification);
-
-    // Cleanup
-    return () => {
-      socket.off('notification:new', handleNewNotification);
-    };
-  }, [socket, connected, notificationMenuOpen])
-
-  // Request notification permission on mount
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, [])
 
   const handleLogout = () => {
     // In a real app, this would clear auth tokens and redirect
     console.log('Logging out...')
-  }
-
-  const handleNotificationClick = async (notification) => {
-    if (!notification.isRead) {
-      try {
-        await apiClient.put(`/admin/notifications/${notification._id}/read`)
-        // Update local state
-        setNotifications(prev => 
-          prev.map(n => n._id === notification._id ? { ...n, isRead: true } : n)
-        )
-        // Update unread count
-        setUnreadCount(prev => Math.max(0, prev - 1))
-      } catch (error) {
-        console.error('Failed to mark notification as read:', error)
-      }
-    }
-  }
-
-  const formatTime = (dateString) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInSeconds = Math.floor((now - date) / 1000)
-    
-    if (diffInSeconds < 60) {
-      return 'Just now'
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60)
-      return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600)
-      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`
-    } else {
-      const days = Math.floor(diffInSeconds / 86400)
-      return `${days} ${days === 1 ? 'day' : 'days'} ago`
-    }
   }
 
   return (
@@ -181,71 +59,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
           </div>
 
           {/* Notifications */}
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setNotificationMenuOpen(!notificationMenuOpen)}
-              className="relative text-gray-600 hover:text-gray-900"
-            >
-              <FaBell className='text-2xl'/>
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Notification Dropdown */}
-            {notificationMenuOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {loading ? (
-                    <div className="p-8 text-center text-gray-500">Loading notifications...</div>
-                  ) : notifications.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">No notifications</div>
-                  ) : (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification._id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                          !notification.isRead ? 'bg-blue-50' : ''
-                        }`}
-                      >
-                        <div className="flex items-start">
-                          <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${
-                            !notification.isRead ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}></div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900">{notification.title}</h4>
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{notification.message}</p>
-                            <p className="text-xs text-gray-500 mt-2">{formatTime(notification.createdAt)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <div className="p-4 border-t border-gray-200">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => {
-                      setNotificationMenuOpen(false)
-                      navigate('/admin/notifications')
-                    }}
-                  >
-                    View All Notifications
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          <AdminNotificationBell />
 
           {/* User Menu */}
           <div className="relative">
@@ -319,13 +133,10 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
       </div>
 
       {/* Click outside to close dropdowns */}
-      {(userMenuOpen || notificationMenuOpen) && (
+      {userMenuOpen && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => {
-            setUserMenuOpen(false)
-            setNotificationMenuOpen(false)
-          }}
+          onClick={() => setUserMenuOpen(false)}
         ></div>
       )}
     </header>

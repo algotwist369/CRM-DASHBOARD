@@ -18,6 +18,14 @@ import { BusinessList, CreateBusiness, EditBusiness, BusinessDetails, BusinessAn
 import { ManagerList, CreateManager, ManagerDetails, EditManager } from './pages/admin/Managers'
 import { NotificationsList } from './pages/admin/Notifications'
 import { AdminDailyBusinessList, AdminDailyBusinessDetails, AdminDailyBusinessAnalytics } from './pages/admin/DailyBusiness'
+import { CustomerList as AdminCustomerList, CustomerForm, CustomerDetails as AdminCustomerDetails } from './pages/admin/Customers'
+import { ServiceList, ServiceForm, ServiceDetails } from './pages/admin/Services'
+import { AppointmentList as AdminAppointmentList, AppointmentForm, AppointmentDetails as AdminAppointmentDetails } from './pages/admin/Appointments'
+import { InvoiceList, InvoiceForm } from './pages/admin/Invoices'
+import { ReviewList } from './pages/admin/Reviews'
+import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns } from './pages/admin/Campaigns'
+import { LoyaltyRewards, LoyaltyRewardForm, LoyaltyPlans, LoyaltySubscriptions } from './pages/admin/Loyalty'
+import { AdminAnalytics } from './pages/admin/Analytics'
 import AdminReports from './pages/admin/Reports/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings/AdminSettings'
 
@@ -87,6 +95,34 @@ function App() {
                 <Route path="daily-business" element={<AdminDailyBusinessList />} />
                 <Route path="daily-business/analytics" element={<AdminDailyBusinessAnalytics />} />
                 <Route path="daily-business/:id" element={<AdminDailyBusinessDetails />} />
+                <Route path="customers" element={<AdminCustomerList />} />
+                <Route path="customers/create" element={<CustomerForm mode="create" />} />
+                <Route path="customers/:id" element={<AdminCustomerDetails />} />
+                <Route path="customers/:id/edit" element={<CustomerForm mode="edit" />} />
+                <Route path="services" element={<ServiceList />} />
+                <Route path="services/create" element={<ServiceForm mode="create" />} />
+                <Route path="services/:id" element={<ServiceDetails />} />
+                <Route path="services/:id/edit" element={<ServiceForm mode="edit" />} />
+                <Route path="appointments" element={<AdminAppointmentList />} />
+                <Route path="appointments/create" element={<AppointmentForm />} />
+                <Route path="appointments/:id" element={<AdminAppointmentDetails />} />
+                <Route path="invoices" element={<InvoiceList />} />
+                <Route path="invoices/create" element={<InvoiceForm />} />
+                <Route path="reviews" element={<ReviewList />} />
+                <Route path="campaigns" element={<AdminCampaignList />} />
+                <Route path="campaigns/templates" element={<CampaignTemplates />} />
+                <Route path="campaigns/templates/create" element={<CampaignTemplateForm mode="create" />} />
+                <Route path="campaigns/templates/:id/edit" element={<CampaignTemplateForm mode="edit" />} />
+                <Route path="campaigns/automated" element={<AutomatedCampaigns />} />
+                <Route path="campaigns/create" element={<CampaignForm mode="create" />} />
+                <Route path="campaigns/:id" element={<AdminCampaignDetails />} />
+                <Route path="campaigns/:id/edit" element={<CampaignForm mode="edit" />} />
+                <Route path="loyalty/rewards" element={<LoyaltyRewards />} />
+                <Route path="loyalty/rewards/create" element={<LoyaltyRewardForm mode="create" />} />
+                <Route path="loyalty/rewards/:id/edit" element={<LoyaltyRewardForm mode="edit" />} />
+                <Route path="loyalty/plans" element={<LoyaltyPlans />} />
+                <Route path="loyalty/subscriptions" element={<LoyaltySubscriptions />} />
+                <Route path="analytics" element={<AdminAnalytics />} />
                 <Route path="reports" element={<AdminReports />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />

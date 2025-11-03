@@ -14,12 +14,22 @@ export const endpoints = {
   // Admin endpoints
   admin: {
     dashboard: `${API_BASE_URL}/admin/dashboard`,
+    // Notifications
+    notifications: `${API_BASE_URL}/admin/notifications`,
+    unreadCount: `${API_BASE_URL}/admin/notifications/unread-count`,
+    recentNotifications: `${API_BASE_URL}/admin/notifications/recent`,
+    markNotificationRead: (id) => `${API_BASE_URL}/admin/notifications/${id}/read`,
+    markAllNotificationsRead: `${API_BASE_URL}/admin/notifications/read-all`,
+    deleteNotification: (id) => `${API_BASE_URL}/admin/notifications/${id}`,
+    deleteAllNotifications: `${API_BASE_URL}/admin/notifications/all`,
+    // Business Management
     businesses: `${API_BASE_URL}/admin/businesses`,
     business: (id) => `${API_BASE_URL}/admin/${id}`,
     createBusiness: `${API_BASE_URL}/admin/business`,
     updateBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     deleteBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     businessLink: (id) => `${API_BASE_URL}/admin/business/${id}/link`,
+    // Manager Management
     managers: `${API_BASE_URL}/admin/managers`,
     manager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
     createManager: `${API_BASE_URL}/admin/manager`,
@@ -108,6 +118,53 @@ export const endpoints = {
     getAnalytics: `${API_BASE_URL}/daily-business/analytics`,
     update: (id) => `${API_BASE_URL}/daily-business/${id}`,
     delete: (id) => `${API_BASE_URL}/daily-business/${id}`,
+  },
+
+  // Campaign endpoints
+  campaigns: {
+    // Basic CRUD
+    list: `${API_BASE_URL}/campaigns`,
+    create: `${API_BASE_URL}/campaigns`,
+    getById: (id) => `${API_BASE_URL}/campaigns/${id}`,
+    update: (id) => `${API_BASE_URL}/campaigns/${id}`,
+    delete: (id) => `${API_BASE_URL}/campaigns/${id}`,
+    stats: `${API_BASE_URL}/campaigns/stats`,
+    audienceCount: `${API_BASE_URL}/campaigns/audience-count`,
+    
+    // Campaign Actions
+    launch: (id) => `${API_BASE_URL}/campaigns/${id}/launch`,
+    cancel: (id) => `${API_BASE_URL}/campaigns/${id}/cancel`,
+    clone: (id) => `${API_BASE_URL}/campaigns/${id}/clone`,
+    
+    // Templates
+    templates: `${API_BASE_URL}/campaigns/templates`,
+    createTemplate: `${API_BASE_URL}/campaigns/templates`,
+    popularTemplates: `${API_BASE_URL}/campaigns/templates/popular`,
+    getTemplate: (id) => `${API_BASE_URL}/campaigns/templates/${id}`,
+    updateTemplate: (id) => `${API_BASE_URL}/campaigns/templates/${id}`,
+    deleteTemplate: (id) => `${API_BASE_URL}/campaigns/templates/${id}`,
+    
+    // Automated Campaigns
+    automated: `${API_BASE_URL}/campaigns/automated`,
+    createAutomated: `${API_BASE_URL}/campaigns/automated`,
+    triggerAutomated: (id) => `${API_BASE_URL}/campaigns/automated/${id}/trigger`,
+    
+    // Drip Campaigns
+    drip: `${API_BASE_URL}/campaigns/drip`,
+    createDrip: `${API_BASE_URL}/campaigns/drip`,
+    enrollDrip: (id) => `${API_BASE_URL}/campaigns/drip/${id}/enroll`,
+    dripEnrollments: (id) => `${API_BASE_URL}/campaigns/drip/${id}/enrollments`,
+    
+    // A/B Testing
+    startABTest: (id) => `${API_BASE_URL}/campaigns/${id}/ab-test/start`,
+    getABTestResults: (id) => `${API_BASE_URL}/campaigns/${id}/ab-test/results`,
+    
+    // Tracking & Analytics
+    generateTrackingLink: `${API_BASE_URL}/campaigns/tracking/generate-link`,
+    bestTimeToSend: `${API_BASE_URL}/campaigns/analytics/best-time`,
+    customerPattern: (customerId) => `${API_BASE_URL}/campaigns/analytics/customer-pattern/${customerId}`,
+    compareCampaigns: `${API_BASE_URL}/campaigns/analytics/compare`,
+    insights: `${API_BASE_URL}/campaigns/analytics/insights`,
   },
 }
 

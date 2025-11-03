@@ -4,46 +4,47 @@ const appointmentController = require("../controllers/appointmentController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// ================== Public Routes (No Authentication Required) ==================
+// All routes require authentication (Admin or Manager)
+router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
 
-// Get business information for booking (by businessLink)
-router.get("/business/:businessLink/info", appointmentController.getBusinessForBooking);
+// ================== Appointment Management ==================
 
-// Get business information for booking (by businessId - for testing)
-router.get("/business/:businessId/info", appointmentController.getBusinessForBookingById);
+// Create new appointment
+router.post("/", appointmentController.createAppointment);
 
-// Get available time slots (by businessLink)
-router.get("/business/:businessLink/slots", appointmentController.getAvailableSlots);
+// Get appointments with filtering and pagination
+router.get("/", appointmentController.getAppointments);
 
-// Get available time slots (by businessId - for testing)
-router.get("/business/:businessId/slots", appointmentController.getAvailableSlotsById);
+// Get appointment statistics
+router.get("/stats", appointmentController.getAppointmentStats);
 
-// Book appointment (by businessLink)
-router.post("/business/:businessLink/book", appointmentController.bookAppointment);
+// Get appointment by ID
+router.get("/:id", appointmentController.getAppointmentById);
 
-// Book appointment (by businessId - for testing)
-router.post("/book", appointmentController.bookAppointmentById);
+// Update appointment
+router.put("/:id", appointmentController.updateAppointment);
 
-// Get appointment by confirmation code
-router.get("/confirmation/:confirmationCode", appointmentController.getAppointmentByCode);
+// ================== Appointment Actions ==================
+
+// Confirm appointment
+router.post("/:id/confirm", appointmentController.confirmAppointment);
+
+// Start appointment (customer checked in)
+router.post("/:id/start", appointmentController.startAppointment);
+
+// Complete appointment
+router.post("/:id/complete", appointmentController.completeAppointment);
 
 // Cancel appointment
-router.post("/confirmation/:confirmationCode/cancel", appointmentController.cancelAppointment);
+router.post("/:id/cancel", appointmentController.cancelAppointment);
 
-// ================== Manager Routes (Authentication Required) ==================
+// Reschedule appointment
+router.post("/:id/reschedule", appointmentController.rescheduleAppointment);
 
-// Get appointments for manager's business
-router.get("/", 
-    authMiddleware, 
-    roleMiddleware(["manager"]),
-    appointmentController.getAppointments
-);
+// Mark as no-show
+router.post("/:id/no-show", appointmentController.markNoShow);
 
-// Update appointment status
-router.put("/:appointmentId/status", 
-    authMiddleware, 
-    roleMiddleware(["manager"]),
-    appointmentController.updateAppointmentStatus
-);
+// Add review to appointment
+router.post("/:id/review", appointmentController.addReview);
 
 module.exports = router;

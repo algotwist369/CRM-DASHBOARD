@@ -41,7 +41,7 @@ const getPublicBusinesses = async (req, res, next) => {
         }
         
         const businesses = await Business.find(query)
-            .select('name type branch address city state country phone email website description settings businessLink createdAt')
+            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags createdAt')
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
@@ -64,6 +64,22 @@ const getPublicBusinesses = async (req, res, next) => {
             website: business.website,
             description: business.description,
             businessLink: business.businessLink,
+            // NEW: Location data for maps
+            location: business.location,
+            googleMapsUrl: business.googleMapsUrl,
+            // Images for display
+            images: business.images,
+            // Social media links
+            socialMedia: business.socialMedia,
+            // Ratings & reviews
+            ratings: business.ratings,
+            // Category & tags for filtering
+            category: business.category,
+            tags: business.tags,
+            // Features & amenities
+            features: business.features,
+            amenities: business.amenities,
+            // Settings
             workingHours: business.settings?.workingHours,
             appointmentSettings: {
                 allowOnlineBooking: business.settings?.appointmentSettings?.allowOnlineBooking,
@@ -97,7 +113,7 @@ const getBusinessInfoByLink = async (req, res, next) => {
         const { businessLink } = req.params;
         
         const business = await Business.findOne({ businessLink, isActive: true })
-            .select('name type branch address city state country phone email website description settings businessLink')
+            .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods')
             .lean();
         
         if (!business) {
@@ -107,7 +123,7 @@ const getBusinessInfoByLink = async (req, res, next) => {
             });
         }
         
-        // Return public business information
+        // Return comprehensive public business information
         const businessInfo = {
             id: business._id,
             name: business.name,
@@ -117,13 +133,38 @@ const getBusinessInfoByLink = async (req, res, next) => {
             city: business.city,
             state: business.state,
             country: business.country,
+            zipCode: business.zipCode,
             phone: business.phone,
+            alternatePhone: business.alternatePhone,
             email: business.email,
             website: business.website,
             description: business.description,
             businessLink: business.businessLink,
-            workingHours: business.settings.workingHours,
-            appointmentSettings: business.settings.appointmentSettings
+            // Location & Maps
+            location: business.location,
+            googleMapsUrl: business.googleMapsUrl,
+            // Media
+            images: business.images,
+            socialMedia: business.socialMedia,
+            // Ratings & Reviews
+            ratings: business.ratings,
+            // Category & Tags
+            category: business.category,
+            subCategory: business.subCategory,
+            tags: business.tags,
+            specialties: business.specialties,
+            // Capacity
+            capacity: business.capacity,
+            // Features & Amenities
+            features: business.features,
+            amenities: business.amenities,
+            // Payment Methods
+            paymentMethods: business.paymentMethods,
+            // Settings
+            workingHours: business.settings?.workingHours,
+            appointmentSettings: business.settings?.appointmentSettings,
+            currency: business.settings?.currency,
+            timezone: business.settings?.timezone
         };
         
         return res.json({ success: true, data: businessInfo });
@@ -355,11 +396,255 @@ const getBusinessAnalytics = async (req, res, next) => {
     }
 };
 
+// ================== Get Businesses Near Location (Public - Geospatial Query) ==================
+const getBusinessesNearby = async (req, res, next) => {
+    try {
+        const { lat, lng, maxDistance = 5000, type, page = 1, limit = 20 } = req.query;
+
+        // Validate coordinates
+        if (!lat || !lng) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Latitude and longitude are required" 
+            });
+        }
+
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lng);
+
+        if (isNaN(latitude) || isNaN(longitude)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid latitude or longitude" 
+            });
+        }
+
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Latitude must be between -90 and 90, longitude between -180 and 180" 
+            });
+        }
+
+        // Build query
+        const query = {
+            isActive: true,
+            'settings.appointmentSettings.allowOnlineBooking': true,
+            location: {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [longitude, latitude] // [lng, lat] order for GeoJSON
+                    },
+                    $maxDistance: parseInt(maxDistance) // Distance in meters
+                }
+            }
+        };
+
+        // Filter by type if provided
+        if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
+            query.type = type;
+        }
+
+        // Execute geospatial query with pagination
+        const businesses = await Business.find(query)
+            .select('name type branch address city state phone email website description images socialMedia location googleMapsUrl ratings features amenities category tags settings businessLink')
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .lean();
+
+        const total = await Business.countDocuments(query);
+
+        // Calculate distance for each business (approximate)
+        const businessesWithDistance = businesses.map(business => {
+            const distance = calculateDistance(
+                latitude, 
+                longitude, 
+                business.location.coordinates[1], // lat
+                business.location.coordinates[0]  // lng
+            );
+
+            return {
+                id: business._id,
+                name: business.name,
+                type: business.type,
+                branch: business.branch,
+                address: business.address,
+                city: business.city,
+                state: business.state,
+                phone: business.phone,
+                email: business.email,
+                website: business.website,
+                description: business.description,
+                businessLink: business.businessLink,
+                location: business.location,
+                googleMapsUrl: business.googleMapsUrl,
+                images: business.images,
+                socialMedia: business.socialMedia,
+                ratings: business.ratings,
+                category: business.category,
+                tags: business.tags,
+                features: business.features,
+                amenities: business.amenities,
+                workingHours: business.settings?.workingHours,
+                distance: Math.round(distance), // Distance in meters
+                distanceKm: (distance / 1000).toFixed(2) // Distance in kilometers
+            };
+        });
+
+        return res.json({
+            success: true,
+            data: businessesWithDistance,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            },
+            searchLocation: {
+                latitude,
+                longitude,
+                maxDistance: parseInt(maxDistance)
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Helper function to calculate distance between two points (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in meters
+}
+
+// ================== Update Business (Admin + Manager shared endpoint) ==================
+const updateBusiness = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        let business;
+        let businessId = id;
+
+        // Check access based on role
+        if (userRole === 'admin') {
+            // Admin can update any of their businesses
+            business = await Business.findOne({ _id: id, admin: userId });
+            if (!business) {
+                return res.status(404).json({ success: false, message: "Business not found or access denied" });
+            }
+        } else if (userRole === 'manager') {
+            // Manager can only update their own business
+            const manager = await require("../models/Manager").findById(userId);
+            if (!manager) {
+                return res.status(404).json({ success: false, message: "Manager not found" });
+            }
+            
+            // If no ID provided, update manager's own business
+            if (!id || id === 'mine') {
+                businessId = manager.business.toString();
+            }
+
+            business = await Business.findById(businessId);
+            if (!business || business._id.toString() !== manager.business.toString()) {
+                return res.status(403).json({ success: false, message: "Access denied: You can only update your own business" });
+            }
+
+            // Managers cannot change certain fields
+            delete updates.admin;
+            delete updates.isActive;
+            delete updates.businessLink;
+        }
+
+        // Validate business type if being updated
+        if (updates.type) {
+            const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
+            if (!validTypes.includes(updates.type)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
+                });
+            }
+        }
+
+        // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
+        const updatedBusiness = await Business.findByIdAndUpdate(
+            businessId, 
+            { ...updates, updatedAt: new Date() }, 
+            { new: true, runValidators: true }
+        ).populate('managers', 'name username email phone isActive');
+
+        if (!updatedBusiness) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+
+        // Invalidate relevant caches
+        if (userRole === 'admin') {
+            const { deleteCache } = require("../utils/cache");
+            await deleteCache(`admin:${userId}:businesses`);
+            await deleteCache(`admin:${userId}:dashboard`);
+        } else if (userRole === 'manager') {
+            const { deleteCache } = require("../utils/cache");
+            await deleteCache(`manager:${userId}:dashboard`);
+            await deleteCache(`business:${businessId}:info`);
+        }
+
+        return res.json({ 
+            success: true, 
+            message: "Business updated successfully", 
+            data: {
+                id: updatedBusiness._id,
+                name: updatedBusiness.name,
+                type: updatedBusiness.type,
+                branch: updatedBusiness.branch,
+                address: updatedBusiness.address,
+                city: updatedBusiness.city,
+                state: updatedBusiness.state,
+                phone: updatedBusiness.phone,
+                email: updatedBusiness.email,
+                website: updatedBusiness.website,
+                businessLink: updatedBusiness.businessLink,
+                location: updatedBusiness.location,
+                googleMapsUrl: updatedBusiness.googleMapsUrl,
+                images: updatedBusiness.images,
+                socialMedia: updatedBusiness.socialMedia,
+                registration: updatedBusiness.registration,
+                category: updatedBusiness.category,
+                subCategory: updatedBusiness.subCategory,
+                tags: updatedBusiness.tags,
+                features: updatedBusiness.features,
+                amenities: updatedBusiness.amenities,
+                paymentMethods: updatedBusiness.paymentMethods,
+                bankDetails: updatedBusiness.bankDetails,
+                capacity: updatedBusiness.capacity,
+                settings: updatedBusiness.settings,
+                isActive: updatedBusiness.isActive,
+                managers: updatedBusiness.managers,
+                updatedAt: updatedBusiness.updatedAt
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getPublicBusinesses,
     getBusinessInfoByLink,
     getBusinessById,
     getBusinessStaff,
     getBusinessDailyRecords,
-    getBusinessAnalytics
+    getBusinessAnalytics,
+    getBusinessesNearby,
+    updateBusiness
 };

@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const notificationController = require("../controllers/notificationController");
+const notificationEnhancedController = require("../controllers/notificationEnhancedController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// All routes require authentication and manager role
-router.use(authMiddleware, roleMiddleware(["manager"]));
+// All routes require authentication (Admin or Manager)
+router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
 
 // ================== Notification Management ==================
 
@@ -33,5 +34,25 @@ router.get("/campaigns", notificationController.getCampaigns);
 
 // Get customer analytics
 router.get("/analytics/customers", notificationController.getCustomerAnalytics);
+
+// ================== Automated Notifications ==================
+
+// Get automated notifications summary
+router.get("/automated/summary", notificationEnhancedController.getAutomatedNotificationsSummary);
+
+// Send birthday wishes
+router.post("/automated/birthday", notificationEnhancedController.sendBirthdayWishes);
+
+// Send anniversary wishes
+router.post("/automated/anniversary", notificationEnhancedController.sendAnniversaryWishes);
+
+// Send appointment reminders
+router.post("/automated/appointment-reminders", notificationEnhancedController.sendAppointmentReminders);
+
+// Send reactivation campaign to inactive customers
+router.post("/automated/reactivation", notificationEnhancedController.sendReactivationCampaign);
+
+// Send review requests
+router.post("/automated/review-requests", notificationEnhancedController.sendReviewRequest);
 
 module.exports = router;

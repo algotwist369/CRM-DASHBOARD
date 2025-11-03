@@ -399,6 +399,124 @@ const getTransactions = async (req, res, next) => {
     }
 };
 
+// ================== Update Business (Manager can update their own business) ==================
+const updateBusiness = async (req, res, next) => {
+    try {
+        const managerId = req.user.id;
+        const updates = req.body;
+
+        // Get manager's business
+        const manager = await Manager.findById(managerId).populate('business');
+        if (!manager || !manager.business) {
+            return res.status(404).json({ success: false, message: "Manager or business not found" });
+        }
+
+        const businessId = manager.business._id;
+
+        // Validate business type if being updated
+        if (updates.type) {
+            const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
+            if (!validTypes.includes(updates.type)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
+                });
+            }
+        }
+
+        // Managers cannot change certain fields
+        delete updates.admin; // Cannot change business owner
+        delete updates.isActive; // Cannot deactivate business
+        delete updates.businessLink; // Cannot change business link
+
+        // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
+        const updatedBusiness = await Business.findByIdAndUpdate(
+            businessId, 
+            { ...updates, updatedAt: new Date() }, 
+            { new: true, runValidators: true }
+        ).populate('managers', 'name username email phone isActive');
+
+        if (!updatedBusiness) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+
+        // Invalidate caches
+        await deleteCache(`manager:${managerId}:dashboard`);
+        await deleteCache(`business:${businessId}:info`);
+
+        return res.json({ 
+            success: true, 
+            message: "Business updated successfully", 
+            data: {
+                id: updatedBusiness._id,
+                name: updatedBusiness.name,
+                type: updatedBusiness.type,
+                branch: updatedBusiness.branch,
+                address: updatedBusiness.address,
+                city: updatedBusiness.city,
+                state: updatedBusiness.state,
+                phone: updatedBusiness.phone,
+                email: updatedBusiness.email,
+                website: updatedBusiness.website,
+                businessLink: updatedBusiness.businessLink,
+                location: updatedBusiness.location,
+                googleMapsUrl: updatedBusiness.googleMapsUrl,
+                images: updatedBusiness.images,
+                socialMedia: updatedBusiness.socialMedia,
+                registration: updatedBusiness.registration,
+                category: updatedBusiness.category,
+                tags: updatedBusiness.tags,
+                features: updatedBusiness.features,
+                amenities: updatedBusiness.amenities,
+                paymentMethods: updatedBusiness.paymentMethods,
+                bankDetails: updatedBusiness.bankDetails,
+                settings: updatedBusiness.settings,
+                isActive: updatedBusiness.isActive,
+                managers: updatedBusiness.managers,
+                updatedAt: updatedBusiness.updatedAt
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Business Info (Manager can view their own business) ==================
+const getBusinessInfo = async (req, res, next) => {
+    try {
+        const managerId = req.user.id;
+        const cacheKey = `manager:${managerId}:business:info`;
+
+        // Try cache first
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", data: cachedData });
+        }
+
+        // Get manager's business
+        const manager = await Manager.findById(managerId).populate({
+            path: 'business',
+            populate: [
+                { path: 'managers', select: 'name username email phone isActive' },
+                { path: 'staff', select: 'name role phone email isActive' }
+            ]
+        });
+
+        if (!manager || !manager.business) {
+            return res.status(404).json({ success: false, message: "Manager or business not found" });
+        }
+
+        const business = manager.business;
+
+        // Cache for 10 minutes
+        await setCache(cacheKey, business, 600);
+
+        return res.json({ success: true, data: business });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getManagerDashboard,
     addStaff,
@@ -406,5 +524,7 @@ module.exports = {
     updateStaff,
     deleteStaff,
     addTransaction,
-    getTransactions
+    getTransactions,
+    updateBusiness,
+    getBusinessInfo
 };

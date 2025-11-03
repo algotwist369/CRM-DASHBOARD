@@ -1,256 +1,409 @@
+// Campaign.js - Marketing campaign model
 const mongoose = require("mongoose");
 
 const campaignSchema = new mongoose.Schema(
     {
-        business: { type: mongoose.Schema.Types.ObjectId, ref: "Business", required: true, index: true },
-        createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Manager", required: true, index: true },
-        
-        // Campaign details
-        name: { type: String, required: true },
-        description: { type: String },
-        type: { 
-            type: String, 
-            enum: ["promotional", "seasonal", "loyalty", "win_back", "announcement", "event"],
+        // Business Reference
+        business: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Business",
             required: true,
             index: true
         },
         
-        // Campaign settings
-        settings: {
-            startDate: { type: Date, required: true },
-            endDate: { type: Date, required: true },
-            isActive: { type: Boolean, default: true },
-            autoSend: { type: Boolean, default: false },
-            frequency: { 
-                type: String, 
-                enum: ["once", "daily", "weekly", "monthly"],
-                default: "once"
-            },
-            maxSends: { type: Number, default: 1 }
+        // Campaign Details
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        description: {
+            type: String
         },
         
-        // Target audience
+        // Campaign Type
+        type: { 
+            type: String, 
+            enum: ["promotional", "seasonal", "loyalty", "reactivation", "birthday", "anniversary", "referral", "feedback", "announcement"],
+            required: true,
+            index: true
+        },
+        
+        // Communication Channels
+        channels: [{
+            type: String,
+            enum: ["email", "sms", "whatsapp", "push_notification", "in_app"],
+            required: true
+        }],
+        
+        // Message Content
+        message: {
+            subject: { type: String }, // For email
+            body: { type: String, required: true },
+            template: { type: String }, // Template ID if using templates
+            variables: { type: Map, of: String } // Dynamic variables for personalization
+        },
+        
+        // Email Specific
+        emailContent: {
+            htmlBody: { type: String },
+            attachments: [{ type: String }]
+        },
+        
+        // Offer/Discount Details
+        offer: {
+            hasOffer: { type: Boolean, default: false },
+            offerType: {
+                type: String, 
+                enum: ["percentage", "fixed", "free_service", "loyalty_points"]
+            },
+            offerValue: { type: Number },
+            promoCode: { type: String },
+            validFrom: { type: Date },
+            validUntil: { type: Date },
+            termsAndConditions: { type: String }
+        },
+        
+        // Target Audience
         targetAudience: {
-            segments: [{
-                name: { type: String, required: true },
-                criteria: {
-                    customerType: { 
                         type: String, 
-                        enum: ["all", "new", "returning", "loyalty", "inactive", "high_value"],
+            enum: ["all", "specific", "segment"],
                         default: "all"
                     },
+        
+        // Specific Customer IDs (if targetAudience is 'specific')
+        targetCustomers: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Customer"
+        }],
+        
+        // Segment Filters (if targetAudience is 'segment')
+        segmentFilters: {
+            customerType: [{
+                type: String,
+                enum: ["new", "regular", "vip", "inactive"]
+            }],
+            membershipTier: [{
+                type: String,
+                enum: ["none", "bronze", "silver", "gold", "platinum"]
+            }],
+            minTotalSpent: { type: Number },
+            maxTotalSpent: { type: Number },
                     minVisits: { type: Number },
                     maxVisits: { type: Number },
-                    minSpent: { type: Number },
-                    maxSpent: { type: Number },
-                    lastVisitDays: { type: Number },
-                    preferredServices: [{ type: String }],
-                    ageRange: {
-                        min: { type: Number },
-                        max: { type: Number }
-                    },
-                    gender: [{ type: String, enum: ["male", "female", "other"] }],
-                    location: {
-                        city: { type: String },
-                        state: { type: String },
-                        pincode: { type: String }
-                    }
-                },
-                estimatedSize: { type: Number }
-            }]
+            lastVisitBefore: { type: Date },
+            lastVisitAfter: { type: Date },
+            hasEmail: { type: Boolean },
+            hasPhone: { type: Boolean },
+            marketingConsent: {
+                email: { type: Boolean },
+                sms: { type: Boolean },
+                whatsapp: { type: Boolean }
+            },
+            tags: [{ type: String }]
         },
         
-        // Campaign content
-        content: {
-            templates: [{
-                channel: { type: String, enum: ["sms", "email", "whatsapp", "push"] },
-                subject: { type: String },
-                title: { type: String },
-                message: { type: String, required: true },
-                imageUrl: { type: String },
-                actionUrl: { type: String },
-                actionText: { type: String }
-            }],
-            offer: {
-                type: { 
+        // Schedule
+        scheduledDate: {
+            type: Date,
+            index: true
+        },
+        scheduledTime: {
+            type: String
+        },
+        timezone: {
+            type: String,
+            default: "Asia/Kolkata"
+        },
+        
+        // Recurring Campaign
+        isRecurring: {
+            type: Boolean,
+            default: false
+        },
+        recurringPattern: {
+            frequency: {
                     type: String, 
-                    enum: ["percentage", "fixed_amount", "free_service", "buy_one_get_one"],
-                    default: "percentage"
-                },
-                value: { type: Number },
-                minPurchase: { type: Number },
-                maxDiscount: { type: Number },
-                validUntil: { type: Date },
-                terms: { type: String }
-            }
+                enum: ["daily", "weekly", "monthly", "yearly"]
+            },
+            interval: { type: Number, default: 1 },
+            endDate: { type: Date }
         },
         
-        // Campaign status
+        // Status
         status: { 
             type: String, 
-            enum: ["draft", "scheduled", "running", "paused", "completed", "cancelled"],
+            enum: ["draft", "scheduled", "in_progress", "completed", "cancelled", "failed"],
             default: "draft",
             index: true
         },
         
-        // Performance tracking
-        performance: {
-            totalSent: { type: Number, default: 0 },
-            totalDelivered: { type: Number, default: 0 },
-            totalOpened: { type: Number, default: 0 },
-            totalClicked: { type: Number, default: 0 },
-            totalConversions: { type: Number, default: 0 },
-            totalRevenue: { type: Number, default: 0 },
-            cost: { type: Number, default: 0 },
-            roi: { type: Number, default: 0 }
+        // Execution Details
+        executionStartedAt: {
+            type: Date
+        },
+        executionCompletedAt: {
+            type: Date
         },
         
-        // Notifications in this campaign
-        notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }],
+        // Statistics
+        stats: {
+            totalRecipients: { type: Number, default: 0 },
+            sent: { type: Number, default: 0 },
+            delivered: { type: Number, default: 0 },
+            failed: { type: Number, default: 0 },
+            opened: { type: Number, default: 0 },
+            clicked: { type: Number, default: 0 },
+            converted: { type: Number, default: 0 },
+            unsubscribed: { type: Number, default: 0 },
+            bounced: { type: Number, default: 0 }
+        },
         
-        // Analytics
-        analytics: {
-            openRate: { type: Number, default: 0 },
-            clickRate: { type: Number, default: 0 },
-            conversionRate: { type: Number, default: 0 },
-            revenuePerCustomer: { type: Number, default: 0 },
-            costPerAcquisition: { type: Number, default: 0 }
+        // Cost & Budget
+        budget: {
+            type: Number,
+            min: 0
+        },
+        costPerMessage: {
+            type: Number,
+            default: 0
+        },
+        totalCost: {
+            type: Number,
+            default: 0
+        },
+        
+        // ROI Tracking
+        roi: {
+            revenue: { type: Number, default: 0 },
+            appointments: { type: Number, default: 0 },
+            newCustomers: { type: Number, default: 0 }
         },
         
         // A/B Testing
-        abTesting: {
+        abTest: {
             enabled: { type: Boolean, default: false },
             variants: [{
                 name: { type: String },
-                content: {
-                    subject: { type: String },
                     message: { type: String },
-                    imageUrl: { type: String }
-                },
-                percentage: { type: Number, default: 50 },
-                performance: {
+                recipients: { type: Number, default: 0 },
                     sent: { type: Number, default: 0 },
                     opened: { type: Number, default: 0 },
                     clicked: { type: Number, default: 0 },
                     converted: { type: Number, default: 0 }
-                }
             }]
         },
         
-        // Tags and categorization
-        tags: [{ type: String }],
-        category: { type: String },
-        priority: { 
+        // Tracking
+        trackingEnabled: {
+            type: Boolean,
+            default: true
+        },
+        clickTrackingUrl: {
+            type: String
+        },
+        
+        // Campaign Recipients (detailed tracking)
+        recipients: [{
+            customer: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Customer"
+            },
+            channel: {
+                type: String,
+                enum: ["email", "sms", "whatsapp", "push_notification"]
+            },
+            status: {
+                type: String,
+                enum: ["pending", "sent", "delivered", "failed", "opened", "clicked", "converted"],
+                default: "pending"
+            },
+            sentAt: { type: Date },
+            deliveredAt: { type: Date },
+            openedAt: { type: Date },
+            clickedAt: { type: Date },
+            convertedAt: { type: Date },
+            failureReason: { type: String },
+            messageId: { type: String } // External message ID from provider
+        }],
+        
+        // Notes
+        notes: {
+            type: String
+        },
+        
+        // Metadata
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            refPath: 'createdByModel'
+        },
+        createdByModel: {
+            type: String,
+            enum: ['Manager', 'Admin']
+        },
+        updatedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            refPath: 'updatedByModel'
+        },
+        updatedByModel: {
             type: String, 
-            enum: ["low", "medium", "high", "urgent"],
-            default: "medium"
+            enum: ['Manager', 'Admin']
         }
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
+    }
 );
 
-// Indexes
+// Indexes for better performance
 campaignSchema.index({ business: 1, status: 1 });
 campaignSchema.index({ business: 1, type: 1 });
+campaignSchema.index({ business: 1, scheduledDate: 1 });
 campaignSchema.index({ business: 1, createdAt: -1 });
-campaignSchema.index({ "settings.startDate": 1, "settings.endDate": 1 });
-campaignSchema.index({ tags: 1 });
 
-// Virtual for campaign duration
-campaignSchema.virtual('duration').get(function() {
-    const start = new Date(this.settings.startDate);
-    const end = new Date(this.settings.endDate);
-    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)); // days
+// Virtual for delivery rate
+campaignSchema.virtual('deliveryRate').get(function() {
+    if (this.stats.sent === 0) return 0;
+    return Math.round((this.stats.delivered / this.stats.sent) * 100);
 });
 
-// Virtual for campaign performance score
-campaignSchema.virtual('performanceScore').get(function() {
-    const { totalSent, totalOpened, totalClicked, totalConversions } = this.performance;
-    
-    if (totalSent === 0) return 0;
-    
-    const openRate = (totalOpened / totalSent) * 100;
-    const clickRate = (totalClicked / totalSent) * 100;
-    const conversionRate = (totalConversions / totalSent) * 100;
-    
-    // Weighted score: 30% open rate, 40% click rate, 30% conversion rate
-    return (openRate * 0.3) + (clickRate * 0.4) + (conversionRate * 0.3);
+// Virtual for open rate
+campaignSchema.virtual('openRate').get(function() {
+    if (this.stats.delivered === 0) return 0;
+    return Math.round((this.stats.opened / this.stats.delivered) * 100);
 });
 
-// Method to update campaign performance
-campaignSchema.methods.updatePerformance = function() {
-    const notifications = this.notifications;
-    
-    if (notifications.length === 0) return this.save();
-    
-    // Aggregate performance from all notifications
-    this.performance.totalSent = notifications.reduce((sum, n) => sum + (n.stats?.sent || 0), 0);
-    this.performance.totalDelivered = notifications.reduce((sum, n) => sum + (n.stats?.delivered || 0), 0);
-    this.performance.totalOpened = notifications.reduce((sum, n) => sum + (n.stats?.opened || 0), 0);
-    this.performance.totalClicked = notifications.reduce((sum, n) => sum + (n.stats?.clicked || 0), 0);
-    this.performance.totalConversions = notifications.reduce((sum, n) => sum + (n.analytics?.newBookings || 0), 0);
-    this.performance.totalRevenue = notifications.reduce((sum, n) => sum + (n.analytics?.revenue || 0), 0);
-    
-    // Calculate rates
-    this.analytics.openRate = this.performance.totalSent > 0 ? 
-        (this.performance.totalDelivered / this.performance.totalSent) * 100 : 0;
-    this.analytics.clickRate = this.performance.totalDelivered > 0 ? 
-        (this.performance.totalClicked / this.performance.totalDelivered) * 100 : 0;
-    this.analytics.conversionRate = this.performance.totalDelivered > 0 ? 
-        (this.performance.totalConversions / this.performance.totalDelivered) * 100 : 0;
-    
-    // Calculate ROI
-    this.performance.roi = this.performance.cost > 0 ? 
-        ((this.performance.totalRevenue - this.performance.cost) / this.performance.cost) * 100 : 0;
-    
-    return this.save();
+// Virtual for click rate
+campaignSchema.virtual('clickRate').get(function() {
+    if (this.stats.opened === 0) return 0;
+    return Math.round((this.stats.clicked / this.stats.opened) * 100);
+});
+
+// Virtual for conversion rate
+campaignSchema.virtual('conversionRate').get(function() {
+    if (this.stats.delivered === 0) return 0;
+    return Math.round((this.stats.converted / this.stats.delivered) * 100);
+});
+
+// Virtual for ROI percentage
+campaignSchema.virtual('roiPercentage').get(function() {
+    if (this.totalCost === 0) return 0;
+    return Math.round(((this.roi.revenue - this.totalCost) / this.totalCost) * 100);
+});
+
+// Method to start campaign execution
+campaignSchema.methods.start = async function() {
+    this.status = 'in_progress';
+    this.executionStartedAt = new Date();
+    await this.save();
 };
 
-// Method to check if campaign is active
-campaignSchema.methods.isActive = function() {
-    const now = new Date();
-    return this.settings.isActive && 
-           this.status === 'running' &&
-           now >= this.settings.startDate && 
-           now <= this.settings.endDate;
+// Method to complete campaign
+campaignSchema.methods.complete = async function() {
+    this.status = 'completed';
+    this.executionCompletedAt = new Date();
+    await this.save();
 };
 
-// Method to get target customer count
-campaignSchema.methods.getTargetCount = async function() {
-    const Customer = require('./Customer');
+// Method to cancel campaign
+campaignSchema.methods.cancel = async function() {
+    this.status = 'cancelled';
+    await this.save();
+};
+
+// Method to update recipient status
+campaignSchema.methods.updateRecipientStatus = async function(customerId, channel, status, timestamp) {
+    const recipient = this.recipients.find(
+        r => r.customer.toString() === customerId.toString() && r.channel === channel
+    );
     
-    let totalCount = 0;
-    
-    for (const segment of this.targetAudience.segments) {
-        let query = { business: this.business };
+    if (recipient) {
+        recipient.status = status;
         
-        const criteria = segment.criteria;
+        switch (status) {
+            case 'sent':
+                recipient.sentAt = timestamp;
+                this.stats.sent += 1;
+                break;
+            case 'delivered':
+                recipient.deliveredAt = timestamp;
+                this.stats.delivered += 1;
+                break;
+            case 'opened':
+                recipient.openedAt = timestamp;
+                this.stats.opened += 1;
+                break;
+            case 'clicked':
+                recipient.clickedAt = timestamp;
+                this.stats.clicked += 1;
+                break;
+            case 'converted':
+                recipient.convertedAt = timestamp;
+                this.stats.converted += 1;
+                break;
+            case 'failed':
+                this.stats.failed += 1;
+                break;
+        }
         
-        // Apply criteria filters
-        if (criteria.minVisits) query['stats.totalVisits'] = { $gte: criteria.minVisits };
-        if (criteria.maxVisits) query['stats.totalVisits'] = { ...query['stats.totalVisits'], $lte: criteria.maxVisits };
-        if (criteria.minSpent) query['stats.totalSpent'] = { $gte: criteria.minSpent };
-        if (criteria.maxSpent) query['stats.totalSpent'] = { ...query['stats.totalSpent'], $lte: criteria.maxSpent };
-        if (criteria.lastVisitDays) {
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - criteria.lastVisitDays);
-            query['stats.lastVisit'] = { $gte: cutoffDate };
-        }
-        if (criteria.preferredServices?.length) {
-            query['preferences.preferredServices'] = { $in: criteria.preferredServices };
-        }
-        if (criteria.gender?.length) {
-            query.gender = { $in: criteria.gender };
-        }
-        if (criteria.location?.city) query['address.city'] = criteria.location.city;
-        if (criteria.location?.state) query['address.state'] = criteria.location.state;
-        if (criteria.location?.pincode) query['address.pincode'] = criteria.location.pincode;
-        
-        const count = await Customer.countDocuments(query);
-        totalCount += count;
+        await this.save();
     }
+};
+
+// Method to calculate total cost
+campaignSchema.methods.calculateCost = function() {
+    this.totalCost = this.stats.sent * this.costPerMessage;
+    return this.totalCost;
+};
+
+// Static method to get active campaigns
+campaignSchema.statics.getActiveCampaigns = async function(businessId) {
+    return await this.find({
+        business: businessId,
+        status: { $in: ['scheduled', 'in_progress'] }
+    }).sort({ scheduledDate: 1 });
+};
+
+// Static method to get campaign performance
+campaignSchema.statics.getPerformanceStats = async function(businessId, startDate, endDate) {
+    const result = await this.aggregate([
+        {
+            $match: {
+                business: businessId,
+                status: 'completed',
+                executionCompletedAt: {
+                    $gte: startDate,
+                    $lte: endDate
+                }
+            }
+        },
+        {
+            $group: {
+                _id: null,
+                totalCampaigns: { $sum: 1 },
+                totalSent: { $sum: '$stats.sent' },
+                totalDelivered: { $sum: '$stats.delivered' },
+                totalOpened: { $sum: '$stats.opened' },
+                totalClicked: { $sum: '$stats.clicked' },
+                totalConverted: { $sum: '$stats.converted' },
+                totalCost: { $sum: '$totalCost' },
+                totalRevenue: { $sum: '$roi.revenue' }
+            }
+        }
+    ]);
     
-    return totalCount;
+    return result[0] || {
+        totalCampaigns: 0,
+        totalSent: 0,
+        totalDelivered: 0,
+        totalOpened: 0,
+        totalClicked: 0,
+        totalConverted: 0,
+        totalCost: 0,
+        totalRevenue: 0
+    };
 };
 
 module.exports = mongoose.model("Campaign", campaignSchema);
