@@ -3,14 +3,31 @@
 const DailyBusiness = require("../models/DailyBusiness");
 const Transaction = require("../models/Transaction");
 const Business = require("../models/Business");
+const mongoose = require("mongoose");
 const { calculateDailyMetrics, generateBusinessAnalytics } = require("../utils/businessUtils");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
+
+// Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id) => {
+    if (!id || id === 'undefined' || id === 'null') {
+        return false;
+    }
+    return mongoose.Types.ObjectId.isValid(id);
+};
 
 // ================== Add Daily Business Record ==================
 const addDailyBusiness = async (req, res, next) => {
     try {
         const { businessId, date, notes, weather, specialEvents } = req.body;
         const managerId = req.user.id;
+
+        // Validate businessId
+        if (!businessId || !isValidObjectId(businessId)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid Business ID is required" 
+            });
+        }
 
         // Check if business exists and manager has access
         const business = await Business.findById(businessId);

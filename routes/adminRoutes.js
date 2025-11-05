@@ -11,6 +11,11 @@ router.use(authMiddleware, roleMiddleware(["admin"]));
 // ================== Admin Dashboard ==================
 router.get("/dashboard", adminController.getAdminDashboard);
 
+// ================== Admin Profile & Settings ==================
+router.get("/profile", adminController.getAdminProfile);
+router.put("/profile", adminController.updateAdminProfile);
+router.put("/password", adminController.updateAdminPassword);
+
 // ================== Admin Notifications ==================
 router.get("/notifications", adminNotificationController.getAdminNotifications);
 router.get("/notifications/unread-count", adminNotificationController.getUnreadCount);
