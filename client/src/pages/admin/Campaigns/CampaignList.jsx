@@ -35,7 +35,16 @@ const CampaignList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({ total: 0, active: 0, completed: 0, avgOpenRate: 0 });
   const [businesses, setBusinesses] = useState([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState(localStorage.getItem('selectedBusinessId') || '');
+  // Helper to clean businessId from localStorage
+  const getCleanBusinessId = () => {
+    const stored = localStorage.getItem('selectedBusinessId')
+    if (!stored || stored === 'undefined' || stored === 'null' || stored.trim() === '') {
+      return ''
+    }
+    return stored
+  }
+
+  const [selectedBusinessId, setSelectedBusinessId] = useState(getCleanBusinessId());
   const [loadingBusinesses, setLoadingBusinesses] = useState(true);
 
   // Fetch businesses
@@ -63,7 +72,8 @@ const CampaignList = () => {
   }, [selectedBusinessId]);
 
   const fetchCampaigns = useCallback(async () => {
-    if (!selectedBusinessId) {
+    // Validate businessId before making API calls
+    if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null' || selectedBusinessId.trim() === '') {
       setLoading(false);
       return;
     }
@@ -140,10 +150,10 @@ const CampaignList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatsCard title="Total Campaigns" value={stats.total} icon={<HiOutlineMail className="w-6 h-6 text-blue-600" />} color="text-blue-600" />
-        <StatsCard title="Active" value={stats.active} icon={<HiOutlineMail className="w-6 h-6 text-green-600" />} color="text-green-600" />
-        <StatsCard title="Completed" value={stats.completed} icon={<HiOutlineMail className="w-6 h-6 text-purple-600" />} color="text-purple-600" />
-        <StatsCard title="Avg Open Rate" value={`${stats.avgOpenRate}%`} icon={<HiOutlineMail className="w-6 h-6 text-yellow-600" />} color="text-yellow-600" />
+        <StatsCard key="total" title="Total Campaigns" value={stats.total} icon={<HiOutlineMail className="w-6 h-6 text-blue-600" />} color="text-blue-600" />
+        <StatsCard key="active" title="Active" value={stats.active} icon={<HiOutlineMail className="w-6 h-6 text-green-600" />} color="text-green-600" />
+        <StatsCard key="completed" title="Completed" value={stats.completed} icon={<HiOutlineMail className="w-6 h-6 text-purple-600" />} color="text-purple-600" />
+        <StatsCard key="avgOpenRate" title="Avg Open Rate" value={`${stats.avgOpenRate}%`} icon={<HiOutlineMail className="w-6 h-6 text-yellow-600" />} color="text-yellow-600" />
       </div>
 
       {/* Business Selector */}
@@ -203,8 +213,16 @@ const CampaignList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr><td colSpan="6" className="px-6 py-12 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div></td></tr>
+              ) : campaigns.length === 0 ? (
+                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-500">No campaigns found</td></tr>
               ) : (
-                campaigns.map((campaign) => <CampaignRow key={campaign._id} campaign={campaign} onView={(id) => navigate(`/admin/campaigns/${id}`)} />)
+                campaigns.map((campaign, index) => (
+                  <CampaignRow 
+                    key={campaign._id || campaign.id || `campaign-${index}`} 
+                    campaign={campaign} 
+                    onView={(id) => navigate(`/admin/campaigns/${id}`)} 
+                  />
+                ))
               )}
             </tbody>
           </table>

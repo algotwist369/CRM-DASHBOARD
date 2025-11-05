@@ -140,7 +140,7 @@ const Modal = ({
         )}
 
         {/* Content */}
-        <div className="p-3 sm:p-4">
+        <div className="p-3 sm:p-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
           {children}
         </div>
       </div>

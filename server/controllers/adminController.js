@@ -2,6 +2,15 @@ require('dotenv').config();
 const Admin = require("../models/Admin");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
+const mongoose = require("mongoose");
+
+// Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id) => {
+    if (!id || id === 'undefined' || id === 'null') {
+        return false;
+    }
+    return mongoose.Types.ObjectId.isValid(id);
+};
 const Staff = require("../models/Staff");
 const Transaction = require("../models/Transaction");
 const { setCache, getCache, deleteCache, getOrSet } = require("../utils/cache");
@@ -436,6 +445,14 @@ const getBusinessById = async (req, res, next) => {
         const { id } = req.params;
         const adminId = req.user.id;
 
+        // Validate ID
+        if (!id || !isValidObjectId(id)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid Business ID is required" 
+            });
+        }
+
         const business = await Business.findOne({ _id: id, admin: adminId })
             .populate('managers', 'name username email phone isActive lastLogin')
             .populate('staff', 'name role phone email isActive')
@@ -542,6 +559,14 @@ const createManager = async (req, res, next) => {
     try {
         const { name, username, pin, businessId, email, phone } = req.body;
         const adminId = req.user.id;
+
+        // Validate businessId
+        if (!businessId || !isValidObjectId(businessId)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid Business ID is required" 
+            });
+        }
 
         // Check if business belongs to admin
         const business = await Business.findOne({ _id: businessId, admin: adminId });
@@ -827,6 +852,14 @@ const getBusinessLink = async (req, res, next) => {
         const { businessId } = req.params;
         const adminId = req.user.id;
 
+        // Validate businessId
+        if (!businessId || !isValidObjectId(businessId)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid Business ID is required" 
+            });
+        }
+
         const business = await Business.findOne({ _id: businessId, admin: adminId });
         if (!business) {
             return res.status(404).json({ success: false, message: "Business not found" });
@@ -848,6 +881,123 @@ const getBusinessLink = async (req, res, next) => {
     }
 };
 
+// ================== Get Admin Profile ==================
+const getAdminProfile = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const admin = await Admin.findById(adminId).select('name companyName email phone createdAt updatedAt');
+        
+        if (!admin) {
+            return res.status(404).json({ success: false, message: "Admin not found" });
+        }
+
+        return res.json({ 
+            success: true, 
+            data: admin 
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Update Admin Profile ==================
+const updateAdminProfile = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { name, companyName, email, phone } = req.body;
+
+        const admin = await Admin.findById(adminId);
+        if (!admin) {
+            return res.status(404).json({ success: false, message: "Admin not found" });
+        }
+
+        // Check if email is being changed and if it already exists
+        if (email && email !== admin.email) {
+            const exists = await Admin.findOne({ email, _id: { $ne: adminId } });
+            if (exists) {
+                return res.status(400).json({ success: false, message: "Email already taken" });
+            }
+        }
+
+        // Check if phone is being changed and if it already exists
+        if (phone && phone !== admin.phone) {
+            const exists = await Admin.findOne({ phone, _id: { $ne: adminId } });
+            if (exists) {
+                return res.status(400).json({ success: false, message: "Phone number already taken" });
+            }
+        }
+
+        // Update admin
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (companyName !== undefined) updateData.companyName = companyName;
+        if (email !== undefined) updateData.email = email;
+        if (phone !== undefined) updateData.phone = phone;
+
+        const updatedAdmin = await Admin.findByIdAndUpdate(adminId, updateData, { new: true }).select('name companyName email phone');
+
+        // Invalidate cache
+        await deleteCache(`admin:${adminId}:dashboard`);
+
+        return res.json({
+            success: true,
+            message: "Profile updated successfully",
+            data: updatedAdmin
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ================== Update Admin Password ==================
+const updateAdminPassword = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Current password and new password are required" 
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "New password must be at least 6 characters long" 
+            });
+        }
+
+        const admin = await Admin.findById(adminId);
+        if (!admin) {
+            return res.status(404).json({ success: false, message: "Admin not found" });
+        }
+
+        // Verify current password
+        const bcrypt = require('bcryptjs');
+        const isMatch = await bcrypt.compare(currentPassword, admin.password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Current password is incorrect" });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Update password
+        admin.password = hashedPassword;
+        await admin.save();
+
+        return res.json({
+            success: true,
+            message: "Password updated successfully"
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getAdminDashboard,
     createBusiness,
@@ -860,5 +1010,8 @@ module.exports = {
     getManagerById,
     updateManager,
     deleteManager,
-    getBusinessLink
+    getBusinessLink,
+    getAdminProfile,
+    updateAdminProfile,
+    updateAdminPassword
 };

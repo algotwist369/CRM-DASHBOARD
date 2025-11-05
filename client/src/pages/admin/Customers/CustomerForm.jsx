@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineSave } from 'react-icons/hi';
+import adminService from '../../../services/admin/adminService';
+import { toast } from 'react-hot-toast';
 
 const CustomerForm = ({ mode = 'create' }) => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState(localStorage.getItem('selectedBusinessId') || '');
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     dateOfBirth: '',
@@ -19,42 +25,159 @@ const CustomerForm = ({ mode = 'create' }) => {
     membershipTier: 'none',
     notes: ''
   });
+  const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
-    if (mode === 'edit' && id) {
-      // TODO: Fetch customer data
-      // Mock data for now
-      setFormData({
-        fullName: 'John Doe',
-        email: 'john@example.com',
-        phone: '+91 98765 43210',
-        dateOfBirth: '1990-01-15',
-        gender: 'male',
-        address: '123 Main St',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400001',
-        membershipTier: 'gold',
-        notes: 'VIP customer'
-      });
-    }
-  }, [mode, id]);
+    const fetchBusinesses = async () => {
+      try {
+        const response = await adminService.getBusinesses();
+        if (response.success) {
+          setBusinesses(response.data || []);
+          if (!selectedBusinessId && response.data && response.data.length > 0) {
+            const firstBusinessId = response.data[0]._id;
+            setSelectedBusinessId(firstBusinessId);
+            localStorage.setItem('selectedBusinessId', firstBusinessId);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch businesses:', error);
+      }
+    };
+
+    fetchBusinesses();
+  }, []);
+
+  useEffect(() => {
+    const fetchCustomer = async () => {
+      if (mode === 'edit' && id) {
+        try {
+          setFetching(true);
+          const response = await adminService.getCustomer(id);
+          if (response.success) {
+            const customer = response.data;
+            setFormData({
+              firstName: customer.firstName || '',
+              lastName: customer.lastName || '',
+              email: customer.email || '',
+              phone: customer.phone || '',
+              dateOfBirth: customer.dateOfBirth ? new Date(customer.dateOfBirth).toISOString().split('T')[0] : '',
+              gender: customer.gender || '',
+              address: customer.address?.address || customer.address || '',
+              city: customer.address?.city || '',
+              state: customer.address?.state || '',
+              pincode: customer.address?.pincode || customer.address?.zipCode || '',
+              membershipTier: customer.membershipTier || 'none',
+              notes: customer.notes || ''
+            });
+            if (customer.business?._id) {
+              setSelectedBusinessId(customer.business._id);
+            }
+          } else {
+            toast.error(response.error || 'Failed to fetch customer');
+            navigate('/admin/customers');
+          }
+        } catch (error) {
+          console.error('Failed to fetch customer:', error);
+          toast.error('Failed to fetch customer');
+          navigate('/admin/customers');
+        } finally {
+          setFetching(false);
+        }
+      }
+    };
+
+    fetchCustomer();
+  }, [mode, id, navigate]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    // Clear error for this field
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: '' });
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.firstName.trim()) errors.firstName = 'First name is required';
+    if (!formData.phone.trim()) errors.phone = 'Phone is required';
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Invalid email format';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Please fix the form errors');
+      return;
+    }
+
+    if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null') {
+      toast.error('Please select a business');
+      return;
+    }
+
     setLoading(true);
     
-    // TODO: API call
-    setTimeout(() => {
-      console.log('Form data:', formData);
-      alert(`Customer ${mode === 'create' ? 'created' : 'updated'} successfully!`);
-      navigate('/admin/customers');
-    }, 1000);
+    try {
+      const payload = {
+        businessId: selectedBusinessId,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim() || undefined,
+        phone: formData.phone.trim(),
+        dateOfBirth: formData.dateOfBirth || undefined,
+        gender: formData.gender || undefined,
+        address: formData.address ? {
+          address: formData.address.trim(),
+          city: formData.city.trim() || undefined,
+          state: formData.state.trim() || undefined,
+          pincode: formData.pincode.trim() || undefined
+        } : undefined,
+        membershipTier: formData.membershipTier !== 'none' ? formData.membershipTier : undefined,
+        notes: formData.notes.trim() || undefined
+      };
+
+      // Remove undefined values
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined || (typeof payload[key] === 'object' && Object.keys(payload[key] || {}).length === 0)) {
+          delete payload[key];
+        }
+      });
+
+      let response;
+      if (mode === 'create') {
+        response = await adminService.createCustomer(payload);
+      } else {
+        response = await adminService.updateCustomer(id, payload);
+      }
+
+      if (response.success) {
+        toast.success(`Customer ${mode === 'create' ? 'created' : 'updated'} successfully!`);
+        navigate('/admin/customers');
+      } else {
+        toast.error(response.error || `Failed to ${mode === 'create' ? 'create' : 'update'} customer`);
+      }
+    } catch (error) {
+      console.error('Failed to save customer:', error);
+      toast.error(`Failed to ${mode === 'create' ? 'create' : 'update'} customer`);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -80,22 +203,59 @@ const CustomerForm = ({ mode = 'create' }) => {
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 space-y-6">
+          {/* Business Selector */}
+          {businesses.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Business <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedBusinessId}
+                onChange={(e) => setSelectedBusinessId(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+              >
+                <option value="">Select a business</option>
+                {businesses.map((business) => (
+                  <option key={business._id} value={business._id}>
+                    {business.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Personal Information */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name <span className="text-red-500">*</span>
+                  First Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  name="fullName"
-                  value={formData.fullName}
+                  name="firstName"
+                  value={formData.firstName}
                   onChange={handleChange}
                   required
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${formErrors.firstName ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="Enter first name"
+                />
+                {formErrors.firstName && <p className="mt-1 text-sm text-red-600">{formErrors.firstName}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Enter full name"
+                  placeholder="Enter last name"
                 />
               </div>
 
@@ -108,9 +268,10 @@ const CustomerForm = ({ mode = 'create' }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="Enter email"
                 />
+                {formErrors.email && <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>}
               </div>
 
               <div>
@@ -123,9 +284,10 @@ const CustomerForm = ({ mode = 'create' }) => {
                   value={formData.phone}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${formErrors.phone ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="+91 98765 43210"
                 />
+                {formErrors.phone && <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>}
               </div>
 
               <div>

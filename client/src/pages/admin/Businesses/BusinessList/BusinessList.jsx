@@ -30,13 +30,16 @@ const INITIAL_FORM_DATA = {
   city: "",
   state: "",
   country: "India",
+  zipCode: "",
   phone: "",
+  alternatePhone: "",
   email: "",
   website: "",
   description: "",
+  googleMapsUrl: "",
 };
 
-const BUSINESS_TYPES = ["salon", "spa", "hotel"];
+const BUSINESS_TYPES = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
 
 const ADDRESS_FIELDS = ["city", "state", "country"];
 
@@ -369,7 +372,6 @@ const BusinessList = () => {
   }, []);
 
   const handleEdit = useCallback(async (id) => {
-    setSubmitting(true);
     try {
       const res = await businessService.getBusiness(id);
       const data = res?.data?.data || res?.data;
@@ -382,19 +384,23 @@ const BusinessList = () => {
           city: data.city || "",
           state: data.state || "",
           country: data.country || "India",
+          zipCode: data.zipCode || "",
           phone: data.phone || "",
+          alternatePhone: data.alternatePhone || "",
           email: data.email || "",
           website: data.website || "",
           description: data.description || "",
+          googleMapsUrl: data.googleMapsUrl || "",
         });
         setEditingBusiness(data);
         setFormErrors({});
         setIsEditModalOpen(true);
+      } else {
+        toast.error("Business not found");
       }
     } catch (error) {
+      console.error("Error loading business:", error);
       toast.error("Failed to load business details");
-    } finally {
-      setSubmitting(false);
     }
   }, []);
 
@@ -433,11 +439,15 @@ const BusinessList = () => {
     if (!formData.type) errors.type = "Business type is required";
     if (!formData.name.trim()) errors.name = "Business name is required";
     if (formData.phone && !/^[6-9]\d{9}$/.test(formData.phone))
-      errors.phone = "Enter a valid 10-digit phone number";
+      errors.phone = "Enter a valid 10-digit phone number starting with 6-9";
+    if (formData.alternatePhone && !/^[6-9]\d{9}$/.test(formData.alternatePhone))
+      errors.alternatePhone = "Enter a valid 10-digit phone number starting with 6-9";
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       errors.email = "Invalid email format";
     if (formData.website && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(formData.website))
       errors.website = "Invalid website URL";
+    if (formData.googleMapsUrl && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(formData.googleMapsUrl))
+      errors.googleMapsUrl = "Invalid Google Maps URL";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [formData]);
@@ -475,16 +485,38 @@ const BusinessList = () => {
 
     try {
       setSubmitting(true);
-      const res = await businessService.createBusiness(formData);
+      // Prepare data - only send fields that have values
+      const payload = {
+        type: formData.type,
+        name: formData.name.trim(),
+        branch: formData.branch.trim(),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        country: formData.country || "India",
+      };
+      
+      // Add optional fields only if they have values
+      if (formData.zipCode) payload.zipCode = formData.zipCode.trim();
+      if (formData.phone) payload.phone = formData.phone.trim();
+      if (formData.alternatePhone) payload.alternatePhone = formData.alternatePhone.trim();
+      if (formData.email) payload.email = formData.email.trim();
+      if (formData.website) payload.website = formData.website.trim();
+      if (formData.description) payload.description = formData.description.trim();
+      if (formData.googleMapsUrl) payload.googleMapsUrl = formData.googleMapsUrl.trim();
+      
+      const res = await businessService.createBusiness(payload);
       if (res.success) {
-        toast.success(`${formData.type} created successfully`);
+        toast.success(`${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} created successfully`);
         setIsCreateModalOpen(false);
         setFormData(INITIAL_FORM_DATA);
+        setFormErrors({});
         await refreshBusinesses();
       } else {
         toast.error(res.error || 'Failed to create business');
       }
     } catch (error) {
+      console.error("Create business error:", error);
       toast.error("Failed to create business");
     } finally {
       setSubmitting(false);
@@ -497,16 +529,45 @@ const BusinessList = () => {
 
     try {
       setSubmitting(true);
-      const res = await businessService.updateBusiness(editingBusiness._id, formData);
+      // Prepare update data - only send fields that are being updated
+      const payload = {
+        type: formData.type,
+        name: formData.name.trim(),
+        branch: formData.branch.trim(),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        country: formData.country || "India",
+      };
+      
+      // Add optional fields - send empty string to clear or value to update
+      payload.zipCode = formData.zipCode || undefined;
+      payload.phone = formData.phone || undefined;
+      payload.alternatePhone = formData.alternatePhone || undefined;
+      payload.email = formData.email || undefined;
+      payload.website = formData.website || undefined;
+      payload.description = formData.description || undefined;
+      payload.googleMapsUrl = formData.googleMapsUrl || undefined;
+      
+      // Remove undefined fields
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) delete payload[key];
+      });
+      
+      const businessId = editingBusiness._id || editingBusiness.id;
+      const res = await businessService.updateBusiness(businessId, payload);
       if (res.success) {
         toast.success("Business updated successfully");
         setIsEditModalOpen(false);
         setEditingBusiness(null);
+        setFormData(INITIAL_FORM_DATA);
+        setFormErrors({});
         await refreshBusinesses();
       } else {
         toast.error(res.error || "Failed to update business");
       }
     } catch (error) {
+      console.error("Update business error:", error);
       toast.error("Failed to update business");
     } finally {
       setSubmitting(false);
@@ -812,40 +873,95 @@ const BusinessList = () => {
       {/* Create Business Modal */}
       <Modal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setFormData(INITIAL_FORM_DATA);
+          setFormErrors({});
+        }}
         title="Add New Business"
         size="xl"
       >
         <form onSubmit={handleCreateSubmit} className="space-y-2 sm:space-y-2.5">
-          <FormField
-            label="Business Type"
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
-            error={formErrors.type}
-            type="select"
-            options={businessTypeOptions}
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            <FormField
+              label="Business Type"
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              error={formErrors.type}
+              type="select"
+              options={businessTypeOptions}
+              required
+            />
 
-          <IconInputField
-            label="Business Name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            error={formErrors.name}
-            placeholder="Enter business name"
-            icon={FaBuilding}
-            required
-          />
+            <IconInputField
+              label="Business Name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              error={formErrors.name}
+              placeholder="Enter business name"
+              icon={FaBuilding}
+              required
+            />
 
-          <FormField
-            label="Branch"
-            name="branch"
-            value={formData.branch}
-            onChange={handleChange}
-            placeholder="e.g., Main Branch"
-          />
+            <FormField
+              label="Branch"
+              name="branch"
+              value={formData.branch}
+              onChange={handleChange}
+              placeholder="e.g., Main Branch"
+            />
+
+            <FormField
+              label="Zip Code"
+              name="zipCode"
+              value={formData.zipCode}
+              onChange={handleChange}
+              placeholder="Enter zip code"
+            />
+
+            <IconInputField
+              label="Phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              error={formErrors.phone}
+              placeholder="10-digit phone number"
+              icon={FaPhone}
+            />
+
+            <IconInputField
+              label="Alternate Phone"
+              name="alternatePhone"
+              value={formData.alternatePhone}
+              onChange={handleChange}
+              error={formErrors.alternatePhone}
+              placeholder="Alternate phone number"
+              icon={FaPhone}
+            />
+
+            <IconInputField
+              label="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={formErrors.email}
+              type="email"
+              placeholder="Business email"
+              icon={FaEnvelope}
+            />
+
+            <IconInputField
+              label="Website"
+              name="website"
+              value={formData.website}
+              onChange={handleChange}
+              error={formErrors.website}
+              placeholder="https://example.com"
+              icon={FaGlobe}
+            />
+          </div>
 
           <FormField
             label="Address"
@@ -870,35 +986,14 @@ const BusinessList = () => {
             ))}
           </div>
 
-          <IconInputField
-            label="Phone"
-            name="phone"
-            value={formData.phone}
+          <FormField
+            label="Google Maps URL"
+            name="googleMapsUrl"
+            value={formData.googleMapsUrl}
             onChange={handleChange}
-            error={formErrors.phone}
-            placeholder="10-digit phone number"
-            icon={FaPhone}
-          />
-
-          <IconInputField
-            label="Email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            error={formErrors.email}
-            type="email"
-            placeholder="Business email"
-            icon={FaEnvelope}
-          />
-
-          <IconInputField
-            label="Website"
-            name="website"
-            value={formData.website}
-            onChange={handleChange}
-            error={formErrors.website}
-            placeholder="https://example.com"
-            icon={FaGlobe}
+            error={formErrors.googleMapsUrl}
+            placeholder="https://maps.google.com/..."
+            type="url"
           />
 
           <FormField
@@ -924,40 +1019,96 @@ const BusinessList = () => {
       {/* Edit Business Modal */}
       <Modal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingBusiness(null);
+          setFormData(INITIAL_FORM_DATA);
+          setFormErrors({});
+        }}
         title="Edit Business"
         size="xl"
       >
         <form onSubmit={handleEditSubmit} className="space-y-2 sm:space-y-2.5">
-          <FormField
-            label="Business Type"
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
-            error={formErrors.type}
-            type="select"
-            options={businessTypeOptions}
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            <FormField
+              label="Business Type"
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              error={formErrors.type}
+              type="select"
+              options={businessTypeOptions}
+              required
+            />
 
-          <IconInputField
-            label="Business Name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            error={formErrors.name}
-            placeholder="Enter business name"
-            icon={FaBuilding}
-            required
-          />
+            <IconInputField
+              label="Business Name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              error={formErrors.name}
+              placeholder="Enter business name"
+              icon={FaBuilding}
+              required
+            />
 
-          <FormField
-            label="Branch"
-            name="branch"
-            value={formData.branch}
-            onChange={handleChange}
-            placeholder="e.g., Main Branch"
-          />
+            <FormField
+              label="Branch"
+              name="branch"
+              value={formData.branch}
+              onChange={handleChange}
+              placeholder="e.g., Main Branch"
+            />
+
+            <FormField
+              label="Zip Code"
+              name="zipCode"
+              value={formData.zipCode}
+              onChange={handleChange}
+              placeholder="Enter zip code"
+            />
+
+            <IconInputField
+              label="Phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              error={formErrors.phone}
+              placeholder="10-digit phone number"
+              icon={FaPhone}
+            />
+
+            <IconInputField
+              label="Alternate Phone"
+              name="alternatePhone"
+              value={formData.alternatePhone}
+              onChange={handleChange}
+              error={formErrors.alternatePhone}
+              placeholder="Alternate phone number"
+              icon={FaPhone}
+            />
+
+            <IconInputField
+              label="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={formErrors.email}
+              type="email"
+              placeholder="Business email"
+              icon={FaEnvelope}
+            />
+
+            <IconInputField
+              label="Website"
+              name="website"
+              value={formData.website}
+              onChange={handleChange}
+              error={formErrors.website}
+              placeholder="https://example.com"
+              icon={FaGlobe}
+            />
+          </div>
 
           <FormField
             label="Address"
@@ -982,35 +1133,13 @@ const BusinessList = () => {
             ))}
           </div>
 
-          <IconInputField
-            label="Phone"
-            name="phone"
-            value={formData.phone}
+          <FormField
+            label="Google Maps URL"
+            name="googleMapsUrl"
+            value={formData.googleMapsUrl}
             onChange={handleChange}
-            error={formErrors.phone}
-            placeholder="10-digit phone number"
-            icon={FaPhone}
-          />
-
-          <IconInputField
-            label="Email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            error={formErrors.email}
-            type="email"
-            placeholder="Business email"
-            icon={FaEnvelope}
-          />
-
-          <IconInputField
-            label="Website"
-            name="website"
-            value={formData.website}
-            onChange={handleChange}
-            error={formErrors.website}
-            placeholder="https://example.com"
-            icon={FaGlobe}
+            placeholder="https://maps.google.com/..."
+            type="url"
           />
 
           <FormField

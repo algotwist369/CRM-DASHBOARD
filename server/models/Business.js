@@ -149,10 +149,15 @@ const businessSchema = new mongoose.Schema(
         }],
         
         // Business Hours & Days Off
+        businessHours: {
+            type: mongoose.Schema.Types.Mixed,
+            default: {}
+        },
         daysOff: [{ type: Date }], // Specific dates when business is closed
         holidays: [{ 
             name: { type: String },
-            date: { type: Date }
+            date: { type: Date },
+            reason: { type: String }
         }],
         
         // Location Coordinates (for maps)

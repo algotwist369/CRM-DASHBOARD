@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FaBell, FaCheck, FaTrash, FaFilter, FaArrowLeft } from "react-icons/fa"
-import { HiRefresh } from "react-icons/hi"
+import { FaBell, FaCheck, FaTrash, FaFilter, FaArrowLeft, FaExclamationCircle, FaInfoCircle } from "react-icons/fa"
+import { HiRefresh, HiOutlineX } from "react-icons/hi"
 import adminService from '../../../services/admin/adminService'
 import { useSocket } from '../../../contexts/SocketContext'
+import { toast } from 'react-hot-toast'
 
 const NotificationsList = () => {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ const NotificationsList = () => {
       const params = {
         page: currentPage,
         limit: 20,
-        ...(isRead && { read: isRead === 'true' }),
+        ...(isRead && { isRead: isRead === 'true' }),
         ...(type && { type })
       }
       
@@ -32,9 +33,15 @@ const NotificationsList = () => {
       if (result.success) {
         setNotifications(result.data || [])
         setPagination(result.pagination || null)
+        if (result.unreadCount !== undefined) {
+          setUnreadCount(result.unreadCount)
+        }
+      } else {
+        toast.error(result.error || 'Failed to fetch notifications')
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error)
+      toast.error('Failed to fetch notifications')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -191,10 +198,18 @@ const NotificationsList = () => {
         setNotifications(prev => 
           prev.map(n => n._id === notificationId ? { ...n, read: true, isRead: true } : n)
         )
-        fetchUnreadCount() // Refresh count
+        if (result.unreadCount !== undefined) {
+          setUnreadCount(result.unreadCount)
+        } else {
+          fetchUnreadCount() // Refresh count
+        }
+        toast.success('Notification marked as read')
+      } else {
+        toast.error(result.error || 'Failed to mark notification as read')
       }
     } catch (error) {
       console.error('Failed to mark notification as read:', error)
+      toast.error('Failed to mark notification as read')
     }
   }
 
@@ -205,9 +220,13 @@ const NotificationsList = () => {
       if (result.success) {
         setNotifications(prev => prev.map(n => ({ ...n, read: true, isRead: true })))
         setUnreadCount(0)
+        toast.success('All notifications marked as read')
+      } else {
+        toast.error(result.error || 'Failed to mark all notifications as read')
       }
     } catch (error) {
       console.error('Failed to mark all as read:', error)
+      toast.error('Failed to mark all notifications as read')
     }
   }
 
@@ -219,10 +238,18 @@ const NotificationsList = () => {
       const result = await adminService.deleteNotification(notificationId)
       if (result.success) {
         setNotifications(prev => prev.filter(n => n._id !== notificationId))
-        fetchUnreadCount() // Refresh count
+        if (result.unreadCount !== undefined) {
+          setUnreadCount(result.unreadCount)
+        } else {
+          fetchUnreadCount() // Refresh count
+        }
+        toast.success('Notification deleted')
+      } else {
+        toast.error(result.error || 'Failed to delete notification')
       }
     } catch (error) {
       console.error('Failed to delete notification:', error)
+      toast.error('Failed to delete notification')
     }
   }
 
@@ -235,9 +262,14 @@ const NotificationsList = () => {
       if (result.success) {
         setNotifications([])
         setUnreadCount(0)
+        setCurrentPage(1)
+        toast.success('All notifications cleared')
+      } else {
+        toast.error(result.error || 'Failed to clear all notifications')
       }
     } catch (error) {
       console.error('Failed to clear all notifications:', error)
+      toast.error('Failed to clear all notifications')
     }
   }
 
@@ -345,17 +377,20 @@ const NotificationsList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 mb-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="flex items-center gap-2">
             <FaFilter className="text-gray-600" />
             <span className="text-sm font-semibold text-gray-700">Filters</span>
           </div>
-          <div className="flex flex-wrap gap-3 flex-1">
+          <div className="flex flex-wrap gap-3 flex-1 w-full sm:w-auto">
             <select
               value={isRead}
-              onChange={(e) => setIsRead(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              onChange={(e) => {
+                setIsRead(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
             >
               <option value="">All Status</option>
               <option value="false">Unread Only</option>
@@ -364,8 +399,11 @@ const NotificationsList = () => {
             
             <select
               value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              onChange={(e) => {
+                setType(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
             >
               <option value="">All Types</option>
               <option value="system">System</option>
@@ -384,8 +422,9 @@ const NotificationsList = () => {
                   setType('')
                   setCurrentPage(1)
                 }}
-                className="px-4 py-2 text-sm text-red-600 hover:text-red-700 font-medium"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:text-red-700 font-medium hover:bg-red-50 rounded-lg transition-colors"
               >
+                <HiOutlineX className="text-base" />
                 Clear Filters
               </button>
             )}
@@ -394,16 +433,19 @@ const NotificationsList = () => {
       </div>
 
       {/* Notifications List */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-gray-500">
-            <FaBell className="mx-auto text-4xl mb-4 opacity-30" />
-            Loading notifications...
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading notifications...</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
-            <FaBell className="mx-auto text-4xl mb-4 opacity-30" />
-            No notifications found
+            <FaBell className="mx-auto text-5xl mb-4 opacity-20 text-gray-400" />
+            <p className="text-gray-600 font-medium">No notifications found</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {(isRead || type) ? 'Try adjusting your filters' : 'You\'re all caught up!'}
+            </p>
           </div>
         ) : (
           <>
@@ -412,63 +454,95 @@ const NotificationsList = () => {
                 const isUnread = !notification.read && !notification.isRead
                 return (
                   <div
-                    key={notification._id}
-                    className={`p-4 hover:bg-gray-50 transition-colors ${
-                      isUnread ? 'bg-blue-50/50' : ''
+                    key={notification._id || notification.id}
+                    className={`p-4 sm:p-5 hover:bg-gray-50 transition-all duration-200 border-l-4 ${
+                      isUnread 
+                        ? 'bg-blue-50/30 border-l-blue-500' 
+                        : 'border-l-transparent'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        {/* Read Indicator */}
-                        <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                          isUnread ? 'bg-blue-500' : 'bg-gray-300'
-                        }`}></div>
+                        {/* Icon based on type */}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isUnread 
+                            ? 'bg-blue-100 text-blue-600' 
+                            : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {notification.type === 'security' ? (
+                            <FaExclamationCircle className="text-sm" />
+                          ) : notification.type === 'payment' ? (
+                            <FaInfoCircle className="text-sm" />
+                          ) : (
+                            <FaBell className="text-sm" />
+                          )}
+                        </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className={`text-sm ${isUnread ? 'font-semibold' : 'font-medium'} text-gray-900`}>
-                              {notification.title}
-                            </h3>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`text-base ${isUnread ? 'font-semibold' : 'font-medium'} text-gray-900 mb-1`}>
+                                {notification.title || 'Notification'}
+                              </h3>
+                              <p className="text-sm text-gray-600 leading-relaxed">{notification.message || notification.body || 'No message'}</p>
+                            </div>
+                            {isUnread && (
+                              <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1"></span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-3 flex-wrap mt-3">
                             {notification.type && (
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getTypeColor(notification.type)}`}>
+                              <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getTypeColor(notification.type)}`}>
                                 {notification.type}
                               </span>
                             )}
                             {notification.priority && (
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(notification.priority)}`}>
+                              <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${getPriorityColor(notification.priority)}`}>
                                 {notification.priority}
                               </span>
                             )}
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span>{formatTime(notification.createdAt)}</span>
-                            {notification.actionUrl && (
-                              <a href={notification.actionUrl} className="text-blue-600 hover:underline">
-                                {notification.actionText || 'View Details'}
-                              </a>
+                            <span className="text-xs text-gray-500">
+                              {formatTime(notification.createdAt || notification.createdAt)}
+                            </span>
+                            {notification.relatedBusiness && (
+                              <span className="text-xs text-gray-500">
+                                • {notification.relatedBusiness.name || 'Business'}
+                              </span>
                             )}
                           </div>
+                          
+                          {notification.actionUrl && (
+                            <div className="mt-3">
+                              <a 
+                                href={notification.actionUrl} 
+                                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                              >
+                                {notification.actionText || 'View Details'}
+                                <span>→</span>
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
                       {/* Actions */}
-                      <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         {isUnread && (
                           <button
-                            onClick={() => handleMarkAsRead(notification._id)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            onClick={() => handleMarkAsRead(notification._id || notification.id)}
+                            className="p-2.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                             title="Mark as read"
                           >
-                            <FaCheck />
+                            <FaCheck className="text-sm" />
                           </button>
                         )}
                         <button
-                          onClick={() => handleDelete(notification._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          onClick={() => handleDelete(notification._id || notification.id)}
+                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete"
                         >
-                          <FaTrash />
+                          <FaTrash className="text-sm" />
                         </button>
                       </div>
                     </div>
@@ -479,25 +553,27 @@ const NotificationsList = () => {
 
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between p-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 border-t border-gray-200 bg-gray-50">
                 <div className="text-sm text-gray-600">
-                  Showing {((currentPage - 1) * 20) + 1} to {Math.min(currentPage * 20, pagination.total)} of {pagination.total} notifications
+                  Showing <span className="font-medium">{((currentPage - 1) * (pagination.limit || 20)) + 1}</span> to{' '}
+                  <span className="font-medium">{Math.min(currentPage * (pagination.limit || 20), pagination.total)}</span> of{' '}
+                  <span className="font-medium">{pagination.total}</span> notifications
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
-                  <span className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-md">
+                  <span className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">
                     Page {currentPage} of {pagination.totalPages}
                   </span>
                   <button
-                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
                     disabled={currentPage >= pagination.totalPages}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                   </button>

@@ -5,6 +5,8 @@ import {
   HiOutlineRefresh, HiOutlineEye, HiOutlinePencil, HiOutlineTrash,
   HiOutlineStar, HiOutlineCalendar
 } from 'react-icons/hi';
+import adminService from '../../../services/admin/adminService';
+import { toast } from 'react-hot-toast';
 
 // Stats Card Component
 const StatsCard = memo(({ title, value, icon, color, trend }) => (
@@ -112,65 +114,97 @@ const CustomerList = () => {
     newThisMonth: 0,
     vip: 0
   });
+  const [businesses, setBusinesses] = useState([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState(localStorage.getItem('selectedBusinessId') || '');
+
+  // Fetch businesses
+  const fetchBusinesses = useCallback(async () => {
+    try {
+      const response = await adminService.getBusinesses();
+      if (response.success) {
+        setBusinesses(response.data || []);
+        if (!selectedBusinessId && response.data && response.data.length > 0) {
+          const firstBusinessId = response.data[0]._id;
+          setSelectedBusinessId(firstBusinessId);
+          localStorage.setItem('selectedBusinessId', firstBusinessId);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch businesses:', error);
+    }
+  }, [selectedBusinessId]);
 
   const fetchCustomers = useCallback(async () => {
+    if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null' || selectedBusinessId.trim() === '') {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await adminService.getCustomers({ 
-      //   page: currentPage, 
-      //   search: searchTerm,
-      //   tier: filterTier
-      // });
-      
-      // Mock data for now
-      setTimeout(() => {
-        setCustomers([
-          {
-            _id: '1',
-            fullName: 'John Doe',
-            email: 'john@example.com',
-            phone: '+91 98765 43210',
-            membershipTier: 'gold',
-            loyaltyPoints: 2500,
-            totalVisits: 15,
-            totalSpent: 45000
-          },
-          {
-            _id: '2',
-            fullName: 'Jane Smith',
-            email: 'jane@example.com',
-            phone: '+91 98765 43211',
-            membershipTier: 'platinum',
-            loyaltyPoints: 5000,
-            totalVisits: 25,
-            totalSpent: 85000
-          },
-        ]);
+      const params = {
+        businessId: selectedBusinessId,
+        page: currentPage,
+        limit: 20,
+        search: searchTerm || undefined,
+        customerType: filterTier || undefined
+      };
+
+      const [customersRes, statsRes] = await Promise.all([
+        adminService.getCustomers(params),
+        adminService.getCustomerStats({ businessId: selectedBusinessId })
+      ]);
+
+      if (customersRes.success) {
+        setCustomers(customersRes.data || []);
+        setTotalPages(customersRes.pagination?.pages || 1);
+      } else {
+        toast.error(customersRes.error || 'Failed to fetch customers');
+        setCustomers([]);
+      }
+
+      if (statsRes.success && statsRes.data) {
         setStats({
-          total: 245,
-          active: 198,
-          newThisMonth: 23,
-          vip: 12
+          total: statsRes.data.total || 0,
+          active: statsRes.data.active || 0,
+          newThisMonth: statsRes.data.newThisMonth || 0,
+          vip: statsRes.data.vip || 0
         });
-        setLoading(false);
-      }, 500);
+      }
     } catch (error) {
       console.error('Failed to fetch customers:', error);
+      toast.error('Failed to fetch customers');
+      setCustomers([]);
+    } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, filterTier]);
+  }, [currentPage, searchTerm, filterTier, selectedBusinessId]);
 
   useEffect(() => {
-    fetchCustomers();
+    fetchBusinesses();
+  }, [fetchBusinesses]);
+
+  useEffect(() => {
+    if (selectedBusinessId) {
+      fetchCustomers();
+    }
   }, [fetchCustomers]);
 
   const handleView = (id) => navigate(`/admin/customers/${id}`);
   const handleEdit = (id) => navigate(`/admin/customers/${id}/edit`);
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this customer?')) return;
-    // TODO: Implement delete
-    console.log('Delete customer:', id);
+    try {
+      const response = await adminService.deleteCustomer(id);
+      if (response.success) {
+        toast.success('Customer deleted successfully');
+        fetchCustomers();
+      } else {
+        toast.error(response.error || 'Failed to delete customer');
+      }
+    } catch (error) {
+      toast.error('Failed to delete customer');
+    }
   };
 
   return (
@@ -222,6 +256,32 @@ const CustomerList = () => {
         />
       </div>
 
+      {/* Business Selector */}
+      {businesses.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <HiOutlineUsers className="w-5 h-5 text-blue-600" />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Select Business</label>
+              <select
+                value={selectedBusinessId}
+                onChange={(e) => {
+                  setSelectedBusinessId(e.target.value);
+                  localStorage.setItem('selectedBusinessId', e.target.value);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+              >
+                {businesses.map((business) => (
+                  <option key={business._id} value={business._id}>
+                    {business.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex flex-wrap items-center gap-4">
@@ -234,6 +294,12 @@ const CustomerList = () => {
                 placeholder="Search customers..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setCurrentPage(1);
+                    fetchCustomers();
+                  }
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -242,7 +308,10 @@ const CustomerList = () => {
           {/* Tier Filter */}
           <select
             value={filterTier}
-            onChange={(e) => setFilterTier(e.target.value)}
+            onChange={(e) => {
+              setFilterTier(e.target.value);
+              setCurrentPage(1);
+            }}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">All Tiers</option>
@@ -311,9 +380,9 @@ const CustomerList = () => {
                   </td>
                 </tr>
               ) : (
-                customers.map((customer) => (
+                customers.map((customer, index) => (
                   <CustomerRow
-                    key={customer._id}
+                    key={customer.id || customer._id || `customer-${index}`}
                     customer={customer}
                     onView={handleView}
                     onEdit={handleEdit}

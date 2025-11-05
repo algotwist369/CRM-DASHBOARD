@@ -22,7 +22,7 @@ import { CustomerList as AdminCustomerList, CustomerForm, CustomerDetails as Adm
 import { ServiceList, ServiceForm, ServiceDetails } from './pages/admin/Services'
 import { AppointmentList as AdminAppointmentList, AppointmentForm, AppointmentDetails as AdminAppointmentDetails } from './pages/admin/Appointments'
 import { InvoiceList, InvoiceForm } from './pages/admin/Invoices'
-import { ReviewList } from './pages/admin/Reviews'
+import { ReviewList, ReviewDetails } from './pages/admin/Reviews'
 import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns } from './pages/admin/Campaigns'
 import { LoyaltyRewards, LoyaltyRewardForm, LoyaltyPlans, LoyaltySubscriptions } from './pages/admin/Loyalty'
 import { AdminAnalytics } from './pages/admin/Analytics'
@@ -54,6 +54,7 @@ import AppointmentStatus from './pages/public/AppointmentStatus/AppointmentStatu
 
 // Shared Pages
 import { Error, NotFound, Unauthorized } from './pages/shared'
+import BusinessSettings from './pages/shared/BusinessSettings/BusinessSettings'
 
 // Create a client
 const queryClient = new QueryClient()
@@ -87,6 +88,7 @@ function App() {
                 <Route path="businesses/:id/staff" element={<BusinessStaff />} />
                 <Route path="businesses/:id/daily-records" element={<BusinessDailyRecords />} />
                 <Route path="businesses/:id/edit" element={<EditBusiness />} />
+                <Route path="businesses/:id/settings" element={<BusinessSettings />} />
                 <Route path="businesses/:id" element={<BusinessDetails />} />
                 <Route path="managers" element={<ManagerList />} />
                 <Route path="managers/create" element={<CreateManager />} />
@@ -109,6 +111,7 @@ function App() {
                 <Route path="invoices" element={<InvoiceList />} />
                 <Route path="invoices/create" element={<InvoiceForm />} />
                 <Route path="reviews" element={<ReviewList />} />
+                <Route path="reviews/:id" element={<ReviewDetails />} />
                 <Route path="campaigns" element={<AdminCampaignList />} />
                 <Route path="campaigns/templates" element={<CampaignTemplates />} />
                 <Route path="campaigns/templates/create" element={<CampaignTemplateForm mode="create" />} />
@@ -161,6 +164,7 @@ function App() {
                 <Route path="campaigns/:id/analytics" element={<CampaignAnalytics />} />
                 <Route path="campaigns/analytics" element={<CampaignAnalyticsOverview />} />
                 <Route path="reports" element={<ManagerReports />} />
+                <Route path="business-settings" element={<BusinessSettings />} />
                 <Route path="settings" element={<ManagerSettings />} />
                 <Route index element={<Navigate to="/manager/dashboard" replace />} />
               </Route>
