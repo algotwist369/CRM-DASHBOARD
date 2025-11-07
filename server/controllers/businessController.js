@@ -39,13 +39,18 @@ const getPublicBusinesses = async (req, res, next) => {
             query.type = type;
         }
         
-        // Search by name, branch, or city
+        // Enhanced search by name, branch, city, state, address, category, tags, and business link
         if (search) {
+            const searchRegex = { $regex: search, $options: 'i' };
             query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { branch: { $regex: search, $options: 'i' } },
-                { city: { $regex: search, $options: 'i' } },
-                { businessLink: { $regex: search, $options: 'i' } }
+                { name: searchRegex },
+                { branch: searchRegex },
+                { city: searchRegex },
+                { state: searchRegex },
+                { address: searchRegex },
+                { category: searchRegex },
+                { businessLink: searchRegex },
+                { tags: { $in: [new RegExp(search, 'i')] } }
             ];
         }
         

@@ -9,6 +9,7 @@ import {
   FaClock,
   FaDollarSign
 } from 'react-icons/fa'
+import { usePageTitle } from '../../../../hooks/usePageTitle'
 
 const ServiceSelection = () => {
   const navigate = useNavigate()
@@ -17,6 +18,9 @@ const ServiceSelection = () => {
   const [business, setBusiness] = useState(null)
   const [selectedServices, setSelectedServices] = useState([])
   const [error, setError] = useState(null)
+
+  // Update page title
+  usePageTitle()
 
   useEffect(() => {
     loadBusinessData()

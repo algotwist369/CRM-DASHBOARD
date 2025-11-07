@@ -15,6 +15,7 @@ import {
   FaPrint
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
+import { usePageTitle } from '../../../../hooks/usePageTitle'
 
 const BookingConfirmation = () => {
   const navigate = useNavigate()
@@ -24,6 +25,9 @@ const BookingConfirmation = () => {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [appointment, setAppointment] = useState(null)
+
+  // Update page title
+  usePageTitle()
 
   useEffect(() => {
     loadBookingData()

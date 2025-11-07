@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -7,26 +7,18 @@ import {
   FaCalendarAlt,
   FaMapMarkerAlt,
   FaPhone,
-  FaArrowRight,
   FaClock,
   FaUsers,
   FaStar,
-  FaEnvelope,
-  FaGlobe,
   FaCheckCircle,
-  FaTag,
-  FaFacebook,
-  FaInstagram,
-  FaTwitter,
   FaWhatsapp,
-  FaExternalLinkAlt,
   FaLocationArrow,
-  FaMapPin,
   FaSync
 } from 'react-icons/fa'
 import apiClient from '../../../services/api/client'
+import { usePageTitle } from '../../../hooks/usePageTitle'
 
-// Cache utility functions
+// Constants
 const CACHE_KEYS = {
   LOCATION: 'business_location_cache',
   NEARBY_BUSINESSES: 'nearby_businesses_cache',
@@ -34,24 +26,61 @@ const CACHE_KEYS = {
 }
 
 const CACHE_DURATION = {
-  LOCATION: 24 * 60 * 60 * 1000, // 24 hours
-  BUSINESSES: 5 * 60 * 1000 // 5 minutes
+  LOCATION: 24 * 60 * 60 * 1000,
+  BUSINESSES: 5 * 60 * 1000
 }
 
+const PLACEHOLDERS = [
+  'Search by business name...',
+  'Search by location...',
+  'Search by area...',
+  'Search by city...',
+  'Search by state...',
+  'Search by service type...',
+  'Search by business link...'
+]
+
+const BUSINESS_TYPES = [
+  { value: '', label: 'All Types' },
+  { value: 'salon', label: 'Salon' },
+  { value: 'spa', label: 'Spa' },
+  { value: 'hotel', label: 'Hotel' },
+  { value: 'restaurant', label: 'Restaurant' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'gym', label: 'Gym' },
+  { value: 'clinic', label: 'Clinic' },
+  { value: 'cafe', label: 'Cafe' },
+  { value: 'studio', label: 'Studio' },
+  { value: 'education', label: 'Education' },
+  { value: 'automotive', label: 'Automotive' },
+  { value: 'others', label: 'Others' }
+]
+
+const DISTANCE_OPTIONS = [
+  { value: 2000, label: '2 km' },
+  { value: 5000, label: '5 km' },
+  { value: 10000, label: '10 km' },
+  { value: 20000, label: '20 km' },
+  { value: 50000, label: '50 km' }
+]
+
+const FEATURES = [
+  { icon: FaCalendarAlt, title: 'Easy Booking', description: 'Book appointments in just a few clicks with our simple and intuitive interface' },
+  { icon: FaClock, title: 'Real-Time Availability', description: 'See available time slots in real-time and book instantly' },
+  { icon: FaUsers, title: 'Verified Businesses', description: 'Connect with trusted and verified businesses in your area' }
+]
+
+const AREA_KEYWORDS = ['area', 'locality', 'sector', 'block', 'street', 'road', 'lane', 'colony']
+
+// Cache utilities
 const getCachedData = (key) => {
   try {
     const cached = localStorage.getItem(key)
     if (!cached) return null
-    
     const { data, timestamp } = JSON.parse(cached)
     const now = Date.now()
-    
-    // Check if cache is still valid
-    if (now - timestamp < CACHE_DURATION[key.includes('location') ? 'LOCATION' : 'BUSINESSES']) {
-      return data
-    }
-    
-    // Cache expired, remove it
+    const duration = CACHE_DURATION[key.includes('location') ? 'LOCATION' : 'BUSINESSES']
+    if (now - timestamp < duration) return data
     localStorage.removeItem(key)
     return null
   } catch (error) {
@@ -62,15 +91,50 @@ const getCachedData = (key) => {
 
 const setCachedData = (key, data) => {
   try {
-    const cacheData = {
-      data,
-      timestamp: Date.now()
-    }
-    localStorage.setItem(key, JSON.stringify(cacheData))
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }))
   } catch (error) {
     console.error('Error setting cache:', error)
   }
 }
+
+// Escape regex special characters
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// Memoized highlight function
+const createHighlightKeywords = () => {
+  const cache = new Map()
+  return (text, keywords) => {
+    if (!text || !keywords?.length) return text
+    const cacheKey = `${text}_${keywords.join('_')}`
+    if (cache.has(cacheKey)) return cache.get(cacheKey)
+    
+    let highlightedText = text
+    const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length)
+    
+    sortedKeywords.forEach(keyword => {
+      const escaped = escapeRegex(keyword.toLowerCase())
+      const regex = new RegExp(`(${escaped})`, 'gi')
+      const matches = [...text.matchAll(regex)]
+      
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const match = matches[i]
+        const start = match.index
+        const end = start + match[0].length
+        const originalText = highlightedText.substring(start, end)
+        highlightedText = 
+          highlightedText.substring(0, start) +
+          `<mark class="bg-yellow-200 text-yellow-900 font-semibold px-0.5 rounded">${originalText}</mark>` +
+          highlightedText.substring(end)
+      }
+    })
+    
+    cache.set(cacheKey, highlightedText)
+    if (cache.size > 100) cache.clear() // Prevent memory leak
+    return highlightedText
+  }
+}
+
+const highlightKeywords = createHighlightKeywords()
 
 const Home = () => {
   const navigate = useNavigate()
@@ -78,17 +142,61 @@ const Home = () => {
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState('')
-  const [viewMode, setViewMode] = useState('all') // 'all' or 'nearby'
+  const [viewMode, setViewMode] = useState('all')
   const [userLocation, setUserLocation] = useState(null)
   const [locationLoading, setLocationLoading] = useState(false)
   const [locationError, setLocationError] = useState(null)
-  const [maxDistance, setMaxDistance] = useState(5000) // Default 5km
+  const [maxDistance, setMaxDistance] = useState(5000)
   const [nearbyLoading, setNearbyLoading] = useState(false)
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState('')
+
+  usePageTitle()
+
+  // Animated placeholder
+  useEffect(() => {
+    if (searchTerm) {
+      setAnimatedPlaceholder('')
+      return
+    }
+
+    let currentIndex = 0
+    let charIndex = 0
+    let isDeleting = false
+    let timeoutId = null
+
+    const typePlaceholder = () => {
+      const currentPlaceholder = PLACEHOLDERS[currentIndex]
+      let typingSpeed = 100
+
+      if (isDeleting) {
+        setAnimatedPlaceholder(currentPlaceholder.substring(0, charIndex - 1))
+        charIndex--
+        typingSpeed = 50
+        if (charIndex === 0) {
+          isDeleting = false
+          currentIndex = (currentIndex + 1) % PLACEHOLDERS.length
+          typingSpeed = 500
+        }
+      } else {
+        setAnimatedPlaceholder(currentPlaceholder.substring(0, charIndex + 1))
+        charIndex++
+        typingSpeed = 100
+        if (charIndex === currentPlaceholder.length) {
+          typingSpeed = 2000
+          isDeleting = true
+        }
+      }
+
+      timeoutId = setTimeout(typePlaceholder, typingSpeed)
+    }
+
+    timeoutId = setTimeout(typePlaceholder, 1000)
+    return () => timeoutId && clearTimeout(timeoutId)
+  }, [searchTerm])
 
   // Get user location
   const getUserLocation = useCallback(() => {
     return new Promise((resolve, reject) => {
-      // Check cache first
       const cachedLocation = getCachedData(CACHE_KEYS.LOCATION)
       if (cachedLocation) {
         resolve(cachedLocation)
@@ -103,6 +211,12 @@ const Home = () => {
       setLocationLoading(true)
       setLocationError(null)
 
+      const errorMessages = {
+        [1]: 'Location permission denied. Please enable location access.',
+        [2]: 'Location information unavailable.',
+        [3]: 'Location request timed out.'
+      }
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const location = {
@@ -116,26 +230,11 @@ const Home = () => {
         },
         (error) => {
           setLocationLoading(false)
-          let errorMessage = 'Unable to get your location'
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = 'Location permission denied. Please enable location access.'
-              break
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Location information unavailable.'
-              break
-            case error.TIMEOUT:
-              errorMessage = 'Location request timed out.'
-              break
-          }
+          const errorMessage = errorMessages[error.code] || 'Unable to get your location'
           setLocationError(errorMessage)
           reject(new Error(errorMessage))
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
       )
     })
   }, [])
@@ -144,8 +243,6 @@ const Home = () => {
   const fetchBusinesses = useCallback(async () => {
     try {
       setLoading(true)
-      
-      // Check cache first
       const cacheKey = `${CACHE_KEYS.ALL_BUSINESSES}_${filterType}_${searchTerm}`
       const cached = getCachedData(cacheKey)
       if (cached) {
@@ -163,7 +260,7 @@ const Home = () => {
       
       const response = await apiClient.get('/business/public/list', { params })
       
-      if (response.data.success) {
+      if (response.data?.success) {
         const businessList = response.data.data || []
         setBusinesses(businessList)
         setCachedData(cacheKey, businessList)
@@ -173,6 +270,7 @@ const Home = () => {
     } catch (error) {
       console.error('Failed to fetch businesses:', error)
       setBusinesses([])
+      toast.error('Failed to load businesses. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -182,8 +280,6 @@ const Home = () => {
   const fetchNearbyBusinesses = useCallback(async (location, distance = maxDistance) => {
     try {
       setNearbyLoading(true)
-      
-      // Check cache first
       const cacheKey = `${CACHE_KEYS.NEARBY_BUSINESSES}_${location.lat}_${location.lng}_${distance}_${filterType}`
       const cached = getCachedData(cacheKey)
       if (cached) {
@@ -203,29 +299,25 @@ const Home = () => {
       
       const response = await apiClient.get('/business/public/nearby', { params })
       
-      if (response.data.success) {
-        const businessList = response.data.data || []
-        // Results are already sorted by distance from backend, but ensure consistency
-        businessList.sort((a, b) => (a.distance || 0) - (b.distance || 0))
+      if (response.data?.success) {
+        const businessList = (response.data.data || []).sort((a, b) => (a.distance || 0) - (b.distance || 0))
         setBusinesses(businessList)
         setCachedData(cacheKey, businessList)
         
-        // Show info if no results found
         if (businessList.length === 0) {
-          toast(`No businesses found within ${maxDistance / 1000}km. Try increasing the search radius.`, {
+          toast(`No businesses found within ${distance / 1000}km. Try increasing the search radius.`, {
             icon: 'ℹ️',
             duration: 4000
           })
         }
       } else {
         setBusinesses([])
-        const errorMessage = response.data.message || 'Failed to fetch nearby businesses'
-        const errorCode = response.data.code || 'UNKNOWN_ERROR'
+        const errorCode = response.data?.code || 'UNKNOWN_ERROR'
+        const errorMessage = response.data?.message || 'Failed to fetch nearby businesses'
         
-        // Handle specific error codes
-        if (errorCode === 'MISSING_COORDINATES' || errorCode === 'INVALID_COORDINATES') {
+        if (['MISSING_COORDINATES', 'INVALID_COORDINATES'].includes(errorCode)) {
           toast.error('Invalid location. Please allow location access and try again.')
-        } else if (errorCode === 'GEOSPATIAL_ERROR' || errorCode === 'GEOSPATIAL_SERVICE_UNAVAILABLE') {
+        } else if (['GEOSPATIAL_ERROR', 'GEOSPATIAL_SERVICE_UNAVAILABLE'].includes(errorCode)) {
           toast.error('Location search is temporarily unavailable. Showing all businesses instead.')
           setViewMode('all')
           fetchBusinesses()
@@ -237,46 +329,34 @@ const Home = () => {
       console.error('Failed to fetch nearby businesses:', error)
       setBusinesses([])
       
-      // Handle specific error responses
-      if (error.response?.data) {
-        const errorData = error.response.data
-        const errorCode = errorData.code || 'UNKNOWN_ERROR'
-        
-        if (errorCode === 'GEOSPATIAL_ERROR' || errorCode === 'GEOSPATIAL_SERVICE_UNAVAILABLE') {
-          toast.error('Location search is temporarily unavailable. Showing all businesses instead.')
-          setViewMode('all')
-          fetchBusinesses()
-        } else {
-          toast.error(errorData.message || 'Failed to fetch nearby businesses')
-        }
+      const errorCode = error.response?.data?.code
+      if (['GEOSPATIAL_ERROR', 'GEOSPATIAL_SERVICE_UNAVAILABLE'].includes(errorCode)) {
+        toast.error('Location search is temporarily unavailable. Showing all businesses instead.')
+        setViewMode('all')
+        fetchBusinesses()
       } else {
-        toast.error('Network error. Please check your connection and try again.')
+        toast.error(error.response?.data?.message || 'Network error. Please check your connection and try again.')
       }
     } finally {
       setNearbyLoading(false)
     }
   }, [maxDistance, filterType, fetchBusinesses])
 
-  // Initial load - fetch all businesses on mount
+  // Initial load
   useEffect(() => {
-    if (viewMode === 'all') {
-      fetchBusinesses()
-    }
+    if (viewMode === 'all') fetchBusinesses()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Initialize location and fetch businesses
+  // Initialize location
   useEffect(() => {
     const initializeLocation = async () => {
       try {
         const location = await getUserLocation()
         setUserLocation(location)
-        if (viewMode === 'nearby') {
-          await fetchNearbyBusinesses(location)
-        }
+        if (viewMode === 'nearby') await fetchNearbyBusinesses(location)
       } catch (err) {
         console.error('Location error:', err)
-        // If location fails, fall back to all businesses
         if (viewMode === 'nearby') {
           setViewMode('all')
           toast.error('Unable to get location. Showing all businesses instead.')
@@ -284,30 +364,82 @@ const Home = () => {
       }
     }
 
-    if (viewMode === 'nearby' && !userLocation) {
-      initializeLocation()
-    }
+    if (viewMode === 'nearby' && !userLocation) initializeLocation()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode])
 
-  // Filter businesses by search term (client-side for nearby mode)
-  const filteredBusinesses = React.useMemo(() => {
+  // Optimized filtering with memoization
+  const filteredBusinesses = useMemo(() => {
     if (!searchTerm.trim()) return businesses
     
     const searchLower = searchTerm.toLowerCase().trim()
-    return businesses.filter(business => {
-      const nameMatch = business.name?.toLowerCase().includes(searchLower)
-      const branchMatch = business.branch?.toLowerCase().includes(searchLower)
-      const cityMatch = business.city?.toLowerCase().includes(searchLower)
-      const addressMatch = business.address?.toLowerCase().includes(searchLower)
-      const categoryMatch = business.category?.toLowerCase().includes(searchLower)
-      const tagsMatch = business.tags?.some(tag => tag.toLowerCase().includes(searchLower))
-      
-      return nameMatch || branchMatch || cityMatch || addressMatch || categoryMatch || tagsMatch
-    })
+    const searchTerms = searchLower.split(/\s+/).filter(Boolean)
+    
+    return businesses.reduce((acc, business) => {
+      // Build searchable text once
+      const searchableText = [
+        business.name,
+        business.branch,
+        business.city,
+        business.state,
+        business.address,
+        business.category,
+        business.businessLink,
+        ...(business.tags || []),
+        ...(business.services || []).map(s => typeof s === 'object' ? s.name : s),
+        ...(business.features || [])
+      ].filter(Boolean).join(' ').toLowerCase()
+
+      // Check matches
+      const matches = {
+        name: business.name?.toLowerCase().includes(searchLower),
+        branch: business.branch?.toLowerCase().includes(searchLower),
+        city: business.city?.toLowerCase().includes(searchLower),
+        state: business.state?.toLowerCase().includes(searchLower),
+        address: business.address?.toLowerCase().includes(searchLower),
+        category: business.category?.toLowerCase().includes(searchLower),
+        businessLink: business.businessLink?.toLowerCase().includes(searchLower),
+        tags: business.tags?.some(tag => tag.toLowerCase().includes(searchLower)),
+        services: business.services?.some(s => {
+          const name = typeof s === 'object' ? s.name : s
+          return name?.toLowerCase().includes(searchLower)
+        }),
+        features: business.features?.some(f => f.toLowerCase().includes(searchLower)),
+        area: AREA_KEYWORDS.some(kw => 
+          business.address?.toLowerCase().includes(`${kw} ${searchLower}`) ||
+          business.address?.toLowerCase().includes(`${searchLower} ${kw}`)
+        )
+      }
+
+      const hasMatch = Object.values(matches).some(Boolean)
+      const multiWordMatch = searchTerms.length > 1 
+        ? searchTerms.every(term => searchableText.includes(term))
+        : true
+
+      if (hasMatch && multiWordMatch) {
+        const matchedFields = Object.entries(matches)
+          .filter(([, matched]) => matched)
+          .map(([field]) => field)
+
+        acc.push({
+          ...business,
+          _highlighted: {
+            name: highlightKeywords(business.name, searchTerms),
+            branch: business.branch ? highlightKeywords(business.branch, searchTerms) : null,
+            city: business.city ? highlightKeywords(business.city, searchTerms) : null,
+            state: business.state ? highlightKeywords(business.state, searchTerms) : null,
+            address: business.address ? highlightKeywords(business.address, searchTerms) : null,
+            category: business.category ? highlightKeywords(business.category, searchTerms) : null,
+            matchedFields
+          }
+        })
+      }
+
+      return acc
+    }, [])
   }, [businesses, searchTerm])
 
-  // Fetch businesses when view mode, search, or filter changes
+  // Debounced fetch
   useEffect(() => {
     const timer = setTimeout(() => {
       if (viewMode === 'all') {
@@ -315,13 +447,13 @@ const Home = () => {
       } else if (viewMode === 'nearby' && userLocation) {
         fetchNearbyBusinesses(userLocation)
       }
-    }, 500) // 500ms debounce
+    }, 500)
 
     return () => clearTimeout(timer)
   }, [filterType, viewMode, userLocation, fetchBusinesses, fetchNearbyBusinesses])
 
-  // Handle view mode change
-  const handleViewModeChange = async (mode) => {
+  // Handlers
+  const handleViewModeChange = useCallback(async (mode) => {
     setViewMode(mode)
     if (mode === 'nearby') {
       if (!userLocation) {
@@ -341,26 +473,22 @@ const Home = () => {
     } else {
       fetchBusinesses()
     }
-  }
+  }, [userLocation, getUserLocation, fetchNearbyBusinesses, fetchBusinesses])
 
-  // Handle refresh location
-  const handleRefreshLocation = async () => {
+  const handleRefreshLocation = useCallback(async () => {
     try {
-      // Clear location cache
       localStorage.removeItem(CACHE_KEYS.LOCATION)
       const location = await getUserLocation()
       setUserLocation(location)
-      if (viewMode === 'nearby') {
-        await fetchNearbyBusinesses(location)
-      }
+      if (viewMode === 'nearby') await fetchNearbyBusinesses(location)
       toast.success('Location updated')
     } catch (err) {
       console.error('Location refresh error:', err)
       toast.error('Failed to refresh location')
     }
-  }
+  }, [getUserLocation, viewMode, fetchNearbyBusinesses])
 
-  const handleDirectBooking = (e) => {
+  const handleDirectBooking = useCallback((e) => {
     e.preventDefault()
     const link = searchTerm.trim()
     if (link) {
@@ -368,15 +496,18 @@ const Home = () => {
     } else {
       toast.error('Please enter a business link')
     }
-  }
+  }, [searchTerm, navigate])
 
-  const handleBookAppointment = (businessLink) => {
+  const handleBookAppointment = useCallback((businessLink) => {
     if (businessLink) {
       navigate(`/book/${businessLink}/services`)
     } else {
       toast.error('Business link not available')
     }
-  }
+  }, [navigate])
+
+  const isLoading = loading || nearbyLoading
+  const hasResults = filteredBusinesses.length > 0
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -391,26 +522,24 @@ const Home = () => {
               Find and book appointments with your favorite businesses instantly
             </p>
             
-            {/* Direct Booking Input */}
             <form onSubmit={handleDirectBooking} className="max-w-2xl mx-auto px-2">
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="flex-1 relative">
-                  <FaSearch className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm sm:text-base" />
+                  <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-base" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search businesses or enter business link..."
-                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-white text-sm sm:text-base lg:text-lg"
+                    placeholder={searchTerm ? '' : animatedPlaceholder || PLACEHOLDERS[0]}
+                    className="w-full pl-12 pr-4 py-3.5 rounded-lg text-gray-900 bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base placeholder:text-gray-400"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-primary-600 rounded-lg font-semibold hover:bg-primary-50 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base lg:text-lg whitespace-nowrap"
+                  className="px-6 py-3.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center gap-2 text-base whitespace-nowrap transition-colors"
                 >
-                  <FaCalendarAlt />
-                  <span className="hidden sm:inline">Book Now</span>
-                  <span className="sm:hidden">Book</span>
+                  <FaSearch className="text-sm" />
+                  <span>Search</span>
                 </button>
               </div>
             </form>
@@ -421,7 +550,6 @@ const Home = () => {
       {/* Businesses Section */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8 sm:py-12">
         <div className="mb-6 sm:mb-8">
-          {/* View Mode Toggle */}
           <div className="flex flex-col gap-4 mb-4 sm:mb-6">
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
@@ -436,99 +564,74 @@ const Home = () => {
               </p>
             </div>
             
-            {/* View Mode Buttons */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="flex items-center gap-1 sm:gap-2 bg-gray-100 rounded-lg p-0.5 sm:p-1">
-                <button
-                  onClick={() => handleViewModeChange('all')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
-                    viewMode === 'all'
-                      ? 'bg-white text-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => handleViewModeChange('nearby')}
-                  disabled={locationLoading}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${
-                    viewMode === 'nearby'
-                      ? 'bg-white text-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  } ${locationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <FaMapMarkerAlt className="text-xs sm:text-sm" />
-                  <span className="hidden sm:inline">Nearby</span>
-                  <span className="sm:hidden">Near</span>
-                  {locationLoading && <FaSpinner className="animate-spin text-xs" />}
-                </button>
+                {['all', 'nearby'].map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => handleViewModeChange(mode)}
+                    disabled={mode === 'nearby' && locationLoading}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${
+                      viewMode === mode
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    } ${locationLoading && mode === 'nearby' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {mode === 'nearby' && <FaMapMarkerAlt className="text-xs sm:text-sm" />}
+                    <span className="hidden sm:inline">{mode === 'all' ? 'All' : 'Nearby'}</span>
+                    <span className="sm:hidden">{mode === 'all' ? 'All' : 'Near'}</span>
+                    {locationLoading && mode === 'nearby' && <FaSpinner className="animate-spin text-xs" />}
+                  </button>
+                ))}
               </div>
 
-              {/* Distance Selector (for nearby mode) */}
               {viewMode === 'nearby' && userLocation && (
-                <select
-                  value={maxDistance}
-                  onChange={(e) => {
-                    setMaxDistance(Number(e.target.value))
-                    fetchNearbyBusinesses(userLocation, Number(e.target.value))
-                  }}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-xs sm:text-sm"
-                >
-                  <option value={2000}>2 km</option>
-                  <option value={5000}>5 km</option>
-                  <option value={10000}>10 km</option>
-                  <option value={20000}>20 km</option>
-                  <option value={50000}>50 km</option>
-                </select>
-              )}
-
-              {/* Refresh Location Button */}
-              {viewMode === 'nearby' && userLocation && (
-                <button
-                  onClick={handleRefreshLocation}
-                  className="p-1.5 sm:p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  title="Refresh location"
-                >
-                  <FaSync className="text-gray-600 text-sm sm:text-base" />
-                </button>
+                <>
+                  <select
+                    value={maxDistance}
+                    onChange={(e) => {
+                      const distance = Number(e.target.value)
+                      setMaxDistance(distance)
+                      fetchNearbyBusinesses(userLocation, distance)
+                    }}
+                    className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-xs sm:text-sm"
+                  >
+                    {DISTANCE_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleRefreshLocation}
+                    className="p-1.5 sm:p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    title="Refresh location"
+                  >
+                    <FaSync className="text-gray-600 text-sm sm:text-base" />
+                  </button>
+                </>
               )}
             </div>
           </div>
 
-          {/* Filter and Search */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-            <div className="flex-1 w-full sm:w-auto">
-              {locationError && viewMode === 'nearby' && (
-                <div className="mb-3 p-2 sm:p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs sm:text-sm text-yellow-800">
-                  <FaMapMarkerAlt className="inline mr-2" />
-                  {locationError}
-                </div>
-              )}
-            </div>
+            {locationError && viewMode === 'nearby' && (
+              <div className="mb-3 p-2 sm:p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs sm:text-sm text-yellow-800">
+                <FaMapMarkerAlt className="inline mr-2" />
+                {locationError}
+              </div>
+            )}
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
             >
-              <option value="">All Types</option>
-              <option value="salon">Salon</option>
-              <option value="spa">Spa</option>
-              <option value="hotel">Hotel</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="retail">Retail</option>
-              <option value="gym">Gym</option>
-              <option value="clinic">Clinic</option>
-              <option value="cafe">Cafe</option>
-              <option value="studio">Studio</option>
-              <option value="education">Education</option>
-              <option value="automotive">Automotive</option>
-              <option value="others">Others</option>
+              {BUSINESS_TYPES.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
             </select>
           </div>
         </div>
 
-        {(loading || nearbyLoading) ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-8 sm:py-12">
             <div className="text-center">
               <FaSpinner className="animate-spin text-primary-600 text-3xl sm:text-4xl mx-auto mb-3 sm:mb-4" />
@@ -539,7 +642,7 @@ const Home = () => {
               </p>
             </div>
           </div>
-        ) : filteredBusinesses.length === 0 ? (
+        ) : !hasResults ? (
           <div className="text-center py-8 sm:py-12 bg-white rounded-xl shadow-sm border border-gray-200 px-4">
             <FaSearch className="mx-auto text-gray-400 text-3xl sm:text-4xl mb-3 sm:mb-4" />
             <p className="text-gray-600 text-base sm:text-lg mb-2">No businesses found</p>
@@ -576,7 +679,6 @@ const Home = () => {
           </div>
         ) : (
           <>
-            {/* Results Count */}
             {searchTerm && (
               <div className="mb-3 sm:mb-4 text-xs sm:text-sm text-gray-600 px-1">
                 Found {filteredBusinesses.length} {filteredBusinesses.length === 1 ? 'business' : 'businesses'}
@@ -584,202 +686,225 @@ const Home = () => {
               </div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
-            {filteredBusinesses.map((business) => {
-              // Format phone number for WhatsApp
-              const whatsappNumber = business.phone?.replace(/[^0-9]/g, '') || business.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
-              const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null
-              
-              return (
-              <div
-                key={business.id || business._id}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer transition-transform hover:scale-[1.02] sm:hover:scale-105"
-                style={{ minHeight: 'auto', maxHeight: 'none' }}
-                onClick={() => navigate(`/${business.businessLink}`)}
-              >
-                {/* Business Image - Hero Section */}
-                <div className="relative h-32 sm:h-40 md:h-48 lg:h-56 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
-                  {business.images?.banner || business.images?.thumbnail ? (
-                    <img
-                      src={business.images.banner || business.images.thumbnail}
-                      alt={business.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                        e.target.nextSibling.style.display = 'flex'
-                      }}
-                    />
-                  ) : null}
-                  <div 
-                    className={`w-full h-full flex items-center justify-center ${business.images?.banner || business.images?.thumbnail ? 'hidden' : 'flex'}`}
+              {filteredBusinesses.map((business) => {
+                const whatsappNumber = (business.phone || business.socialMedia?.whatsapp || '').replace(/[^0-9]/g, '')
+                const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null
+                const businessId = business.id || business._id
+                
+                return (
+                  <div
+                    key={businessId}
+                    className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
+                    onClick={() => navigate(`/${business.businessLink}`)}
                   >
-                    {business.images?.logo ? (
-                      <img
-                        src={business.images.logo}
-                        alt={business.name}
-                        className="max-w-[65%] max-h-[65%] object-contain"
-                      />
-                    ) : (
-                      <FaCalendarAlt className="text-primary-400 text-3xl sm:text-4xl lg:text-6xl" />
-                    )}
-                  </div>
-                  
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
-                  
-                  {/* Rating Badge - Top Right */}
-                  {business.ratings?.average > 0 && (
-                    <div className="absolute top-1.5 sm:top-2 md:top-4 right-1.5 sm:right-2 md:right-4 bg-white/98 backdrop-blur-sm px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-md sm:rounded-lg flex items-center gap-0.5 sm:gap-1 md:gap-1.5 shadow-lg border border-gray-100">
-                      <FaStar className="text-yellow-500 text-xs sm:text-sm" />
-                      <span className="text-gray-900 font-bold text-xs sm:text-sm">{business.ratings.average.toFixed(1)}</span>
-                      {business.ratings.totalReviews > 0 && (
-                        <span className="text-gray-500 text-[10px] sm:text-xs ml-0.5 hidden sm:inline">({business.ratings.totalReviews})</span>
+                    {/* Business Image */}
+                    <div className="relative h-32 sm:h-40 md:h-48 lg:h-56 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
+                      {(business.images?.banner || business.images?.thumbnail) && (
+                        <img
+                          src={business.images.banner || business.images.thumbnail}
+                          alt={business.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                            e.target.nextSibling.style.display = 'flex'
+                          }}
+                        />
+                      )}
+                      <div className={`w-full h-full flex items-center justify-center ${business.images?.banner || business.images?.thumbnail ? 'hidden' : 'flex'}`}>
+                        {business.images?.logo ? (
+                          <img src={business.images.logo} alt={business.name} className="max-w-[65%] max-h-[65%] object-contain" />
+                        ) : (
+                          <FaCalendarAlt className="text-primary-400 text-3xl sm:text-4xl lg:text-6xl" />
+                        )}
+                      </div>
+                      
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+                      
+                      {business.ratings?.average > 0 && (
+                        <div className="absolute top-1.5 sm:top-2 md:top-4 right-1.5 sm:right-2 md:right-4 bg-white/98 backdrop-blur-sm px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-md sm:rounded-lg flex items-center gap-0.5 sm:gap-1 md:gap-1.5 shadow-lg border border-gray-100">
+                          <FaStar className="text-yellow-500 text-xs sm:text-sm" />
+                          <span className="text-gray-900 font-bold text-xs sm:text-sm">{business.ratings.average.toFixed(1)}</span>
+                          {business.ratings.totalReviews > 0 && (
+                            <span className="text-gray-500 text-[10px] sm:text-xs ml-0.5 hidden sm:inline">({business.ratings.totalReviews})</span>
+                          )}
+                        </div>
+                      )}
+
+                      {business.type && (
+                        <div className="absolute top-1.5 sm:top-2 md:top-4 left-1.5 sm:left-2 md:left-4">
+                          <span className="inline-block px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 bg-primary-600/95 backdrop-blur-sm text-white rounded-md sm:rounded-lg text-[10px] sm:text-xs font-semibold capitalize shadow-lg">
+                            {business.type}
+                          </span>
+                        </div>
+                      )}
+
+                      {viewMode === 'nearby' && business.distanceKm && (
+                        <div className="absolute bottom-1.5 sm:bottom-2 md:bottom-4 right-1.5 sm:right-2 md:right-4">
+                          <span className="inline-flex items-center gap-0.5 sm:gap-1 md:gap-1.5 px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 bg-white/95 backdrop-blur-sm text-gray-900 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-semibold shadow-lg border border-gray-200">
+                            <FaLocationArrow className="text-primary-600 text-[10px] sm:text-xs" />
+                            {business.distanceKm} km
+                          </span>
+                        </div>
                       )}
                     </div>
-                  )}
 
-                  {/* Type Badge - Top Left */}
-                  {business.type && (
-                    <div className="absolute top-1.5 sm:top-2 md:top-4 left-1.5 sm:left-2 md:left-4">
-                      <span className="inline-block px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 bg-primary-600/95 backdrop-blur-sm text-white rounded-md sm:rounded-lg text-[10px] sm:text-xs font-semibold capitalize shadow-lg">
-                        {business.type}
-                      </span>
-                    </div>
-                  )}
+                    {/* Business Info */}
+                    <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 flex-1 flex flex-col">
+                      <div className="mb-1.5 sm:mb-2 md:mb-3">
+                        <h3 
+                          className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 mb-0.5 sm:mb-1 md:mb-1.5 line-clamp-1"
+                          dangerouslySetInnerHTML={{ 
+                            __html: searchTerm && business._highlighted?.name 
+                              ? business._highlighted.name 
+                              : business.name 
+                          }}
+                        />
+                        {business.branch && (
+                          <p 
+                            className="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2 line-clamp-1"
+                            dangerouslySetInnerHTML={{ 
+                              __html: searchTerm && business._highlighted?.branch 
+                                ? business._highlighted.branch 
+                                : business.branch 
+                            }}
+                          />
+                        )}
+                        
+                        {business.city && (
+                          <div className="flex items-center gap-1 sm:gap-1.5 text-gray-600 mb-1.5 sm:mb-2 md:mb-3">
+                            <FaMapMarkerAlt className="text-primary-500 text-[10px] sm:text-xs flex-shrink-0" />
+                            <span 
+                              className="text-xs sm:text-sm line-clamp-1"
+                              dangerouslySetInnerHTML={{ 
+                                __html: searchTerm && business._highlighted?.city 
+                                  ? `${business._highlighted.city}${business.state ? `, ${(business._highlighted?.state || business.state)}` : ''}`
+                                  : `${business.city}${business.state ? `, ${business.state}` : ''}`
+                              }}
+                            />
+                            {viewMode === 'nearby' && business.distanceKm && (
+                              <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5 sm:ml-1">• {business.distanceKm} km</span>
+                            )}
+                          </div>
+                        )}
 
-                  {/* Distance Badge - Bottom Right (for nearby mode) */}
-                  {viewMode === 'nearby' && business.distanceKm && (
-                    <div className="absolute bottom-1.5 sm:bottom-2 md:bottom-4 right-1.5 sm:right-2 md:right-4">
-                      <span className="inline-flex items-center gap-0.5 sm:gap-1 md:gap-1.5 px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 bg-white/95 backdrop-blur-sm text-gray-900 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-semibold shadow-lg border border-gray-200">
-                        <FaLocationArrow className="text-primary-600 text-[10px] sm:text-xs" />
-                        {business.distanceKm} km
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Business Info */}
-                <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 flex-1 flex flex-col">
-                  {/* Header Section */}
-                  <div className="mb-1.5 sm:mb-2 md:mb-3">
-                    <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 mb-0.5 sm:mb-1 md:mb-1.5 line-clamp-1">
-                      {business.name}
-                    </h3>
-                    {business.branch && (
-                      <p className="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2 line-clamp-1">{business.branch}</p>
-                    )}
-                    
-                    {/* Location */}
-                    {business.city && (
-                      <div className="flex items-center gap-1 sm:gap-1.5 text-gray-600 mb-1.5 sm:mb-2 md:mb-3">
-                        <FaMapMarkerAlt className="text-primary-500 text-[10px] sm:text-xs flex-shrink-0" />
-                        <span className="text-xs sm:text-sm line-clamp-1">
-                          {business.city}{business.state && `, ${business.state}`}
-                        </span>
-                        {viewMode === 'nearby' && business.distanceKm && (
-                          <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5 sm:ml-1">• {business.distanceKm} km</span>
+                        {searchTerm && business._highlighted?.matchedFields?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+                            <span className="text-[10px] sm:text-xs text-primary-600 font-medium">Matched:</span>
+                            {business._highlighted.matchedFields.slice(0, 3).map((field, idx) => (
+                              <span 
+                                key={idx}
+                                className="inline-flex items-center px-1.5 py-0.5 bg-primary-50 text-primary-700 rounded text-[10px] sm:text-xs font-medium capitalize"
+                              >
+                                {field}
+                              </span>
+                            ))}
+                            {business._highlighted.matchedFields.length > 3 && (
+                              <span className="text-[10px] sm:text-xs text-gray-500">
+                                +{business._highlighted.matchedFields.length - 3} more
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Description */}
-                  {business.description && (
-                    <p className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2 md:mb-3 line-clamp-2 hidden sm:block">
-                      {business.description}
-                    </p>
-                  )}
+                      {business.description && (
+                        <p className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2 md:mb-3 line-clamp-2 hidden sm:block">
+                          {business.description}
+                        </p>
+                      )}
 
-                  {/* Services */}
-                  {business.services && business.services.length > 0 && (
-                    <div className="mb-1.5 sm:mb-2 md:mb-3">
-                      <div className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-1.5 hidden sm:block">Services:</div>
-                      <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                        {business.services.slice(0, 2).map((service, idx) => (
-                          <span key={idx} className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-50 text-blue-700 rounded text-[10px] sm:text-xs">
-                            {service.name}
-                          </span>
-                        ))}
-                        {business.services.length > 2 && (
-                          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 rounded text-[10px] sm:text-xs">
-                            +{business.services.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                      {business.services?.length > 0 && (
+                        <div className="mb-1.5 sm:mb-2 md:mb-3">
+                          <div className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-1.5 hidden sm:block">Services:</div>
+                          <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                            {business.services.slice(0, 2).map((service, idx) => {
+                              const serviceName = typeof service === 'object' ? service.name : service
+                              const highlightedService = searchTerm 
+                                ? highlightKeywords(serviceName, searchTerm.split(/\s+/).filter(Boolean))
+                                : serviceName
+                              return (
+                                <span 
+                                  key={idx} 
+                                  className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-50 text-blue-700 rounded text-[10px] sm:text-xs"
+                                  dangerouslySetInnerHTML={{ __html: highlightedService }}
+                                />
+                              )
+                            })}
+                            {business.services.length > 2 && (
+                              <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 rounded text-[10px] sm:text-xs">
+                                +{business.services.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
-                  {/* Features - Hidden on mobile */}
-                  {business.features && business.features.length > 0 && (
-                    <div className="mb-1.5 sm:mb-2 md:mb-3 hidden sm:block">
-                      <div className="text-xs font-semibold text-gray-700 mb-1.5">Features:</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {business.features.slice(0, 3).map((feature, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
-                            <FaCheckCircle className="text-xs" />
-                            {feature}
-                          </span>
-                        ))}
-                        {business.features.length > 3 && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                            +{business.features.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                      {business.features?.length > 0 && (
+                        <div className="mb-1.5 sm:mb-2 md:mb-3 hidden sm:block">
+                          <div className="text-xs font-semibold text-gray-700 mb-1.5">Features:</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {business.features.slice(0, 3).map((feature, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
+                                <FaCheckCircle className="text-xs" />
+                                {feature}
+                              </span>
+                            ))}
+                            {business.features.length > 3 && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                                +{business.features.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
-                  {/* Spacer */}
-                  <div className="flex-1 hidden sm:block"></div>
+                      <div className="flex-1 hidden sm:block"></div>
 
-                  {/* Action Buttons */}
-                  <div className="space-y-1.5 sm:space-y-2 md:space-y-2.5 pt-2 sm:pt-3 border-t border-gray-100">
-                    {/* Primary Book Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleBookAppointment(business.businessLink)
-                      }}
-                      className="w-full flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 bg-primary-600 text-white rounded-lg sm:rounded-xl font-semibold shadow-md text-xs sm:text-sm md:text-base"
-                    >
-                      <FaCalendarAlt className="text-xs sm:text-sm" />
-                      <span className="hidden sm:inline">Book Appointment</span>
-                      <span className="sm:hidden">Book</span>
-                    </button>
-
-                    {/* Call and WhatsApp Buttons */}
-                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5">
-                      {/* Call Button */}
-                      {business.phone && (
-                        <a
-                          href={`tel:${business.phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-blue-50 text-blue-700 rounded-lg sm:rounded-xl border border-blue-200 font-medium text-[10px] sm:text-xs md:text-sm"
+                      <div className="space-y-1.5 sm:space-y-2 md:space-y-2.5 pt-2 sm:pt-3 border-t border-gray-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleBookAppointment(business.businessLink)
+                          }}
+                          className="w-full flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 bg-primary-600 text-white rounded-lg sm:rounded-xl font-semibold shadow-md text-xs sm:text-sm md:text-base"
                         >
-                          <FaPhone className="text-[10px] sm:text-xs" />
-                          <span>Call</span>
-                        </a>
-                      )}
+                          <FaCalendarAlt className="text-xs sm:text-sm" />
+                          <span className="hidden sm:inline">Book Appointment</span>
+                          <span className="sm:hidden">Book</span>
+                        </button>
 
-                      {/* WhatsApp Button */}
-                      {whatsappUrl && (
-                        <a
-                          href={whatsappUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-green-50 text-green-700 rounded-lg sm:rounded-xl border border-green-200 font-medium text-[10px] sm:text-xs md:text-sm"
-                        >
-                          <FaWhatsapp className="text-[10px] sm:text-xs" />
-                          <span className="hidden sm:inline">WhatsApp</span>
-                          <span className="sm:hidden">WA</span>
-                        </a>
-                      )}
+                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5">
+                          {business.phone && (
+                            <a
+                              href={`tel:${business.phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-blue-50 text-blue-700 rounded-lg sm:rounded-xl border border-blue-200 font-medium text-[10px] sm:text-xs md:text-sm"
+                            >
+                              <FaPhone className="text-[10px] sm:text-xs" />
+                              <span>Call</span>
+                            </a>
+                          )}
+
+                          {whatsappUrl && (
+                            <a
+                              href={whatsappUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-green-50 text-green-700 rounded-lg sm:rounded-xl border border-green-200 font-medium text-[10px] sm:text-xs md:text-sm"
+                            >
+                              <FaWhatsapp className="text-[10px] sm:text-xs" />
+                              <span className="hidden sm:inline">WhatsApp</span>
+                              <span className="sm:hidden">WA</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )})}
+                )
+              })}
             </div>
           </>
         )}
@@ -789,33 +914,18 @@ const Home = () => {
       <div className="bg-white border-t border-gray-200 py-8 sm:py-10 lg:py-12">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
-            <div className="px-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <FaCalendarAlt className="text-primary-600 text-xl sm:text-2xl" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">Easy Booking</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Book appointments in just a few clicks with our simple and intuitive interface
-              </p>
-            </div>
-            <div className="px-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <FaClock className="text-primary-600 text-xl sm:text-2xl" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">Real-Time Availability</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                See available time slots in real-time and book instantly
-              </p>
-            </div>
-            <div className="px-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <FaUsers className="text-primary-600 text-xl sm:text-2xl" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">Verified Businesses</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Connect with trusted and verified businesses in your area
-              </p>
-            </div>
+            {FEATURES.map((feature, idx) => {
+              const Icon = feature.icon
+              return (
+                <div key={idx} className="px-2">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <Icon className="text-primary-600 text-xl sm:text-2xl" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">{feature.title}</h3>
+                  <p className="text-sm sm:text-base text-gray-600">{feature.description}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

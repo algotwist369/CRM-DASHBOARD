@@ -10,6 +10,7 @@ import {
   FaClock
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
+import { usePageTitle } from '../../../../hooks/usePageTitle'
 
 const TimeSelection = () => {
   const navigate = useNavigate()
@@ -20,6 +21,9 @@ const TimeSelection = () => {
   const [availableSlots, setAvailableSlots] = useState([])
   const [loading, setLoading] = useState(false)
   const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Update page title
+  usePageTitle()
 
   useEffect(() => {
     loadBusinessData()

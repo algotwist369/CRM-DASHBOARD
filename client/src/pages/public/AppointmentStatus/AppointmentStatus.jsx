@@ -20,6 +20,7 @@ import {
 } from 'react-icons/fa'
 import apiClient from '../../../services/api/client'
 import { endpoints } from '../../../constants/api/endpoints'
+import { usePageTitle } from '../../../hooks/usePageTitle'
 
 const AppointmentStatus = () => {
   const navigate = useNavigate()
@@ -29,6 +30,9 @@ const AppointmentStatus = () => {
   const [cancelling, setCancelling] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+
+  // Update page title
+  usePageTitle()
 
   useEffect(() => {
     if (confirmationCode) {
