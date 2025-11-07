@@ -10,7 +10,7 @@ import { SocketProvider } from './contexts/SocketContext'
 import { AuthLayout, AdminLayout, ManagerLayout, StaffLayout, PublicLayout } from './layouts'
 
 // Auth Pages
-import { Login, ManagerLogin, Register, ForgotPassword, ResetPassword, OTPVerification } from './pages/auth'
+import { Login, ManagerLogin, StaffLogin, Register, ForgotPassword, ResetPassword, OTPVerification } from './pages/auth'
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard/AdminDashboard'
@@ -72,6 +72,7 @@ function App() {
               <Route path="/auth" element={<AuthLayout />}>
                 <Route path="login" element={<Login />} />
                 <Route path="manager-login" element={<ManagerLogin />} />
+                <Route path="staff-login" element={<StaffLogin />} />
                 <Route path="register" element={<Register />} />
                 <Route path="forgot-password" element={<ForgotPassword />} />
                 <Route path="reset-password" element={<ResetPassword />} />
