@@ -355,30 +355,10 @@ const AdminDashboard = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
       {/* Header Section */}
-      <div className="mb-6 sm:mb-8">
-        <div className="bg-white rounded-lg p-5 sm:p-6 border border-gray-200">
+      <div className="">
+        <div className="">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                  <FaChartLine className="text-white text-lg" />
-                </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    Admin Dashboard
-                  </h1>
-                  <p className="text-xs sm:text-sm text-gray-500">
-                    Real-time business insights
-                  </p>
-                </div>
-              </div>
-              <p className="text-sm sm:text-base text-gray-600">
-                Welcome back, <span className="font-semibold text-primary-600">{dashboard?.admin?.name || 'Admin'}</span>
-                {dashboard?.admin?.companyName && (
-                  <span className="text-gray-500"> • {dashboard.admin.companyName}</span>
-                )}
-              </p>
-            </div>
+            <div></div>
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={handleGoBack}

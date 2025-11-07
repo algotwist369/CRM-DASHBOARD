@@ -16,6 +16,7 @@ import {
   FaInfoCircle,
   FaCopy,
   FaCheck,
+  FaCog,
 } from "react-icons/fa";
 import { HiRefresh } from "react-icons/hi";
 import businessService from "../../../../services/admin/businessService";
@@ -106,6 +107,15 @@ const BusinessDetails = () => {
       setLoading(true);
       const res = await businessService.getBusiness(id);
       const data = res?.data?.data || res?.data;
+      
+      // If business doesn't have link, fetch it separately
+      if (data && !data.businessLink) {
+        const linkRes = await businessService.getBusinessLink(id);
+        if (linkRes.success && linkRes.data) {
+          data.businessLink = linkRes.data.businessLink || linkRes.data.link;
+        }
+      }
+      
       setBusiness(data || null);
     } catch (error) {
       console.error('Failed to fetch business:', error);
@@ -257,6 +267,13 @@ const BusinessDetails = () => {
             >
               <FaChartBar className="text-sm" /> 
               <span>Analytics</span>
+            </button>
+            <button
+              onClick={() => navigate(`/admin/businesses/${id}/settings`)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium"
+            >
+              <FaCog className="text-sm" /> 
+              <span>Settings</span>
             </button>
           </div>
         </div>

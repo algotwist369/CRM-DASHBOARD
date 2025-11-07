@@ -127,8 +127,8 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       icon: <HiOutlineChartBar className="w-5 h-5" />,
     },
     {
-      name: 'Settings',
-      href: '/manager/settings',
+      name: 'Business Settings',
+      href: '/manager/business-settings',
       icon: <HiOutlineCog className="w-5 h-5" />,
     },
   ]

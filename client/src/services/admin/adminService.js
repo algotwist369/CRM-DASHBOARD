@@ -231,6 +231,47 @@ class AdminService {
     }
   }
 
+  // ================== ADMIN PROFILE & SETTINGS ==================
+
+  // Get admin profile
+  async getAdminProfile() {
+    try {
+      const response = await apiClient.get(endpoints.admin.getProfile)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch admin profile'
+      }
+    }
+  }
+
+  // Update admin profile
+  async updateAdminProfile(profileData) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updateProfile, profileData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update admin profile'
+      }
+    }
+  }
+
+  // Update admin password
+  async updateAdminPassword(passwordData) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updatePassword, passwordData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update password'
+      }
+    }
+  }
+
   // ================== BUSINESS MANAGEMENT ==================
 
   // Create business
@@ -316,7 +357,12 @@ class AdminService {
   // Get all campaigns
   async getCampaigns(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.campaigns.list, { params })
+      // Filter out invalid businessId values
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.campaigns.list, { params: cleanParams })
       return response.data
     } catch (error) {
       return {
@@ -329,7 +375,12 @@ class AdminService {
   // Get campaign stats
   async getCampaignStats(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.campaigns.stats, { params })
+      // Filter out invalid businessId values
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.campaigns.stats, { params: cleanParams })
       return response.data
     } catch (error) {
       return {
@@ -547,6 +598,750 @@ class AdminService {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to fetch best time'
+      }
+    }
+  }
+
+  // ============ CUSTOMER MANAGEMENT ============
+  
+  // Get customers
+  async getCustomers(params = {}) {
+    try {
+      // Filter out invalid businessId values
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.customers.list, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customers'
+      }
+    }
+  }
+
+  // Get customer by ID
+  async getCustomer(id) {
+    try {
+      const response = await apiClient.get(endpoints.customers.getById(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer'
+      }
+    }
+  }
+
+  // Create customer
+  async createCustomer(customerData) {
+    try {
+      const response = await apiClient.post(endpoints.customers.list, customerData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create customer'
+      }
+    }
+  }
+
+  // Update customer
+  async updateCustomer(id, customerData) {
+    try {
+      const response = await apiClient.put(endpoints.customers.update(id), customerData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update customer'
+      }
+    }
+  }
+
+  // Delete customer
+  async deleteCustomer(id) {
+    try {
+      const response = await apiClient.delete(endpoints.customers.getById(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete customer'
+      }
+    }
+  }
+
+  // Get customer stats
+  async getCustomerStats(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(`${endpoints.customers.list}/stats`, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer stats'
+      }
+    }
+  }
+
+  // ============ SERVICE MANAGEMENT ============
+  
+  // Get services
+  async getServices(params = {}) {
+    try {
+      // Filter out invalid businessId values
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.services.list, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch services'
+      }
+    }
+  }
+
+  // Get service by ID
+  async getService(id) {
+    try {
+      const response = await apiClient.get(endpoints.services.getById(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch service'
+      }
+    }
+  }
+
+  // Create service
+  async createService(serviceData) {
+    try {
+      const response = await apiClient.post(endpoints.services.create, serviceData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create service'
+      }
+    }
+  }
+
+  // Update service
+  async updateService(id, serviceData) {
+    try {
+      const response = await apiClient.put(endpoints.services.update(id), serviceData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update service'
+      }
+    }
+  }
+
+  // Delete service
+  async deleteService(id) {
+    try {
+      const response = await apiClient.delete(endpoints.services.delete(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete service'
+      }
+    }
+  }
+
+  // Get service categories
+  async getServiceCategories(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.services.categories, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch service categories'
+      }
+    }
+  }
+
+  // Get popular services
+  async getPopularServices(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.services.popular, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch popular services'
+      }
+    }
+  }
+
+  // ============ APPOINTMENT MANAGEMENT ============
+  
+  // Get appointments
+  async getAppointments(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.appointments.list, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointments'
+      }
+    }
+  }
+
+  // Get appointment stats
+  async getAppointmentStats(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.appointments.stats, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment stats'
+      }
+    }
+  }
+
+  // Get appointment by ID
+  async getAppointment(id) {
+    try {
+      const response = await apiClient.get(endpoints.appointments.getById(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment'
+      }
+    }
+  }
+
+  // Create appointment
+  async createAppointment(appointmentData) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.create, appointmentData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create appointment'
+      }
+    }
+  }
+
+  // Update appointment
+  async updateAppointment(id, appointmentData) {
+    try {
+      const response = await apiClient.put(endpoints.appointments.update(id), appointmentData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update appointment'
+      }
+    }
+  }
+
+  // Confirm appointment
+  async confirmAppointment(id) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.confirm(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to confirm appointment'
+      }
+    }
+  }
+
+  // Start appointment
+  async startAppointment(id) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.start(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to start appointment'
+      }
+    }
+  }
+
+  // Complete appointment
+  async completeAppointment(id, data = {}) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.complete(id), data)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to complete appointment'
+      }
+    }
+  }
+
+  // Cancel appointment
+  async cancelAppointment(id, data = {}) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.cancel(id), data)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to cancel appointment'
+      }
+    }
+  }
+
+  // Reschedule appointment
+  async rescheduleAppointment(id, data) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.reschedule(id), data)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to reschedule appointment'
+      }
+    }
+  }
+
+  // Mark as no-show
+  async markNoShow(id) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.markNoShow(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to mark as no-show'
+      }
+    }
+  }
+
+  // ============ INVOICE MANAGEMENT ============
+  
+  // Get invoices
+  async getInvoices(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.invoices.list, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch invoices'
+      }
+    }
+  }
+
+  // Get invoice stats
+  async getInvoiceStats(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.invoices.stats, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch invoice stats'
+      }
+    }
+  }
+
+  // Get invoice by ID
+  async getInvoice(id) {
+    try {
+      const response = await apiClient.get(endpoints.invoices.getById(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch invoice'
+      }
+    }
+  }
+
+  // Create invoice
+  async createInvoice(invoiceData) {
+    try {
+      const response = await apiClient.post(endpoints.invoices.create, invoiceData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create invoice'
+      }
+    }
+  }
+
+  // Update invoice
+  async updateInvoice(id, invoiceData) {
+    try {
+      const response = await apiClient.put(endpoints.invoices.update(id), invoiceData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update invoice'
+      }
+    }
+  }
+
+  // Cancel invoice
+  async cancelInvoice(id) {
+    try {
+      const response = await apiClient.post(endpoints.invoices.cancel(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to cancel invoice'
+      }
+    }
+  }
+
+  // Add payment to invoice
+  async addPaymentToInvoice(id, paymentData) {
+    try {
+      const response = await apiClient.post(endpoints.invoices.addPayment(id), paymentData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add payment'
+      }
+    }
+  }
+
+  // Add refund to invoice
+  async addRefundToInvoice(id, refundData) {
+    try {
+      const response = await apiClient.post(endpoints.invoices.addRefund(id), refundData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add refund'
+      }
+    }
+  }
+
+  // Get overdue invoices
+  async getOverdueInvoices(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.invoices.overdue, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch overdue invoices'
+      }
+    }
+  }
+
+  // ============ REVIEW MANAGEMENT ============
+  
+  // Get reviews
+  async getReviews(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.reviews.list, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch reviews'
+      }
+    }
+  }
+
+  // Get review stats
+  async getReviewStats(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.reviews.stats, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch review stats'
+      }
+    }
+  }
+
+  // Get review by ID
+  async getReview(id) {
+    try {
+      const response = await apiClient.get(endpoints.reviews.getById(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch review'
+      }
+    }
+  }
+
+  // Create review
+  async createReview(reviewData) {
+    try {
+      const response = await apiClient.post(endpoints.reviews.create, reviewData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create review'
+      }
+    }
+  }
+
+  // Update review
+  async updateReview(id, reviewData) {
+    try {
+      const response = await apiClient.put(endpoints.reviews.update(id), reviewData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update review'
+      }
+    }
+  }
+
+  // Delete review
+  async deleteReview(id) {
+    try {
+      const response = await apiClient.delete(endpoints.reviews.delete(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete review'
+      }
+    }
+  }
+
+  // Approve review
+  async approveReview(id) {
+    try {
+      const response = await apiClient.post(endpoints.reviews.approve(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to approve review'
+      }
+    }
+  }
+
+  // Reject review
+  async rejectReview(id, reason) {
+    try {
+      const response = await apiClient.post(endpoints.reviews.reject(id), { reason })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to reject review'
+      }
+    }
+  }
+
+  // Add response to review
+  async addResponseToReview(id, responseData) {
+    try {
+      const response = await apiClient.post(endpoints.reviews.addResponse(id), responseData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add response'
+      }
+    }
+  }
+
+  // Get featured reviews
+  async getFeaturedReviews(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.reviews.featured, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch featured reviews'
+      }
+    }
+  }
+
+  // ============ ANALYTICS ============
+  
+  // Get dashboard overview
+  async getDashboardOverview(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.analytics.dashboard, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch dashboard overview'
+      }
+    }
+  }
+
+  // Get revenue analytics
+  async getRevenueAnalytics(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.analytics.revenue, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch revenue analytics'
+      }
+    }
+  }
+
+  // Get customer analytics
+  async getCustomerAnalytics(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.analytics.customers, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer analytics'
+      }
+    }
+  }
+
+  // Get service performance
+  async getServicePerformance(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.analytics.services, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch service performance'
+      }
+    }
+  }
+
+  // Get appointment analytics
+  async getAppointmentAnalytics(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.analytics.appointments, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment analytics'
+      }
+    }
+  }
+
+  // Get staff performance
+  async getStaffPerformance(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.analytics.staff, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch staff performance'
+      }
+    }
+  }
+
+  // Get trends and predictions
+  async getTrendsAndPredictions(params = {}) {
+    try {
+      const cleanParams = { ...params }
+      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.analytics.trends, { params: cleanParams })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch trends and predictions'
       }
     }
   }

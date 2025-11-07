@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlinePencil, HiOutlineTrash, HiOutlineStar, HiOutlineCalendar, HiOutlineDocumentText, HiOutlineGift } from 'react-icons/hi';
+import adminService from '../../../services/admin/adminService';
+import { toast } from 'react-hot-toast';
 
 const CustomerDetails = () => {
   const navigate = useNavigate();
@@ -10,48 +12,66 @@ const CustomerDetails = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    // TODO: Fetch customer data
-    setTimeout(() => {
-      setCustomer({
-        _id: id,
-        fullName: 'John Doe',
-        email: 'john@example.com',
-        phone: '+91 98765 43210',
-        dateOfBirth: '1990-01-15',
-        gender: 'Male',
-        address: '123 Main St, Apartment 4B',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400001',
-        membershipTier: 'gold',
-        loyaltyPoints: 2500,
-        totalVisits: 15,
-        totalSpent: 45000,
-        lastVisit: '2024-01-15',
-        joinedDate: '2023-06-10',
-        notes: 'VIP customer, prefers morning appointments',
-        appointments: [
-          { id: 1, service: 'Haircut', date: '2024-01-15', status: 'completed', amount: 500 },
-          { id: 2, service: 'Hair Color', date: '2024-01-10', status: 'completed', amount: 2000 }
-        ],
-        invoices: [
-          { id: 1, invoiceNumber: 'INV-001', date: '2024-01-15', amount: 500, status: 'paid' },
-          { id: 2, invoiceNumber: 'INV-002', date: '2024-01-10', amount: 2000, status: 'paid' }
-        ],
-        loyaltyHistory: [
-          { id: 1, type: 'earned', points: 50, reason: 'Purchase', date: '2024-01-15' },
-          { id: 2, type: 'redeemed', points: -100, reason: '10% Discount', date: '2024-01-10' }
-        ]
-      });
-      setLoading(false);
-    }, 500);
-  }, [id]);
+    const fetchCustomer = async () => {
+      try {
+        setLoading(true);
+        const response = await adminService.getCustomer(id);
+        if (response.success) {
+          const customerData = response.data;
+          // Map backend data to frontend format
+          setCustomer({
+            ...customerData,
+            _id: customerData._id || customerData.id,
+            fullName: customerData.fullName || `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim(),
+            email: customerData.email || '',
+            phone: customerData.phone || '',
+            dateOfBirth: customerData.dateOfBirth || '',
+            gender: customerData.gender || '',
+            address: customerData.address?.address || customerData.address || '',
+            city: customerData.address?.city || '',
+            state: customerData.address?.state || '',
+            pincode: customerData.address?.pincode || customerData.address?.zipCode || '',
+            membershipTier: customerData.membershipTier || 'none',
+            loyaltyPoints: customerData.loyaltyPoints || 0,
+            totalVisits: customerData.totalVisits || 0,
+            totalSpent: customerData.totalSpent || 0,
+            lastVisit: customerData.lastVisit || customerData.firstVisit || '',
+            joinedDate: customerData.createdAt || customerData.firstVisit || '',
+            notes: customerData.notes || '',
+            appointments: customerData.appointments || [],
+            invoices: customerData.invoices || [],
+            loyaltyHistory: customerData.loyaltyHistory || []
+          });
+        } else {
+          toast.error(response.error || 'Failed to fetch customer');
+          navigate('/admin/customers');
+        }
+      } catch (error) {
+        console.error('Failed to fetch customer:', error);
+        toast.error('Failed to fetch customer');
+        navigate('/admin/customers');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      // TODO: Delete API call
-      alert('Customer deleted!');
-      navigate('/admin/customers');
+    if (id) {
+      fetchCustomer();
+    }
+  }, [id, navigate]);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this customer?')) return;
+    try {
+      const response = await adminService.deleteCustomer(id);
+      if (response.success) {
+        toast.success('Customer deleted successfully');
+        navigate('/admin/customers');
+      } else {
+        toast.error(response.error || 'Failed to delete customer');
+      }
+    } catch (error) {
+      toast.error('Failed to delete customer');
     }
   };
 
@@ -141,7 +161,7 @@ const CustomerDetails = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Spent</p>
-              <p className="text-2xl font-bold text-purple-600 mt-2">₹{customer.totalSpent.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-purple-600 mt-2">₹{(customer.totalSpent || 0).toLocaleString()}</p>
             </div>
             <div className="p-3 rounded-full bg-purple-100">
               <HiOutlineDocumentText className="w-6 h-6 text-purple-600" />
@@ -154,7 +174,7 @@ const CustomerDetails = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Membership</p>
               <span className={`inline-flex mt-2 px-3 py-1 text-sm font-semibold rounded-full ${getTierBadge(customer.membershipTier)}`}>
-                {customer.membershipTier.toUpperCase()}
+                {(customer.membershipTier || 'none').toUpperCase()}
               </span>
             </div>
             <div className="p-3 rounded-full bg-yellow-100">
@@ -210,8 +230,8 @@ const CustomerDetails = () => {
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-3">Additional Information</h3>
                 <dl className="space-y-3">
-                  <div><dt className="text-sm text-gray-600">Joined Date</dt><dd className="text-sm font-medium text-gray-900 mt-1">{new Date(customer.joinedDate).toLocaleDateString()}</dd></div>
-                  <div><dt className="text-sm text-gray-600">Last Visit</dt><dd className="text-sm font-medium text-gray-900 mt-1">{new Date(customer.lastVisit).toLocaleDateString()}</dd></div>
+                  <div><dt className="text-sm text-gray-600">Joined Date</dt><dd className="text-sm font-medium text-gray-900 mt-1">{customer.joinedDate ? new Date(customer.joinedDate).toLocaleDateString() : 'N/A'}</dd></div>
+                  <div><dt className="text-sm text-gray-600">Last Visit</dt><dd className="text-sm font-medium text-gray-900 mt-1">{customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'N/A'}</dd></div>
                   <div><dt className="text-sm text-gray-600">Notes</dt><dd className="text-sm font-medium text-gray-900 mt-1">{customer.notes || 'No notes'}</dd></div>
                 </dl>
               </div>
@@ -223,9 +243,18 @@ const CustomerDetails = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead><tr><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th></tr></thead>
                 <tbody className="divide-y divide-gray-200">
-                  {customer.appointments.map((apt) => (
-                    <tr key={apt.id}><td className="px-4 py-3 text-sm text-gray-900">{apt.service}</td><td className="px-4 py-3 text-sm text-gray-900">{new Date(apt.date).toLocaleDateString()}</td><td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{apt.status}</span></td><td className="px-4 py-3 text-sm text-gray-900">₹{apt.amount}</td></tr>
-                  ))}
+                  {customer.appointments && customer.appointments.length > 0 ? (
+                    customer.appointments.map((apt, index) => (
+                      <tr key={apt.id || apt._id || `apt-${index}`}>
+                        <td className="px-4 py-3 text-sm text-gray-900">{apt.service?.name || apt.service || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{apt.date ? new Date(apt.date).toLocaleDateString() : 'N/A'}</td>
+                        <td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{apt.status || 'completed'}</span></td>
+                        <td className="px-4 py-3 text-sm text-gray-900">₹{apt.amount || apt.total || 0}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4" className="px-4 py-8 text-center text-gray-500">No appointments found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -236,9 +265,18 @@ const CustomerDetails = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead><tr><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice#</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th></tr></thead>
                 <tbody className="divide-y divide-gray-200">
-                  {customer.invoices.map((inv) => (
-                    <tr key={inv.id}><td className="px-4 py-3 text-sm text-gray-900">{inv.invoiceNumber}</td><td className="px-4 py-3 text-sm text-gray-900">{new Date(inv.date).toLocaleDateString()}</td><td className="px-4 py-3 text-sm text-gray-900">₹{inv.amount}</td><td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{inv.status}</span></td></tr>
-                  ))}
+                  {customer.invoices && customer.invoices.length > 0 ? (
+                    customer.invoices.map((inv, index) => (
+                      <tr key={inv.id || inv._id || `inv-${index}`}>
+                        <td className="px-4 py-3 text-sm text-gray-900">{inv.invoiceNumber || inv.invoiceId || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{inv.date ? new Date(inv.date).toLocaleDateString() : inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">₹{inv.amount || inv.total || 0}</td>
+                        <td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{inv.status || 'paid'}</span></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4" className="px-4 py-8 text-center text-gray-500">No invoices found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -249,9 +287,18 @@ const CustomerDetails = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead><tr><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Points</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th></tr></thead>
                 <tbody className="divide-y divide-gray-200">
-                  {customer.loyaltyHistory.map((item) => (
-                    <tr key={item.id}><td className="px-4 py-3"><span className={`px-2 py-1 text-xs rounded-full ${item.type === 'earned' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{item.type}</span></td><td className="px-4 py-3 text-sm font-medium text-gray-900">{item.points > 0 ? '+' : ''}{item.points}</td><td className="px-4 py-3 text-sm text-gray-900">{item.reason}</td><td className="px-4 py-3 text-sm text-gray-900">{new Date(item.date).toLocaleDateString()}</td></tr>
-                  ))}
+                  {customer.loyaltyHistory && customer.loyaltyHistory.length > 0 ? (
+                    customer.loyaltyHistory.map((item, index) => (
+                      <tr key={item.id || item._id || `loyalty-${index}`}>
+                        <td className="px-4 py-3"><span className={`px-2 py-1 text-xs rounded-full ${item.type === 'earned' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{item.type || 'earned'}</span></td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.points > 0 ? '+' : ''}{item.points || 0}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{item.reason || item.description || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{item.date ? new Date(item.date).toLocaleDateString() : item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4" className="px-4 py-8 text-center text-gray-500">No loyalty history found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>

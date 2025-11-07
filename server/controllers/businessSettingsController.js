@@ -1,7 +1,15 @@
-// businessSettingsController.js - Business settings management
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
+const mongoose = require("mongoose");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
+
+// Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id) => {
+    if (!id || id === 'undefined' || id === 'null') {
+        return false;
+    }
+    return mongoose.Types.ObjectId.isValid(id);
+};
 
 // ================== Get Business Settings ==================
 const getBusinessSettings = async (req, res, next) => {
@@ -13,15 +21,27 @@ const getBusinessSettings = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -32,11 +52,25 @@ const getBusinessSettings = async (req, res, next) => {
             });
         }
 
+        // Convert businessHours Map/Object to plain object for response
+        let hoursObj = {};
+        if (business.businessHours) {
+            if (business.businessHours instanceof Map) {
+                // Convert Map to object
+                business.businessHours.forEach((value, key) => {
+                    hoursObj[key] = value;
+                });
+            } else {
+                // Already an object
+                hoursObj = business.businessHours;
+            }
+        }
+        
         return res.json({
             success: true,
             data: {
                 settings: business.settings || {},
-                businessHours: business.businessHours || {},
+                businessHours: hoursObj,
                 holidays: business.holidays || [],
                 notifications: business.notificationPreferences || {}
             }
@@ -56,15 +90,27 @@ const updateBusinessHours = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -75,22 +121,33 @@ const updateBusinessHours = async (req, res, next) => {
             });
         }
 
-        // Validate business hours format
+        // Validate and format business hours
         const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const formattedHours = {};
+        
         for (const day of daysOfWeek) {
             if (businessHours[day]) {
                 const { isOpen, openTime, closeTime } = businessHours[day];
-                if (isOpen && (!openTime || !closeTime)) {
+                if (isOpen !== false && (!openTime || !closeTime)) {
                     return res.status(400).json({
                         success: false,
                         message: `Invalid hours for ${day}. Please provide both openTime and closeTime.`
                     });
                 }
+                // Format and store hours for this day
+                formattedHours[day] = {
+                    isOpen: isOpen !== undefined ? isOpen : true,
+                    openTime: openTime || '09:00',
+                    closeTime: closeTime || '18:00'
+                };
             }
         }
 
-        business.businessHours = businessHours;
+        business.businessHours = formattedHours;
+        business.markModified('businessHours'); // Required for Mixed type fields in Mongoose
         await business.save();
+        
+        console.log('✅ Business hours saved successfully for business:', business._id);
 
         // Invalidate cache
         await deleteCache(`business:${business._id}`);
@@ -115,15 +172,27 @@ const updateAppointmentSettings = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -142,7 +211,8 @@ const updateAppointmentSettings = async (req, res, next) => {
             ...business.settings.appointmentSettings,
             ...appointmentSettings
         };
-
+        
+        business.markModified('settings'); // Required for nested objects
         await business.save();
 
         // Invalidate cache
@@ -168,15 +238,27 @@ const updateNotificationPreferences = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -191,7 +273,8 @@ const updateNotificationPreferences = async (req, res, next) => {
             ...business.notificationPreferences,
             ...notificationPreferences
         };
-
+        
+        business.markModified('notificationPreferences'); // Ensure changes are saved
         await business.save();
 
         // Invalidate cache
@@ -224,15 +307,27 @@ const addHoliday = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -263,7 +358,8 @@ const addHoliday = async (req, res, next) => {
             date: new Date(date),
             reason: reason || "Holiday"
         });
-
+        
+        business.markModified('holidays'); // Required for arrays
         await business.save();
 
         // Invalidate cache
@@ -296,15 +392,27 @@ const removeHoliday = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -318,7 +426,8 @@ const removeHoliday = async (req, res, next) => {
         business.holidays = business.holidays.filter(
             h => new Date(h.date).toDateString() !== new Date(date).toDateString()
         );
-
+        
+        business.markModified('holidays'); // Required for arrays
         await business.save();
 
         // Invalidate cache
@@ -344,15 +453,27 @@ const updatePaymentSettings = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -365,6 +486,7 @@ const updatePaymentSettings = async (req, res, next) => {
 
         if (paymentMethods) {
             business.paymentMethods = paymentMethods;
+            business.markModified('paymentMethods');
         }
 
         if (bankDetails) {
@@ -372,6 +494,7 @@ const updatePaymentSettings = async (req, res, next) => {
                 ...business.bankDetails,
                 ...bankDetails
             };
+            business.markModified('bankDetails');
         }
 
         await business.save();
@@ -402,15 +525,27 @@ const updateTaxSettings = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -429,7 +564,8 @@ const updateTaxSettings = async (req, res, next) => {
             ...business.settings.taxSettings,
             ...taxSettings
         };
-
+        
+        business.markModified('settings'); // Required for nested objects
         await business.save();
 
         // Invalidate cache
@@ -455,15 +591,27 @@ const updateGeneralSettings = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -482,7 +630,8 @@ const updateGeneralSettings = async (req, res, next) => {
             ...business.settings,
             ...generalSettings
         };
-
+        
+        business.markModified('settings'); // Required for nested objects
         await business.save();
 
         // Invalidate cache
@@ -508,15 +657,27 @@ const updateLoyaltySettings = async (req, res, next) => {
         // Determine business
         let business;
         if (userRole === 'admin') {
-            if (!businessId) {
+            if (!businessId || !isValidObjectId(businessId)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Business ID is required"
+                    message: "Valid Business ID is required"
                 });
             }
             business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found or business not assigned"
+                });
+            }
+            if (!isValidObjectId(manager.business)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid business ID for manager"
+                });
+            }
             business = await Business.findById(manager.business);
         }
 
@@ -530,7 +691,7 @@ const updateLoyaltySettings = async (req, res, next) => {
         if (!business.settings) {
             business.settings = {};
         }
-
+        
         business.settings.loyaltySettings = {
             enabled: loyaltySettings.enabled || false,
             pointsPerRupee: loyaltySettings.pointsPerRupee || 1,
@@ -544,7 +705,8 @@ const updateLoyaltySettings = async (req, res, next) => {
             minPointsToRedeem: loyaltySettings.minPointsToRedeem || 100,
             ...loyaltySettings
         };
-
+        
+        business.markModified('settings'); // Required for nested objects
         await business.save();
 
         // Invalidate cache

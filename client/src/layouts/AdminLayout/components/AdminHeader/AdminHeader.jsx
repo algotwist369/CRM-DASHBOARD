@@ -1,17 +1,109 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../../../../components'
 import { HiMenu, HiX } from 'react-icons/hi'
 import AdminNotificationBell from '../../../../components/notifications/AdminNotificationBell'
 
 const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   const handleLogout = () => {
     // In a real app, this would clear auth tokens and redirect
     console.log('Logging out...')
   }
+
+  // Function to generate breadcrumb items from current route
+  const getBreadcrumbs = () => {
+    const pathname = location.pathname
+    const pathSegments = pathname.split('/').filter(Boolean)
+    
+    // Route name mappings
+    const routeNames = {
+      'admin': 'Admin',
+      'dashboard': 'Dashboard',
+      'businesses': 'Businesses',
+      'create': 'Create',
+      'edit': 'Edit',
+      'analytics': 'Analytics',
+      'staff': 'Staff',
+      'daily-records': 'Daily Records',
+      'managers': 'Managers',
+      'customers': 'Customers',
+      'services': 'Services',
+      'appointments': 'Appointments',
+      'invoices': 'Invoices',
+      'reviews': 'Reviews',
+      'campaigns': 'Campaigns',
+      'templates': 'Templates',
+      'automated': 'Automated',
+      'loyalty': 'Loyalty',
+      'rewards': 'Rewards',
+      'plans': 'Plans',
+      'subscriptions': 'Subscriptions',
+      'daily-business': 'Daily Business',
+      'notifications': 'Notifications',
+      'reports': 'Reports',
+      'settings': 'Settings',
+    }
+
+    const breadcrumbs = []
+    
+    // Always start with Admin
+    if (pathSegments.length > 0 && pathSegments[0] === 'admin') {
+      breadcrumbs.push({ name: 'Admin', path: '/admin' })
+      
+      // Build breadcrumb for remaining segments
+      let currentPath = '/admin'
+      for (let i = 1; i < pathSegments.length; i++) {
+        const segment = pathSegments[i]
+        const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) || /^\d+$/.test(segment)
+        
+        if (isId) {
+          // This is an ID segment - always update path
+          currentPath += `/${segment}`
+          
+          // Check if there's a next segment (like "edit", "analytics", etc.)
+          const nextSegment = pathSegments[i + 1]
+          if (nextSegment && !(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nextSegment) || /^\d+$/.test(nextSegment))) {
+            // There's a next segment that's not an ID, skip adding "Details" breadcrumb
+            // The next iteration will handle the action segment (edit, analytics, etc.)
+            // But we still need to include the ID in the path
+          } else {
+            // This is the last segment or followed by another ID, add "Details"
+            const prevSegment = pathSegments[i - 1]
+            const prevName = routeNames[prevSegment] || prevSegment.charAt(0).toUpperCase() + prevSegment.slice(1)
+            breadcrumbs.push({ 
+              name: `${prevName} Details`, 
+              path: currentPath 
+            })
+          }
+        } else {
+          // Regular segment
+          currentPath += `/${segment}`
+          const name = routeNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+          breadcrumbs.push({ name, path: currentPath })
+        }
+      }
+      
+      // If on dashboard or just /admin, ensure Dashboard is shown
+      if (breadcrumbs.length === 1) {
+        if (pathname === '/admin/dashboard' || pathname === '/admin') {
+          breadcrumbs.push({ name: 'Dashboard', path: '/admin/dashboard' })
+        }
+      }
+    }
+    
+    return breadcrumbs
+  }
+
+  const breadcrumbs = getBreadcrumbs()
+  const ChevronIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  )
 
   return (
     <header className="w-full h-16 bg-white/90 backdrop-blur border-b border-gray-200 flex-shrink-0">
@@ -29,11 +121,23 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
           </button>
           {/* Breadcrumb */}
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
-            <span>Admin</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-gray-900 font-medium">Dashboard</span>
+            {breadcrumbs.map((crumb, index) => (
+              <React.Fragment key={crumb.path}>
+                {index === breadcrumbs.length - 1 ? (
+                  <span className="text-gray-900 font-medium">{crumb.name}</span>
+                ) : (
+                  <>
+                    <span 
+                      className="hover:text-gray-900 cursor-pointer"
+                      onClick={() => navigate(crumb.path)}
+                    >
+                      {crumb.name}
+                    </span>
+                    <ChevronIcon />
+                  </>
+                )}
+              </React.Fragment>
+            ))}
           </nav>
         </div>
 

@@ -22,6 +22,10 @@ export const endpoints = {
     markAllNotificationsRead: `${API_BASE_URL}/admin/notifications/read-all`,
     deleteNotification: (id) => `${API_BASE_URL}/admin/notifications/${id}`,
     deleteAllNotifications: `${API_BASE_URL}/admin/notifications/all`,
+    // Profile & Settings
+    getProfile: `${API_BASE_URL}/admin/profile`,
+    updateProfile: `${API_BASE_URL}/admin/profile`,
+    updatePassword: `${API_BASE_URL}/admin/password`,
     // Business Management
     businesses: `${API_BASE_URL}/admin/businesses`,
     business: (id) => `${API_BASE_URL}/admin/${id}`,
@@ -58,6 +62,7 @@ export const endpoints = {
 
   // Appointment endpoints
   appointments: {
+    // Public/booking endpoints
     businessInfo: (link) => `${API_BASE_URL}/appointments/business/${link}/info`,
     businessInfoById: (id) => `${API_BASE_URL}/appointments/business/${id}/info`,
     availableSlots: (link) => `${API_BASE_URL}/appointments/business/${link}/slots`,
@@ -66,7 +71,19 @@ export const endpoints = {
     bookAppointmentById: `${API_BASE_URL}/appointments/book`,
     appointmentByCode: (code) => `${API_BASE_URL}/appointments/confirmation/${code}`,
     cancelAppointment: (code) => `${API_BASE_URL}/appointments/confirmation/${code}/cancel`,
-    getAppointments: `${API_BASE_URL}/appointments`,
+    // Admin/Manager endpoints
+    list: `${API_BASE_URL}/appointments`,
+    create: `${API_BASE_URL}/appointments`,
+    getById: (id) => `${API_BASE_URL}/appointments/${id}`,
+    update: (id) => `${API_BASE_URL}/appointments/${id}`,
+    stats: `${API_BASE_URL}/appointments/stats`,
+    confirm: (id) => `${API_BASE_URL}/appointments/${id}/confirm`,
+    start: (id) => `${API_BASE_URL}/appointments/${id}/start`,
+    complete: (id) => `${API_BASE_URL}/appointments/${id}/complete`,
+    cancel: (id) => `${API_BASE_URL}/appointments/${id}/cancel`,
+    reschedule: (id) => `${API_BASE_URL}/appointments/${id}/reschedule`,
+    markNoShow: (id) => `${API_BASE_URL}/appointments/${id}/no-show`,
+    addReview: (id) => `${API_BASE_URL}/appointments/${id}/review`,
     updateAppointmentStatus: (id) => `${API_BASE_URL}/appointments/${id}/status`,
   },
 
@@ -82,8 +99,11 @@ export const endpoints = {
   // Customer endpoints
   customers: {
     list: `${API_BASE_URL}/customers`,
+    create: `${API_BASE_URL}/customers`,
     getById: (id) => `${API_BASE_URL}/customers/${id}`,
     update: (id) => `${API_BASE_URL}/customers/${id}`,
+    delete: (id) => `${API_BASE_URL}/customers/${id}`,
+    stats: `${API_BASE_URL}/customers/stats`,
     addNote: (id) => `${API_BASE_URL}/customers/${id}/notes`,
     getTimeline: (id) => `${API_BASE_URL}/customers/${id}/timeline`,
     getSegments: `${API_BASE_URL}/customers/analytics/segments`,
@@ -106,8 +126,22 @@ export const endpoints = {
   // Report endpoints
   reports: {
     list: `${API_BASE_URL}/reports`,
+    analytics: `${API_BASE_URL}/reports/analytics`,
     getAnalytics: `${API_BASE_URL}/reports/analytics`,
     export: `${API_BASE_URL}/reports/export`,
+  },
+
+  // Service endpoints
+  services: {
+    list: `${API_BASE_URL}/services`,
+    create: `${API_BASE_URL}/services`,
+    getById: (id) => `${API_BASE_URL}/services/${id}`,
+    update: (id) => `${API_BASE_URL}/services/${id}`,
+    delete: (id) => `${API_BASE_URL}/services/${id}`,
+    popular: `${API_BASE_URL}/services/popular`,
+    featured: `${API_BASE_URL}/services/featured`,
+    categories: `${API_BASE_URL}/services/categories`,
+    updateInventory: (id) => `${API_BASE_URL}/services/${id}/inventory`,
   },
 
   // Daily Business endpoints
@@ -165,6 +199,60 @@ export const endpoints = {
     customerPattern: (customerId) => `${API_BASE_URL}/campaigns/analytics/customer-pattern/${customerId}`,
     compareCampaigns: `${API_BASE_URL}/campaigns/analytics/compare`,
     insights: `${API_BASE_URL}/campaigns/analytics/insights`,
+  },
+
+  // Business Settings endpoints
+  businessSettings: {
+    get: `${API_BASE_URL}/settings`,
+    updateBusinessHours: `${API_BASE_URL}/settings/business-hours`,
+    updateAppointments: `${API_BASE_URL}/settings/appointments`,
+    updateNotifications: `${API_BASE_URL}/settings/notifications`,
+    updatePayments: `${API_BASE_URL}/settings/payments`,
+    updateTax: `${API_BASE_URL}/settings/tax`,
+    updateGeneral: `${API_BASE_URL}/settings/general`,
+    updateLoyalty: `${API_BASE_URL}/settings/loyalty`,
+    addHoliday: `${API_BASE_URL}/settings/holidays`,
+    removeHoliday: `${API_BASE_URL}/settings/holidays`,
+  },
+
+  // Invoice endpoints
+  invoices: {
+    list: `${API_BASE_URL}/invoices`,
+    create: `${API_BASE_URL}/invoices`,
+    getById: (id) => `${API_BASE_URL}/invoices/${id}`,
+    update: (id) => `${API_BASE_URL}/invoices/${id}`,
+    cancel: (id) => `${API_BASE_URL}/invoices/${id}/cancel`,
+    stats: `${API_BASE_URL}/invoices/stats`,
+    overdue: `${API_BASE_URL}/invoices/overdue`,
+    addPayment: (id) => `${API_BASE_URL}/invoices/${id}/payment`,
+    addRefund: (id) => `${API_BASE_URL}/invoices/${id}/refund`,
+  },
+
+  // Review endpoints
+  reviews: {
+    list: `${API_BASE_URL}/reviews`,
+    create: `${API_BASE_URL}/reviews`,
+    getById: (id) => `${API_BASE_URL}/reviews/${id}`,
+    update: (id) => `${API_BASE_URL}/reviews/${id}`,
+    delete: (id) => `${API_BASE_URL}/reviews/${id}`,
+    stats: `${API_BASE_URL}/reviews/stats`,
+    featured: `${API_BASE_URL}/reviews/featured`,
+    approve: (id) => `${API_BASE_URL}/reviews/${id}/approve`,
+    reject: (id) => `${API_BASE_URL}/reviews/${id}/reject`,
+    flag: (id) => `${API_BASE_URL}/reviews/${id}/flag`,
+    addResponse: (id) => `${API_BASE_URL}/reviews/${id}/response`,
+    markHelpful: (id) => `${API_BASE_URL}/reviews/${id}/helpful`,
+  },
+
+  // Analytics endpoints
+  analytics: {
+    dashboard: `${API_BASE_URL}/analytics/dashboard`,
+    revenue: `${API_BASE_URL}/analytics/revenue`,
+    customers: `${API_BASE_URL}/analytics/customers`,
+    services: `${API_BASE_URL}/analytics/services`,
+    appointments: `${API_BASE_URL}/analytics/appointments`,
+    staff: `${API_BASE_URL}/analytics/staff`,
+    trends: `${API_BASE_URL}/analytics/trends`,
   },
 }
 

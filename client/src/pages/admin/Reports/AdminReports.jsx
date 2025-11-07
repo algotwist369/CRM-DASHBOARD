@@ -33,7 +33,7 @@ const AdminReports = () => {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const res = await apiClient.get(endpoints.reports.analytics)
+      const res = await apiClient.get(endpoints.reports.getAnalytics || endpoints.reports.analytics)
       if (res.data.success) {
         setAnalytics(res.data.data)
       }
@@ -75,10 +75,15 @@ const AdminReports = () => {
     return `₹${amount.toLocaleString('en-IN')}`
   }
 
+  // Calculate totals from backend data
   const totalIncome = reports.reduce((sum, r) => sum + (r.totalIncome || 0), 0)
   const totalCustomers = reports.reduce((sum, r) => sum + (r.totalCustomers || 0), 0)
   const totalExpenses = reports.reduce((sum, r) => sum + (r.totalExpenses || 0), 0)
   const totalProfit = totalIncome - totalExpenses
+  
+  // Use analytics data if available for more accurate totals
+  const displayIncome = analytics?.revenue?.reduce((sum, item) => sum + (item.totalIncome || 0), 0) || totalIncome
+  const displayProfit = totalProfit
 
   return (
     <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
@@ -111,20 +116,40 @@ const AdminReports = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
-          <p className="text-xs text-blue-700 font-medium mb-1">Total Income</p>
-          <p className="text-xl font-bold text-blue-900">{formatCurrency(totalIncome)}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-blue-700 font-medium mb-1">Total Income</p>
+              <p className="text-xl font-bold text-blue-900">{formatCurrency(displayIncome)}</p>
+            </div>
+            <FaRupeeSign className="w-8 h-8 text-blue-600 opacity-50" />
+          </div>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4">
-          <p className="text-xs text-green-700 font-medium mb-1">Net Profit</p>
-          <p className="text-xl font-bold text-green-900">{formatCurrency(totalProfit)}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-green-700 font-medium mb-1">Net Profit</p>
+              <p className="text-xl font-bold text-green-900">{formatCurrency(displayProfit)}</p>
+            </div>
+            <FaMoneyBillWave className="w-8 h-8 text-green-600 opacity-50" />
+          </div>
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4">
-          <p className="text-xs text-purple-700 font-medium mb-1">Customers</p>
-          <p className="text-xl font-bold text-purple-900">{totalCustomers}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-purple-700 font-medium mb-1">Customers</p>
+              <p className="text-xl font-bold text-purple-900">{totalCustomers}</p>
+            </div>
+            <FaUsers className="w-8 h-8 text-purple-600 opacity-50" />
+          </div>
         </div>
         <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4">
-          <p className="text-xs text-orange-700 font-medium mb-1">Records</p>
-          <p className="text-xl font-bold text-orange-900">{reports.length}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-orange-700 font-medium mb-1">Records</p>
+              <p className="text-xl font-bold text-orange-900">{reports.length}</p>
+            </div>
+            <FaChartLine className="w-8 h-8 text-orange-600 opacity-50" />
+          </div>
         </div>
       </div>
 
@@ -157,29 +182,35 @@ const AdminReports = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {reports.map((r) => (
-                  <tr key={r._id} className="hover:bg-gray-50 transition-colors">
+                {reports.map((r, index) => (
+                  <tr key={r._id || r.id || `report-${index}`} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-700">
-                      {new Date(r.date || r.createdAt).toLocaleDateString('en-IN', {
+                      {r.date ? new Date(r.date).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric'
-                      })}
+                      }) : r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      }) : '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       {r.manager?.username || r.manager?.name || '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{r.totalCustomers || 0}</td>
-                    <td className="px-4 py-3 text-green-700 font-medium">{formatCurrency(r.totalIncome)}</td>
-                    <td className="px-4 py-3 text-red-600">{formatCurrency(r.totalExpenses)}</td>
-                    <td className="px-4 py-3 text-blue-700 font-semibold">{formatCurrency(r.netProfit)}</td>
+                    <td className="px-4 py-3 text-green-700 font-medium">{formatCurrency(r.totalIncome || 0)}</td>
+                    <td className="px-4 py-3 text-red-600">{formatCurrency(r.totalExpenses || 0)}</td>
+                    <td className="px-4 py-3 text-blue-700 font-semibold">
+                      {formatCurrency((r.totalIncome || 0) - (r.totalExpenses || 0))}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        r.isCompleted 
+                        r.isCompleted !== false 
                           ? 'bg-green-100 text-green-700' 
                           : 'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {r.isCompleted ? 'Completed' : 'In Progress'}
+                        {r.isCompleted !== false ? 'Completed' : 'In Progress'}
                       </span>
                     </td>
                   </tr>
