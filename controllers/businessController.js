@@ -1,5 +1,14 @@
 // businessController.js - Business-specific operations for managers and admins
 const Business = require("../models/Business");
+const mongoose = require("mongoose");
+
+// Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id) => {
+    if (!id || id === 'undefined' || id === 'null') {
+        return false;
+    }
+    return mongoose.Types.ObjectId.isValid(id);
+};
 const Staff = require("../models/Staff");
 const DailyBusiness = require("../models/DailyBusiness");
 const Transaction = require("../models/Transaction");
@@ -212,6 +221,14 @@ const getBusinessById = async (req, res, next) => {
         const { id } = req.params;
         const userId = req.user.id;
         const userRole = req.user.role;
+
+        // Validate ID
+        if (!id || !isValidObjectId(id)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid Business ID is required" 
+            });
+        }
 
         let query = { _id: id, isActive: true };
 
@@ -726,8 +743,14 @@ const updateBusiness = async (req, res, next) => {
         let business;
         let businessId = id;
 
-        // Check access based on role
+        // Validate ID for admin
         if (userRole === 'admin') {
+            if (!id || !isValidObjectId(id)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Valid Business ID is required" 
+                });
+            }
             // Admin can update any of their businesses
             business = await Business.findOne({ _id: id, admin: userId });
             if (!business) {
@@ -743,6 +766,14 @@ const updateBusiness = async (req, res, next) => {
             // If no ID provided, update manager's own business
             if (!id || id === 'mine') {
                 businessId = manager.business.toString();
+            }
+
+            // Validate businessId before query
+            if (!businessId || !isValidObjectId(businessId)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Valid Business ID is required" 
+                });
             }
 
             business = await Business.findById(businessId);
