@@ -1,79 +1,143 @@
 import React, { useState } from 'react'
-import { Button, Dropdown } from '../../../../components'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Button } from '../../../../components'
+import { HiMenu, HiX } from 'react-icons/hi'
+import AdminNotificationBell from '../../../../components/notifications/AdminNotificationBell'
 
 const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
-  const [notifications] = useState([
-    {
-      id: 1,
-      title: 'New business registration',
-      message: 'Elite Hair Studio has registered for the platform',
-      time: '2 minutes ago',
-      unread: true
-    },
-    {
-      id: 2,
-      title: 'System maintenance',
-      message: 'Scheduled maintenance will occur tonight at 2 AM',
-      time: '1 hour ago',
-      unread: true
-    },
-    {
-      id: 3,
-      title: 'Monthly report ready',
-      message: 'Your monthly analytics report is now available',
-      time: '3 hours ago',
-      unread: false
-    }
-  ])
-
+  const navigate = useNavigate()
+  const location = useLocation()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
-
-  const unreadCount = notifications.filter(n => n.unread).length
 
   const handleLogout = () => {
     // In a real app, this would clear auth tokens and redirect
     console.log('Logging out...')
   }
 
-  const handleNotificationClick = (notificationId) => {
-    // In a real app, this would mark notification as read
-    console.log('Notification clicked:', notificationId)
+  // Function to generate breadcrumb items from current route
+  const getBreadcrumbs = () => {
+    const pathname = location.pathname
+    const pathSegments = pathname.split('/').filter(Boolean)
+    
+    // Route name mappings
+    const routeNames = {
+      'admin': 'Admin',
+      'dashboard': 'Dashboard',
+      'businesses': 'Businesses',
+      'create': 'Create',
+      'edit': 'Edit',
+      'analytics': 'Analytics',
+      'staff': 'Staff',
+      'daily-records': 'Daily Records',
+      'managers': 'Managers',
+      'customers': 'Customers',
+      'services': 'Services',
+      'appointments': 'Appointments',
+      'invoices': 'Invoices',
+      'reviews': 'Reviews',
+      'campaigns': 'Campaigns',
+      'templates': 'Templates',
+      'automated': 'Automated',
+      'loyalty': 'Loyalty',
+      'rewards': 'Rewards',
+      'plans': 'Plans',
+      'subscriptions': 'Subscriptions',
+      'daily-business': 'Daily Business',
+      'notifications': 'Notifications',
+      'reports': 'Reports',
+      'settings': 'Settings',
+    }
+
+    const breadcrumbs = []
+    
+    // Always start with Admin
+    if (pathSegments.length > 0 && pathSegments[0] === 'admin') {
+      breadcrumbs.push({ name: 'Admin', path: '/admin' })
+      
+      // Build breadcrumb for remaining segments
+      let currentPath = '/admin'
+      for (let i = 1; i < pathSegments.length; i++) {
+        const segment = pathSegments[i]
+        const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) || /^\d+$/.test(segment)
+        
+        if (isId) {
+          // This is an ID segment - always update path
+          currentPath += `/${segment}`
+          
+          // Check if there's a next segment (like "edit", "analytics", etc.)
+          const nextSegment = pathSegments[i + 1]
+          if (nextSegment && !(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nextSegment) || /^\d+$/.test(nextSegment))) {
+            // There's a next segment that's not an ID, skip adding "Details" breadcrumb
+            // The next iteration will handle the action segment (edit, analytics, etc.)
+            // But we still need to include the ID in the path
+          } else {
+            // This is the last segment or followed by another ID, add "Details"
+            const prevSegment = pathSegments[i - 1]
+            const prevName = routeNames[prevSegment] || prevSegment.charAt(0).toUpperCase() + prevSegment.slice(1)
+            breadcrumbs.push({ 
+              name: `${prevName} Details`, 
+              path: currentPath 
+            })
+          }
+        } else {
+          // Regular segment
+          currentPath += `/${segment}`
+          const name = routeNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+          breadcrumbs.push({ name, path: currentPath })
+        }
+      }
+      
+      // If on dashboard or just /admin, ensure Dashboard is shown
+      if (breadcrumbs.length === 1) {
+        if (pathname === '/admin/dashboard' || pathname === '/admin') {
+          breadcrumbs.push({ name: 'Dashboard', path: '/admin/dashboard' })
+        }
+      }
+    }
+    
+    return breadcrumbs
   }
 
-  const formatTime = (timeString) => {
-    return timeString
-  }
+  const breadcrumbs = getBreadcrumbs()
+  const ChevronIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  )
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
-      <div className="flex items-center justify-between">
+    <header className="w-full h-16 bg-white/90 backdrop-blur border-b border-gray-200 flex-shrink-0">
+      <div className="h-full px-4 flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
+          {/* Sidebar toggle (mobile) */}
+          <button
+            type="button"
             onClick={onSidebarToggle}
-            className="mr-4 text-gray-600 hover:text-gray-900"
+            className="lg:hidden mr-3 inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            aria-label="Toggle sidebar"
           >
-            {isSidebarCollapsed ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-          </Button>
-
+            {isSidebarCollapsed ? <HiMenu className="h-6 w-6" /> : <HiX className="h-6 w-6" />}
+          </button>
           {/* Breadcrumb */}
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
-            <span>Admin</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-gray-900 font-medium">Dashboard</span>
+            {breadcrumbs.map((crumb, index) => (
+              <React.Fragment key={crumb.path}>
+                {index === breadcrumbs.length - 1 ? (
+                  <span className="text-gray-900 font-medium">{crumb.name}</span>
+                ) : (
+                  <>
+                    <span 
+                      className="hover:text-gray-900 cursor-pointer"
+                      onClick={() => navigate(crumb.path)}
+                    >
+                      {crumb.name}
+                    </span>
+                    <ChevronIcon />
+                  </>
+                )}
+              </React.Fragment>
+            ))}
           </nav>
         </div>
 
@@ -85,7 +149,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-64 lg:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <svg
                 className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
@@ -99,59 +163,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
           </div>
 
           {/* Notifications */}
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setNotificationMenuOpen(!notificationMenuOpen)}
-              className="relative text-gray-600 hover:text-gray-900"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828z" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Notification Dropdown */}
-            {notificationMenuOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      onClick={() => handleNotificationClick(notification.id)}
-                      className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                        notification.unread ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start">
-                        <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                          notification.unread ? 'bg-blue-500' : 'bg-gray-300'
-                        }`}></div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-gray-900">{notification.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                          <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-4 border-t border-gray-200">
-                  <Button variant="outline" size="sm" className="w-full">
-                    View All Notifications
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          <AdminNotificationBell />
 
           {/* User Menu */}
           <div className="relative">
@@ -225,13 +237,10 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
       </div>
 
       {/* Click outside to close dropdowns */}
-      {(userMenuOpen || notificationMenuOpen) && (
+      {userMenuOpen && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => {
-            setUserMenuOpen(false)
-            setNotificationMenuOpen(false)
-          }}
+          onClick={() => setUserMenuOpen(false)}
         ></div>
       )}
     </header>

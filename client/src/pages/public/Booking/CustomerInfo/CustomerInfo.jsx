@@ -1,408 +1,353 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Card, Button, Input, Alert } from '../../../../components'
 import { toast } from 'react-hot-toast'
+import {
+  FaSpinner,
+  FaArrowLeft,
+  FaArrowRight,
+  FaUser,
+  FaEnvelope,
+  FaPhone,
+  FaCalendarAlt,
+  FaMapMarkerAlt
+} from 'react-icons/fa'
 
 const CustomerInfo = () => {
   const navigate = useNavigate()
   const { businessLink } = useParams()
-  const [loading, setLoading] = useState(false)
+  const [business, setBusiness] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
     phone: '',
     dateOfBirth: '',
     gender: '',
     address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    emergencyContact: '',
-    emergencyPhone: '',
     notes: '',
-    marketingConsent: false,
-    smsConsent: false
+    specialRequests: ''
   })
   const [errors, setErrors] = useState({})
-  const [selectedService, setSelectedService] = useState(null)
-  const [selectedStaff, setSelectedStaff] = useState(null)
-  const [selectedDateTime, setSelectedDateTime] = useState(null)
 
   useEffect(() => {
-    // Get selected data from session storage
-    const service = sessionStorage.getItem('selectedService')
-    const staff = sessionStorage.getItem('selectedStaff')
-    const dateTime = sessionStorage.getItem('selectedDateTime')
-    
-    if (service) {
-      setSelectedService(JSON.parse(service))
-    }
-    if (staff) {
-      setSelectedStaff(JSON.parse(staff))
-    }
-    if (dateTime) {
-      setSelectedDateTime(JSON.parse(dateTime))
-    }
-  }, [])
+    loadBusinessData()
+    loadCustomerData()
+  }, [businessLink])
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }))
+  const loadBusinessData = () => {
+    const businessData = sessionStorage.getItem('bookingBusiness')
+    if (businessData) {
+      try {
+        const parsed = JSON.parse(businessData)
+        setBusiness(parsed)
+        setLoading(false)
+      } catch (error) {
+        navigate(`/${businessLink}`)
+      }
+    } else {
+      navigate(`/${businessLink}`)
     }
   }
 
-  const validateForm = () => {
+  const loadCustomerData = () => {
+    const saved = sessionStorage.getItem('customerInfo')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setFormData(prev => ({ ...prev, ...parsed }))
+      } catch (error) {
+        console.error('Failed to load customer data')
+      }
+    }
+  }
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  const validate = () => {
     const newErrors = {}
-    
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required'
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required'
-    if (!formData.email.trim()) newErrors.email = 'Email is required'
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
-    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
-    else if (!/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) newErrors.phone = 'Phone number is invalid'
-    
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required'
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required'
+    } else if (!/^[0-9]{10}$/.test(formData.phone.replace(/\D/g, ''))) {
+      newErrors.phone = 'Please enter a valid 10-digit phone number'
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleContinue = async () => {
-    if (!validateForm()) return
-    
-    try {
-      setLoading(true)
-      setErrors({})
-      
-      // Store customer info in session storage
-      sessionStorage.setItem('customerInfo', JSON.stringify(formData))
-      
-      toast.success('Customer information saved!')
-      
-      // Navigate to confirmation page
-      navigate(`/book/${businessLink}/confirm`)
-    } catch (error) {
-      console.error('Error saving customer info:', error)
-      setErrors({ general: 'An unexpected error occurred' })
-      toast.error('An unexpected error occurred')
-    } finally {
-      setLoading(false)
+  const handleContinue = () => {
+    if (!validate()) {
+      toast.error('Please fill in all required fields correctly')
+      return
     }
+
+    sessionStorage.setItem('customerInfo', JSON.stringify(formData))
+    navigate(`/book/${businessLink}/confirmation`) // Go to booking confirmation page
   }
 
   const handleBack = () => {
-    navigate('/booking/time-selection')
+    navigate(`/book/${businessLink}/time`) // Go back to time selection page
   }
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
-  const formatTime = (timeString) => {
-    const [hours, minutes] = timeString.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const displayHour = hour % 12 || 12
-    return `${displayHour}:${minutes} ${ampm}`
-  }
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+  if (loading || !business) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="text-center">
+          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Information</h1>
-          <p className="text-lg text-gray-600">Please provide your contact details to complete the booking</p>
+        <div className="mb-6">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <FaArrowLeft />
+            Back
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Your Information</h1>
+          <p className="text-gray-600 mt-2">Please provide your details to complete the booking</p>
         </div>
 
-        {/* Progress Indicator */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">1</span>
-              </div>
-              <div className="w-16 h-1 bg-primary-600"></div>
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">2</span>
-              </div>
-              <div className="w-16 h-1 bg-primary-600"></div>
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">3</span>
-              </div>
-              <div className="w-16 h-1 bg-primary-600"></div>
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">4</span>
-              </div>
-              <div className="w-16 h-1 bg-primary-600"></div>
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">5</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-center mt-2">
-            <span className="text-sm text-gray-500">Customer Information</span>
-          </div>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Form */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+              {/* Required Fields */}
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Required Information</h2>
+                <div className="space-y-4">
+                  {/* Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaUser className="inline mr-2" />
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                        errors.name ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter your full name"
+                    />
+                    {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                  </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Customer Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Personal Information */}
-            <Card>
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Email */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
-                    <Input
-                      value={formData.firstName}
-                      onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      placeholder="Enter first name"
-                      error={errors.firstName}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
-                    <Input
-                      value={formData.lastName}
-                      onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      placeholder="Enter last name"
-                      error={errors.lastName}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                    <Input
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaEnvelope className="inline mr-2" />
+                      Email Address *
+                    </label>
+                    <input
                       type="email"
+                      name="email"
                       value={formData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="Enter email address"
-                      error={errors.email}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                        errors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="your.email@example.com"
                     />
+                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
                   </div>
+
+                  {/* Phone */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
-                    <Input
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaPhone className="inline mr-2" />
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
                       value={formData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="Enter phone number"
-                      error={errors.phone}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                        errors.phone ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="10-digit phone number"
+                      maxLength={10}
                     />
+                    {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
                   </div>
+                </div>
+              </div>
+
+              {/* Optional Fields */}
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Optional Information</h2>
+                <div className="space-y-4">
+                  {/* Date of Birth */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                    <Input
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaCalendarAlt className="inline mr-2" />
+                      Date of Birth
+                    </label>
+                    <input
                       type="date"
+                      name="dateOfBirth"
                       value={formData.dateOfBirth}
-                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      max={new Date().toISOString().split('T')[0]}
                     />
                   </div>
+
+                  {/* Gender */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
                     <select
+                      name="gender"
                       value={formData.gender}
-                      onChange={(e) => handleInputChange('gender', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">Select gender</option>
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                       <option value="other">Other</option>
-                      <option value="prefer-not-to-say">Prefer not to say</option>
+                      <option value="prefer_not_to_say">Prefer not to say</option>
                     </select>
                   </div>
-                </div>
-              </div>
-            </Card>
 
-            {/* Address Information */}
-            <Card>
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Address Information</h2>
-                <div className="space-y-4">
+                  {/* Address */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
-                    <Input
-                      value={formData.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                      placeholder="Enter street address"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                      <Input
-                        value={formData.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
-                        placeholder="Enter city"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-                      <Input
-                        value={formData.state}
-                        onChange={(e) => handleInputChange('state', e.target.value)}
-                        placeholder="Enter state"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
-                      <Input
-                        value={formData.zipCode}
-                        onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                        placeholder="Enter ZIP code"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Emergency Contact */}
-            <Card>
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Emergency Contact</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name</label>
-                    <Input
-                      value={formData.emergencyContact}
-                      onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-                      placeholder="Enter emergency contact name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Phone</label>
-                    <Input
-                      value={formData.emergencyPhone}
-                      onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
-                      placeholder="Enter emergency contact phone"
-                    />
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Additional Information */}
-            <Card>
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests or Notes</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaMapMarkerAlt className="inline mr-2" />
+                      Address
+                    </label>
                     <textarea
-                      value={formData.notes}
-                      onChange={(e) => handleInputChange('notes', e.target.value)}
-                      placeholder="Any special requests, allergies, or notes for your stylist..."
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Enter your address (optional)"
                     />
                   </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="marketingConsent"
-                        checked={formData.marketingConsent}
-                        onChange={(e) => handleInputChange('marketingConsent', e.target.checked)}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="marketingConsent" className="ml-2 block text-sm text-gray-700">
-                        I agree to receive marketing communications and promotional offers
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="smsConsent"
-                        checked={formData.smsConsent}
-                        onChange={(e) => handleInputChange('smsConsent', e.target.checked)}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="smsConsent" className="ml-2 block text-sm text-gray-700">
-                        I agree to receive SMS notifications about my appointments
-                      </label>
-                    </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
+                    <textarea
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Any additional information..."
+                    />
+                  </div>
+
+                  {/* Special Requests */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests</label>
+                    <textarea
+                      name="specialRequests"
+                      value={formData.specialRequests}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Any special requests or preferences..."
+                    />
                   </div>
                 </div>
               </div>
-            </Card>
+            </div>
           </div>
 
-          {/* Booking Summary */}
+          {/* Summary Sidebar */}
           <div className="space-y-6">
-            <Card>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Service</h4>
-                    <p className="text-sm text-gray-600">{selectedService?.name}</p>
-                    <p className="text-sm text-gray-500">{selectedService?.duration} minutes</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium text-gray-900">Stylist</h4>
-                    <p className="text-sm text-gray-600">{selectedStaff?.name}</p>
-                    <p className="text-sm text-gray-500">{selectedStaff?.role}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium text-gray-900">Date & Time</h4>
-                    <p className="text-sm text-gray-600">
-                      {selectedDateTime && formatDate(selectedDateTime.date)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {selectedDateTime && formatTime(selectedDateTime.time)}
-                    </p>
-                  </div>
-                  
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-900">Total</span>
-                      <span className="text-xl font-bold text-gray-900">
-                        {selectedService && selectedStaff ? 
-                          formatCurrency(selectedService.price * selectedStaff.priceModifier) : 
-                          'Price TBD'
-                        }
-                      </span>
-                    </div>
-                  </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
+              
+              <div className="space-y-3 mb-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Business</span>
+                  <span className="text-gray-900 font-medium">{business.name}</span>
                 </div>
+                {(() => {
+                  const selectedServices = JSON.parse(sessionStorage.getItem('selectedServices') || '[]')
+                  return (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Services</span>
+                      <span className="text-gray-900 font-medium">{selectedServices.length}</span>
+                    </div>
+                  )
+                })()}
+                {(() => {
+                  const selectedDate = sessionStorage.getItem('selectedDate')
+                  const selectedTime = sessionStorage.getItem('selectedTime')
+                  return (
+                    <>
+                      {selectedDate && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Date</span>
+                          <span className="text-gray-900 font-medium">
+                            {new Date(selectedDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      )}
+                      {selectedTime && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Time</span>
+                          <span className="text-gray-900 font-medium">
+                            {selectedTime.includes('AM') || selectedTime.includes('PM') 
+                              ? selectedTime 
+                              : (() => {
+                                  const [hours, minutes] = selectedTime.split(':')
+                                  const hour = parseInt(hours)
+                                  const ampm = hour >= 12 ? 'PM' : 'AM'
+                                  const hour12 = hour % 12 || 12
+                                  return `${hour12}:${minutes} ${ampm}`
+                                })()}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
-            </Card>
 
-            {/* Navigation */}
-            <div className="space-y-3">
-              <Button
-                variant="primary"
-                className="w-full"
+              <button
                 onClick={handleContinue}
-                loading={loading}
-                disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.phone}
+                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
               >
-                Continue to Confirmation
-              </Button>
-              <Button variant="outline" className="w-full" onClick={handleBack}>
-                ← Back
-              </Button>
+                Continue
+                <FaArrowRight />
+              </button>
             </div>
           </div>
         </div>

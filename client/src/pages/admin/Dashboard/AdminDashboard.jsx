@@ -1,441 +1,619 @@
-import React, { useState, useEffect } from 'react'
-import { Card, Button, StatCard, StatCardGrid, Tabs, Table, Badge, Alert } from '../../../components'
-import { LineChart, BarChart, DonutChart } from '../../../components'
-import adminService from '../../../services/admin/adminService'
-import { toast } from 'react-hot-toast'
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useNavigate } from "react-router-dom";
+import { 
+  FaBuilding, 
+  FaUserTie, 
+  FaUsers, 
+  FaChartLine, 
+  FaMoneyBillWave, 
+  FaExchangeAlt,
+  FaArrowUp,
+  FaArrowLeft,
+  FaChartPie,
+  FaCalendarAlt
+} from "react-icons/fa";
+import { HiRefresh } from "react-icons/hi";
+import adminService from "../../../services/admin/adminService";
+
+// Simple Stat Card Component
+const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
+  <div className="bg-white rounded-lg border border-gray-200 p-5">
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <p className="text-xs sm:text-sm font-medium text-gray-500 mb-2">{title}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-gray-900">{value}</p>
+      </div>
+      <div className={`${iconBg} ${iconColor} p-3 sm:p-4 rounded-lg`}>
+        <Icon className="text-xl sm:text-2xl" />
+      </div>
+    </div>
+  </div>
+));
+
+// Simple Business Type Card
+const BusinessTypeCard = memo(({ emoji, label, count, bgColor, borderColor, textColor }) => (
+  <div className={`p-2 rounded-lg ${bgColor} ${borderColor} border flex items-center justify-between hover:shadow-sm transition-all`}>
+    <div className="flex items-center gap-2">
+      <span className="text-xl">{emoji}</span>
+      <span className={`text-xs font-medium ${textColor}`}>{label}</span>
+    </div>
+    <span className="text-sm font-bold text-gray-800">{count}</span>
+  </div>
+));
+
+// Simple Performance Metric Row
+const PerformanceRow = memo(({ label, value, isHighlight, showTrend }) => (
+  <div className={`flex justify-between items-center p-3 rounded-lg ${
+    isHighlight 
+      ? 'bg-primary-50 border border-primary-200' 
+      : 'bg-gray-50 border border-gray-200'
+  }`}>
+    <span className={`text-sm font-medium ${isHighlight ? 'text-primary-700' : 'text-gray-700'}`}>
+      {label}
+    </span>
+    <span className={`text-base font-bold flex items-center gap-2 ${
+      isHighlight ? 'text-primary-900' : 
+      showTrend && parseFloat(value) > 0 ? 'text-green-600' : 
+      showTrend && parseFloat(value) < 0 ? 'text-red-600' : 'text-gray-900'
+    }`}>
+      {showTrend && parseFloat(value) > 0 && <FaArrowUp className="text-xs" />}
+      {value}
+    </span>
+  </div>
+));
+
+// Memoized Business Row (Desktop)
+const BusinessRow = memo(({ business }) => (
+  <tr className="hover:bg-gray-50 transition-colors">
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="text-sm font-semibold text-gray-900">{business.name}</div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+        {business.type}
+      </span>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{business.branch || '—'}</td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <code className="text-xs bg-gray-100 px-3 py-1.5 rounded-md font-mono text-gray-700 border border-gray-200">
+        {business.businessLink}
+      </code>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-center">
+      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 text-purple-700 text-sm font-semibold">
+        {business.managersCount}
+      </span>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-center">
+      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
+        {business.staffCount}
+      </span>
+    </td>
+  </tr>
+));
+
+// Memoized Business Card (Mobile)
+const BusinessCard = memo(({ business }) => (
+  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="font-semibold text-gray-900">{business.name}</h3>
+      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+        {business.type}
+      </span>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div className="flex justify-between">
+        <span className="text-gray-600">Branch:</span>
+        <span className="text-gray-900 font-medium">{business.branch || '—'}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-600">Link:</span>
+        <code className="text-xs bg-white px-2 py-1 rounded border border-gray-200 text-gray-700">
+          {business.businessLink}
+        </code>
+      </div>
+      <div className="flex justify-between pt-2 border-t border-gray-200">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-600">Managers:</span>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
+            {business.managersCount}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-600">Staff:</span>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
+            {business.staffCount}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+));
+
+// Daily Business Row Component
+const DailyBusinessRow = memo(({ dailyBusiness, formatCurrency, formatDate }) => (
+  <tr className="hover:bg-gray-50 transition-colors border-b border-gray-100">
+    <td className="px-4 py-3 text-sm font-medium text-gray-800">{dailyBusiness.businessName}</td>
+    <td className="px-4 py-3 text-sm text-gray-600 capitalize">{dailyBusiness.businessType}</td>
+    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(dailyBusiness.date)}</td>
+    <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatCurrency(dailyBusiness.totalRevenue)}</td>
+    <td className="px-4 py-3 text-center">
+      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
+        {dailyBusiness.totalCustomers}
+      </span>
+    </td>
+    <td className="px-4 py-3 text-center">
+      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 text-purple-700 text-sm font-semibold">
+        {dailyBusiness.totalTransactions}
+      </span>
+    </td>
+    <td className="px-4 py-3">
+      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+        dailyBusiness.status === 'completed' ? 'bg-green-100 text-green-800' :
+        dailyBusiness.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+        'bg-gray-100 text-gray-800'
+      }`}>
+        {dailyBusiness.status || 'N/A'}
+      </span>
+    </td>
+  </tr>
+));
+
+// Daily Business Card (Mobile)
+const DailyBusinessCard = memo(({ dailyBusiness, formatCurrency, formatDate }) => (
+  <div className="bg-white rounded-lg p-4 border border-gray-200">
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="font-semibold text-gray-900">{dailyBusiness.businessName}</h3>
+      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+        dailyBusiness.status === 'completed' ? 'bg-green-100 text-green-800' :
+        dailyBusiness.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+        'bg-gray-100 text-gray-800'
+      }`}>
+        {dailyBusiness.status || 'N/A'}
+      </span>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div className="flex justify-between">
+        <span className="text-gray-600">Type:</span>
+        <span className="text-gray-900 font-medium capitalize">{dailyBusiness.businessType}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-600">Date:</span>
+        <span className="text-gray-900 font-medium">{formatDate(dailyBusiness.date)}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-600">Revenue:</span>
+        <span className="text-gray-900 font-semibold">{formatCurrency(dailyBusiness.totalRevenue)}</span>
+      </div>
+      <div className="flex justify-between pt-2 border-t border-gray-200">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-600">Customers:</span>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+            {dailyBusiness.totalCustomers}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-600">Transactions:</span>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
+            {dailyBusiness.totalTransactions}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+));
 
 const AdminDashboard = () => {
-  const [dashboardData, setDashboardData] = useState({
-    stats: {
-      totalBusinesses: 0,
-      totalManagers: 0,
-      totalStaff: 0,
-      totalRevenue: 0,
-      activeBusinesses: 0,
-      pendingApprovals: 0
-    },
-    recentBusinesses: [],
-    recentTransactions: [],
-    businessGrowth: [],
-    revenueData: [],
-    businessTypes: [],
-    monthlyStats: []
-  })
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState(0)
+  const navigate = useNavigate();
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [dailyBusinessData, setDailyBusinessData] = useState(null);
+  const [dailyBusinessLoading, setDailyBusinessLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pageParam = urlParams.get('page');
+    return pageParam && parseInt(pageParam) > 0 ? parseInt(pageParam) : 1;
+  });
+  
+  const itemsPerPage = 5;
+
+  const fetchDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await adminService.getDashboard(currentPage, itemsPerPage);
+      if (res.success) {
+        setDashboard(res.data.data || res.data);  
+      } else {
+        setError(res.error || "Failed to load dashboard");
+      }
+    } catch (e) {
+      setError("Failed to load dashboard");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [currentPage, itemsPerPage]);
+
+  const fetchDailyBusinessData = useCallback(async () => {
+    try {
+      setDailyBusinessLoading(true);
+      const res = await adminService.getDailyBusinessList({ page: 1, limit: 50 });
+      if (res.success) {
+        setDailyBusinessData(res.data || res);
+      }
+    } catch (e) {
+      console.error("Failed to fetch daily business data", e);
+    } finally {
+      setDailyBusinessLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    fetchDashboard();
+  }, [fetchDashboard]);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      
-      const result = await adminService.getDashboard()
-      
-      if (result.success) {
-        setDashboardData(result.data)
-        toast.success('Dashboard data loaded successfully!')
-      } else {
-        toast.error(result.error || 'Failed to load dashboard data')
-        console.error('Dashboard error:', result.error)
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-      toast.error('An unexpected error occurred while loading dashboard data')
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    if (activeTab === 'daily-business') {
+      fetchDailyBusinessData();
     }
-  }
+  }, [activeTab, fetchDailyBusinessData]);
 
+  const handlePageChange = useCallback((newPage) => {
+    setCurrentPage(newPage);
+    window.history.pushState({ page: newPage }, '', `?page=${newPage}`);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    if (activeTab === 'overview') {
+      fetchDashboard();
+    } else {
+      fetchDailyBusinessData();
+      setRefreshing(false);
+    }
+  }, [activeTab, fetchDashboard, fetchDailyBusinessData]);
+
+  const handleGoBack = useCallback(() => navigate(-1), [navigate]);
+
+  const handleTabChange = useCallback((tab) => {
+    setActiveTab(tab);
+  }, []);
+
+  // Format currency
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
-  }
+    if (!amount) return "₹0";
+    return `₹${parseInt(amount).toLocaleString('en-IN')}`;
+  };
 
+  // Format date
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
       month: 'short',
-      day: 'numeric'
-    })
-  }
+      year: 'numeric'
+    });
+  };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'success'
-      case 'pending': return 'warning'
-      case 'inactive': return 'danger'
-      default: return 'default'
-    }
-  }
+  // Memoized stat cards data
+  const statCards = useMemo(() => [
+    { icon: FaBuilding, title: "Total Businesses", value: dashboard?.stats?.businesses?.total ?? 0, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+    { icon: FaUserTie, title: "Total Managers", value: dashboard?.stats?.managers ?? 0, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
+    { icon: FaUsers, title: "Total Staff", value: dashboard?.stats?.staff ?? 0, iconBg: "bg-green-100", iconColor: "text-green-600" },
+    { icon: FaMoneyBillWave, title: "Revenue (30 days)", value: dashboard?.stats?.totalRevenue ?? "₹0", iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+    { icon: FaChartLine, title: "Customers (30 days)", value: dashboard?.stats?.totalCustomers ?? 0, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
+    { icon: FaExchangeAlt, title: "Transactions", value: dashboard?.stats?.recentTransactions ?? 0, iconBg: "bg-pink-100", iconColor: "text-pink-600" }
+  ], [dashboard?.stats]);
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'salon': return 'blue'
-      case 'spa': return 'green'
-      case 'hotel': return 'purple'
-      default: return 'default'
-    }
-  }
+  // Memoized business types - comprehensive list
+  const businessTypes = useMemo(() => {
+    const stats = dashboard?.stats?.businesses || {};
+    const types = [
+      { emoji: "💇", label: "Salons", count: stats.salon ?? 0, bgColor: "bg-blue-50", borderColor: "border-blue-200", textColor: "text-blue-700" },
+      { emoji: "💆", label: "Spas", count: stats.spa ?? 0, bgColor: "bg-purple-50", borderColor: "border-purple-200", textColor: "text-purple-700" },
+      { emoji: "🏨", label: "Hotels", count: stats.hotel ?? 0, bgColor: "bg-orange-50", borderColor: "border-orange-200", textColor: "text-orange-700" },
+      { emoji: "🍽️", label: "Restaurants", count: stats.restaurant ?? 0, bgColor: "bg-red-50", borderColor: "border-red-200", textColor: "text-red-700" },
+      { emoji: "🛍️", label: "Retail", count: stats.retail ?? 0, bgColor: "bg-green-50", borderColor: "border-green-200", textColor: "text-green-700" },
+      { emoji: "💪", label: "Gym", count: stats.gym ?? 0, bgColor: "bg-teal-50", borderColor: "border-teal-200", textColor: "text-teal-700" },
+      { emoji: "🏥", label: "Clinic", count: stats.clinic ?? 0, bgColor: "bg-cyan-50", borderColor: "border-cyan-200", textColor: "text-cyan-700" },
+      { emoji: "☕", label: "Cafe", count: stats.cafe ?? 0, bgColor: "bg-amber-50", borderColor: "border-amber-200", textColor: "text-amber-700" },
+      { emoji: "📸", label: "Studio", count: stats.studio ?? 0, bgColor: "bg-pink-50", borderColor: "border-pink-200", textColor: "text-pink-700" },
+      { emoji: "🎓", label: "Education", count: stats.education ?? 0, bgColor: "bg-indigo-50", borderColor: "border-indigo-200", textColor: "text-indigo-700" },
+      { emoji: "🚗", label: "Automotive", count: stats.automotive ?? 0, bgColor: "bg-slate-50", borderColor: "border-slate-200", textColor: "text-slate-700" },
+      { emoji: "🏪", label: "Others", count: stats.others ?? 0, bgColor: "bg-gray-50", borderColor: "border-gray-200", textColor: "text-gray-700" }
+    ];
+    
+    // Filter out types with count 0 to show only active business types
+    return types.filter(type => type.count > 0);
+  }, [dashboard?.stats?.businesses]);
 
-  const tabs = [
-    { label: 'Overview', content: 'overview' },
-    { label: 'Businesses', content: 'businesses' },
-    { label: 'Analytics', content: 'analytics' }
-  ]
+  // Memoized performance metrics
+  const performanceMetrics = useMemo(() => [
+    { label: "Avg Daily Revenue", value: dashboard?.analytics?.averageDailyRevenue ? `₹${dashboard.analytics.averageDailyRevenue.toLocaleString()}` : "₹0" },
+    { label: "Avg Daily Customers", value: dashboard?.analytics?.averageDailyCustomers?.toFixed(1) ?? "0" },
+    { label: "Growth Rate", value: `${dashboard?.analytics?.growthRate?.toFixed(1) ?? "0"}%`, showTrend: true },
+    { label: "Net Profit", value: dashboard?.analytics?.netProfit ? `₹${dashboard.analytics.netProfit.toLocaleString()}` : "₹0", isHighlight: true }
+  ], [dashboard?.analytics]);
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Key Metrics */}
-      <StatCardGrid
-        stats={[
-          {
-            title: 'Total Businesses',
-            value: dashboardData.stats.totalBusinesses,
-            change: 12.5,
-            changeType: 'positive',
-            format: 'number',
-            color: 'blue',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            )
-          },
-          {
-            title: 'Active Businesses',
-            value: dashboardData.stats.activeBusinesses,
-            change: 8.3,
-            changeType: 'positive',
-            format: 'number',
-            color: 'green',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )
-          },
-          {
-            title: 'Total Managers',
-            value: dashboardData.stats.totalManagers,
-            change: 15.2,
-            changeType: 'positive',
-            format: 'number',
-            color: 'purple',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            )
-          },
-          {
-            title: 'Total Staff',
-            value: dashboardData.stats.totalStaff,
-            change: 22.1,
-            changeType: 'positive',
-            format: 'number',
-            color: 'orange',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
-            )
-          },
-          {
-            title: 'Total Revenue',
-            value: dashboardData.stats.totalRevenue,
-            change: 18.7,
-            changeType: 'positive',
-            format: 'currency',
-            color: 'green',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-            )
-          },
-          {
-            title: 'Pending Approvals',
-            value: dashboardData.stats.pendingApprovals,
-            change: -5.2,
-            changeType: 'positive',
-            format: 'number',
-            color: 'yellow',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )
-          }
-        ]}
-        columns={3}
-      />
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Recent Businesses</h3>
-              <Button variant="outline" size="sm">View All</Button>
-            </div>
-            <div className="space-y-4">
-              {dashboardData.recentBusinesses.map((business) => (
-                <div key={business.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      getTypeColor(business.type) === 'blue' ? 'bg-blue-100 text-blue-600' :
-                      getTypeColor(business.type) === 'green' ? 'bg-green-100 text-green-600' :
-                      getTypeColor(business.type) === 'purple' ? 'bg-purple-100 text-purple-600' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{business.name}</p>
-                      <p className="text-sm text-gray-500">{business.type} • {business.managers} managers</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant={getStatusColor(business.status)} size="sm">
-                      {business.status}
-                    </Badge>
-                    <p className="text-sm text-gray-500 mt-1">{formatDate(business.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
-              <Button variant="outline" size="sm">View All</Button>
-            </div>
-            <div className="space-y-4">
-              {dashboardData.recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{transaction.customerName}</p>
-                    <p className="text-sm text-gray-500">{transaction.businessName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">{formatCurrency(transaction.amount)}</p>
-                    <p className="text-sm text-gray-500">{formatDate(transaction.date)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
-  )
-
-  const renderBusinesses = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">All Businesses</h3>
-        <Button variant="primary">Add New Business</Button>
-      </div>
-
-      <Table
-        data={dashboardData.recentBusinesses}
-        columns={[
-          {
-            key: 'name',
-            label: 'Business Name',
-            sortable: true,
-            render: (business) => (
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  getTypeColor(business.type) === 'blue' ? 'bg-blue-100 text-blue-600' :
-                  getTypeColor(business.type) === 'green' ? 'bg-green-100 text-green-600' :
-                  getTypeColor(business.type) === 'purple' ? 'bg-purple-100 text-purple-600' :
-                  'bg-gray-100 text-gray-600'
-                }`}>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">{business.name}</p>
-                  <p className="text-sm text-gray-500">{business.type}</p>
-                </div>
-              </div>
-            )
-          },
-          {
-            key: 'status',
-            label: 'Status',
-            sortable: true,
-            render: (business) => (
-              <Badge variant={getStatusColor(business.status)} size="sm">
-                {business.status}
-              </Badge>
-            )
-          },
-          {
-            key: 'managers',
-            label: 'Managers',
-            sortable: true,
-            render: (business) => business.managers
-          },
-          {
-            key: 'staff',
-            label: 'Staff',
-            sortable: true,
-            render: (business) => business.staff
-          },
-          {
-            key: 'revenue',
-            label: 'Revenue',
-            sortable: true,
-            render: (business) => formatCurrency(business.revenue)
-          },
-          {
-            key: 'createdAt',
-            label: 'Created',
-            sortable: true,
-            render: (business) => formatDate(business.createdAt)
-          },
-          {
-            key: 'actions',
-            label: 'Actions',
-            render: (business) => (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">View</Button>
-                <Button variant="outline" size="sm">Edit</Button>
-              </div>
-            )
-          }
-        ]}
-        onSort={(key, direction) => {
-          console.log('Sort by:', key, direction)
-        }}
-        sortable={true}
-      />
-    </div>
-  )
-
-  const renderAnalytics = () => (
-    <div className="space-y-6">
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Growth</h3>
-            <LineChart
-              data={[
-                {
-                  label: 'New Businesses',
-                  data: dashboardData.businessGrowth.map(item => item.count),
-                  labels: dashboardData.businessGrowth.map(item => item.month)
-                }
-              ]}
-              height="300px"
-              showLegend={true}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-            <BarChart
-              data={dashboardData.revenueData.map(item => ({
-                label: item.month,
-                value: item.revenue
-              }))}
-              height="300px"
-              showLegend={true}
-            />
-          </div>
-        </Card>
-      </div>
-
-      {/* Business Types Distribution */}
-      <Card>
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Types Distribution</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <DonutChart
-                data={dashboardData.businessTypes}
-                centerText="Types"
-                centerValue={dashboardData.businessTypes.length.toString()}
-                showLegend={true}
-                width="250px"
-                height="250px"
-              />
-            </div>
-            <div className="space-y-4">
-              {dashboardData.businessTypes.map((type, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full ${
-                      index === 0 ? 'bg-blue-500' :
-                      index === 1 ? 'bg-green-500' :
-                      'bg-purple-500'
-                    }`} />
-                    <span className="font-medium text-gray-900">{type.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">{type.count} businesses</p>
-                    <p className="text-sm text-gray-500">{type.percentage}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  )
-
-  if (loading) {
+  if (loading)
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
+      <div className="flex justify-center items-center h-screen text-gray-600">
+        Loading dashboard...
       </div>
-    )
+    );
+  if (error) {
+    return (
+      <div className="p-6 text-red-600">{error}</div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-600">
-            Welcome back! Here's what's happening with your businesses today.
-          </p>
+    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+      {/* Header Section */}
+      <div className="">
+        <div className="">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div></div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={handleGoBack}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+                title="Go Back"
+              >
+                <FaArrowLeft className="text-gray-600" />
+                <span className="hidden sm:inline">Back</span>
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                title="Refresh Dashboard"
+              >
+                <HiRefresh className={`text-lg ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="flex gap-4 sm:gap-8">
+            <button
+              onClick={() => handleTabChange('overview')}
+              className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                activeTab === 'overview'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <FaChartPie className="text-base" />
+              <span>Overview</span>
+            </button>
+            <button
+              onClick={() => handleTabChange('daily-business')}
+              className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                activeTab === 'daily-business'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <FaCalendarAlt className="text-base" />
+              <span>Daily Business</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Overview Tab Content */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            {statCards.map((card) => (
+              <StatCard key={card.title} {...card} />
+            ))}
+          </div>
+
+      {/* Analytics and Business Type Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Business Type Breakdown */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <FaBuilding className="text-white text-sm" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-800">Businesses by Type</h2>
+            </div>
+            <span className="text-xs font-medium text-gray-500">
+              {businessTypes.length} Active Type{businessTypes.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          {businessTypes.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {businessTypes.map((type) => (
+                <BusinessTypeCard key={type.label} {...type} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p className="text-4xl mb-2">🏢</p>
+              <p className="text-sm">No businesses added yet</p>
+            </div>
+          )}
         </div>
 
-        {/* Tabs */}
-        <Tabs
-          tabs={tabs}
-          defaultActiveTab={0}
-          onTabChange={(index) => setActiveTab(index)}
-        >
-          {renderOverview()}
-          {renderBusinesses()}
-          {renderAnalytics()}
-        </Tabs>
+        {/* Analytics Summary */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <FaChartLine className="text-white text-sm" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800">Performance Summary (30 Days)</h2>
+          </div>
+          <div className="space-y-3">
+            {performanceMetrics.map((metric) => (
+              <PerformanceRow key={metric.label} {...metric} />
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-  )
-}
 
-export default AdminDashboard
+      {/* Recent Businesses */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="p-5 sm:p-6 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <FaBuilding className="text-white text-sm" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-800">Recent Businesses</h2>
+            </div>
+          </div>
+        </div>
+        
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Branch</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Link</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Managers</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Staff</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {(dashboard?.recentBusinesses || []).map((business) => (
+                <BusinessRow key={business.id} business={business} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden p-4 space-y-4">
+          {(dashboard?.recentBusinesses || []).map((business) => (
+            <BusinessCard key={business.id} business={business} />
+          ))}
+        </div>
+        
+        {/* Pagination Controls */}
+        {dashboard?.pagination && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="text-xs sm:text-sm text-gray-600">
+              Showing <span className="font-semibold text-gray-900">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(currentPage * itemsPerPage, dashboard.pagination.total)}</span> of <span className="font-semibold text-gray-900">{dashboard.pagination.total}</span> businesses
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                Previous
+              </button>
+              <span className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm">
+                Page {currentPage} of {dashboard.pagination.totalPages}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= dashboard.pagination.totalPages}
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+        </>
+      )}
+
+      {/* Daily Business Tab Content */}
+      {activeTab === 'daily-business' && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="p-5 sm:p-6 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <FaChartLine className="text-white text-sm" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-800">Daily Business Records</h2>
+              </div>
+              <span className="text-xs font-medium text-gray-500">
+                {dailyBusinessData?.data?.length || 0} Records
+              </span>
+            </div>
+          </div>
+
+          {dailyBusinessLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading daily business data...</p>
+              </div>
+            </div>
+          ) : dailyBusinessData?.data && dailyBusinessData.data.length > 0 ? (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Business</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Revenue</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Customers</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Transactions</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyBusinessData.data.map((dailyBusiness) => (
+                      <DailyBusinessRow
+                        key={dailyBusiness.id || dailyBusiness._id}
+                        dailyBusiness={dailyBusiness}
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden p-4 space-y-4">
+                {dailyBusinessData.data.map((dailyBusiness) => (
+                  <DailyBusinessCard
+                    key={dailyBusiness.id || dailyBusiness._id}
+                    dailyBusiness={dailyBusiness}
+                    formatCurrency={formatCurrency}
+                    formatDate={formatDate}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-4xl mb-3">📊</p>
+              <p className="text-sm text-gray-500">No daily business records found</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;

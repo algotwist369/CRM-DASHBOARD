@@ -1,164 +1,149 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Button, Badge, Alert } from '../../../components'
-import appointmentService from '../../../services/appointment/appointmentService'
+import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import {
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaSpinner,
+  FaClock,
+  FaUser,
+  FaPhone,
+  FaEnvelope,
+  FaMapMarkerAlt,
+  FaDollarSign,
+  FaUserTie,
+  FaPrint,
+  FaShare,
+  FaArrowLeft,
+  FaExclamationTriangle
+} from 'react-icons/fa'
+import apiClient from '../../../services/api/client'
+import { endpoints } from '../../../constants/api/endpoints'
 
 const AppointmentStatus = () => {
-  const { confirmationNumber } = useParams()
   const navigate = useNavigate()
+  const { confirmationCode } = useParams()
   const [loading, setLoading] = useState(true)
   const [appointment, setAppointment] = useState(null)
-  const [error, setError] = useState(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
 
   useEffect(() => {
-    if (confirmationNumber) {
-      fetchAppointmentStatus()
+    if (confirmationCode) {
+      fetchAppointmentByCode()
     } else {
-      setError('No confirmation number provided')
-      setLoading(false)
+      toast.error('Invalid confirmation code')
+      navigate('/')
     }
-  }, [confirmationNumber])
+  }, [confirmationCode])
 
-  const fetchAppointmentStatus = async () => {
+  const fetchAppointmentByCode = async () => {
     try {
       setLoading(true)
-      setError(null)
+      const response = await apiClient.get(endpoints.appointments.appointmentByCode(confirmationCode))
       
-      const result = await appointmentService.getAppointmentByCode(confirmationNumber)
-      
-      if (result.success) {
-        setAppointment(result.data)
-        toast.success('Appointment status loaded successfully!')
+      if (response.data.success) {
+        setAppointment(response.data.data)
       } else {
-        setError(result.error || 'Failed to load appointment status')
-        toast.error(result.error || 'Failed to load appointment status')
+        toast.error(response.data.message || 'Appointment not found')
+        setAppointment(null)
       }
     } catch (error) {
-      console.error('Error fetching appointment status:', error)
-      setError('An unexpected error occurred')
-      toast.error('An unexpected error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
-      
-        ],
-        history: [
-          {
-            action: 'Appointment Booked',
-            timestamp: '2024-01-20T10:30:00Z',
-            description: 'Appointment confirmed and payment processed'
-          },
-          {
-            action: 'Reminder Sent',
-            timestamp: '2024-01-20T10:35:00Z',
-            description: 'Email confirmation sent to customer'
-          },
-          {
-            action: 'SMS Reminder',
-            timestamp: '2024-01-20T10:36:00Z',
-            description: 'SMS reminder sent to customer'
-          }
-        ]
-      }
-      
-    } catch (error) {
-      console.error('Error fetching appointment status:', error)
-      setError('Failed to load appointment details')
+      toast.error('Failed to fetch appointment')
+      console.error(error)
+      setAppointment(null)
     } finally {
       setLoading(false)
     }
   }
 
-  const formatDate = (dateString) => {
+  const handleCancelAppointment = async () => {
+    if (!cancelReason.trim()) {
+      toast.error('Please provide a cancellation reason')
+      return
+    }
+
+    try {
+      setCancelling(true)
+      const response = await apiClient.post(
+        endpoints.appointments.cancelAppointment(confirmationCode),
+        { reason: cancelReason }
+      )
+
+      if (response.data.success) {
+        toast.success('Appointment cancelled successfully')
+        setShowCancelModal(false)
+        setCancelReason('')
+        fetchAppointmentByCode() // Refresh appointment data
+      } else {
+        toast.error(response.data.message || 'Failed to cancel appointment')
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to cancel appointment')
+      console.error(error)
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      confirmed: 'bg-blue-100 text-blue-800 border-blue-300',
+      in_progress: 'bg-purple-100 text-purple-800 border-purple-300',
+      completed: 'bg-green-100 text-green-800 border-green-300',
+      cancelled: 'bg-red-100 text-red-800 border-red-300',
+      no_show: 'bg-gray-100 text-gray-800 border-gray-300'
+    }
+    return badges[status] || 'bg-gray-100 text-gray-800 border-gray-300'
+  }
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return <FaCheckCircle className="text-green-600 text-4xl" />
+      case 'cancelled':
+        return <FaTimesCircle className="text-red-600 text-4xl" />
+      case 'confirmed':
+        return <FaCheckCircle className="text-blue-600 text-4xl" />
+      case 'pending':
+        return <FaClock className="text-yellow-600 text-4xl" />
+      default:
+        return <FaClock className="text-gray-600 text-4xl" />
+    }
+  }
+
+  const formatDateTime = (dateString, timeString) => {
+    if (!dateString) return 'N/A'
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
+    return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 
-  const formatTime = (timeString) => {
-    const [hours, minutes] = timeString.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const displayHour = hour % 12 || 12
-    return `${displayHour}:${minutes} ${ampm}`
-  }
-
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+      currency: 'INR'
+    }).format(amount || 0)
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed': return 'success'
-      case 'pending': return 'warning'
-      case 'cancelled': return 'danger'
-      case 'completed': return 'info'
-      default: return 'default'
-    }
-  }
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'confirmed': return 'Confirmed'
-      case 'pending': return 'Pending'
-      case 'cancelled': return 'Cancelled'
-      case 'completed': return 'Completed'
-      default: return 'Unknown'
-    }
-  }
-
-  const handleReschedule = () => {
-    // In a real app, this would navigate to rescheduling flow
-    alert('Rescheduling functionality would be implemented here')
-  }
-
-  const handleCancel = () => {
-    // In a real app, this would show cancellation confirmation
-    if (window.confirm('Are you sure you want to cancel this appointment?')) {
-      alert('Cancellation functionality would be implemented here')
-    }
-  }
-
-  const handleContactBusiness = () => {
-    window.open(`tel:${appointment.business.phone}`)
-  }
-
-  const handleBookAnother = () => {
-    navigate('/booking/business-info')
+  const handlePrint = () => {
+    window.print()
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
           <p className="text-gray-600">Loading appointment details...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Alert
-            type="error"
-            title="Error"
-            message={error}
-          />
-          <Button variant="primary" className="mt-4" onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
         </div>
       </div>
     )
@@ -166,204 +151,338 @@ const AppointmentStatus = () => {
 
   if (!appointment) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Alert
-            type="error"
-            title="Appointment Not Found"
-            message="No appointment found with the provided confirmation number."
-          />
-          <Button variant="primary" className="mt-4" onClick={() => navigate('/booking/business-info')}>
-            Book New Appointment
-          </Button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center max-w-md">
+          <FaTimesCircle className="mx-auto text-red-500 text-4xl mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Appointment Not Found</h2>
+          <p className="text-gray-600 mb-6">The appointment with this confirmation code could not be found.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            Go Home
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Appointment Status</h1>
-          <p className="text-lg text-gray-600">Track your appointment details and status</p>
-          <div className="mt-4">
-            <Badge variant={getStatusColor(appointment.status)} size="lg">
-              {getStatusText(appointment.status)}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Confirmation Number */}
-        <Card className="mb-8">
-          <div className="p-6 text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Confirmation Number</h2>
-            <p className="text-2xl font-mono font-bold text-primary-600">{appointment.confirmationNumber}</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Booked on {formatDate(appointment.createdAt)}
-            </p>
-          </div>
-        </Card>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Appointment Details */}
-          <div className="space-y-6">
-            <Card>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Appointment Details</h3>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Service</h4>
-                    <p className="text-gray-600">{appointment.service.name}</p>
-                    <p className="text-sm text-gray-500">{appointment.service.duration} minutes</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium text-gray-900">Stylist</h4>
-                    <p className="text-gray-600">{appointment.staff.name}</p>
-                    <p className="text-sm text-gray-500">{appointment.staff.role}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium text-gray-900">Date & Time</h4>
-                    <p className="text-gray-600">{formatDate(appointment.dateTime.date)}</p>
-                    <p className="text-sm text-gray-500">
-                      {formatTime(appointment.dateTime.time)} - {formatTime(appointment.estimatedEndTime)}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium text-gray-900">Total Amount</h4>
-                    <p className="text-xl font-bold text-gray-900">
-                      {formatCurrency(appointment.service.price)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-medium text-gray-900">{appointment.business.name}</h4>
-                    <p className="text-sm text-gray-600">{appointment.business.address}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <a href={`tel:${appointment.business.phone}`} className="text-sm text-primary-600 hover:text-primary-800">
-                      {appointment.business.phone}
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <a href={`mailto:${appointment.business.email}`} className="text-sm text-primary-600 hover:text-primary-800">
-                      {appointment.business.email}
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Customer Info & Actions */}
-          <div className="space-y-6">
-            <Card>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Name</h4>
-                    <p className="text-gray-600">
-                      {appointment.customer.firstName} {appointment.customer.lastName}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Email</h4>
-                    <p className="text-gray-600">{appointment.customer.email}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Phone</h4>
-                    <p className="text-gray-600">{appointment.customer.phone}</p>
-                  </div>
-                  {appointment.notes && (
-                    <div>
-                      <h4 className="font-medium text-gray-900">Notes</h4>
-                      <p className="text-gray-600">{appointment.notes}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
-                <div className="space-y-3">
-                  <Button variant="outline" className="w-full" onClick={handleContactBusiness}>
-                    Contact Business
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={handleReschedule}>
-                    Reschedule Appointment
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={handleBookAnother}>
-                    Book Another Appointment
-                  </Button>
-                  <Button variant="danger" className="w-full" onClick={handleCancel}>
-                    Cancel Appointment
-                  </Button>
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Reminders</h3>
-                <div className="space-y-2">
-                  {appointment.reminders.map((reminder, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-sm text-gray-700 capitalize">{reminder.type} reminder</span>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {formatDate(reminder.sentAt)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* Appointment History */}
-        <Card className="mt-8">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Appointment History</h3>
-            <div className="space-y-3">
-              {appointment.history.map((event, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-primary-600 rounded-full mt-2"></div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{event.action}</h4>
-                    <p className="text-sm text-gray-600">{event.description}</p>
-                    <p className="text-xs text-gray-500">{formatDate(event.timestamp)}</p>
-                  </div>
-                </div>
-              ))}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <FaCalendarAlt className="text-primary-600" />
+                Appointment Status
+              </h1>
+              <p className="text-gray-600 mt-1">Confirmation Code: <span className="font-mono font-semibold">{confirmationCode}</span></p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <FaPrint />
+                Print
+              </button>
             </div>
           </div>
-        </Card>
+        </div>
+
+        {/* Status Card */}
+        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-8 text-center">
+          <div className="flex justify-center mb-4">
+            {getStatusIcon(appointment.status)}
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Appointment {appointment.status?.replace('_', ' ').toUpperCase()}</h2>
+          <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium border-2 ${getStatusBadge(appointment.status)}`}>
+            {appointment.status?.replace('_', ' ') || 'Pending'}
+          </span>
+        </div>
+
+        {/* Appointment Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Date & Time */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FaClock className="text-primary-600" />
+              Date & Time
+            </h3>
+            <div className="space-y-2">
+              <p className="text-gray-900 font-medium">
+                {formatDateTime(appointment.appointmentDate, appointment.startTime)}
+              </p>
+              {appointment.endTime && (
+                <p className="text-sm text-gray-600">Ends at {appointment.endTime}</p>
+              )}
+              {appointment.duration && (
+                <p className="text-sm text-gray-600">Duration: {appointment.duration} minutes</p>
+              )}
+            </div>
+          </div>
+
+          {/* Business Information */}
+          {appointment.business && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FaMapMarkerAlt className="text-primary-600" />
+                Business
+              </h3>
+              <div className="space-y-2">
+                <p className="text-gray-900 font-medium">{appointment.business.name}</p>
+                {appointment.business.branch && (
+                  <p className="text-sm text-gray-600">{appointment.business.branch}</p>
+                )}
+                {appointment.business.address && (
+                  <p className="text-sm text-gray-600">{appointment.business.address}</p>
+                )}
+                {appointment.business.phone && (
+                  <p className="text-sm text-gray-600 flex items-center gap-2">
+                    <FaPhone className="text-gray-400" />
+                    {appointment.business.phone}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Services */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Services</h3>
+            <div className="space-y-2">
+              {Array.isArray(appointment.services) && appointment.services.length > 0
+                ? appointment.services.map((service, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <span className="text-gray-900">{service?.serviceName || service}</span>
+                      {service?.price && (
+                        <span className="text-gray-600">{formatCurrency(service.price)}</span>
+                      )}
+                    </div>
+                  ))
+                : appointment.serviceName && (
+                    <div className="p-2 bg-gray-50 rounded">
+                      <span className="text-gray-900">{appointment.serviceName}</span>
+                    </div>
+                  )}
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FaDollarSign className="text-green-600" />
+              Pricing
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Total Amount</span>
+                <span className="text-lg font-bold text-green-600">
+                  {formatCurrency(appointment.finalPrice || appointment.totalPrice || 0)}
+                </span>
+              </div>
+              {appointment.basePrice && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Base Price</span>
+                  <span className="text-gray-900">{formatCurrency(appointment.basePrice)}</span>
+                </div>
+              )}
+              {appointment.discount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Discount</span>
+                  <span className="text-green-600">-{formatCurrency(appointment.discount)}</span>
+                </div>
+              )}
+              {appointment.tax > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Tax</span>
+                  <span className="text-gray-900">{formatCurrency(appointment.tax)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Staff Information */}
+        {appointment.staff && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FaUserTie className="text-primary-600" />
+              Assigned Staff
+            </h3>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
+                <FaUser className="text-primary-600" />
+              </div>
+              <div>
+                <p className="text-gray-900 font-medium">{appointment.staff.name}</p>
+                {appointment.staff.role && (
+                  <p className="text-sm text-gray-600">{appointment.staff.role}</p>
+                )}
+                {appointment.staff.specialization && (
+                  <p className="text-sm text-gray-500">Specialization: {appointment.staff.specialization}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Customer Information */}
+        {appointment.customer && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FaUser className="text-primary-600" />
+              Your Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Name</p>
+                <p className="text-gray-900 font-medium">{appointment.customer.name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Phone</p>
+                <p className="text-gray-900 font-medium">{appointment.customer.phone}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Email</p>
+                <p className="text-gray-900 font-medium">{appointment.customer.email}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notes */}
+        {(appointment.customerNotes || appointment.specialRequests) && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+            <div className="space-y-3">
+              {appointment.customerNotes && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Your Notes</p>
+                  <p className="text-gray-900">{appointment.customerNotes}</p>
+                </div>
+              )}
+              {appointment.specialRequests && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Special Requests</p>
+                  <p className="text-gray-900">{appointment.specialRequests}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Cancellation Section */}
+        {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Need to Cancel?</h3>
+                <p className="text-sm text-gray-600">You can cancel this appointment if your plans have changed.</p>
+              </div>
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <FaTimesCircle />
+                Cancel Appointment
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Cancellation Info */}
+        {appointment.status === 'cancelled' && (
+          <div className="bg-red-50 rounded-xl border border-red-200 p-6">
+            <div className="flex items-start gap-3">
+              <FaTimesCircle className="text-red-600 text-2xl mt-1" />
+              <div>
+                <h3 className="text-lg font-semibold text-red-900 mb-2">Appointment Cancelled</h3>
+                {appointment.cancelledAt && (
+                  <p className="text-sm text-red-700">
+                    Cancelled on {new Date(appointment.cancelledAt).toLocaleString('en-US')}
+                  </p>
+                )}
+                {appointment.cancellationReason && (
+                  <p className="text-sm text-red-700 mt-2">
+                    <strong>Reason:</strong> {appointment.cancellationReason}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <FaArrowLeft />
+              Back to Home
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Cancel Appointment Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <FaExclamationTriangle className="text-red-600 text-2xl" />
+              <h2 className="text-lg font-semibold text-gray-900">Cancel Appointment</h2>
+            </div>
+            
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to cancel this appointment? This action cannot be undone.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for Cancellation
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Please provide a reason for cancellation..."
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCancelAppointment}
+                disabled={cancelling || !cancelReason.trim()}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {cancelling ? (
+                  <>
+                    <FaSpinner className="animate-spin inline mr-2" />
+                    Cancelling...
+                  </>
+                ) : (
+                  'Cancel Appointment'
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelModal(false)
+                  setCancelReason('')
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Keep Appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

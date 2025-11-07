@@ -1,26 +1,131 @@
 import apiClient from '../api/client'
-import { endpoints } from '../../../constants/api/endpoints'
+import { endpoints } from '../../constants/api/endpoints'
+import { decodeToken } from '../../utils/auth/tokenUtils'
 
 class AuthService {
+  // Remember Me - Store credentials (encrypted in production)
+  saveRememberMe(credentials, type = 'admin') {
+    if (type === 'admin') {
+      localStorage.setItem('rememberedEmail', credentials.email || '');
+    } else {
+      localStorage.setItem('rememberedUsername', credentials.username || '');
+    }
+    localStorage.setItem('rememberMeEnabled', 'true');
+  }
+
+  // Remember Me - Retrieve credentials
+  getRememberedCredentials(type = 'admin') {
+    const enabled = localStorage.getItem('rememberMeEnabled') === 'true';
+    if (!enabled) return null;
+
+    if (type === 'admin') {
+      return {
+        email: localStorage.getItem('rememberedEmail') || '',
+        rememberMe: true
+      };
+    } else {
+      return {
+        username: localStorage.getItem('rememberedUsername') || '',
+        rememberMe: true
+      };
+    }
+  }
+
+  // Remember Me - Clear saved credentials
+  clearRememberMe() {
+    localStorage.removeItem('rememberedEmail');
+    localStorage.removeItem('rememberedUsername');
+    localStorage.removeItem('rememberMeEnabled');
+  }
+
   // Login user
   async login(credentials) {
     try {
-      const response = await apiClient.post(endpoints.auth.login, credentials)
-      const { token, user } = response.data
+      const response = await apiClient.post(endpoints.auth.login, credentials);
+      const { accessToken, refreshToken, user } = response.data;
+
+      if (!accessToken) {
+        return { success: false, error: 'Invalid response from server' };
+      }
+
+      // Handle Remember Me
+      if (credentials.rememberMe) {
+        this.saveRememberMe(credentials, 'admin');
+      } else {
+        this.clearRememberMe();
+      }
 
       // Store auth data
-      localStorage.setItem('authToken', token)
-      localStorage.setItem('userRole', user.role)
-      localStorage.setItem('userId', user.id)
-
-      return { success: true, user, token }
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Login failed' 
+      localStorage.setItem('authToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken || '');
+      // Ensure role is set for admin email/password logins even if server doesn't return user
+      const roleToStore = user?.role || 'admin';
+      localStorage.setItem('userRole', roleToStore);
+      if (user?.id) {
+        localStorage.setItem('userId', user.id);
       }
+
+      return { success: true, user: user || { role: 'admin' }, token: accessToken };
+    } catch (error) {
+      console.error('Login error in authService:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Login failed',
+      };
     }
   }
+
+  // Login manager with username and PIN
+  async loginManager(credentials) {
+    try {
+      const response = await apiClient.post(endpoints.auth.login, credentials);
+      const { accessToken, refreshToken, business } = response.data;
+
+      if (!accessToken) {
+        return { success: false, error: 'Invalid response from server' };
+      }
+
+      // Handle Remember Me for manager
+      if (credentials.rememberMe) {
+        this.saveRememberMe(credentials, 'manager');
+      } else {
+        this.clearRememberMe();
+      }
+
+      // Decode token to get user ID
+      const decoded = decodeToken(accessToken);
+      const userId = decoded?.id || null;
+
+      // Store auth data
+      localStorage.setItem('authToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken || '');
+      localStorage.setItem('userRole', 'manager');
+      if (userId) {
+        localStorage.setItem('userId', userId);
+      }
+      
+      // Create user object with business info
+      const user = {
+        id: userId,
+        role: 'manager',
+        business: business || null
+      };
+
+      return { 
+        success: true, 
+        user, 
+        token: accessToken,
+        business: business 
+      };
+    } catch (error) {
+      console.error('Manager login error in authService:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Login failed',
+      };
+    }
+  }
+
 
   // Register user
   async register(userData) {
@@ -28,9 +133,9 @@ class AuthService {
       const response = await apiClient.post(endpoints.auth.register, userData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Registration failed'
       }
     }
   }
@@ -57,17 +162,25 @@ class AuthService {
   // Refresh token
   async refreshToken() {
     try {
-      const response = await apiClient.post(endpoints.auth.refresh)
-      const { token } = response.data
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (!refreshToken) {
+        throw new Error('No refresh token available')
+      }
+      
+      const response = await apiClient.post(endpoints.auth.refresh, { token: refreshToken })
+      const { accessToken, refreshToken: newRefreshToken } = response.data
 
-      localStorage.setItem('authToken', token)
-      return { success: true, token }
+      localStorage.setItem('authToken', accessToken)
+      if (newRefreshToken) {
+        localStorage.setItem('refreshToken', newRefreshToken)
+      }
+      return { success: true, token: accessToken }
     } catch (error) {
       // If refresh fails, logout user
       this.logout()
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Token refresh failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Token refresh failed'
       }
     }
   }
@@ -78,9 +191,9 @@ class AuthService {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, { token })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Email verification failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Email verification failed'
       }
     }
   }
@@ -91,9 +204,9 @@ class AuthService {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.RESEND_VERIFICATION, { email })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to resend verification email' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to resend verification email'
       }
     }
   }
@@ -104,9 +217,9 @@ class AuthService {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to send reset email' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to send reset email'
       }
     }
   }
@@ -114,15 +227,15 @@ class AuthService {
   // Reset password
   async resetPassword(token, newPassword) {
     try {
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, { 
-        token, 
-        password: newPassword 
+      const response = await apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+        token,
+        password: newPassword
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Password reset failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Password reset failed'
       }
     }
   }
@@ -133,9 +246,9 @@ class AuthService {
       const response = await apiClient.post(endpoints.auth.sendOTP, { email, type })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to send OTP' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to send OTP'
       }
     }
   }
@@ -146,9 +259,9 @@ class AuthService {
       const response = await apiClient.post(endpoints.auth.verifyOTP, { otp, type })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'OTP verification failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'OTP verification failed'
       }
     }
   }
@@ -159,9 +272,9 @@ class AuthService {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.RESEND_OTP, { type })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to resend OTP' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to resend OTP'
       }
     }
   }
@@ -182,10 +295,10 @@ class AuthService {
       localStorage.removeItem('authToken')
       localStorage.removeItem('userRole')
       localStorage.removeItem('userId')
-      
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Token verification failed' 
+
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Token verification failed'
       }
     }
   }
@@ -258,9 +371,9 @@ class AuthService {
       const response = await apiClient.put('/auth/profile', userData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Profile update failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Profile update failed'
       }
     }
   }
@@ -274,9 +387,9 @@ class AuthService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Password change failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Password change failed'
       }
     }
   }
@@ -287,15 +400,15 @@ class AuthService {
       const response = await apiClient.delete('/auth/account', {
         data: { password }
       })
-      
+
       // Clear auth data after successful deletion
       this.clearAuth()
-      
+
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Account deletion failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Account deletion failed'
       }
     }
   }

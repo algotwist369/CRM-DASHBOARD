@@ -1,386 +1,501 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Card, Button, Table, SearchBar, Dropdown, Badge, Modal, Alert } from '../../../../components'
-import appointmentService from '../../../../services/appointment/appointmentService'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import {
+  FaCalendarAlt,
+  FaSearch,
+  FaFilter,
+  FaSpinner,
+  FaEye,
+  FaEdit,
+  FaClock,
+  FaUser,
+  FaPhone,
+  FaEnvelope,
+  FaMapMarkerAlt,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaExclamationCircle,
+  FaArrowUp,
+  FaArrowDown
+} from 'react-icons/fa'
+import managerService from '../../../../services/manager/managerService'
 
 const AppointmentList = () => {
+  const navigate = useNavigate()
   const [appointments, setAppointments] = useState([])
-  const [filteredAppointments, setFilteredAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [staffFilter, setStaffFilter] = useState('')
-  const [selectedAppointment, setSelectedAppointment] = useState(null)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [dateFilter, setDateFilter] = useState('')
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState('desc') // Show newest first
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 })
+  const [updatingStatus, setUpdatingStatus] = useState({})
+  const [statusUpdateModal, setStatusUpdateModal] = useState({ 
+    show: false, 
+    appointment: null, 
+    newStatus: '',
+    notes: ''
+  })
+
+  const fetchAppointments = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        sortBy,
+        sortOrder
+      }
+
+      if (statusFilter) params.status = statusFilter
+      if (dateFilter) params.date = dateFilter
+
+      const result = await managerService.getAppointments(params)
+
+      if (result.success) {
+        let fetchedAppointments = result.data?.data || result.data || []
+        
+        // Client-side search
+        if (searchTerm) {
+          fetchedAppointments = fetchedAppointments.filter(apt =>
+            apt.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            apt.customer?.phone?.includes(searchTerm) ||
+            apt.customer?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            apt.confirmationCode?.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        }
+
+        setAppointments(fetchedAppointments)
+        setPagination(prev => ({
+          ...prev,
+          total: result.data?.pagination?.total || fetchedAppointments.length,
+          pages: result.data?.pagination?.pages || Math.ceil((result.data?.pagination?.total || fetchedAppointments.length) / pagination.limit)
+        }))
+      } else {
+        toast.error(result.error || 'Failed to fetch appointments')
+      }
+    } catch (error) {
+      toast.error('Failed to fetch appointments')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }, [pagination.page, pagination.limit, statusFilter, dateFilter, sortBy, sortOrder, searchTerm])
 
   useEffect(() => {
     fetchAppointments()
-  }, [])
+  }, [fetchAppointments])
 
-  useEffect(() => {
-    filterAppointments()
-  }, [appointments, searchTerm, statusFilter, staffFilter])
-
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true)
-      
-      const result = await appointmentService.getAppointments()
-      
-      if (result.success) {
-        setAppointments(result.data)
-        toast.success('Appointments loaded successfully!')
-      } else {
-        toast.error(result.error || 'Failed to load appointments')
-        console.error('Appointments error:', result.error)
-      }
-    } catch (error) {
-      console.error('Error fetching appointments:', error)
-      toast.error('An unexpected error occurred while loading appointments')
-    } finally {
-      setLoading(false)
+  const getStatusBadge = (status) => {
+    const badges = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      confirmed: 'bg-blue-100 text-blue-800',
+      in_progress: 'bg-purple-100 text-purple-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
+      no_show: 'bg-gray-100 text-gray-800'
     }
+    return badges[status] || 'bg-gray-100 text-gray-800'
   }
-      
-      ]
-      
-    } catch (error) {
-      console.error('Error fetching appointments:', error)
-    } finally {
-      setLoading(false)
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return <FaCheckCircle className="text-green-600" />
+      case 'cancelled':
+        return <FaTimesCircle className="text-red-600" />
+      case 'confirmed':
+        return <FaCheckCircle className="text-blue-600" />
+      case 'pending':
+        return <FaExclamationCircle className="text-yellow-600" />
+      default:
+        return <FaClock className="text-gray-600" />
     }
   }
 
-  const filterAppointments = () => {
-    let filtered = appointments
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(appointment =>
-        appointment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appointment.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appointment.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appointment.staffName.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Status filter
-    if (statusFilter) {
-      filtered = filtered.filter(appointment => appointment.status === statusFilter)
-    }
-
-    // Staff filter
-    if (staffFilter) {
-      filtered = filtered.filter(appointment => appointment.staffName === staffFilter)
-    }
-
-    setFilteredAppointments(filtered)
-  }
-
-  const handleDelete = async () => {
-    if (!selectedAppointment) return
-
-    try {
-      setDeleting(true)
-      // Simulate API call
-      
-      setAppointments(prev => prev.filter(a => a.id !== selectedAppointment.id))
-      setShowDeleteModal(false)
-      setSelectedAppointment(null)
-    } catch (error) {
-      console.error('Error deleting appointment:', error)
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  const handleStatusChange = async (appointmentId, newStatus) => {
-    try {
-      // Simulate API call
-      
-      setAppointments(prev => prev.map(appointment =>
-        appointment.id === appointmentId
-          ? { ...appointment, status: newStatus }
-          : appointment
-      ))
-    } catch (error) {
-      console.error('Error updating appointment status:', error)
-    }
-  }
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
-  }
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDateTime = (dateString, timeString) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    const formattedDate = date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     })
+    return timeString ? `${formattedDate} at ${timeString}` : formattedDate
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'scheduled': return 'info'
-      case 'completed': return 'success'
-      case 'cancelled': return 'danger'
-      case 'in_progress': return 'warning'
-      case 'no_show': return 'danger'
-      default: return 'default'
+  const isNewAppointment = (appointment) => {
+    if (!appointment.createdAt) return false
+    const createdDate = new Date(appointment.createdAt)
+    const now = new Date()
+    const hoursSinceCreation = (now - createdDate) / (1000 * 60 * 60)
+    return hoursSinceCreation <= 24 // New if created within last 24 hours
+  }
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR'
+    }).format(amount || 0)
+  }
+
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }))
+  }
+
+  const handleStatusChange = (appointment, newStatus) => {
+    setStatusUpdateModal({
+      show: true,
+      appointment: appointment,
+      newStatus: newStatus
+    })
+  }
+
+  const confirmStatusUpdate = async () => {
+    const { appointment, newStatus, notes } = statusUpdateModal
+    if (!appointment || !newStatus) return
+
+    try {
+      setUpdatingStatus(prev => ({ ...prev, [appointment._id]: true }))
+      const result = await managerService.updateAppointmentStatus(
+        appointment._id,
+        newStatus,
+        notes || ''
+      )
+
+      if (result.success) {
+        toast.success('Appointment status updated successfully')
+        setStatusUpdateModal({ show: false, appointment: null })
+        fetchAppointments() // Refresh list
+      } else {
+        toast.error(result.error || 'Failed to update appointment status')
+      }
+    } catch (error) {
+      toast.error('Failed to update appointment status')
+      console.error(error)
+    } finally {
+      setUpdatingStatus(prev => ({ ...prev, [appointment._id]: false }))
     }
   }
 
-  const statusOptions = [
-    { label: 'All Statuses', value: '' },
-    { label: 'Scheduled', value: 'scheduled' },
-    { label: 'Completed', value: 'completed' },
-    { label: 'Cancelled', value: 'cancelled' },
-    { label: 'In Progress', value: 'in_progress' },
-    { label: 'No Show', value: 'no_show' }
-  ]
+  const quickStatusUpdate = async (appointment, newStatus) => {
+    if (!appointment || !newStatus || newStatus === appointment.status) return
 
-  const staffOptions = [
-    { label: 'All Staff', value: '' },
-    { label: 'Emma Wilson', value: 'Emma Wilson' },
-    { label: 'David Brown', value: 'David Brown' },
-    { label: 'Lisa Garcia', value: 'Lisa Garcia' }
-  ]
+    try {
+      setUpdatingStatus(prev => ({ ...prev, [appointment._id]: true }))
+      const result = await managerService.updateAppointmentStatus(appointment._id, newStatus)
+
+      if (result.success) {
+        toast.success('Status updated successfully')
+        fetchAppointments() // Refresh list
+      } else {
+        toast.error(result.error || 'Failed to update status')
+      }
+    } catch (error) {
+      toast.error('Failed to update status')
+      console.error(error)
+    } finally {
+      setUpdatingStatus(prev => ({ ...prev, [appointment._id]: false }))
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Appointment Management</h1>
-              <p className="mt-2 text-gray-600">
-                Manage all appointments and bookings
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Link to="/manager/appointments/calendar">
-                <Button variant="outline">Calendar View</Button>
-              </Link>
-              <Button variant="primary">Book Appointment</Button>
-            </div>
-          </div>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <FaCalendarAlt className="text-primary-600" />
+            Appointments
+          </h1>
+          <p className="text-gray-600 mt-1">Manage all customer appointments</p>
         </div>
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-2">
-                <SearchBar
-                  onSearch={(term) => setSearchTerm(term)}
-                  placeholder="Search appointments..."
-                  debounceTime={300}
-                />
-              </div>
-              <div>
-                <Dropdown
-                  options={statusOptions}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  placeholder="Filter by status"
-                  optionLabel="label"
-                  optionValue="value"
-                  clearable
-                />
-              </div>
-              <div>
-                <Dropdown
-                  options={staffOptions}
-                  value={staffFilter}
-                  onChange={setStaffFilter}
-                  placeholder="Filter by staff"
-                  optionLabel="label"
-                  optionValue="value"
-                  clearable
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Results Summary */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-600">
-            Showing {filteredAppointments.length} of {appointments.length} appointments
-          </p>
-        </div>
-
-        {/* Appointments Table */}
-        <Card>
-          <div className="p-6">
-            <Table
-              data={filteredAppointments}
-              columns={[
-                {
-                  key: 'customerName',
-                  label: 'Customer',
-                  sortable: true,
-                  render: (appointment) => (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{appointment.customerName}</p>
-                        <p className="text-sm text-gray-500">{appointment.customerEmail}</p>
-                      </div>
-                    </div>
-                  )
-                },
-                {
-                  key: 'service',
-                  label: 'Service',
-                  sortable: true,
-                  render: (appointment) => appointment.service
-                },
-                {
-                  key: 'staffName',
-                  label: 'Staff',
-                  sortable: true,
-                  render: (appointment) => (
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                      <span className="text-sm text-gray-900">{appointment.staffName}</span>
-                    </div>
-                  )
-                },
-                {
-                  key: 'date',
-                  label: 'Date',
-                  sortable: true,
-                  render: (appointment) => formatDate(appointment.date)
-                },
-                {
-                  key: 'time',
-                  label: 'Time',
-                  sortable: true,
-                  render: (appointment) => appointment.time
-                },
-                {
-                  key: 'duration',
-                  label: 'Duration',
-                  sortable: true,
-                  render: (appointment) => `${appointment.duration} min`
-                },
-                {
-                  key: 'price',
-                  label: 'Price',
-                  sortable: true,
-                  render: (appointment) => formatCurrency(appointment.price)
-                },
-                {
-                  key: 'status',
-                  label: 'Status',
-                  sortable: true,
-                  render: (appointment) => (
-                    <Badge variant={getStatusColor(appointment.status)} size="sm">
-                      {appointment.status.replace('_', ' ')}
-                    </Badge>
-                  )
-                },
-                {
-                  key: 'actions',
-                  label: 'Actions',
-                  render: (appointment) => (
-                    <div className="flex gap-2">
-                      <Link to={`/manager/appointments/${appointment.id}`}>
-                        <Button variant="outline" size="sm">View</Button>
-                      </Link>
-                      <Button variant="outline" size="sm">Edit</Button>
-                      <Dropdown
-                        options={[
-                          { label: 'Mark Completed', value: 'completed' },
-                          { label: 'Mark In Progress', value: 'in_progress' },
-                          { label: 'Cancel', value: 'cancelled' },
-                          { label: 'No Show', value: 'no_show' }
-                        ]}
-                        value=""
-                        onChange={(value) => handleStatusChange(appointment.id, value)}
-                        placeholder="Actions"
-                        optionLabel="label"
-                        optionValue="value"
-                        buttonClassName="text-sm"
-                      />
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedAppointment(appointment)
-                          setShowDeleteModal(true)
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )
-                }
-              ]}
-              onSort={(key, direction) => {
-                console.log('Sort by:', key, direction)
-              }}
-              sortable={true}
-              loading={loading}
-              emptyMessage="No appointments found matching your criteria."
-            />
-          </div>
-        </Card>
-
-        {/* Delete Confirmation Modal */}
-        <Modal
-          isOpen={showDeleteModal}
-          onClose={() => {
-            setShowDeleteModal(false)
-            setSelectedAppointment(null)
-          }}
-          title="Delete Appointment"
-          size="md"
+        <button
+          onClick={() => navigate('/manager/appointments/calendar')}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
         >
-          <div className="space-y-4">
-            <Alert
-              type="error"
-              title="Are you sure you want to delete this appointment?"
-              message={`This action cannot be undone. The appointment for "${selectedAppointment?.customerName}" will be permanently removed.`}
+          <FaCalendarAlt />
+          Calendar View
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search appointments..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
-            
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="no_show">No Show</option>
+          </select>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              {sortOrder === 'asc' ? <FaArrowUp /> : <FaArrowDown />}
+              Sort
+            </button>
+            {(statusFilter || dateFilter) && (
+              <button
                 onClick={() => {
-                  setShowDeleteModal(false)
-                  setSelectedAppointment(null)
+                  setStatusFilter('')
+                  setDateFilter('')
                 }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Appointments Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        {loading ? (
+          <div className="p-12 text-center">
+            <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
+            <p className="text-gray-600">Loading appointments...</p>
+          </div>
+        ) : appointments.length === 0 ? (
+          <div className="p-12 text-center">
+            <FaCalendarAlt className="mx-auto text-gray-400 text-4xl mb-4" />
+            <p className="text-gray-600">No appointments found</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Services</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {appointments.map((appointment) => (
+                    <tr key={appointment._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900 flex items-center gap-2">
+                            {formatDateTime(appointment.appointmentDate, appointment.startTime)}
+                            {isNewAppointment(appointment) && (
+                              <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                          {appointment.confirmationCode && (
+                            <div className="text-xs text-gray-500">Code: {appointment.confirmationCode}</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">{appointment.customer?.name || 'N/A'}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            <FaPhone className="text-gray-400" />
+                            {appointment.customer?.phone || 'N/A'}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {Array.isArray(appointment.services)
+                            ? appointment.services.map(s => s?.serviceName || s).join(', ')
+                            : appointment.serviceName || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {appointment.staff?.name || 'TBD'}
+                        </div>
+                        {appointment.staff?.role && (
+                          <div className="text-xs text-gray-500">{appointment.staff.role}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-gray-900">
+                          {formatCurrency(appointment.finalPrice || appointment.totalPrice || 0)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="relative flex items-center gap-2">
+                          <select
+                            value={appointment.status || 'pending'}
+                            onChange={(e) => quickStatusUpdate(appointment, e.target.value)}
+                            disabled={updatingStatus[appointment._id]}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-primary-500 ${getStatusBadge(appointment.status)} ${
+                              updatingStatus[appointment._id] ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                            }`}
+                            title="Quick status update"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="no_show">No Show</option>
+                          </select>
+                          {updatingStatus[appointment._id] && (
+                            <FaSpinner className="animate-spin text-primary-600 text-sm" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => navigate(`/manager/appointments/${appointment._id}`)}
+                            className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <FaEye />
+                          </button>
+              <button
+                onClick={() => {
+                  setStatusUpdateModal({
+                    show: true,
+                    appointment: appointment,
+                    newStatus: appointment.status || 'pending',
+                    notes: ''
+                  })
+                }}
+                className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                title="Update Status with Notes"
+              >
+                <FaEdit />
+              </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
+                  {pagination.total} appointments
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-4 py-2 text-sm text-gray-700">
+                    Page {pagination.page} of {pagination.pages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.pages}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Status Update Modal */}
+      {statusUpdateModal.show && statusUpdateModal.appointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Appointment Status</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select
+                  value={statusUpdateModal.newStatus || statusUpdateModal.appointment.status}
+                  onChange={(e) => setStatusUpdateModal(prev => ({ ...prev, newStatus: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="no_show">No Show</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                <textarea
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Add notes about this status update..."
+                  onChange={(e) => setStatusUpdateModal(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={confirmStatusUpdate}
+                disabled={updatingStatus[statusUpdateModal.appointment?._id]}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {updatingStatus[statusUpdateModal.appointment?._id] ? (
+                  <>
+                    <FaSpinner className="animate-spin inline mr-2" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Status'
+                )}
+              </button>
+              <button
+                onClick={() => setStatusUpdateModal({ show: false, appointment: null, newStatus: '', notes: '' })}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
-              </Button>
-              <Button
-                variant="danger"
-                loading={deleting}
-                onClick={handleDelete}
-              >
-                {deleting ? 'Deleting...' : 'Delete Appointment'}
-              </Button>
+              </button>
             </div>
           </div>
-        </Modal>
-      </div>
+        </div>
+      )}
     </div>
   )
 }

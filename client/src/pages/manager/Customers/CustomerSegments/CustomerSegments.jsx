@@ -1,345 +1,240 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Button, Table, SearchBar, Dropdown, Badge, Modal, Alert } from '../../../../components'
-import { DonutChart, BarChart } from '../../../../components'
-import customerService from '../../../../services/customer/customerService'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import {
+  FaUsers,
+  FaChartPie,
+  FaArrowLeft,
+  FaSpinner,
+  FaEye,
+  FaUser,
+  FaUserPlus,
+  FaUserCheck,
+  FaUserClock,
+  FaCrown,
+  FaSearch
+} from 'react-icons/fa'
+import managerService from '../../../../services/manager/managerService'
 
 const CustomerSegments = () => {
-  const [segments, setSegments] = useState([])
-  const [filteredSegments, setFilteredSegments] = useState([])
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [segments, setSegments] = useState(null)
   const [selectedSegment, setSelectedSegment] = useState(null)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchSegments()
   }, [])
 
-  useEffect(() => {
-    filterSegments()
-  }, [segments, searchTerm])
-
   const fetchSegments = async () => {
     try {
       setLoading(true)
-      
-      const result = await customerService.getCustomerSegments()
+      const result = await managerService.getCustomerSegments()
       
       if (result.success) {
-        setSegments(result.data)
-        toast.success('Customer segments loaded successfully!')
+        // Handle both response structures: result.data.data or result.data
+        const segmentsData = result.data?.data || result.data
+        if (segmentsData) {
+          setSegments(segmentsData)
+        } else {
+          setSegments(null)
+          toast.error('No segment data available')
+        }
       } else {
-        toast.error(result.error || 'Failed to load customer segments')
-        console.error('Customer segments error:', result.error)
+        toast.error(result.error || 'Failed to fetch segments')
+        setSegments(null)
       }
     } catch (error) {
-      console.error('Error fetching customer segments:', error)
-      toast.error('An unexpected error occurred while loading customer segments')
-    } finally {
-      setLoading(false)
-    }
-  }
-      
-      ]
-      
-    } catch (error) {
-      console.error('Error fetching segments:', error)
+      toast.error('Failed to fetch segments')
+      console.error(error)
+      setSegments(null)
     } finally {
       setLoading(false)
     }
   }
 
-  const filterSegments = () => {
-    let filtered = segments
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(segment =>
-        segment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        segment.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+  const getSegmentIcon = (segmentType) => {
+    const icons = {
+      new: <FaUserPlus className="text-blue-500" />,
+      returning: <FaUserCheck className="text-green-500" />,
+      loyal: <FaCrown className="text-purple-500" />,
+      inactive: <FaUserClock className="text-red-500" />,
+      highValue: <FaCrown className="text-yellow-500" />,
+      recent: <FaUser className="text-indigo-500" />
     }
-
-    setFilteredSegments(filtered)
+    return icons[segmentType] || <FaUser className="text-gray-500" />
   }
 
-  const handleDelete = async () => {
-    if (!selectedSegment) return
-
-    try {
-      setDeleting(true)
-      // Simulate API call
-      
-      setSegments(prev => prev.filter(s => s.id !== selectedSegment.id))
-      setShowDeleteModal(false)
-      setSelectedSegment(null)
-    } catch (error) {
-      console.error('Error deleting segment:', error)
-    } finally {
-      setDeleting(false)
+  const getSegmentColor = (segmentType) => {
+    const colors = {
+      new: 'bg-blue-100 text-blue-800 border-blue-300',
+      returning: 'bg-green-100 text-green-800 border-green-300',
+      loyal: 'bg-purple-100 text-purple-800 border-purple-300',
+      inactive: 'bg-red-100 text-red-800 border-red-300',
+      highValue: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      recent: 'bg-indigo-100 text-indigo-800 border-indigo-300'
     }
+    return colors[segmentType] || 'bg-gray-100 text-gray-800 border-gray-300'
   }
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+  const formatNumber = (num) => {
+    return (num || 0).toLocaleString()
   }
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
+          <p className="text-gray-600">Loading customer segments...</p>
+        </div>
+      </div>
+    )
   }
 
-  const getColorClass = (color) => {
-    switch (color) {
-      case 'purple': return 'bg-purple-100 text-purple-800'
-      case 'blue': return 'bg-blue-100 text-blue-800'
-      case 'green': return 'bg-green-100 text-green-800'
-      case 'orange': return 'bg-orange-100 text-orange-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
+  if (!segments) {
+    return (
+      <div className="p-6">
+        <p className="text-gray-600">No segment data available</p>
+      </div>
+    )
   }
 
-  const getColorVariant = (color) => {
-    switch (color) {
-      case 'purple': return 'purple'
-      case 'blue': return 'blue'
-      case 'green': return 'green'
-      case 'orange': return 'orange'
-      default: return 'default'
-    }
-  }
+  const segmentList = [
+    { key: 'new', label: 'New Customers', description: 'Customers with 1 visit' },
+    { key: 'returning', label: 'Returning Customers', description: 'Customers with 2-4 visits' },
+    { key: 'loyal', label: 'Loyal Customers', description: 'Customers with 5+ visits' },
+    { key: 'inactive', label: 'Inactive Customers', description: 'No visit in last 90 days' },
+    { key: 'highValue', label: 'High Value Customers', description: 'Spent ₹5,000 or more' },
+    { key: 'recent', label: 'Recent Customers', description: 'Visited in last 30 days' }
+  ]
+
+  const totalCustomers = segmentList.reduce((sum, seg) => sum + (segments[seg.key] || 0), 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Customer Segments</h1>
-              <p className="mt-2 text-gray-600">
-                Manage customer segments and their criteria
-              </p>
-            </div>
-            <Button variant="primary">Create New Segment</Button>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/manager/customers')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <FaArrowLeft className="text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <FaChartPie className="text-primary-600" />
+              Customer Segments
+            </h1>
+            <p className="text-gray-600 mt-1">Analyze your customer base by segments</p>
           </div>
         </div>
+      </div>
 
-        {/* Search */}
-        <Card className="mb-6">
-          <div className="p-6">
-            <div className="max-w-md">
-              <SearchBar
-                onSearch={(term) => setSearchTerm(term)}
-                placeholder="Search segments..."
-                debounceTime={300}
-              />
-            </div>
+      {/* Summary */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Segment Overview</h2>
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Total Customers</p>
+            <p className="text-2xl font-bold text-primary-600">{formatNumber(totalCustomers)}</p>
           </div>
-        </Card>
-
-        {/* Results Summary */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-600">
-            Showing {filteredSegments.length} of {segments.length} segments
-          </p>
         </div>
+      </div>
 
-        {/* Segments Table */}
-        <Card>
-          <div className="p-6">
-            <Table
-              data={filteredSegments}
-              columns={[
-                {
-                  key: 'name',
-                  label: 'Segment',
-                  sortable: true,
-                  render: (segment) => (
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${
-                        segment.color === 'purple' ? 'bg-purple-500' :
-                        segment.color === 'blue' ? 'bg-blue-500' :
-                        segment.color === 'green' ? 'bg-green-500' :
-                        segment.color === 'orange' ? 'bg-orange-500' :
-                        'bg-gray-500'
-                      }`} />
-                      <div>
-                        <p className="font-medium text-gray-900">{segment.name}</p>
-                        <p className="text-sm text-gray-500">{segment.description}</p>
-                      </div>
-                    </div>
-                  )
-                },
-                {
-                  key: 'customerCount',
-                  label: 'Customers',
-                  sortable: true,
-                  render: (segment) => (
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-gray-900">{segment.customerCount}</p>
-                      <p className="text-sm text-gray-500">customers</p>
-                    </div>
-                  )
-                },
-                {
-                  key: 'totalValue',
-                  label: 'Total Value',
-                  sortable: true,
-                  render: (segment) => (
-                    <div>
-                      <p className="font-medium text-gray-900">{formatCurrency(segment.totalValue)}</p>
-                      <p className="text-sm text-gray-500">avg: {formatCurrency(segment.averageValue)}</p>
-                    </div>
-                  )
-                },
-                {
-                  key: 'criteria',
-                  label: 'Criteria',
-                  render: (segment) => (
-                    <div className="text-sm">
-                      <p className="text-gray-900">Spent: {formatCurrency(segment.criteria.totalSpent.min)}+</p>
-                      <p className="text-gray-500">Visits: {segment.criteria.totalVisits.min}+</p>
-                      <p className="text-gray-500">Last visit: {segment.criteria.lastVisit.days} days</p>
-                    </div>
-                  )
-                },
-                {
-                  key: 'benefits',
-                  label: 'Benefits',
-                  render: (segment) => (
-                    <div className="flex flex-wrap gap-1">
-                      {segment.benefits.slice(0, 2).map((benefit, index) => (
-                        <Badge key={index} variant="info" size="sm">
-                          {benefit}
-                        </Badge>
-                      ))}
-                      {segment.benefits.length > 2 && (
-                        <Badge variant="default" size="sm">
-                          +{segment.benefits.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  )
-                },
-                {
-                  key: 'lastUpdated',
-                  label: 'Last Updated',
-                  sortable: true,
-                  render: (segment) => formatDate(segment.lastUpdated)
-                },
-                {
-                  key: 'actions',
-                  label: 'Actions',
-                  render: (segment) => (
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">View</Button>
-                      <Button variant="outline" size="sm">Edit</Button>
-                      <Button variant="outline" size="sm">Customers</Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedSegment(segment)
-                          setShowDeleteModal(true)
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )
-                }
-              ]}
-              onSort={(key, direction) => {
-                console.log('Sort by:', key, direction)
-              }}
-              sortable={true}
-              loading={loading}
-              emptyMessage="No segments found matching your criteria."
-            />
+      {/* Segments Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {segmentList.map((segment) => {
+          const count = segments[segment.key] || 0
+          const percentage = totalCustomers > 0 ? (count / totalCustomers * 100).toFixed(1) : 0
+          
+          return (
+            <div
+              key={segment.key}
+              className={`bg-white rounded-xl shadow-sm border-2 ${getSegmentColor(segment.key)} p-6 hover:shadow-lg transition-all cursor-pointer`}
+              onClick={() => navigate(`/manager/customers?segment=${segment.key}`)}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-lg">
+                    {getSegmentIcon(segment.key)}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{segment.label}</h3>
+                    <p className="text-xs text-gray-600">{segment.description}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <div className="flex items-end gap-2 mb-2">
+                  <p className="text-4xl font-bold text-gray-900">{formatNumber(count)}</p>
+                  <p className="text-lg font-semibold text-gray-600 mb-1">{percentage}%</p>
+                </div>
+                <div className="w-full bg-white/50 rounded-full h-2">
+                  <div
+                    className="bg-current h-2 rounded-full transition-all"
+                    style={{ width: `${percentage}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <button className="w-full flex items-center justify-center gap-2 py-2 bg-white/80 hover:bg-white rounded-lg transition-colors text-sm font-medium">
+                <FaEye />
+                View Customers
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Segment Insights */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Segment Insights</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-medium text-gray-900 mb-2">Top Segments</h3>
+            <div className="space-y-2">
+              {segmentList
+                .sort((a, b) => (segments[b.key] || 0) - (segments[a.key] || 0))
+                .slice(0, 3)
+                .map((segment) => (
+                  <div key={segment.key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span className="text-sm text-gray-700">{segment.label}</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {formatNumber(segments[segment.key] || 0)}
+                    </span>
+                  </div>
+                ))}
+            </div>
           </div>
-        </Card>
-
-        {/* Segment Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <Card>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Segment Distribution</h3>
-              <DonutChart
-                data={segments.map(segment => ({
-                  name: segment.name,
-                  count: segment.customerCount,
-                  percentage: Math.round((segment.customerCount / segments.reduce((sum, s) => sum + s.customerCount, 0)) * 100)
-                }))}
-                centerText="Customers"
-                centerValue={segments.reduce((sum, s) => sum + s.customerCount, 0).toString()}
-                showLegend={true}
-                width="300px"
-                height="300px"
-              />
+          <div>
+            <h3 className="font-medium text-gray-900 mb-2">Segment Distribution</h3>
+            <div className="space-y-3">
+              {segmentList.map((segment) => {
+                const count = segments[segment.key] || 0
+                const percentage = totalCustomers > 0 ? (count / totalCustomers * 100) : 0
+                return (
+                  <div key={segment.key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-gray-600">{segment.label}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-primary-600 h-2 rounded-full transition-all"
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          </Card>
-
-          <Card>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Segment Value</h3>
-              <BarChart
-                data={segments.map(segment => ({
-                  label: segment.name,
-                  value: segment.totalValue
-                }))}
-                height="300px"
-                showLegend={true}
-              />
-            </div>
-          </Card>
+          </div>
         </div>
-
-        {/* Delete Confirmation Modal */}
-        <Modal
-          isOpen={showDeleteModal}
-          onClose={() => {
-            setShowDeleteModal(false)
-            setSelectedSegment(null)
-          }}
-          title="Delete Segment"
-          size="md"
-        >
-          <div className="space-y-4">
-            <Alert
-              type="error"
-              title="Are you sure you want to delete this segment?"
-              message={`This action cannot be undone. The segment "${selectedSegment?.name}" and all its data will be permanently removed.`}
-            />
-            
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowDeleteModal(false)
-                  setSelectedSegment(null)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                loading={deleting}
-                onClick={handleDelete}
-              >
-                {deleting ? 'Deleting...' : 'Delete Segment'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
       </div>
     </div>
   )

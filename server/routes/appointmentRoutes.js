@@ -4,46 +4,66 @@ const appointmentController = require("../controllers/appointmentController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// ================== Public Routes (No Authentication Required) ==================
+// ================== PUBLIC ROUTES (No Authentication Required) ==================
 
-// Get business information for booking (by businessLink)
-router.get("/business/:businessLink/info", appointmentController.getBusinessForBooking);
-
-// Get business information for booking (by businessId - for testing)
-router.get("/business/:businessId/info", appointmentController.getBusinessForBookingById);
+// Get business info for booking (by businessLink)
+router.get("/business/:businessLink/info", appointmentController.getBusinessInfoForBooking);
 
 // Get available time slots (by businessLink)
-router.get("/business/:businessLink/slots", appointmentController.getAvailableSlots);
-
-// Get available time slots (by businessId - for testing)
-router.get("/business/:businessId/slots", appointmentController.getAvailableSlotsById);
+router.get("/business/:businessLink/slots", appointmentController.getAvailableSlotsForBooking);
 
 // Book appointment (by businessLink)
-router.post("/business/:businessLink/book", appointmentController.bookAppointment);
+router.post("/business/:businessLink/book", appointmentController.bookAppointmentPublic);
 
-// Book appointment (by businessId - for testing)
-router.post("/book", appointmentController.bookAppointmentById);
+// Get appointment by confirmation code (public)
+router.get("/confirmation/:confirmationCode", appointmentController.getAppointmentByConfirmationCode);
 
-// Get appointment by confirmation code
-router.get("/confirmation/:confirmationCode", appointmentController.getAppointmentByCode);
+// Cancel appointment by confirmation code (public)
+router.post("/confirmation/:confirmationCode/cancel", appointmentController.cancelAppointmentByCode);
+
+// ================== PROTECTED ROUTES (Authentication Required) ==================
+
+// All routes below require authentication (Admin or Manager)
+router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
+
+// ================== Appointment Management ==================
+
+// Create new appointment
+router.post("/", appointmentController.createAppointment);
+
+// Get appointments with filtering and pagination
+router.get("/", appointmentController.getAppointments);
+
+// Get appointment statistics
+router.get("/stats", appointmentController.getAppointmentStats);
+
+// Get appointment by ID
+router.get("/:id", appointmentController.getAppointmentById);
+
+// Update appointment
+router.put("/:id", appointmentController.updateAppointment);
+
+// ================== Appointment Actions ==================
+
+// Confirm appointment
+router.post("/:id/confirm", appointmentController.confirmAppointment);
+
+// Start appointment (customer checked in)
+router.post("/:id/start", appointmentController.startAppointment);
+
+// Complete appointment
+router.post("/:id/complete", appointmentController.completeAppointment);
 
 // Cancel appointment
-router.post("/confirmation/:confirmationCode/cancel", appointmentController.cancelAppointment);
+router.post("/:id/cancel", appointmentController.cancelAppointment);
 
-// ================== Manager Routes (Authentication Required) ==================
+// Reschedule appointment
+router.post("/:id/reschedule", appointmentController.rescheduleAppointment);
 
-// Get appointments for manager's business
-router.get("/", 
-    authMiddleware, 
-    roleMiddleware(["manager"]),
-    appointmentController.getAppointments
-);
+// Mark as no-show
+router.post("/:id/no-show", appointmentController.markNoShow);
 
-// Update appointment status
-router.put("/:appointmentId/status", 
-    authMiddleware, 
-    roleMiddleware(["manager"]),
-    appointmentController.updateAppointmentStatus
-);
+// Add review to appointment
+router.post("/:id/review", appointmentController.addReview);
 
 module.exports = router;

@@ -8,10 +8,10 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#eff6ff',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
+          50: '#f9fafb',   // very light gray background
+          500: '#6b7280',  // medium gray (neutral text/buttons)
+          600: '#4b5563',  // darker gray (hover states)
+          700: '#374151',  // dark gray (headers or strong contrast)
         },
         secondary: {
           50: '#f8fafc',

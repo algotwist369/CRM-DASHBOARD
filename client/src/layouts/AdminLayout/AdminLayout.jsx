@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { AdminSidebar, AdminHeader } from './components'
+import authService from '../../services/auth/authService'
+import SocketDebugPanel from '../../components/debug/SocketDebugPanel'
 
 const AdminLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -9,21 +11,18 @@ const AdminLayout = () => {
   const location = useLocation()
 
   useEffect(() => {
-    // Simulate authentication check
     const checkAuth = async () => {
       try {
-        // In a real app, this would check for valid admin tokens
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Mock authentication check
-        const isAuthenticated = true // This would come from your auth context
-        const userRole = 'admin' // This would come from your auth context
-        
-        if (!isAuthenticated || userRole !== 'admin') {
+        const token = authService.getToken()
+        const role = authService.getUserRole()
+        if (!token) {
+          navigate('/auth/login')
+          return
+        }
+        if (role !== 'admin') {
           navigate('/unauthorized')
           return
         }
-        
         setIsLoading(false)
       } catch (error) {
         console.error('Authentication check failed:', error)
@@ -65,7 +64,7 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <AdminSidebar
         isCollapsed={sidebarCollapsed}
@@ -88,10 +87,10 @@ const AdminLayout = () => {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-4 py-3">
+        <footer className="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
-              <span>© 2024 Elite Hair Studio CRM</span>
+              <span>© 2024 RAMA CRM CRM</span>
               <span>•</span>
               <span>Version 1.0.0</span>
             </div>
@@ -117,6 +116,9 @@ const AdminLayout = () => {
           onClick={() => handleSidebarCollapse(true)}
         ></div>
       )}
+
+      {/* Socket.IO Debug Panel (Development Only) */}
+      {import.meta.env.DEV && <SocketDebugPanel />}
     </div>
   )
 }

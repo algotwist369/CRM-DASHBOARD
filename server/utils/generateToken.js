@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'access-secret';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'refresh-secret';
-const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || '15m'; // e.g. 15m, 1h
+const ACCESS_TOKEN_EXPIRES = process.env.ACCESS_TOKEN_EXPIRES || '7d'; // 7 days for better UX
 const REFRESH_TOKEN_EXPIRES = process.env.REFRESH_TOKEN_EXPIRES || '30d'; // for reference
 
 // Create JWT access token with payload

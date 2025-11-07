@@ -1,641 +1,239 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Card, Button, Input, Alert, Tabs } from '../../../../components'
-import businessService from '../../../../services/admin/businessService'
-import { toast } from 'react-hot-toast'
+import React, { useState } from "react";
+import { FaStore, FaPhone, FaEnvelope, FaGlobe, FaMapMarkerAlt, FaBuilding } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import businessService from "../../../../services/admin/businessService";
 
 const CreateBusiness = () => {
-  const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(0)
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    // Basic Information
-    name: '',
-    type: '',
-    description: '',
-    status: 'pending',
-    
-    // Contact Information
-    email: '',
-    phone: '',
-    website: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'United States',
-    
-    // Business Hours
-    monday: { open: '09:00', close: '17:00', closed: false },
-    tuesday: { open: '09:00', close: '17:00', closed: false },
-    wednesday: { open: '09:00', close: '17:00', closed: false },
-    thursday: { open: '09:00', close: '17:00', closed: false },
-    friday: { open: '09:00', close: '17:00', closed: false },
-    saturday: { open: '10:00', close: '16:00', closed: false },
-    sunday: { open: '', close: '', closed: true },
-    
-    // Settings
-    timezone: 'America/New_York',
-    currency: 'USD',
-    language: 'en',
-    features: {
-      appointments: true,
-      payments: true,
-      inventory: false,
-      marketing: true,
-      reports: true
-    }
-  })
-  const [errors, setErrors] = useState({})
-  const [isLoading, setIsLoading] = useState(false)
+    type: "",
+    name: "",
+    branch: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "India",
+    phone: "",
+    email: "",
+    website: "",
+    description: "",
+  });
 
-  const steps = [
-    { title: 'Basic Info', description: 'Business details' },
-    { title: 'Contact', description: 'Contact information' },
-    { title: 'Hours', description: 'Business hours' },
-    { title: 'Settings', description: 'Configuration' }
-  ]
+  const [errors, setErrors] = useState({});
 
-  const businessTypes = [
-    { value: 'salon', label: 'Hair Salon' },
-    { value: 'spa', label: 'Spa & Wellness' },
-    { value: 'hotel', label: 'Hotel & Resort' },
-    { value: 'clinic', label: 'Medical Clinic' },
-    { value: 'fitness', label: 'Fitness Center' },
-    { value: 'restaurant', label: 'Restaurant' },
-    { value: 'retail', label: 'Retail Store' },
-    { value: 'other', label: 'Other' }
-  ]
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    validateField(name, value);
+  };
 
-  const timezones = [
-    { value: 'America/New_York', label: 'Eastern Time (ET)' },
-    { value: 'America/Chicago', label: 'Central Time (CT)' },
-    { value: 'America/Denver', label: 'Mountain Time (MT)' },
-    { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-    { value: 'Europe/London', label: 'London (GMT)' },
-    { value: 'Europe/Paris', label: 'Paris (CET)' },
-    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' }
-  ]
+  const validateField = (name, value) => {
+    let msg = "";
+    if (name === "type" && !value) msg = "Business type is required";
+    if (name === "name" && value.trim().length < 3) msg = "Name must be at least 3 characters";
+    if (name === "phone" && !/^[6-9]\d{9}$/.test(value))
+      msg = "Enter a valid 10-digit phone number starting with 6-9";
+    if (name === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+      msg = "Invalid email format";
+    if (name === "website" && value && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(value))
+      msg = "Enter a valid website URL";
+    setErrors((prev) => ({ ...prev, [name]: msg }));
+  };
 
-  const currencies = [
-    { value: 'USD', label: 'US Dollar ($)' },
-    { value: 'EUR', label: 'Euro (€)' },
-    { value: 'GBP', label: 'British Pound (£)' },
-    { value: 'CAD', label: 'Canadian Dollar (C$)' },
-    { value: 'AUD', label: 'Australian Dollar (A$)' }
-  ]
-
-  const languages = [
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fr', label: 'French' },
-    { value: 'de', label: 'German' },
-    { value: 'it', label: 'Italian' },
-    { value: 'pt', label: 'Portuguese' }
-  ]
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }))
-    }
-  }
-
-  const handleNestedInputChange = (parent, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [parent]: {
-        ...prev[parent],
-        [field]: value
-      }
-    }))
-  }
-
-  const handleFeatureToggle = (feature) => {
-    setFormData(prev => ({
-      ...prev,
-      features: {
-        ...prev.features,
-        [feature]: !prev.features[feature]
-      }
-    }))
-  }
-
-  const validateStep = (step) => {
-    const newErrors = {}
-    
-    if (step === 0) {
-      // Basic Information Validation
-      if (!formData.name.trim()) {
-        newErrors.name = 'Business name is required'
-      }
-      if (!formData.type) {
-        newErrors.type = 'Business type is required'
-      }
-      if (!formData.description.trim()) {
-        newErrors.description = 'Business description is required'
-      }
-    } else if (step === 1) {
-      // Contact Information Validation
-      if (!formData.email.trim()) {
-        newErrors.email = 'Email is required'
-      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address'
-      }
-      if (!formData.phone.trim()) {
-        newErrors.phone = 'Phone number is required'
-      }
-      if (!formData.address.trim()) {
-        newErrors.address = 'Address is required'
-      }
-      if (!formData.city.trim()) {
-        newErrors.city = 'City is required'
-      }
-      if (!formData.state.trim()) {
-        newErrors.state = 'State is required'
-      }
-      if (!formData.zipCode.trim()) {
-        newErrors.zipCode = 'ZIP code is required'
-      }
-    }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => prev + 1)
-    }
-  }
-
-  const handlePrevious = () => {
-    setCurrentStep(prev => prev - 1)
-  }
+  const validateForm = () => {
+    let valid = true;
+    Object.entries(formData).forEach(([key, value]) => {
+      validateField(key, value);
+      if (errors[key]) valid = false;
+    });
+    return valid;
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    
-    if (!validateStep(currentStep)) return
-    
-    setIsLoading(true)
-    setErrors({})
-    
+    e.preventDefault();
+    if (!validateForm()) {
+      toast.error("Please correct form errors before submitting");
+      return;
+    }
+
     try {
-      const result = await businessService.createBusiness(formData)
-      
-      if (result.success) {
-        toast.success('Business created successfully!')
-        navigate(`/admin/businesses/${result.data.id}`, {
-          state: { message: 'Business created successfully!' }
-        })
+      setLoading(true);
+      const res = await businessService.createBusiness(formData);
+      if (res.success) {
+        toast.success(`${formData.type} created successfully`);
+        navigate("/admin/businesses");
       } else {
-        setErrors({ general: result.error || 'Failed to create business. Please try again.' })
-        toast.error(result.error || 'Failed to create business')
+        toast.error(res.error || 'Failed to create business');
       }
     } catch (error) {
-      console.error('Create business error:', error)
-      setErrors({ general: 'An unexpected error occurred. Please try again.' })
-      toast.error('An unexpected error occurred')
+      toast.error("Failed to create business");
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
-  }
-
-  const renderBasicInfo = () => (
-    <div className="space-y-6">
-      <Input
-        label="Business Name"
-        name="name"
-        value={formData.name}
-        onChange={(e) => handleInputChange('name', e.target.value)}
-        placeholder="Enter business name"
-        required
-        error={errors.name}
-        icon={
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        }
-      />
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Business Type <span className="text-red-500">*</span>
-        </label>
-        <select
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-          value={formData.type}
-          onChange={(e) => handleInputChange('type', e.target.value)}
-        >
-          <option value="">Select business type</option>
-          {businessTypes.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-        {errors.type && <p className="mt-1 text-sm text-red-600">{errors.type}</p>}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Business Description <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-          rows={4}
-          value={formData.description}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Describe your business..."
-        />
-        {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Initial Status
-        </label>
-        <select
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-          value={formData.status}
-          onChange={(e) => handleInputChange('status', e.target.value)}
-        >
-          <option value="pending">Pending Approval</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        <p className="mt-1 text-sm text-gray-500">
-          Set the initial status for this business
-        </p>
-      </div>
-    </div>
-  )
-
-  const renderContactInfo = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Input
-          label="Email Address"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={(e) => handleInputChange('email', e.target.value)}
-          placeholder="business@example.com"
-          required
-          error={errors.email}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          }
-        />
-
-        <Input
-          label="Phone Number"
-          name="phone"
-          type="tel"
-          value={formData.phone}
-          onChange={(e) => handleInputChange('phone', e.target.value)}
-          placeholder="+1 (555) 123-4567"
-          required
-          error={errors.phone}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-          }
-        />
-      </div>
-
-      <Input
-        label="Website (Optional)"
-        name="website"
-        type="url"
-        value={formData.website}
-        onChange={(e) => handleInputChange('website', e.target.value)}
-        placeholder="https://www.example.com"
-        icon={
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
-          </svg>
-        }
-      />
-
-      <Input
-        label="Street Address"
-        name="address"
-        value={formData.address}
-        onChange={(e) => handleInputChange('address', e.target.value)}
-        placeholder="123 Main Street"
-        required
-        error={errors.address}
-        icon={
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        }
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Input
-          label="City"
-          name="city"
-          value={formData.city}
-          onChange={(e) => handleInputChange('city', e.target.value)}
-          placeholder="New York"
-          required
-          error={errors.city}
-        />
-
-        <Input
-          label="State"
-          name="state"
-          value={formData.state}
-          onChange={(e) => handleInputChange('state', e.target.value)}
-          placeholder="NY"
-          required
-          error={errors.state}
-        />
-
-        <Input
-          label="ZIP Code"
-          name="zipCode"
-          value={formData.zipCode}
-          onChange={(e) => handleInputChange('zipCode', e.target.value)}
-          placeholder="10001"
-          required
-          error={errors.zipCode}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Country
-        </label>
-        <select
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-          value={formData.country}
-          onChange={(e) => handleInputChange('country', e.target.value)}
-        >
-          <option value="United States">United States</option>
-          <option value="Canada">Canada</option>
-          <option value="United Kingdom">United Kingdom</option>
-          <option value="Australia">Australia</option>
-          <option value="Germany">Germany</option>
-          <option value="France">France</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-    </div>
-  )
-
-  const renderBusinessHours = () => (
-    <div className="space-y-6">
-      <div className="text-sm text-gray-600 mb-4">
-        Set your business hours for each day of the week. You can mark days as closed.
-      </div>
-
-      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-        <div key={day} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-          <div className="w-20">
-            <label className="block text-sm font-medium text-gray-700 capitalize">
-              {day}
-            </label>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={!formData[day].closed}
-              onChange={(e) => handleNestedInputChange(day, 'closed', !e.target.checked)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className="text-sm text-gray-700">Open</span>
-          </div>
-
-          {!formData[day].closed && (
-            <div className="flex items-center gap-2">
-              <Input
-                type="time"
-                value={formData[day].open}
-                onChange={(e) => handleNestedInputChange(day, 'open', e.target.value)}
-                className="w-32"
-              />
-              <span className="text-gray-500">to</span>
-              <Input
-                type="time"
-                value={formData[day].close}
-                onChange={(e) => handleNestedInputChange(day, 'close', e.target.value)}
-                className="w-32"
-              />
-            </div>
-          )}
-
-          {formData[day].closed && (
-            <span className="text-sm text-gray-500">Closed</span>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-
-  const renderSettings = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Timezone
-          </label>
-          <select
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            value={formData.timezone}
-            onChange={(e) => handleInputChange('timezone', e.target.value)}
-          >
-            {timezones.map((tz) => (
-              <option key={tz.value} value={tz.value}>
-                {tz.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Currency
-          </label>
-          <select
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            value={formData.currency}
-            onChange={(e) => handleInputChange('currency', e.target.value)}
-          >
-            {currencies.map((currency) => (
-              <option key={currency.value} value={currency.value}>
-                {currency.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Language
-          </label>
-          <select
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            value={formData.language}
-            onChange={(e) => handleInputChange('language', e.target.value)}
-          >
-            {languages.map((lang) => (
-              <option key={lang.value} value={lang.value}>
-                {lang.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Features</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(formData.features).map(([feature, enabled]) => (
-            <div key={feature} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-              <div>
-                <h4 className="font-medium text-gray-900 capitalize">
-                  {feature.replace(/([A-Z])/g, ' $1').trim()}
-                </h4>
-                <p className="text-sm text-gray-500">
-                  {feature === 'appointments' && 'Enable appointment booking system'}
-                  {feature === 'payments' && 'Enable payment processing'}
-                  {feature === 'inventory' && 'Enable inventory management'}
-                  {feature === 'marketing' && 'Enable marketing tools'}
-                  {feature === 'reports' && 'Enable reporting and analytics'}
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={() => handleFeatureToggle(feature)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return renderBasicInfo()
-      case 1:
-        return renderContactInfo()
-      case 2:
-        return renderBusinessHours()
-      case 3:
-        return renderSettings()
-      default:
-        return null
-    }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Create New Business</h1>
-          <p className="mt-2 text-gray-600">
-            Add a new business to your system
-          </p>
-        </div>
+    <div className="min-h-screen flex justify-center items-center">
+      <div className="bg-white w-full max-w-11/12 p-8 rounded-2xl shadow-md border border-gray-400 overflow-y-auto">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+          <FaStore className="text-primary-600" /> Add New Business
+        </h2>
 
-        <Card className="py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              {steps.map((step, index) => (
-                <div key={index} className="flex items-center">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                    index <= currentStep
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {index + 1}
-                  </div>
-                  <div className="ml-2 hidden sm:block">
-                    <p className={`text-sm font-medium ${
-                      index <= currentStep ? 'text-primary-600' : 'text-gray-500'
-                    }`}>
-                      {step.title}
-                    </p>
-                    <p className="text-xs text-gray-500">{step.description}</p>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`hidden sm:block w-16 h-0.5 ml-4 ${
-                      index < currentStep ? 'bg-primary-600' : 'bg-gray-200'
-                    }`} />
-                  )}
-                </div>
-              ))}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Business Type */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Business Type</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className={`w-full border ${errors.type ? "border-red-500" : "border-gray-300"
+                } rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500`}
+            >
+              <option value="">Select Type</option>
+              <option value="salon">Salon</option>
+              <option value="spa">Spa</option>
+              <option value="hotel">Hotel</option>
+            </select>
+            {errors.type && <p className="text-red-500 text-sm mt-1">{errors.type}</p>}
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Error Alert */}
-            {errors.general && (
-              <Alert type="error" message={errors.general} className="mb-6" />
-            )}
-
-            {/* Step Content */}
-            {renderStepContent()}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentStep === 0}
-              >
-                Previous
-              </Button>
-              
-              {currentStep < steps.length - 1 ? (
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleNext}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  variant="primary"
-                  loading={isLoading}
-                >
-                  {isLoading ? 'Creating Business...' : 'Create Business'}
-                </Button>
-              )}
+          {/* Business Name */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Business Name</label>
+            <div className="flex items-center border border-gray-400 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <FaBuilding className="text-gray-400 mr-2" />
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Enter business name"
+                className="w-full focus:outline-none"
+              />
             </div>
-          </form>
-        </Card>
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          </div>
+
+          {/* Branch */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Branch</label>
+            <input
+              type="text"
+              name="branch"
+              value={formData.branch}
+              onChange={handleChange}
+              placeholder="e.g., Main Branch"
+              className="w-full border border-gray-400 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Address</label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="Enter address"
+              rows={2}
+              className="w-full border border-gray-400 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+            ></textarea>
+          </div>
+
+          {/* City, State, Country */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {["city", "state", "country"].map((field) => (
+              <input
+                key={field}
+                type="text"
+                name={field}
+                value={formData[field]}
+                onChange={handleChange}
+                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                className="border border-gray-400 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+              />
+            ))}
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Phone</label>
+            <div className="flex items-center border border-gray-400 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <FaPhone className="text-gray-400 mr-2" />
+              <input
+                type="text"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="10-digit phone number"
+                className="w-full focus:outline-none"
+              />
+            </div>
+            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Email</label>
+            <div className="flex items-center border border-gray-400 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <FaEnvelope className="text-gray-400 mr-2" />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Business email"
+                className="w-full focus:outline-none"
+              />
+            </div>
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          </div>
+
+          {/* Website */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Website</label>
+            <div className="flex items-center border border-gray-400 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <FaGlobe className="text-gray-400 mr-2" />
+              <input
+                type="text"
+                name="website"
+                value={formData.website}
+                onChange={handleChange}
+                placeholder="https://example.com"
+                className="w-full focus:outline-none"
+              />
+            </div>
+            {errors.website && <p className="text-red-500 text-sm mt-1">{errors.website}</p>}
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Description</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Write something about your business"
+              rows={3}
+              className="w-full border border-gray-400 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+            ></textarea>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-lg font-medium transition-all duration-200 disabled:opacity-60"
+          >
+            {loading ? "Adding..." : "Add Business"}
+          </button>
+        </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default CreateBusiness
+export default CreateBusiness;

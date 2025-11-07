@@ -1,104 +1,295 @@
+// Customer.js - Customer model for CRM
 const mongoose = require("mongoose");
 
 const customerSchema = new mongoose.Schema(
     {
-        business: { type: mongoose.Schema.Types.ObjectId, ref: "Business", required: true, index: true },
+        // Business Reference
+        business: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Business",
+            required: true,
+            index: true
+        },
         
-        // Customer information
-        name: { type: String, required: true },
-        email: { type: String, required: true },
-        phone: { type: String, required: true },
+        // Basic Information
+        firstName: { type: String, required: true, trim: true },
+        lastName: { type: String, trim: true },
+        email: { 
+            type: String, 
+            lowercase: true, 
+            trim: true,
+            index: true 
+        },
+        phone: { 
+            type: String, 
+            required: true,
+            index: true 
+        },
+        alternatePhone: { type: String },
+        
+        // Personal Details
         dateOfBirth: { type: Date },
-        gender: { type: String, enum: ["male", "female", "other"] },
+        gender: { 
+            type: String, 
+            enum: ["male", "female", "other", "prefer_not_to_say"] 
+        },
+        anniversary: { type: Date },
         
-        // Address information
+        // Address
         address: {
             street: { type: String },
             city: { type: String },
             state: { type: String },
-            pincode: { type: String },
-            country: { type: String, default: "India" }
+            country: { type: String, default: "India" },
+            zipCode: { type: String }
         },
         
-        // Customer preferences
+        // Profile
+        profilePicture: { type: String },
+        preferredLanguage: { type: String, default: "en" },
+        
+        // Customer Status
+        customerType: {
+            type: String,
+            enum: ["new", "regular", "vip", "inactive"],
+            default: "new"
+        },
+        source: {
+            type: String,
+            enum: ["walk-in", "online", "referral", "social_media", "advertisement", "other"],
+            default: "walk-in"
+        },
+        referredBy: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: "Customer" 
+        },
+        
+        // Visit & Spending Information
+        totalVisits: { type: Number, default: 0 },
+        totalSpent: { type: Number, default: 0 },
+        averageSpent: { type: Number, default: 0 },
+        firstVisit: { type: Date },
+        lastVisit: { type: Date },
+        
+        // Preferences
         preferences: {
-            preferredServices: [{ type: String }],
-            preferredStaff: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
-            preferredTimeSlots: [{ type: String }], // e.g., ["morning", "afternoon", "evening"]
-            notes: { type: String }
+            preferredStaff: [{ 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: "Staff" 
+            }],
+            preferredServices: [{ 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: "Service" 
+            }],
+            preferredTimeSlots: [{ type: String }], // e.g., ["morning", "afternoon"]
+            specialRequests: { type: String }
         },
         
-        // Customer statistics
-        stats: {
-            totalVisits: { type: Number, default: 0 },
-            totalSpent: { type: Number, default: 0 },
-            lastVisit: { type: Date },
-            averageRating: { type: Number, default: 0, min: 0, max: 5 },
-            loyaltyPoints: { type: Number, default: 0 }
+        // Loyalty & Membership
+        loyaltyPoints: { type: Number, default: 0 },
+        membershipTier: {
+            type: String,
+            enum: ["none", "bronze", "silver", "gold", "platinum"],
+            default: "none"
+        },
+        membershipStartDate: { type: Date },
+        membershipExpiryDate: { type: Date },
+        activeSubscription: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "CustomerMembership"
         },
         
-        // Communication preferences
-        communication: {
-            smsNotifications: { type: Boolean, default: true },
-            emailNotifications: { type: Boolean, default: true },
-            whatsappNotifications: { type: Boolean, default: false }
+        // Tags & Categories
+        tags: [{ type: String }],
+        category: { type: String }, // e.g., "High Value", "Frequent Visitor"
+        
+        // Notes & Comments
+        notes: { type: String },
+        internalNotes: { type: String }, // Only visible to staff
+        
+        // Marketing Preferences
+        marketingConsent: {
+            email: { type: Boolean, default: false },
+            sms: { type: Boolean, default: false },
+            whatsapp: { type: Boolean, default: false },
+            phone: { type: Boolean, default: false }
         },
         
-        // Customer status
-        status: { 
-            type: String, 
-            enum: ["active", "inactive", "blocked"], 
-            default: "active" 
+        // Social Media
+        socialMedia: {
+            facebook: { type: String },
+            instagram: { type: String },
+            twitter: { type: String }
         },
         
-        // Emergency contact
+        // Status
+        isActive: { type: Boolean, default: true, index: true },
+        isBlacklisted: { type: Boolean, default: false },
+        blacklistReason: { type: String },
+        
+        // Emergency Contact
         emergencyContact: {
             name: { type: String },
             phone: { type: String },
             relationship: { type: String }
         },
         
-        // Medical information (for spa/hotel services)
-        medicalInfo: {
-            allergies: [{ type: String }],
-            medicalConditions: [{ type: String }],
-            medications: [{ type: String }],
-            notes: { type: String }
+        // Custom Fields (for flexibility)
+        customFields: {
+            type: Map,
+            of: mongoose.Schema.Types.Mixed
+        },
+        
+        // Metadata
+        createdBy: { 
+            type: mongoose.Schema.Types.ObjectId,
+            refPath: 'createdByModel'
+        },
+        createdByModel: {
+            type: String,
+            enum: ['Admin', 'Manager', 'Staff']
+        },
+        updatedBy: { 
+            type: mongoose.Schema.Types.ObjectId,
+            refPath: 'updatedByModel'
+        },
+        updatedByModel: {
+            type: String,
+            enum: ['Admin', 'Manager', 'Staff']
         }
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
+    }
 );
 
-// Indexes
+// Indexes for better performance
+customerSchema.index({ business: 1, phone: 1 }, { unique: true });
 customerSchema.index({ business: 1, email: 1 });
-customerSchema.index({ business: 1, phone: 1 });
-customerSchema.index({ business: 1, status: 1 });
-customerSchema.index({ email: 1 });
-customerSchema.index({ phone: 1 });
+customerSchema.index({ business: 1, isActive: 1 });
+customerSchema.index({ business: 1, customerType: 1 });
+customerSchema.index({ business: 1, lastVisit: -1 });
+customerSchema.index({ business: 1, totalSpent: -1 });
+customerSchema.index({ tags: 1 });
 
-// Virtual for full address
-customerSchema.virtual('fullAddress').get(function() {
-    const addr = this.address;
-    if (!addr) return '';
-    return `${addr.street || ''}, ${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}`.replace(/,\s*,/g, ',').replace(/^,\s*|,\s*$/g, '');
+// Virtual for full name
+customerSchema.virtual('fullName').get(function() {
+    if (this.lastName) {
+        return `${this.firstName} ${this.lastName}`;
+    }
+    return this.firstName;
 });
 
-// Method to update customer stats
-customerSchema.methods.updateStats = function(amount, rating) {
-    this.stats.totalVisits += 1;
-    this.stats.totalSpent += amount;
-    this.stats.lastVisit = new Date();
+// Virtual for age
+customerSchema.virtual('age').get(function() {
+    if (this.dateOfBirth) {
+        const today = new Date();
+        const birthDate = new Date(this.dateOfBirth);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        
+        return age;
+    }
+    return null;
+});
+
+// Virtual for days since last visit
+customerSchema.virtual('daysSinceLastVisit').get(function() {
+    if (this.lastVisit) {
+        const today = new Date();
+        const lastVisit = new Date(this.lastVisit);
+        const diffTime = Math.abs(today - lastVisit);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    }
+    return null;
+});
+
+// Method to update customer stats after visit
+customerSchema.methods.updateAfterVisit = async function(amount) {
+    this.totalVisits += 1;
+    this.totalSpent += amount;
+    this.averageSpent = this.totalSpent / this.totalVisits;
+    this.lastVisit = new Date();
     
-    if (rating) {
-        const currentRating = this.stats.averageRating;
-        const totalVisits = this.stats.totalVisits;
-        this.stats.averageRating = ((currentRating * (totalVisits - 1)) + rating) / totalVisits;
+    if (!this.firstVisit) {
+        this.firstVisit = new Date();
     }
     
-    // Calculate loyalty points (1 point per 100 rupees spent)
-    this.stats.loyaltyPoints = Math.floor(this.stats.totalSpent / 100);
+    // Update customer type based on visits
+    if (this.totalVisits >= 20) {
+        this.customerType = 'vip';
+    } else if (this.totalVisits >= 5) {
+        this.customerType = 'regular';
+    } else {
+        this.customerType = 'new';
+    }
     
-    return this.save();
+    await this.save();
 };
+
+// Method to add loyalty points
+customerSchema.methods.addLoyaltyPoints = async function(points) {
+    this.loyaltyPoints += points;
+    
+    // Auto-upgrade membership tier
+    if (this.loyaltyPoints >= 10000) {
+        this.membershipTier = 'platinum';
+    } else if (this.loyaltyPoints >= 5000) {
+        this.membershipTier = 'gold';
+    } else if (this.loyaltyPoints >= 2000) {
+        this.membershipTier = 'silver';
+    } else if (this.loyaltyPoints >= 500) {
+        this.membershipTier = 'bronze';
+    }
+    
+    await this.save();
+};
+
+// Method to redeem loyalty points
+customerSchema.methods.redeemPoints = async function(points) {
+    if (this.loyaltyPoints >= points) {
+        this.loyaltyPoints -= points;
+        await this.save();
+        return true;
+    }
+    return false;
+};
+
+// Static method to find duplicate customers
+customerSchema.statics.findDuplicates = async function(business, phone, email) {
+    const query = {
+        business,
+        isActive: true,
+        $or: [{ phone }]
+    };
+    
+    if (email) {
+        query.$or.push({ email });
+    }
+    
+    return await this.find(query);
+};
+
+// Pre-save middleware to update customer type
+customerSchema.pre('save', function(next) {
+    // Check if customer has been inactive for 180+ days
+    if (this.lastVisit) {
+        const today = new Date();
+        const daysSinceLastVisit = Math.floor((today - this.lastVisit) / (1000 * 60 * 60 * 24));
+        
+        if (daysSinceLastVisit > 180 && this.customerType !== 'new') {
+            this.customerType = 'inactive';
+        }
+    }
+    
+    next();
+});
 
 module.exports = mongoose.model("Customer", customerSchema);

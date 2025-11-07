@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import authService from '../../services/auth/authService'
 
 export const useRegister = () => {
   const [loading, setLoading] = useState(false)
@@ -9,25 +10,18 @@ export const useRegister = () => {
 
   const registerUser = async (userData) => {
     try {
+      if (loading) return { success: false, error: 'Already submitting' }
       setLoading(true)
       setError(null)
       setSuccess(false)
 
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(userData)
-      })
+      const result = await authService.register(userData)
 
-      const result = await response.json()
-
-      if (response.ok) {
+      if (result.success) {
         setSuccess(true)
         
         // If registration requires email verification
-        if (result.requiresVerification) {
+        if (result.data?.requiresVerification) {
           navigate('/auth/verify-email', { 
             state: { email: userData.email } 
           })
@@ -38,10 +32,10 @@ export const useRegister = () => {
           })
         }
         
-        return { success: true, data: result }
+        return { success: true, data: result.data }
       } else {
-        setError(result.message || 'Registration failed')
-        return { success: false, error: result.message }
+        setError(result.error || 'Registration failed')
+        return { success: false, error: result.error }
       }
     } catch (error) {
       const errorMessage = 'Network error occurred'
