@@ -1,4 +1,5 @@
 import axios from 'axios'
+import authService from '../auth/authService'
 
 // Base configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
@@ -13,6 +14,22 @@ const apiClient = axios.create({
     'Accept': 'application/json'
   }
 })
+
+// Track if we're already refreshing to prevent multiple refresh attempts
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  
+  failedQueue = []
+}
 
 // Request interceptor
 apiClient.interceptors.request.use(
@@ -78,10 +95,48 @@ apiClient.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // Unauthorized - clear auth and redirect to login
-          localStorage.removeItem('authToken')
-          localStorage.removeItem('userRole')
-          window.location.href = '/auth/login'
+          // Unauthorized - try to refresh token
+          const originalRequest = error.config
+
+          // If we're already refreshing, queue this request
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject })
+            })
+              .then(token => {
+                originalRequest.headers.Authorization = `Bearer ${token}`
+                return apiClient(originalRequest)
+              })
+              .catch(err => {
+                return Promise.reject(err)
+              })
+          }
+
+          // Start refresh process
+          isRefreshing = true
+
+          return authService.refreshToken()
+            .then(result => {
+              if (result.success) {
+                processQueue(null, result.token)
+                originalRequest.headers.Authorization = `Bearer ${result.token}`
+                isRefreshing = false
+                return apiClient(originalRequest)
+              } else {
+                throw result
+              }
+            })
+            .catch(refreshError => {
+              processQueue(refreshError, null)
+              isRefreshing = false
+              // If refresh failed, clear auth and redirect to login
+              localStorage.removeItem('authToken')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('userRole')
+              localStorage.removeItem('userId')
+              window.location.href = '/auth/login'
+              return Promise.reject(refreshError)
+            })
           break
 
         case 403:

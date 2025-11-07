@@ -1,636 +1,634 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { Card, Button, Badge, Tabs, Table, StatCard, StatCardGrid, Alert } from '../../../../components'
-import { LineChart, BarChart } from '../../../../components'
+import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  FaArrowLeft,
+  FaPhone,
+  FaEnvelope,
+  FaGlobe,
+  FaMapMarkerAlt,
+  FaClock,
+  FaUserTie,
+  FaUsers,
+  FaChartBar,
+  FaBuilding,
+  FaCalendarAlt,
+  FaLink,
+  FaInfoCircle,
+  FaCopy,
+  FaCheck,
+  FaCog,
+} from "react-icons/fa";
+import { HiRefresh } from "react-icons/hi";
+import businessService from "../../../../services/admin/businessService";
+
+// Stat Card Component
+const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
+  <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="flex items-center gap-3">
+      <div className={`${iconBg} p-2 rounded-lg flex-shrink-0`}>
+        <Icon className={`${iconColor} text-lg`} />
+      </div>
+      <div>
+        <p className="text-xs text-gray-600 mb-0.5">{title}</p>
+        <p className="text-xl font-semibold text-gray-800">{value}</p>
+      </div>
+    </div>
+  </div>
+));
+
+// Info Row Component
+const InfoRow = memo(({ icon: Icon, label, value, isLink, href }) => (
+  <div className="flex items-start gap-3 p-3 border-b border-gray-100 last:border-0">
+    <Icon className="text-gray-500 text-base mt-0.5 flex-shrink-0" />
+    <div className="flex-1 min-w-0">
+      <p className="text-xs font-medium text-gray-500 mb-0.5">{label}</p>
+      {isLink && href ? (
+        <a
+          href={href}
+          target={href.startsWith('http') ? '_blank' : undefined}
+          rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+          className="text-sm text-primary-600 hover:text-primary-700 font-medium break-all"
+        >
+          {value || '—'}
+        </a>
+      ) : (
+        <p className="text-sm text-gray-800 break-words">{value || '—'}</p>
+      )}
+    </div>
+  </div>
+));
+
+// Manager Card Component
+const ManagerCard = memo(({ manager }) => (
+  <div className="border border-gray-200 rounded-lg p-4 bg-white">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+        <FaUserTie className="text-blue-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-gray-800 truncate">{manager.name}</p>
+        <p className="text-xs text-gray-500 truncate">@{manager.username}</p>
+      </div>
+      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+        manager.isActive
+          ? 'bg-green-100 text-green-700'
+          : 'bg-red-100 text-red-700'
+      }`}>
+        {manager.isActive ? 'Active' : 'Inactive'}
+      </span>
+    </div>
+    <div className="space-y-1.5 text-xs">
+      {manager.email && (
+        <p className="flex items-center gap-2 text-gray-600 truncate">
+          <FaEnvelope className="text-gray-400 text-xs flex-shrink-0" />
+          <span className="truncate">{manager.email}</span>
+        </p>
+      )}
+      {manager.phone && (
+        <p className="flex items-center gap-2 text-gray-600">
+          <FaPhone className="text-gray-400 text-xs flex-shrink-0" />
+          {manager.phone}
+        </p>
+      )}
+    </div>
+  </div>
+));
 
 const BusinessDetails = () => {
-  const { id } = useParams()
-  const [business, setBusiness] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState(0)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [business, setBusiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    fetchBusinessDetails()
-  }, [id])
-
-  const fetchBusinessDetails = async () => {
+  const fetchBusiness = useCallback(async () => {
     try {
-      setLoading(true)
-      // Simulate API call
+      setLoading(true);
+      const res = await businessService.getBusiness(id);
+      const data = res?.data?.data || res?.data;
       
-        ],
-        staff: [
-          {
-            id: '1',
-            name: 'Emma Wilson',
-            role: 'Senior Stylist',
-            status: 'active',
-            hireDate: '2023-06-15'
-          },
-          {
-            id: '2',
-            name: 'David Brown',
-            role: 'Stylist',
-            status: 'active',
-            hireDate: '2023-08-20'
-          },
-          {
-            id: '3',
-            name: 'Lisa Garcia',
-            role: 'Color Specialist',
-            status: 'active',
-            hireDate: '2023-09-10'
-          }
-        ],
-        stats: {
-          totalStaff: 8,
-          totalManagers: 2,
-          totalCustomers: 245,
-          monthlyRevenue: 15000,
-          totalAppointments: 89,
-          averageRating: 4.8
-        },
-        recentTransactions: [
-          {
-            id: '1',
-            customerName: 'John Doe',
-            service: 'Haircut & Styling',
-            amount: 85,
-            date: '2024-01-20',
-            status: 'completed'
-          },
-          {
-            id: '2',
-            customerName: 'Jane Smith',
-            service: 'Color Treatment',
-            amount: 120,
-            date: '2024-01-19',
-            status: 'completed'
-          }
-        ],
-        recentAppointments: [
-          {
-            id: '1',
-            customerName: 'Alice Johnson',
-            service: 'Haircut',
-            staffName: 'Emma Wilson',
-            date: '2024-01-21',
-            time: '10:00 AM',
-            status: 'scheduled'
-          },
-          {
-            id: '2',
-            customerName: 'Bob Wilson',
-            service: 'Beard Trim',
-            staffName: 'David Brown',
-            date: '2024-01-21',
-            time: '2:00 PM',
-            status: 'scheduled'
-          }
-        ],
-        revenueData: [
-          { month: 'Jan', revenue: 12000 },
-          { month: 'Feb', revenue: 13500 },
-          { month: 'Mar', revenue: 14200 },
-          { month: 'Apr', revenue: 14800 },
-          { month: 'May', revenue: 15200 },
-          { month: 'Jun', revenue: 15000 }
-        ],
-        appointmentData: [
-          { month: 'Jan', appointments: 75 },
-          { month: 'Feb', appointments: 82 },
-          { month: 'Mar', appointments: 88 },
-          { month: 'Apr', appointments: 91 },
-          { month: 'May', appointments: 87 },
-          { month: 'Jun', appointments: 89 }
-        ],
-        createdAt: '2024-01-15',
-        lastActivity: '2024-01-20'
+      // If business doesn't have link, fetch it separately
+      if (data && !data.businessLink) {
+        const linkRes = await businessService.getBusinessLink(id);
+        if (linkRes.success && linkRes.data) {
+          data.businessLink = linkRes.data.businessLink || linkRes.data.link;
+        }
       }
       
+      setBusiness(data || null);
     } catch (error) {
-      console.error('Error fetching business details:', error)
+      console.error('Failed to fetch business:', error);
+      setBusiness(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  }, [id]);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
-  }
+  useEffect(() => {
+    fetchBusiness();
+  }, [fetchBusiness]);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'success'
-      case 'pending': return 'warning'
-      case 'inactive': return 'danger'
-      default: return 'default'
+  useEffect(() => {
+    if (copied) {
+      const timer = setTimeout(() => setCopied(false), 2000);
+      return () => clearTimeout(timer);
     }
-  }
+  }, [copied]);
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'salon': return 'blue'
-      case 'spa': return 'green'
-      case 'hotel': return 'purple'
-      default: return 'default'
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchBusiness();
+  }, [fetchBusiness]);
+
+  const handleCopyLink = useCallback(() => {
+    if (business?.businessLink) {
+      navigator.clipboard.writeText(`/${business.businessLink}`);
+      setCopied(true);
     }
-  }
+  }, [business?.businessLink]);
 
-  const tabs = [
-    { label: 'Overview', content: 'overview' },
-    { label: 'Managers', content: 'managers' },
-    { label: 'Staff', content: 'staff' },
-    { label: 'Transactions', content: 'transactions' },
-    { label: 'Appointments', content: 'appointments' },
-    { label: 'Analytics', content: 'analytics' }
-  ]
+  const handleBack = useCallback(() => navigate(-1), [navigate]);
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Business Information */}
-      <Card>
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                getTypeColor(business.type) === 'blue' ? 'bg-blue-100 text-blue-600' :
-                getTypeColor(business.type) === 'green' ? 'bg-green-100 text-green-600' :
-                getTypeColor(business.type) === 'purple' ? 'bg-purple-100 text-purple-600' :
-                'bg-gray-100 text-gray-600'
-              }`}>
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{business.name}</h2>
-                <div className="flex items-center gap-3 mt-1">
-                  <Badge variant={getTypeColor(business.type)} size="sm">
-                    {business.type}
-                  </Badge>
-                  <Badge variant={getStatusColor(business.status)} size="sm">
-                    {business.status}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Link to={`/admin/businesses/${business.id}/edit`}>
-                <Button variant="outline">Edit Business</Button>
-              </Link>
-              <Button variant="primary">View Live Site</Button>
-            </div>
-          </div>
+  const businessTypeBadge = useMemo(() => {
+    if (!business) return { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" };
+    const types = {
+      spa: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
+      salon: { bg: "bg-pink-50", text: "text-pink-700", border: "border-pink-200" },
+      hotel: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+    };
+    return types[business.type] || types.hotel;
+  }, [business]);
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-gray-700">{business.address}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <span className="text-gray-700">{business.phone}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-gray-700">{business.email}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
-                  </svg>
-                  <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-500">
-                    {business.website}
-                  </a>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Business Details</h3>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Created:</span>
-                  <p className="text-gray-900">{formatDate(business.createdAt)}</p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Last Activity:</span>
-                  <p className="text-gray-900">{formatDate(business.lastActivity)}</p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Description:</span>
-                  <p className="text-gray-900">{business.description}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Key Metrics */}
-      <StatCardGrid
-        stats={[
-          {
-            title: 'Total Staff',
-            value: business.stats.totalStaff,
-            change: 12.5,
-            changeType: 'positive',
-            format: 'number',
-            color: 'blue',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
-            )
-          },
-          {
-            title: 'Total Customers',
-            value: business.stats.totalCustomers,
-            change: 8.3,
-            changeType: 'positive',
-            format: 'number',
-            color: 'green',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            )
-          },
-          {
-            title: 'Monthly Revenue',
-            value: business.stats.monthlyRevenue,
-            change: 15.2,
-            changeType: 'positive',
-            format: 'currency',
-            color: 'green',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-            )
-          },
-          {
-            title: 'Average Rating',
-            value: business.stats.averageRating,
-            change: 0.2,
-            changeType: 'positive',
-            format: 'rating',
-            color: 'yellow',
-            icon: (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            )
-          }
-        ]}
-        columns={4}
-      />
-    </div>
-  )
-
-  const renderManagers = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Managers</h3>
-        <Button variant="primary">Add Manager</Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {business.managers.map((manager) => (
-          <Card key={manager.id}>
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">{manager.name}</h4>
-                  <p className="text-sm text-gray-500">{manager.role}</p>
-                </div>
-              </div>
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-sm text-gray-700">{manager.email}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <span className="text-sm text-gray-700">{manager.phone}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">Edit</Button>
-                <Button variant="outline" size="sm">View Profile</Button>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-
-  const renderStaff = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Staff Members</h3>
-        <Button variant="primary">Add Staff</Button>
-      </div>
-
-      <Table
-        data={business.staff}
-        columns={[
-          {
-            key: 'name',
-            label: 'Name',
-            sortable: true,
-            render: (staff) => (
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <span className="font-medium text-gray-900">{staff.name}</span>
-              </div>
-            )
-          },
-          {
-            key: 'role',
-            label: 'Role',
-            sortable: true,
-            render: (staff) => staff.role
-          },
-          {
-            key: 'status',
-            label: 'Status',
-            sortable: true,
-            render: (staff) => (
-              <Badge variant={getStatusColor(staff.status)} size="sm">
-                {staff.status}
-              </Badge>
-            )
-          },
-          {
-            key: 'hireDate',
-            label: 'Hire Date',
-            sortable: true,
-            render: (staff) => formatDate(staff.hireDate)
-          },
-          {
-            key: 'actions',
-            label: 'Actions',
-            render: (staff) => (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">Edit</Button>
-                <Button variant="outline" size="sm">View Profile</Button>
-              </div>
-            )
-          }
-        ]}
-        onSort={(key, direction) => {
-          console.log('Sort by:', key, direction)
-        }}
-        sortable={true}
-      />
-    </div>
-  )
-
-  const renderTransactions = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
-        <Button variant="outline">View All</Button>
-      </div>
-
-      <Table
-        data={business.recentTransactions}
-        columns={[
-          {
-            key: 'customerName',
-            label: 'Customer',
-            sortable: true,
-            render: (transaction) => transaction.customerName
-          },
-          {
-            key: 'service',
-            label: 'Service',
-            sortable: true,
-            render: (transaction) => transaction.service
-          },
-          {
-            key: 'amount',
-            label: 'Amount',
-            sortable: true,
-            render: (transaction) => formatCurrency(transaction.amount)
-          },
-          {
-            key: 'date',
-            label: 'Date',
-            sortable: true,
-            render: (transaction) => formatDate(transaction.date)
-          },
-          {
-            key: 'status',
-            label: 'Status',
-            sortable: true,
-            render: (transaction) => (
-              <Badge variant={getStatusColor(transaction.status)} size="sm">
-                {transaction.status}
-              </Badge>
-            )
-          }
-        ]}
-        onSort={(key, direction) => {
-          console.log('Sort by:', key, direction)
-        }}
-        sortable={true}
-      />
-    </div>
-  )
-
-  const renderAppointments = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Upcoming Appointments</h3>
-        <Button variant="outline">View All</Button>
-      </div>
-
-      <Table
-        data={business.recentAppointments}
-        columns={[
-          {
-            key: 'customerName',
-            label: 'Customer',
-            sortable: true,
-            render: (appointment) => appointment.customerName
-          },
-          {
-            key: 'service',
-            label: 'Service',
-            sortable: true,
-            render: (appointment) => appointment.service
-          },
-          {
-            key: 'staffName',
-            label: 'Staff',
-            sortable: true,
-            render: (appointment) => appointment.staffName
-          },
-          {
-            key: 'date',
-            label: 'Date',
-            sortable: true,
-            render: (appointment) => formatDate(appointment.date)
-          },
-          {
-            key: 'time',
-            label: 'Time',
-            sortable: true,
-            render: (appointment) => appointment.time
-          },
-          {
-            key: 'status',
-            label: 'Status',
-            sortable: true,
-            render: (appointment) => (
-              <Badge variant={getStatusColor(appointment.status)} size="sm">
-                {appointment.status}
-              </Badge>
-            )
-          }
-        ]}
-        onSort={(key, direction) => {
-          console.log('Sort by:', key, direction)
-        }}
-        sortable={true}
-      />
-    </div>
-  )
-
-  const renderAnalytics = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-            <LineChart
-              data={[
-                {
-                  label: 'Revenue',
-                  data: business.revenueData.map(item => item.revenue),
-                  labels: business.revenueData.map(item => item.month)
-                }
-              ]}
-              height="300px"
-              showLegend={true}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Appointments</h3>
-            <BarChart
-              data={business.appointmentData.map(item => ({
-                label: item.month,
-                value: item.appointments
-              }))}
-              height="300px"
-              showLegend={true}
-            />
-          </div>
-        </Card>
-      </div>
-    </div>
-  )
+  // Memoized stat cards
+  const statCards = useMemo(() => [
+    { icon: FaUserTie, title: "Managers", value: business?.managers?.length ?? 0, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+    { icon: FaUsers, title: "Staff Members", value: business?.staff?.length ?? 0, iconBg: "bg-green-100", iconColor: "text-green-600" },
+    { icon: FaLink, title: "Business ID", value: business?.businessLink ?? '—', iconBg: "bg-purple-100", iconColor: "text-purple-600" },
+  ], [business]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading business details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!business) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center">
-          <Alert
-            type="error"
-            title="Business Not Found"
-            message="The business you're looking for doesn't exist or has been removed."
-          />
-          <Link to="/admin/businesses">
-            <Button variant="primary" className="mt-4">
-              Back to Businesses
-            </Button>
-          </Link>
+          <FaInfoCircle className="text-5xl text-gray-400 mx-auto mb-4" />
+          <p className="text-xl font-semibold text-gray-800">Business Not Found</p>
+          <button
+            onClick={handleBack}
+            className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          >
+            Go Back
+          </button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Link to="/admin/businesses">
-              <Button variant="outline" size="sm">
-                ← Back to Businesses
-              </Button>
-            </Link>
+        <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBack}
+                className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
+                title="Go Back"
+              >
+                <FaArrowLeft className="text-gray-700" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 ${businessTypeBadge.bg} rounded-lg flex items-center justify-center`}>
+                  <FaBuilding className={`${businessTypeBadge.text} text-lg`} />
+                </div>
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">{business.name}</h1>
+                  <p className="text-sm text-gray-600 flex items-center gap-1.5 mt-0.5">
+                    <FaMapMarkerAlt className="text-gray-400 text-xs" />
+                    {business.branch}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm font-medium"
+            >
+              <HiRefresh className={`text-gray-700 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${businessTypeBadge.bg} ${businessTypeBadge.text} ${businessTypeBadge.border}`}>
+              {business.type?.toUpperCase()}
+            </span>
+            <span className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${
+              business.isActive
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-red-50 text-red-700 border-red-200"
+            }`}>
+              {business.isActive ? "Active" : "Inactive"}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate(`/admin/businesses/${id}/staff`)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
+            >
+              <FaUsers className="text-sm" /> 
+              <span>Staff ({business.staff?.length ?? 0})</span>
+            </button>
+            <button
+              onClick={() => navigate(`/admin/businesses/${id}/daily-records`)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium"
+            >
+              <FaCalendarAlt className="text-sm" /> 
+              <span>Records</span>
+            </button>
+            <button
+              onClick={() => navigate(`/admin/businesses/${id}/analytics`)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
+            >
+              <FaChartBar className="text-sm" /> 
+              <span>Analytics</span>
+            </button>
+            <button
+              onClick={() => navigate(`/admin/businesses/${id}/settings`)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium"
+            >
+              <FaCog className="text-sm" /> 
+              <span>Settings</span>
+            </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs
-          tabs={tabs}
-          defaultActiveTab={0}
-          onTabChange={(index) => setActiveTab(index)}
-        >
-          {renderOverview()}
-          {renderManagers()}
-          {renderStaff()}
-          {renderTransactions()}
-          {renderAppointments()}
-          {renderAnalytics()}
-        </Tabs>
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            {/* Quick Stats */}
+            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <FaInfoCircle className="text-white text-sm" />
+                </div>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-800">Quick Overview</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {statCards.map((stat, index) => (
+                  <StatCard key={index} {...stat} />
+                ))}
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <FaPhone className="text-white text-sm" />
+                </div>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-800">Contact Information</h2>
+              </div>
+              <div className="space-y-0">
+                <InfoRow
+                  icon={FaMapMarkerAlt}
+                  label="Address"
+                  value={`${business.address}, ${business.city}, ${business.state}, ${business.country}`}
+                />
+                <InfoRow
+                  icon={FaPhone}
+                  label="Phone"
+                  value={business.phone}
+                  isLink
+                  href={`tel:${business.phone}`}
+                />
+                <InfoRow
+                  icon={FaEnvelope}
+                  label="Email"
+                  value={business.email}
+                  isLink
+                  href={`mailto:${business.email}`}
+                />
+                <InfoRow
+                  icon={FaGlobe}
+                  label="Website"
+                  value={business.website}
+                  isLink
+                  href={business.website}
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            {business.description && (
+              <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">About</h2>
+                <p className="text-sm text-gray-700 leading-relaxed">{business.description}</p>
+              </div>
+            )}
+
+            {/* Working Hours */}
+            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <FaClock className="text-white text-sm" />
+                </div>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-800">Working Hours</h2>
+              </div>
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-around mb-4 pb-4 border-b border-gray-200">
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Opening</p>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {business.settings?.workingHours?.open || "—"}
+                    </p>
+                  </div>
+                  <div className="text-gray-400">→</div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Closing</p>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {business.settings?.workingHours?.close || "—"}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Operating Days</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(business.settings?.workingHours?.days || []).length > 0 ? (
+                      (business.settings.workingHours.days).map((day) => (
+                        <span
+                          key={day}
+                          className="px-2 py-1 bg-primary-50 text-primary-700 border border-primary-200 rounded-lg text-xs font-medium"
+                        >
+                          {day.charAt(0).toUpperCase() + day.slice(1)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500">No days specified</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Appointment Settings */}
+            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <FaCalendarAlt className="text-white text-sm" />
+                </div>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-800">Appointment Settings</h2>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs font-medium text-gray-500 mb-1">Booking Window</p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {business.settings?.appointmentSettings?.advanceBookingDays ?? "—"} days
+                  </p>
+                </div>
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs font-medium text-gray-500 mb-1">Slot Duration</p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {business.settings?.appointmentSettings?.slotDuration ?? "—"} min
+                  </p>
+                </div>
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs font-medium text-gray-500 mb-1">Buffer Time</p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {business.settings?.appointmentSettings?.bufferTime ?? "—"} min
+                  </p>
+                </div>
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <p className="text-xs font-medium text-gray-500 mb-1">Online Booking</p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {business.settings?.appointmentSettings?.allowOnlineBooking ? "Enabled" : "Disabled"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Cancellation Policy */}
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg mb-3">
+                <p className="text-xs font-medium text-gray-700 mb-2">Cancellation Policy</p>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className={`px-2 py-1 rounded-lg font-medium ${
+                    business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}>
+                    {business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation
+                      ? "Allowed"
+                      : "Not Allowed"}
+                  </span>
+                  {business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation && (
+                    <>
+                      <span className="text-gray-500">|</span>
+                      <span className="text-gray-700">
+                        Refund: {business.settings?.appointmentSettings?.cancellationPolicy?.refundPercentage ?? 0}%
+                      </span>
+                      <span className="text-gray-500">|</span>
+                      <span className="text-gray-700">
+                        Min: {business.settings?.appointmentSettings?.cancellationPolicy?.minCancellationHours ?? 0}h
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Reminder Settings */}
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Reminders</p>
+                <div className="flex flex-wrap gap-2">
+                  {business.settings?.appointmentSettings?.reminderSettings?.sendSMSReminder && (
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium">
+                      SMS
+                    </span>
+                  )}
+                  {business.settings?.appointmentSettings?.reminderSettings?.sendEmailReminder && (
+                    <span className="px-2 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-medium">
+                      Email
+                    </span>
+                  )}
+                  {business.settings?.appointmentSettings?.reminderSettings?.sendWhatsappReminder && (
+                    <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium">
+                      WhatsApp
+                    </span>
+                  )}
+                  {(!business.settings?.appointmentSettings?.reminderSettings?.sendSMSReminder &&
+                    !business.settings?.appointmentSettings?.reminderSettings?.sendEmailReminder &&
+                    !business.settings?.appointmentSettings?.reminderSettings?.sendWhatsappReminder) && (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium">
+                      None
+                    </span>
+                  )}
+                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">
+                    {business.settings?.appointmentSettings?.reminderSettings?.reminderHours ?? "—"}h before
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-4 sm:space-y-6">
+            {/* Business Link */}
+            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <FaLink className="text-white text-sm" />
+                </div>
+                <h3 className="text-base font-semibold text-gray-800">Business Link</h3>
+              </div>
+              <div className="border border-primary-200 bg-primary-50 p-3 rounded-lg">
+                <p className="text-xs text-primary-700 mb-2 font-medium">Public Access</p>
+                <a
+                  href={`/${business.businessLink}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs bg-white p-2 rounded-lg border border-gray-200 text-blue-600 hover:text-blue-700 mb-2 break-all"
+                >
+                  <FaLink className="flex-shrink-0 text-xs" />
+                  <span>/{business.businessLink}</span>
+                </a>
+                <button
+                  onClick={handleCopyLink}
+                  disabled={copied}
+                  className="flex items-center gap-2 text-xs font-medium"
+                >
+                  {copied ? (
+                    <>
+                      <FaCheck className="text-green-600" />
+                      <span className="text-green-600">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaCopy className="text-primary-600" />
+                      <span className="text-primary-600">Copy Link</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Admin Information */}
+            {business.admin && (
+              <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                    <FaUserTie className="text-white text-sm" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-800">Admin Details</h3>
+                </div>
+                <div className="space-y-2.5">
+                  <div className="pb-2.5 border-b border-gray-100">
+                    <p className="text-xs font-medium text-gray-500 mb-0.5">Company</p>
+                    <p className="text-sm text-gray-800 font-medium">{business.admin.companyName}</p>
+                  </div>
+                  <div className="pb-2.5 border-b border-gray-100">
+                    <p className="text-xs font-medium text-gray-500 mb-0.5">Admin Name</p>
+                    <p className="text-sm text-gray-800">{business.admin.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-0.5">Email</p>
+                    <a
+                      href={`mailto:${business.admin.email}`}
+                      className="text-sm text-primary-600 hover:text-primary-700 break-all"
+                    >
+                      {business.admin.email}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Currency & Timezone */}
+            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <h3 className="text-base font-semibold text-gray-800 mb-3">Settings</h3>
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center pb-2.5 border-b border-gray-100">
+                  <span className="text-xs text-gray-500">Currency</span>
+                  <span className="text-sm font-medium text-gray-800">
+                    {business.settings?.currency || "INR"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Timezone</span>
+                  <span className="text-sm font-medium text-gray-800">
+                    {business.settings?.timezone || "Asia/Kolkata"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Created Date */}
+            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <h3 className="text-base font-semibold text-gray-800 mb-3">Timeline</h3>
+              <div className="space-y-2.5">
+                <div className="pb-2.5 border-b border-gray-100">
+                  <p className="text-xs text-gray-500 mb-0.5">Created</p>
+                  <p className="text-sm text-gray-800 font-medium">
+                    {business.createdAt
+                      ? new Date(business.createdAt).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Last Updated</p>
+                  <p className="text-sm text-gray-800 font-medium">
+                    {business.updatedAt
+                      ? new Date(business.updatedAt).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Managers Section */}
+        {business.managers && business.managers.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6 mt-4 sm:mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <FaUserTie className="text-white text-sm" />
+              </div>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-800">
+                Managers ({business.managers.length})
+              </h2>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {business.managers.map((manager) => (
+                <ManagerCard key={manager._id} manager={manager} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default BusinessDetails
+export default BusinessDetails;

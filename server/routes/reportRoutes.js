@@ -5,7 +5,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
 // Reports (Admin & Manager)
-router.use(authMiddleware);
+router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
 
 router.get("/", reportController.getReports);
 router.get("/analytics", reportController.getAnalytics);

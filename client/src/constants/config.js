@@ -23,10 +23,10 @@ export const APP_CONFIG = {
   
   // Authentication configuration
   AUTH: {
-    TOKEN_EXPIRY: 15 * 60 * 1000, // 15 minutes
+    TOKEN_EXPIRY: 7 * 24 * 60 * 60 * 1000, // 7 days for better UX
     REFRESH_TOKEN_EXPIRY: 7 * 24 * 60 * 60 * 1000, // 7 days
     REMEMBER_ME_EXPIRY: 30 * 24 * 60 * 60 * 1000, // 30 days
-    SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes
+    SESSION_TIMEOUT: 7 * 24 * 60 * 60 * 1000, // 7 days
     MAX_LOGIN_ATTEMPTS: 5,
     LOCKOUT_DURATION: 30 * 60 * 1000, // 30 minutes
   },

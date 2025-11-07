@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { ManagerSidebar, ManagerHeader } from './components'
+import authService from '../../services/auth/authService'
 
 const ManagerLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -9,25 +10,22 @@ const ManagerLayout = () => {
   const location = useLocation()
 
   useEffect(() => {
-    // Simulate authentication check
     const checkAuth = async () => {
       try {
-        // In a real app, this would check for valid manager tokens
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Mock authentication check
-        const isAuthenticated = true // This would come from your auth context
-        const userRole = 'manager' // This would come from your auth context
-        
-        if (!isAuthenticated || userRole !== 'manager') {
+        const token = authService.getToken()
+        const role = authService.getUserRole()
+        if (!token) {
+          navigate('/auth/manager-login')
+          return
+        }
+        if (role !== 'manager') {
           navigate('/unauthorized')
           return
         }
-        
         setIsLoading(false)
       } catch (error) {
         console.error('Authentication check failed:', error)
-        navigate('/auth/login')
+        navigate('/auth/manager-login')
       }
     }
 
@@ -57,7 +55,7 @@ const ManagerLayout = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading manager panel...</p>
         </div>
       </div>
@@ -65,7 +63,7 @@ const ManagerLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <ManagerSidebar
         isCollapsed={sidebarCollapsed}
@@ -88,12 +86,12 @@ const ManagerLayout = () => {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-4 py-3">
+        <footer className="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
-              <span>© 2024 Elite Hair Studio CRM</span>
+              <span>© 2024 RAMA CRM CRM</span>
               <span>•</span>
-              <span>Manager Panel</span>
+              <span>Version 1.0.0</span>
             </div>
             <div className="flex items-center space-x-4">
               <a href="/manager/help" className="hover:text-gray-900">

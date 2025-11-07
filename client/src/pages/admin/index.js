@@ -3,7 +3,16 @@ export { default as AdminDashboard } from './Dashboard/AdminDashboard'
 export { default as AdminReports } from './Reports/AdminReports'
 
 // Business Management
-export { default as './Businesses'
+export * from './Businesses'
 
 // Manager Management
-export { default as './Managers'
+export * from './Managers'
+
+// Daily Business Management
+export * from './DailyBusiness'
+
+// Notifications
+export * from './Notifications'
+
+// Settings
+export { default as AdminSettings } from './AdminSettings/AdminSettings'

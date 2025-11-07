@@ -1,665 +1,316 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Button, Input, Dropdown, DatePicker, Alert } from '../../../../components'
-import { LineChart, BarChart } from '../../../../components'
-import dailyBusinessService from '../../../../services/dailyBusiness/dailyBusinessService'
+import {
+  FaCalendarAlt,
+  FaDollarSign,
+  FaUsers,
+  FaStickyNote,
+  FaCloudSun,
+  FaArrowLeft,
+  FaSave,
+  FaSpinner,
+  FaInfoCircle
+} from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
+import managerService from '../../../../services/manager/managerService'
 
 const AddDailyBusiness = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [step, setStep] = useState(1)
+  const [businessInfo, setBusinessInfo] = useState(null)
   const [formData, setFormData] = useState({
-    date: new Date(),
-    totalRevenue: '',
-    totalCustomers: '',
-    totalAppointments: '',
-    totalTransactions: '',
-    expenses: '',
-    staffHours: '',
-    status: 'completed',
+    date: new Date().toISOString().split('T')[0],
     notes: '',
-    services: [],
-    staffPerformance: []
+    weather: '',
+    specialEvents: [],
   })
+  const [newEvent, setNewEvent] = useState('')
   const [errors, setErrors] = useState({})
-  const [services, setServices] = useState([])
-  const [staff, setStaff] = useState([])
 
   useEffect(() => {
-    fetchInitialData()
+    // Fetch business info from dashboard
+    const fetchBusinessInfo = async () => {
+      try {
+        const res = await managerService.getDashboard()
+        if (res.success && res.data.data) {
+          const dashboard = res.data.data
+          if (dashboard.business) {
+            setBusinessInfo(dashboard.business)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch business info:', error)
+      }
+    }
+    fetchBusinessInfo()
   }, [])
 
-  useEffect(() => {
-    calculateProfit()
-  }, [formData.totalRevenue, formData.expenses])
+  const validateField = (name, value) => {
+    let error = ''
+    switch (name) {
+      case 'date':
+        if (!value) error = 'Date is required'
+        break
+      default:
+        break
+    }
+    setErrors(prev => ({ ...prev, [name]: error }))
+    return !error
+  }
 
-  const fetchInitialData = async () => {
-    try {
-      // Simulate API calls
-      await Promise.all([
-        fetchServices(),
-        fetchStaff()
-      ])
-    } catch (error) {
-      console.error('Error fetching initial data:', error)
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    validateField(name, value)
+  }
+
+  const handleAddEvent = () => {
+    if (newEvent.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        specialEvents: [...prev.specialEvents, newEvent.trim()]
+      }))
+      setNewEvent('')
     }
   }
 
-  const fetchServices = async () => {
-
-  const fetchStaff = async () => {
-
-  const calculateProfit = () => {
-    const revenue = parseFloat(formData.totalRevenue) || 0
-    const expenses = parseFloat(formData.expenses) || 0
-    const profit = revenue - expenses
-    setFormData(prev => ({ ...prev, profit: profit.toFixed(2) }))
-  }
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }))
-    }
-  }
-
-  const handleServiceAdd = () => {
-    const newService = {
-      id: Date.now().toString(),
-      name: '',
-      count: '',
-      revenue: ''
-    }
+  const handleRemoveEvent = (index) => {
     setFormData(prev => ({
       ...prev,
-      services: [...prev.services, newService]
+      specialEvents: prev.specialEvents.filter((_, i) => i !== index)
     }))
   }
 
-  const handleServiceChange = (index, field, value) => {
-    const updatedServices = [...formData.services]
-    updatedServices[index] = { ...updatedServices[index], [field]: value }
-    setFormData(prev => ({ ...prev, services: updatedServices }))
+  const validateForm = () => {
+    const fields = ['date']
+    let isValid = true
+    fields.forEach(field => {
+      if (!validateField(field, formData[field])) {
+        isValid = false
+      }
+    })
+    return isValid
   }
 
-  const handleServiceRemove = (index) => {
-    const updatedServices = formData.services.filter((_, i) => i !== index)
-    setFormData(prev => ({ ...prev, services: updatedServices }))
-  }
-
-  const handleStaffAdd = () => {
-    const newStaff = {
-      id: Date.now().toString(),
-      name: '',
-      appointments: '',
-      revenue: ''
-    }
-    setFormData(prev => ({
-      ...prev,
-      staffPerformance: [...prev.staffPerformance, newStaff]
-    }))
-  }
-
-  const handleStaffChange = (index, field, value) => {
-    const updatedStaff = [...formData.staffPerformance]
-    updatedStaff[index] = { ...updatedStaff[index], [field]: value }
-    setFormData(prev => ({ ...prev, staffPerformance: updatedStaff }))
-  }
-
-  const handleStaffRemove = (index) => {
-    const updatedStaff = formData.staffPerformance.filter((_, i) => i !== index)
-    setFormData(prev => ({ ...prev, staffPerformance: updatedStaff }))
-  }
-
-  const validateStep = (stepNumber) => {
-    const newErrors = {}
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     
-    switch (stepNumber) {
-      case 1:
-        if (!formData.date) newErrors.date = 'Date is required'
-        if (!formData.totalRevenue) newErrors.totalRevenue = 'Total revenue is required'
-        if (!formData.totalCustomers) newErrors.totalCustomers = 'Total customers is required'
-        if (!formData.totalAppointments) newErrors.totalAppointments = 'Total appointments is required'
-        if (!formData.totalTransactions) newErrors.totalTransactions = 'Total transactions is required'
-        break
-      case 2:
-        if (!formData.expenses) newErrors.expenses = 'Expenses is required'
-        if (!formData.staffHours) newErrors.staffHours = 'Staff hours is required'
-        if (!formData.status) newErrors.status = 'Status is required'
-        break
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form')
+      return
     }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
 
-  const handleNext = () => {
-    if (validateStep(step)) {
-      setStep(prev => prev + 1)
+    if (!businessInfo) {
+      toast.error('Business information not found')
+      return
     }
-  }
 
-  const handlePrevious = () => {
-    setStep(prev => prev - 1)
-  }
-
-  const handleSubmit = async () => {
-    if (!validateStep(2)) return
-    
+    setLoading(true)
     try {
-      setLoading(true)
-      setErrors({})
-      
-      const result = await dailyBusinessService.addDailyBusiness(formData)
-      
-      if (result.success) {
-        toast.success('Daily business record created successfully!')
-        navigate('/manager/daily-business', {
-          state: { message: 'Daily business record created successfully!' }
-        })
+      const submitData = {
+        businessId: businessInfo.id,
+        date: formData.date,
+        notes: formData.notes || undefined,
+        weather: formData.weather || undefined,
+        specialEvents: formData.specialEvents.length > 0 ? formData.specialEvents : undefined,
+      }
+
+      const res = await managerService.addDailyBusiness(submitData)
+      if (res.success) {
+        toast.success('Daily business record added successfully!')
+        navigate('/manager/daily-business')
       } else {
-        setErrors({ general: result.error || 'Failed to create daily business record' })
-        toast.error(result.error || 'Failed to create daily business record')
+        toast.error(res.error || 'Failed to add daily business record')
       }
     } catch (error) {
-      console.error('Error creating daily business:', error)
-      setErrors({ general: 'An unexpected error occurred' })
-      toast.error('An unexpected error occurred')
+      toast.error('Failed to add daily business record')
     } finally {
       setLoading(false)
     }
   }
 
-  const renderStep1 = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-        <p className="text-gray-600">Enter the basic daily business information.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-          <DatePicker
-            value={formData.date}
-            onChange={(date) => handleInputChange('date', date)}
-            placeholder="Select date"
-            error={errors.date}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-          <Dropdown
-            value={formData.status}
-            onChange={(value) => handleInputChange('status', value)}
-            options={[
-              { value: 'completed', label: 'Completed' },
-              { value: 'in_progress', label: 'In Progress' },
-              { value: 'closed', label: 'Closed' },
-              { value: 'pending', label: 'Pending' }
-            ]}
-            placeholder="Select status"
-          />
-          {errors.status && (
-            <p className="mt-1 text-sm text-red-600">{errors.status}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Total Revenue</label>
-          <Input
-            type="number"
-            value={formData.totalRevenue}
-            onChange={(e) => handleInputChange('totalRevenue', e.target.value)}
-            placeholder="0.00"
-            error={errors.totalRevenue}
-            prefix="$"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Total Customers</label>
-          <Input
-            type="number"
-            value={formData.totalCustomers}
-            onChange={(e) => handleInputChange('totalCustomers', e.target.value)}
-            placeholder="0"
-            error={errors.totalCustomers}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Total Appointments</label>
-          <Input
-            type="number"
-            value={formData.totalAppointments}
-            onChange={(e) => handleInputChange('totalAppointments', e.target.value)}
-            placeholder="0"
-            error={errors.totalAppointments}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Total Transactions</label>
-          <Input
-            type="number"
-            value={formData.totalTransactions}
-            onChange={(e) => handleInputChange('totalTransactions', e.target.value)}
-            placeholder="0"
-            error={errors.totalTransactions}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-        <textarea
-          value={formData.notes}
-          onChange={(e) => handleInputChange('notes', e.target.value)}
-          placeholder="Add any notes about this day..."
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-        />
-      </div>
-    </div>
-  )
-
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Details</h3>
-        <p className="text-gray-600">Enter the financial details for this day.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Expenses</label>
-          <Input
-            type="number"
-            value={formData.expenses}
-            onChange={(e) => handleInputChange('expenses', e.target.value)}
-            placeholder="0.00"
-            error={errors.expenses}
-            prefix="$"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Staff Hours</label>
-          <Input
-            type="number"
-            value={formData.staffHours}
-            onChange={(e) => handleInputChange('staffHours', e.target.value)}
-            placeholder="0"
-            error={errors.staffHours}
-            suffix="hours"
-          />
-        </div>
-      </div>
-
-      {/* Financial Summary */}
-      <div className="bg-gray-50 p-6 rounded-lg">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">Financial Summary</h4>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Total Revenue:</span>
-            <span className="font-medium">${formData.totalRevenue || '0.00'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Expenses:</span>
-            <span className="font-medium">${formData.expenses || '0.00'}</span>
-          </div>
-          <div className="border-t border-gray-200 pt-3">
-            <div className="flex justify-between">
-              <span className="text-lg font-semibold text-gray-900">Profit:</span>
-              <span className="text-lg font-semibold text-gray-900">${formData.profit || '0.00'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderStep3 = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Services & Staff Performance</h3>
-        <p className="text-gray-600">Add details about services provided and staff performance.</p>
-      </div>
-
-      {/* Services */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-lg font-semibold text-gray-900">Services</h4>
-          <Button variant="outline" size="sm" onClick={handleServiceAdd}>
-            Add Service
-          </Button>
-        </div>
-        <div className="space-y-4">
-          {formData.services.map((service, index) => (
-            <div key={service.id} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
-                <Dropdown
-                  value={service.name}
-                  onChange={(value) => handleServiceChange(index, 'name', value)}
-                  options={services.map(s => ({
-                    value: s.name,
-                    label: s.name
-                  }))}
-                  placeholder="Select service"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Count</label>
-                <Input
-                  type="number"
-                  value={service.count}
-                  onChange={(e) => handleServiceChange(index, 'count', e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Revenue</label>
-                <Input
-                  type="number"
-                  value={service.revenue}
-                  onChange={(e) => handleServiceChange(index, 'revenue', e.target.value)}
-                  placeholder="0.00"
-                  prefix="$"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleServiceRemove(index)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Remove
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Staff Performance */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-lg font-semibold text-gray-900">Staff Performance</h4>
-          <Button variant="outline" size="sm" onClick={handleStaffAdd}>
-            Add Staff
-          </Button>
-        </div>
-        <div className="space-y-4">
-          {formData.staffPerformance.map((staffMember, index) => (
-            <div key={staffMember.id} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Staff Member</label>
-                <Dropdown
-                  value={staffMember.name}
-                  onChange={(value) => handleStaffChange(index, 'name', value)}
-                  options={staff.map(s => ({
-                    value: s.name,
-                    label: s.name
-                  }))}
-                  placeholder="Select staff member"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Appointments</label>
-                <Input
-                  type="number"
-                  value={staffMember.appointments}
-                  onChange={(e) => handleStaffChange(index, 'appointments', e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Revenue</label>
-                <Input
-                  type="number"
-                  value={staffMember.revenue}
-                  onChange={(e) => handleStaffChange(index, 'revenue', e.target.value)}
-                  placeholder="0.00"
-                  prefix="$"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleStaffRemove(index)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Remove
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderStep4 = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Review & Confirm</h3>
-        <p className="text-gray-600">Review the daily business details before creating.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <div className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h4>
-            <div className="space-y-2">
-              <div>
-                <span className="text-sm font-medium text-gray-700">Date:</span>
-                <p className="text-gray-900">{formData.date?.toLocaleDateString()}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Status:</span>
-                <p className="text-gray-900 capitalize">{formData.status}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Total Customers:</span>
-                <p className="text-gray-900">{formData.totalCustomers}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Total Appointments:</span>
-                <p className="text-gray-900">{formData.totalAppointments}</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Financial Summary</h4>
-            <div className="space-y-2">
-              <div>
-                <span className="text-sm font-medium text-gray-700">Total Revenue:</span>
-                <p className="text-gray-900">${formData.totalRevenue}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Expenses:</span>
-                <p className="text-gray-900">${formData.expenses}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Staff Hours:</span>
-                <p className="text-gray-900">{formData.staffHours} hours</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Profit:</span>
-                <p className="text-2xl font-bold text-gray-900">${formData.profit}</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {formData.notes && (
-        <Card>
-          <div className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Notes</h4>
-            <p className="text-gray-700">{formData.notes}</p>
-          </div>
-        </Card>
-      )}
-
-      {formData.services.length > 0 && (
-        <Card>
-          <div className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Services</h4>
-            <div className="space-y-2">
-              {formData.services.map((service, index) => (
-                <div key={index} className="flex justify-between">
-                  <span className="text-gray-700">{service.name}</span>
-                  <span className="text-gray-900">{service.count} services - ${service.revenue}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {formData.staffPerformance.length > 0 && (
-        <Card>
-          <div className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Staff Performance</h4>
-            <div className="space-y-2">
-              {formData.staffPerformance.map((staffMember, index) => (
-                <div key={index} className="flex justify-between">
-                  <span className="text-gray-700">{staffMember.name}</span>
-                  <span className="text-gray-900">{staffMember.appointments} appointments - ${staffMember.revenue}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
-    </div>
-  )
-
-  const steps = [
-    { number: 1, title: 'Basic Information', description: 'Enter basic daily business info' },
-    { number: 2, title: 'Financial Details', description: 'Set financial information' },
-    { number: 3, title: 'Services & Staff', description: 'Add services and staff performance' },
-    { number: 4, title: 'Review & Confirm', description: 'Review and create daily business' }
-  ]
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/manager/daily-business')}
-            >
-              ← Back to Daily Business
-            </Button>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Add Daily Business</h1>
-          <p className="text-gray-600 mt-1">Create a new daily business record</p>
-        </div>
+    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="mb-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <FaArrowLeft />
+          <span>Back</span>
+        </button>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Add Daily Business Record</h1>
+        <p className="text-gray-600 mt-1">
+          Record your daily business summary. Metrics will be calculated from transactions.
+        </p>
+      </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {steps.map((stepItem, index) => (
-              <div key={stepItem.number} className="flex items-center">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                  step >= stepItem.number
-                    ? 'bg-primary-600 border-primary-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-500'
-                }`}>
-                  {step > stepItem.number ? (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <span className="text-sm font-medium">{stepItem.number}</span>
-                  )}
-                </div>
-                <div className="ml-3">
-                  <p className={`text-sm font-medium ${
-                    step >= stepItem.number ? 'text-primary-600' : 'text-gray-500'
-                  }`}>
-                    {stepItem.title}
-                  </p>
-                  <p className="text-xs text-gray-500">{stepItem.description}</p>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`ml-8 w-16 h-0.5 ${
-                    step > stepItem.number ? 'bg-primary-600' : 'bg-gray-300'
-                  }`} />
-                )}
-              </div>
-            ))}
+      {/* Info Box */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <FaInfoCircle className="text-blue-600 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> This will automatically calculate metrics from all transactions for the selected date. 
+              You can add notes, weather, and special events for context.
+            </p>
           </div>
         </div>
+      </div>
 
-        {/* Form Content */}
-        <Card>
-          <div className="p-8">
-            {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
-            {step === 4 && renderStep4()}
+      {/* Form */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Date Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                max={new Date().toISOString().split('T')[0]}
+                className={`w-full pl-10 pr-4 py-2 border ${
+                  errors.date ? 'border-red-500' : 'border-gray-300'
+                } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+              />
+            </div>
+            {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+          </div>
 
-            {/* Navigation Buttons */}
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
-              <div>
-                {step > 1 && (
-                  <Button
-                    variant="outline"
-                    onClick={handlePrevious}
-                    disabled={loading}
-                  >
-                    Previous
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/manager/daily-business')}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                {step < 4 ? (
-                  <Button
-                    variant="primary"
-                    onClick={handleNext}
-                    disabled={loading}
-                  >
-                    Next
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    onClick={handleSubmit}
-                    loading={loading}
-                  >
-                    Create Daily Business
-                  </Button>
-                )}
-              </div>
+          {/* Business Info */}
+          {businessInfo && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Business</h3>
+              <p className="text-gray-900 font-semibold">{businessInfo.name}</p>
+              {businessInfo.type && (
+                <p className="text-sm text-gray-500 capitalize mt-1">{businessInfo.type}</p>
+              )}
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes
+            </label>
+            <div className="relative">
+              <FaStickyNote className="absolute left-3 top-3 text-gray-400" />
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                rows={4}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Add any notes or observations about the day (optional)"
+              />
             </div>
           </div>
-        </Card>
+
+          {/* Weather */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Weather
+            </label>
+            <div className="relative">
+              <FaCloudSun className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                name="weather"
+                value={formData.weather}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="e.g., Sunny, Rainy, Cloudy (optional)"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Weather can help correlate with business performance</p>
+          </div>
+
+          {/* Special Events */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Special Events
+            </label>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={newEvent}
+                onChange={(e) => setNewEvent(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleAddEvent()
+                  }
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="e.g., Festival, Holiday, Special Promotion"
+              />
+              <button
+                type="button"
+                onClick={handleAddEvent}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+            
+            {formData.specialEvents.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {formData.specialEvents.map((event, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
+                  >
+                    {event}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEvent(index)}
+                      className="text-primary-700 hover:text-primary-900"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-2">
+              Add special events that may have affected business (optional)
+            </p>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex gap-4 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !businessInfo}
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <FaSpinner className="animate-spin" />
+                  <span>Adding...</span>
+                </>
+              ) : (
+                <>
+                  <FaSave />
+                  <span>Add Daily Business Record</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

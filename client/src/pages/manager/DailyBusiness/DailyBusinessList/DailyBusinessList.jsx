@@ -1,581 +1,365 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Card, Button, Badge, Table, StatCard, StatCardGrid, SearchBar, Dropdown, DatePicker, Alert } from '../../../../components'
-import { LineChart, BarChart } from '../../../../components'
-import dailyBusinessService from '../../../../services/dailyBusiness/dailyBusinessService'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import {
+  FaCalendarAlt,
+  FaDollarSign,
+  FaUsers,
+  FaSpinner,
+  FaSearch,
+  FaFilter,
+  FaEye,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaChartLine,
+  FaArrowLeft
+} from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
+import managerService from '../../../../services/manager/managerService'
 
 const DailyBusinessList = () => {
-  const [dailyBusiness, setDailyBusiness] = useState([])
+  const navigate = useNavigate()
+  const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [dateRange, setDateRange] = useState({ start: null, end: null })
-  const [sortBy, setSortBy] = useState('date')
-  const [sortDirection, setSortDirection] = useState('desc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
-  const [selectedItems, setSelectedItems] = useState([])
-  const [viewMode, setViewMode] = useState('table') // 'table' or 'card'
+  const [error, setError] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    limit: 10,
+    total: 0,
+  })
 
-  useEffect(() => {
-    fetchDailyBusiness()
-  }, [])
-
-  const fetchDailyBusiness = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       setLoading(true)
-      
-      const result = await dailyBusinessService.getDailyBusinessRecords()
-      
-      if (result.success) {
-        setDailyBusiness(result.data)
-        toast.success('Daily business records loaded successfully!')
-      } else {
-        toast.error(result.error || 'Failed to load daily business records')
-        console.error('Daily business error:', result.error)
+      setError(null)
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.limit,
       }
-    } catch (error) {
-      console.error('Error fetching daily business records:', error)
-      toast.error('An unexpected error occurred while loading daily business records')
+      if (startDate) params.startDate = startDate
+      if (endDate) params.endDate = endDate
+
+      const res = await managerService.getDailyBusinessRecords(params)
+      if (res.success) {
+        const recordsData = res.data?.data || []
+        setRecords(recordsData)
+        if (res.data?.pagination) {
+          setPagination(prev => ({
+            ...prev,
+            totalPages: res.data.pagination.pages || 1,
+            total: res.data.pagination.total || 0,
+          }))
+        }
+      } else {
+        setError(res.error || 'Failed to fetch daily business records')
+      }
+    } catch (e) {
+      setError('Failed to fetch daily business records')
     } finally {
       setLoading(false)
     }
-  }
-      
-      ]
-      
-    } catch (error) {
-      console.error('Error fetching daily business:', error)
+  }, [startDate, endDate, pagination.currentPage, pagination.limit])
+
+  useEffect(() => {
+    fetchRecords()
+  }, [fetchRecords])
+
+  const handlePageChange = useCallback((newPage) => {
+    setPagination(prev => ({ ...prev, currentPage: newPage }))
+  }, [])
+
+  const handleDelete = async (recordId) => {
+    if (!window.confirm('Are you sure you want to delete this daily business record?')) {
+      return
+    }
+
+    try {
+      setDeleting(recordId)
+      const res = await managerService.deleteDailyBusiness(recordId)
+      if (res.success) {
+        toast.success('Daily business record deleted successfully')
+        fetchRecords()
+      } else {
+        toast.error(res.error || 'Failed to delete record')
+      }
+    } catch (e) {
+      toast.error('Failed to delete record')
     } finally {
-      setLoading(false)
+      setDeleting(null)
     }
   }
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+    if (!amount) return '₹0'
+    return `₹${parseInt(amount).toLocaleString('en-IN')}`
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
       month: 'short',
-      day: 'numeric',
-      weekday: 'short'
+      year: 'numeric',
     })
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'success'
-      case 'in_progress': return 'warning'
-      case 'closed': return 'danger'
-      case 'pending': return 'info'
-      default: return 'default'
-    }
-  }
-
-  const filteredDailyBusiness = dailyBusiness.filter(item => {
-    const matchesSearch = item.date.includes(searchTerm) ||
-                         item.notes.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = statusFilter === 'all' || item.status === statusFilter
-    
-    const matchesDateRange = !dateRange.start || !dateRange.end || 
-                           (new Date(item.date) >= dateRange.start && new Date(item.date) <= dateRange.end)
-    
-    return matchesSearch && matchesStatus && matchesDateRange
-  })
-
-  const sortedDailyBusiness = [...filteredDailyBusiness].sort((a, b) => {
-    let aValue = a[sortBy]
-    let bValue = b[sortBy]
-    
-    if (sortBy === 'date') {
-      aValue = new Date(aValue)
-      bValue = new Date(bValue)
-    }
-    
-    if (sortDirection === 'asc') {
-      return aValue > bValue ? 1 : -1
-    } else {
-      return aValue < bValue ? 1 : -1
-    }
-  })
-
-  const paginatedDailyBusiness = sortedDailyBusiness.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
-
-  const totalPages = Math.ceil(sortedDailyBusiness.length / itemsPerPage)
-
-  const handleSelectItem = (itemId) => {
-    setSelectedItems(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
-    )
-  }
-
-  const handleSelectAll = () => {
-    if (selectedItems.length === paginatedDailyBusiness.length) {
-      setSelectedItems([])
-    } else {
-      setSelectedItems(paginatedDailyBusiness.map(item => item.id))
-    }
-  }
-
-  const handleBulkAction = (action) => {
-    console.log('Bulk action:', action, selectedItems)
-    // Implement bulk actions
-  }
-
-  const calculateStats = () => {
-    const completed = dailyBusiness.filter(item => item.status === 'completed')
-    const totalRevenue = completed.reduce((sum, item) => sum + item.totalRevenue, 0)
-    const totalCustomers = completed.reduce((sum, item) => sum + item.totalCustomers, 0)
-    const totalAppointments = completed.reduce((sum, item) => sum + item.totalAppointments, 0)
-    const averageDailyRevenue = completed.length > 0 ? totalRevenue / completed.length : 0
-    
-    return {
-      total: dailyBusiness.length,
-      completed: completed.length,
-      totalRevenue,
-      totalCustomers,
-      totalAppointments,
-      averageDailyRevenue
-    }
-  }
-
-  const stats = calculateStats()
-
-  const renderDailyBusinessCard = (item) => (
-    <Card key={item.id} className="hover:shadow-lg transition-shadow">
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">{formatDate(item.date)}</h3>
-            <Badge variant={getStatusColor(item.status)} size="sm" className="mt-1">
-              {item.status}
-            </Badge>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(item.totalRevenue)}</p>
-            <p className="text-sm text-gray-500">Revenue</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <p className="text-sm text-gray-500">Customers</p>
-            <p className="text-lg font-semibold text-gray-900">{item.totalCustomers}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Appointments</p>
-            <p className="text-lg font-semibold text-gray-900">{item.totalAppointments}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Profit</p>
-            <p className="text-lg font-semibold text-gray-900">{formatCurrency(item.profit)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Staff Hours</p>
-            <p className="text-lg font-semibold text-gray-900">{item.staffHours}h</p>
-          </div>
-        </div>
-
-        {item.notes && (
-          <p className="text-sm text-gray-600 mb-4">{item.notes}</p>
-        )}
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={selectedItems.includes(item.id)}
-              onChange={() => handleSelectItem(item.id)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className="text-sm text-gray-500">Select</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to={`/manager/daily-business/${item.id}`}>
-              <Button variant="outline" size="sm">View</Button>
-            </Link>
-            <Button variant="outline" size="sm">Edit</Button>
-            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-800">
-              Delete
-            </Button>
-          </div>
-        </div>
-      </div>
-    </Card>
-  )
-
-  const renderDailyBusinessTable = () => (
-    <Table
-      data={paginatedDailyBusiness}
-      columns={[
-        {
-          key: 'select',
-          label: (
-            <input
-              type="checkbox"
-              checked={selectedItems.length === paginatedDailyBusiness.length && paginatedDailyBusiness.length > 0}
-              onChange={handleSelectAll}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-          ),
-          render: (item) => (
-            <input
-              type="checkbox"
-              checked={selectedItems.includes(item.id)}
-              onChange={() => handleSelectItem(item.id)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-          )
-        },
-        {
-          key: 'date',
-          label: 'Date',
-          sortable: true,
-          render: (item) => (
-            <Link 
-              to={`/manager/daily-business/${item.id}`}
-              className="text-primary-600 hover:text-primary-800 font-medium"
-            >
-              {formatDate(item.date)}
-            </Link>
-          )
-        },
-        {
-          key: 'totalRevenue',
-          label: 'Revenue',
-          sortable: true,
-          render: (item) => (
-            <div className="text-right">
-              <p className="font-medium text-gray-900">{formatCurrency(item.totalRevenue)}</p>
-              <p className="text-sm text-gray-500">{item.totalTransactions} transactions</p>
-            </div>
-          )
-        },
-        {
-          key: 'totalCustomers',
-          label: 'Customers',
-          sortable: true,
-          render: (item) => (
-            <div className="text-center">
-              <p className="font-medium text-gray-900">{item.totalCustomers}</p>
-              <p className="text-sm text-gray-500">{item.totalAppointments} appointments</p>
-            </div>
-          )
-        },
-        {
-          key: 'profit',
-          label: 'Profit',
-          sortable: true,
-          render: (item) => (
-            <div className="text-right">
-              <p className="font-medium text-gray-900">{formatCurrency(item.profit)}</p>
-              <p className="text-sm text-gray-500">Expenses: {formatCurrency(item.expenses)}</p>
-            </div>
-          )
-        },
-        {
-          key: 'staffHours',
-          label: 'Staff Hours',
-          sortable: true,
-          render: (item) => (
-            <div className="text-center">
-              <p className="font-medium text-gray-900">{item.staffHours}h</p>
-              <p className="text-sm text-gray-500">Avg: {item.totalCustomers > 0 ? (item.staffHours / item.totalCustomers).toFixed(1) : 0}h/customer</p>
-            </div>
-          )
-        },
-        {
-          key: 'status',
-          label: 'Status',
-          sortable: true,
-          render: (item) => (
-            <Badge variant={getStatusColor(item.status)} size="sm">
-              {item.status}
-            </Badge>
-          )
-        },
-        {
-          key: 'actions',
-          label: 'Actions',
-          render: (item) => (
-            <div className="flex items-center gap-2">
-              <Link to={`/manager/daily-business/${item.id}`}>
-                <Button variant="outline" size="sm">View</Button>
-              </Link>
-              <Button variant="outline" size="sm">Edit</Button>
-              <Button variant="outline" size="sm" className="text-red-600 hover:text-red-800">
-                Delete
-              </Button>
-            </div>
-          )
-        }
-      ]}
-      onSort={(key, direction) => {
-        setSortBy(key)
-        setSortDirection(direction)
-      }}
-      sortable={true}
-      currentSort={{ key: sortBy, direction: sortDirection }}
-    />
-  )
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading daily business data...</p>
-        </div>
-      </div>
-    )
+  const handleFilterChange = () => {
+    setPagination(prev => ({ ...prev, currentPage: 1 }))
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Daily Business</h1>
-              <p className="text-gray-600 mt-1">Track and manage daily business operations and performance</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant={viewMode === 'table' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('table')}
-              >
-                Table View
-              </Button>
-              <Button
-                variant={viewMode === 'card' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('card')}
-              >
-                Card View
-              </Button>
-              <Link to="/manager/daily-business/add">
-                <Button variant="primary">Add Daily Business</Button>
-              </Link>
-            </div>
+    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Daily Business Records</h1>
+            <p className="text-gray-600 mt-1">Track your daily business performance</p>
+          </div>
+          <div className="flex gap-3">
+            <Link
+              to="/manager/daily-business/analytics"
+              className="flex items-center justify-center gap-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+            >
+              <FaChartLine />
+              <span>Analytics</span>
+            </Link>
+            <Link
+              to="/manager/daily-business/add"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <FaPlus />
+              <span>Add Record</span>
+            </Link>
           </div>
         </div>
-
-        {/* Stats */}
-        <StatCardGrid
-          stats={[
-            {
-              title: 'Total Days',
-              value: stats.total,
-              change: 12.5,
-              changeType: 'positive',
-              format: 'number',
-              color: 'blue',
-              icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              )
-            },
-            {
-              title: 'Total Revenue',
-              value: stats.totalRevenue,
-              change: 8.3,
-              changeType: 'positive',
-              format: 'currency',
-              color: 'green',
-              icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-              )
-            },
-            {
-              title: 'Total Customers',
-              value: stats.totalCustomers,
-              change: 15.2,
-              changeType: 'positive',
-              format: 'number',
-              color: 'yellow',
-              icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              )
-            },
-            {
-              title: 'Avg Daily Revenue',
-              value: stats.averageDailyRevenue,
-              change: 5.7,
-              changeType: 'positive',
-              format: 'currency',
-              color: 'purple',
-              icon: (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              )
-            }
-          ]}
-          columns={4}
-        />
-
-        {/* Filters */}
-        <Card className="mt-8">
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                <SearchBar
-                  value={searchTerm}
-                  onChange={setSearchTerm}
-                  placeholder="Search daily business..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <Dropdown
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  options={[
-                    { value: 'all', label: 'All Statuses' },
-                    { value: 'completed', label: 'Completed' },
-                    { value: 'in_progress', label: 'In Progress' },
-                    { value: 'closed', label: 'Closed' },
-                    { value: 'pending', label: 'Pending' }
-                  ]}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                <DatePicker
-                  value={dateRange}
-                  onChange={setDateRange}
-                  placeholder="Select date range"
-                  range={true}
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Bulk Actions */}
-        {selectedItems.length > 0 && (
-          <Card className="mt-6">
-            <div className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">
-                  {selectedItems.length} item(s) selected
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleBulkAction('export')}
-                  >
-                    Export
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleBulkAction('mark_completed')}
-                  >
-                    Mark Completed
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleBulkAction('delete')}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Results */}
-        <Card className="mt-6">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {filteredDailyBusiness.length} day(s) found
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Sort by:</span>
-                <Dropdown
-                  value={sortBy}
-                  onChange={setSortBy}
-                  options={[
-                    { value: 'date', label: 'Date' },
-                    { value: 'totalRevenue', label: 'Revenue' },
-                    { value: 'totalCustomers', label: 'Customers' },
-                    { value: 'status', label: 'Status' }
-                  ]}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-                >
-                  {sortDirection === 'asc' ? '↑' : '↓'}
-                </Button>
-              </div>
-            </div>
-
-            {viewMode === 'table' ? renderDailyBusinessTable() : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {paginatedDailyBusiness.map(renderDailyBusinessCard)}
-              </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedDailyBusiness.length)} of {sortedDailyBusiness.length} results
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-gray-500">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
       </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Start Date */}
+          <div className="relative">
+            <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value)
+                handleFilterChange()
+              }}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Start Date"
+            />
+          </div>
+
+          {/* End Date */}
+          <div className="relative">
+            <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value)
+                handleFilterChange()
+              }}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="End Date"
+            />
+          </div>
+
+          {/* Clear Filters */}
+          {(startDate || endDate) && (
+            <button
+              onClick={() => {
+                setStartDate('')
+                setEndDate('')
+                handleFilterChange()
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <FaSpinner className="animate-spin text-4xl text-primary-600" />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600">
+          {error}
+        </div>
+      ) : records.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <FaCalendarAlt className="text-6xl text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">No daily business records found</h3>
+          <p className="text-gray-500 mb-6">Get started by adding your first daily business record</p>
+          <Link
+            to="/manager/daily-business/add"
+            className="inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <FaPlus />
+            <span>Add Record</span>
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* Records Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {records.map((record) => (
+              <div
+                key={record._id || record.id}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <FaCalendarAlt className="text-primary-600" />
+                      <h3 className="font-semibold text-gray-900">
+                        {formatDate(record.date)}
+                      </h3>
+                    </div>
+                    {record.business && (
+                      <p className="text-sm text-gray-500">{record.business.name}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      to={`/manager/daily-business/${record._id || record.id}`}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="View Details"
+                    >
+                      <FaEye />
+                    </Link>
+                    <Link
+                      to={`/manager/daily-business/${record._id || record.id}/edit`}
+                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <FaEdit />
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(record._id || record.id)}
+                      disabled={deleting === (record._id || record.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="Delete"
+                    >
+                      {deleting === (record._id || record.id) ? (
+                        <FaSpinner className="animate-spin" />
+                      ) : (
+                        <FaTrash />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Revenue */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <FaDollarSign className="text-green-600" />
+                      <span className="text-sm">Revenue</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(record.totalIncome)}
+                    </span>
+                  </div>
+
+                  {/* Customers */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <FaUsers className="text-blue-600" />
+                      <span className="text-sm">Customers</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">
+                      {record.totalCustomers || 0}
+                    </span>
+                  </div>
+
+                  {/* Expenses & Profit */}
+                  <div className="pt-3 border-t border-gray-100 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Expenses</span>
+                      <span className="text-red-600 font-medium">
+                        {formatCurrency(record.totalExpenses)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-700 font-medium">Net Profit</span>
+                      <span className={`font-bold ${
+                        record.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {formatCurrency(record.netProfit)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Services Count */}
+                  {record.services && record.services.length > 0 && (
+                    <div className="pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500">
+                        {record.services.length} service{record.services.length !== 1 ? 's' : ''} recorded
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Completion Status */}
+                  {record.isCompleted !== undefined && (
+                    <div className="pt-2">
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                        record.isCompleted
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {record.isCompleted ? 'Completed' : 'Pending'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-xl">
+              <div className="text-sm text-gray-600">
+                Showing {(pagination.currentPage - 1) * pagination.limit + 1} to{' '}
+                {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of{' '}
+                {pagination.total} records
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg">
+                  {pagination.currentPage} / {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

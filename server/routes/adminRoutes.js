@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/adminController");
+const adminNotificationController = require("../controllers/adminNotificationController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
@@ -10,15 +11,35 @@ router.use(authMiddleware, roleMiddleware(["admin"]));
 // ================== Admin Dashboard ==================
 router.get("/dashboard", adminController.getAdminDashboard);
 
+// ================== Admin Profile & Settings ==================
+router.get("/profile", adminController.getAdminProfile);
+router.put("/profile", adminController.updateAdminProfile);
+router.put("/password", adminController.updateAdminPassword);
+
+// ================== Admin Notifications ==================
+router.get("/notifications", adminNotificationController.getAdminNotifications);
+router.get("/notifications/unread-count", adminNotificationController.getUnreadCount);
+router.get("/notifications/recent", adminNotificationController.getRecentNotifications);
+router.put("/notifications/:id/read", adminNotificationController.markAsRead);
+router.put("/notifications/read-all", adminNotificationController.markAllAsRead);
+router.delete("/notifications/all", adminNotificationController.deleteAllNotifications);
+router.delete("/notifications/:id", adminNotificationController.deleteNotification);
+
 // ================== Business Management ==================
 router.post("/business", adminController.createBusiness);
 router.get("/businesses", adminController.getBusinesses);
-router.get("/:id", adminController.getBusinessById);
+router.get("/business/:businessId/link", adminController.getBusinessLink);
 router.put("/business/:id", adminController.updateBusiness);
 router.delete("/business/:id", adminController.deleteBusiness);
-router.get("/business/:businessId/link", adminController.getBusinessLink);
 
 // ================== Manager Management ==================
 router.post("/manager", adminController.createManager);
+router.get("/managers", adminController.getManagers);
+router.get("/manager/:id", adminController.getManagerById);
+router.put("/manager/:id", adminController.updateManager);
+router.delete("/manager/:id", adminController.deleteManager);
+
+// ================== Get Business by ID (must be last to avoid conflicts) ==================
+router.get("/:id", adminController.getBusinessById);
 
 module.exports = router;

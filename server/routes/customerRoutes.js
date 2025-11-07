@@ -4,38 +4,36 @@ const customerController = require("../controllers/customerController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// All routes require authentication and manager role
-router.use(authMiddleware, roleMiddleware(["manager"]));
+// All routes require authentication (Admin or Manager)
+router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
 
 // ================== Customer Management ==================
+
+// Create new customer
+router.post("/", customerController.createCustomer);
 
 // Get customers with filtering and pagination
 router.get("/", customerController.getCustomers);
 
-// Get customer details with timeline
-router.get("/:customerId", customerController.getCustomerDetails);
+// Get customer statistics
+router.get("/stats", customerController.getCustomerStats);
+
+// Get customer by ID
+router.get("/:id", customerController.getCustomerById);
 
 // Update customer information
-router.put("/:customerId", customerController.updateCustomer);
+router.put("/:id", customerController.updateCustomer);
 
-// Add note to customer
-router.post("/:customerId/notes", customerController.addCustomerNote);
+// Delete customer (soft delete)
+router.delete("/:id", customerController.deleteCustomer);
 
-// Get customer timeline
-router.get("/:customerId/timeline", customerController.getCustomerTimeline);
+// ================== Loyalty Points ==================
 
-// ================== Customer Analytics ==================
+// Add loyalty points to customer
+router.post("/:id/loyalty/add", customerController.addLoyaltyPoints);
 
-// Get customer segments
-router.get("/analytics/segments", customerController.getCustomerSegments);
-
-// Get customer analytics
-router.get("/analytics/overview", customerController.getCustomerAnalytics);
-
-// Get customer insights and recommendations
-router.get("/analytics/insights", customerController.getCustomerInsights);
-
-// Get target customers for campaigns
-router.post("/analytics/target", customerController.getTargetCustomers);
+// Redeem loyalty points
+router.post("/:id/loyalty/redeem", customerController.redeemLoyaltyPoints);
 
 module.exports = router;
+    
