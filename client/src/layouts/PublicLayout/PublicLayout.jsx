@@ -1,6 +1,7 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
 import { PublicHeader, PublicFooter } from './components'
+import { ChatBot } from '../../components'
 
 const PublicLayout = () => {
   return (
@@ -15,6 +16,9 @@ const PublicLayout = () => {
 
       {/* Footer */}
       <PublicFooter />
+
+      {/* ChatBot */}
+      <ChatBot />
     </div>
   )
 }

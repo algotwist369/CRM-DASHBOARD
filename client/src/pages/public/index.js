@@ -1,2 +1,12 @@
-export { default as './Booking';
-export { default as AppointmentStatus } from './AppointmentStatus/AppointmentStatus';
+export { default as Home } from './Home/Home'
+export { default as Features } from './Features/Features'
+export { default as Pricing } from './Pricing/Pricing'
+export { default as HowItWorks } from './HowItWorks/HowItWorks'
+export { default as ForBusinesses } from './ForBusinesses/ForBusinesses'
+export { default as Advertise } from './Advertise/Advertise'
+export { default as Careers } from './Careers/Careers'
+export { default as Notifications } from './Notifications/Notifications'
+export { default as Contact } from './Contact/Contact'
+export { default as FreeListing } from './FreeListing/FreeListing'
+export * from './Booking'
+export { default as AppointmentStatus } from './AppointmentStatus/AppointmentStatus'

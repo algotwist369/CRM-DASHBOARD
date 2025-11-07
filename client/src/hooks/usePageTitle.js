@@ -9,7 +9,16 @@ const DEFAULT_TITLE = APP_NAME
 const ROUTE_TITLES = {
   // Exact path matches
   exact: {
-    '/': `Home - ${APP_NAME}`
+    '/': `Home - ${APP_NAME}`,
+    '/features': `Features - ${APP_NAME}`,
+    '/pricing': `Pricing - ${APP_NAME}`,
+    '/how-it-works': `How It Works - ${APP_NAME}`,
+    '/for-businesses': `For Businesses - ${APP_NAME}`,
+    '/advertise': `Advertise - ${APP_NAME}`,
+    '/careers': `Careers - ${APP_NAME}`,
+    '/notifications': `Notifications - ${APP_NAME}`,
+    '/contact': `Contact - ${APP_NAME}`,
+    '/free-listing': `Free Listing - ${APP_NAME}`
   },
   // Path prefix matches
   prefix: {

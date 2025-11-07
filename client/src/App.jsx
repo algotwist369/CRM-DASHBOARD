@@ -48,7 +48,18 @@ import StaffBusiness from './pages/staff/Business/StaffBusiness'
 import StaffSettings from './pages/staff/StaffSettings/StaffSettings'
 
 // Public Pages
-import { Home } from './pages/public/Home'
+import {
+  Home,
+  Features,
+  Pricing,
+  HowItWorks,
+  ForBusinesses,
+  Advertise,
+  Careers,
+  Notifications,
+  Contact,
+  FreeListing
+} from './pages/public'
 import { BusinessInfo, ServiceSelection, StaffSelection, TimeSelection, CustomerInfo, BookingConfirmation } from './pages/public/Booking'
 import AppointmentStatus from './pages/public/AppointmentStatus/AppointmentStatus'
 
@@ -181,6 +192,15 @@ function App() {
               {/* Public Routes--for booking appointments */}
               <Route path="/" element={<PublicLayout />}>
                 <Route index element={<Home />} />
+                <Route path="features" element={<Features />} />
+                <Route path="pricing" element={<Pricing />} />
+                <Route path="how-it-works" element={<HowItWorks />} />
+                <Route path="for-businesses" element={<ForBusinesses />} />
+                <Route path="advertise" element={<Advertise />} />
+                <Route path="careers" element={<Careers />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="contact" element={<Contact />} />
+                <Route path="free-listing" element={<FreeListing />} />
                 <Route path="appointment/:confirmationCode" element={<AppointmentStatus />} />
                 <Route path="book/:businessLink/services" element={<ServiceSelection />} />
                 <Route path="book/:businessLink/staff" element={<StaffSelection />} />
