@@ -26,6 +26,6 @@ const managerSchema = new mongoose.Schema(
 
 // Index for business-specific manager lookup
 managerSchema.index({ business: 1, username: 1 });
-managerSchema.index({ business: 1, isActive: 1 }); // Critical for dashboard queries
+managerSchema.index({ business: 1, isActive: 1 });  
 
 module.exports = mongoose.model("Manager", managerSchema);

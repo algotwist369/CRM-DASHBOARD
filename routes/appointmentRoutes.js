@@ -4,7 +4,26 @@ const appointmentController = require("../controllers/appointmentController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// All routes require authentication (Admin or Manager)
+// ================== PUBLIC ROUTES (No Authentication Required) ==================
+
+// Get business info for booking (by businessLink)
+router.get("/business/:businessLink/info", appointmentController.getBusinessInfoForBooking);
+
+// Get available time slots (by businessLink)
+router.get("/business/:businessLink/slots", appointmentController.getAvailableSlotsForBooking);
+
+// Book appointment (by businessLink)
+router.post("/business/:businessLink/book", appointmentController.bookAppointmentPublic);
+
+// Get appointment by confirmation code (public)
+router.get("/confirmation/:confirmationCode", appointmentController.getAppointmentByConfirmationCode);
+
+// Cancel appointment by confirmation code (public)
+router.post("/confirmation/:confirmationCode/cancel", appointmentController.cancelAppointmentByCode);
+
+// ================== PROTECTED ROUTES (Authentication Required) ==================
+
+// All routes below require authentication (Admin or Manager)
 router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
 
 // ================== Appointment Management ==================

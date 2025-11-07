@@ -26,7 +26,7 @@ const getPublicBusinesses = async (req, res, next) => {
         };
         
         // Filter by type if provided
-        if (type && ['salon', 'spa', 'hotel', 'restaurant', 'clinic'].includes(type)) {
+        if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
             query.type = type;
         }
         
@@ -48,6 +48,37 @@ const getPublicBusinesses = async (req, res, next) => {
             .lean();
         
         const total = await Business.countDocuments(query);
+        
+        // Fetch services for all businesses
+        const Service = require("../models/Service");
+        const businessIds = businesses.map(b => b._id);
+        const servicesMap = {};
+        
+        if (businessIds.length > 0) {
+            const services = await Service.find({
+                business: { $in: businessIds },
+                isActive: true,
+                isAvailableOnline: true
+            })
+                .select('name price duration category business')
+                .sort({ displayOrder: 1, name: 1 })
+                .lean();
+            
+            // Group services by business (limit to 5 per business)
+            services.forEach(service => {
+                if (!servicesMap[service.business]) {
+                    servicesMap[service.business] = [];
+                }
+                if (servicesMap[service.business].length < 5) {
+                    servicesMap[service.business].push({
+                        name: service.name,
+                        price: service.price,
+                        duration: service.duration,
+                        category: service.category
+                    });
+                }
+            });
+        }
         
         // Format businesses for public display
         const formattedBusinesses = businesses.map(business => ({
@@ -79,6 +110,8 @@ const getPublicBusinesses = async (req, res, next) => {
             // Features & amenities
             features: business.features,
             amenities: business.amenities,
+            // Services
+            services: servicesMap[business._id] || [],
             // Settings
             workingHours: business.settings?.workingHours,
             appointmentSettings: {
@@ -401,69 +434,199 @@ const getBusinessesNearby = async (req, res, next) => {
     try {
         const { lat, lng, maxDistance = 5000, type, page = 1, limit = 20 } = req.query;
 
-        // Validate coordinates
+        // ================== Input Validation & Sanitization ==================
+        
+        // Validate coordinates are provided
         if (!lat || !lng) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Latitude and longitude are required" 
+                message: "Latitude and longitude are required",
+                code: "MISSING_COORDINATES"
             });
         }
 
+        // Parse and validate coordinates
         const latitude = parseFloat(lat);
         const longitude = parseFloat(lng);
 
         if (isNaN(latitude) || isNaN(longitude)) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Invalid latitude or longitude" 
+                message: "Invalid latitude or longitude format",
+                code: "INVALID_COORDINATES"
             });
         }
 
-        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        // Validate coordinate ranges
+        if (latitude < -90 || latitude > 90) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Latitude must be between -90 and 90, longitude between -180 and 180" 
+                message: "Latitude must be between -90 and 90",
+                code: "INVALID_LATITUDE"
             });
         }
 
-        // Build query
-        const query = {
+        if (longitude < -180 || longitude > 180) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Longitude must be between -180 and 180",
+                code: "INVALID_LONGITUDE"
+            });
+        }
+
+        // Validate and sanitize maxDistance (100m to 100km)
+        const maxDistanceMeters = Math.min(Math.max(parseInt(maxDistance) || 5000, 100), 100000);
+        
+        // Validate and sanitize pagination
+        const pageNumber = Math.max(1, parseInt(page) || 1);
+        const limitNumber = Math.min(Math.max(parseInt(limit) || 20, 1), 50); // Max 50 per page
+        const skip = (pageNumber - 1) * limitNumber;
+
+        // Validate business type if provided
+        const validTypes = ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'];
+        if (type && !validTypes.includes(type)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`,
+                code: "INVALID_BUSINESS_TYPE"
+            });
+        }
+
+        // ================== Cache Check ==================
+        const cacheKey = `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:${pageNumber}:${limitNumber}`;
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ 
+                success: true, 
+                source: "cache",
+                ...cachedData 
+            });
+        }
+
+        // ================== Build Query ==================
+        const baseQuery = {
             isActive: true,
             'settings.appointmentSettings.allowOnlineBooking': true,
             location: {
-                $near: {
-                    $geometry: {
-                        type: "Point",
-                        coordinates: [longitude, latitude] // [lng, lat] order for GeoJSON
-                    },
-                    $maxDistance: parseInt(maxDistance) // Distance in meters
-                }
+                $exists: true,
+                $ne: null
             }
         };
 
-        // Filter by type if provided
-        if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
-            query.type = type;
+        if (type) {
+            baseQuery.type = type;
         }
 
-        // Execute geospatial query with pagination
-        const businesses = await Business.find(query)
-            .select('name type branch address city state phone email website description images socialMedia location googleMapsUrl ratings features amenities category tags settings businessLink')
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
-            .lean();
+        // ================== Geospatial Aggregation Pipeline ==================
+        const pipeline = [
+            {
+                $geoNear: {
+                    near: {
+                        type: "Point",
+                        coordinates: [longitude, latitude]
+                    },
+                    distanceField: "distance",
+                    maxDistance: maxDistanceMeters,
+                    spherical: true,
+                    query: baseQuery
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    type: 1,
+                    branch: 1,
+                    address: 1,
+                    city: 1,
+                    state: 1,
+                    country: 1,
+                    phone: 1,
+                    email: 1,
+                    website: 1,
+                    description: 1,
+                    businessLink: 1,
+                    location: 1,
+                    googleMapsUrl: 1,
+                    images: 1,
+                    socialMedia: 1,
+                    ratings: 1,
+                    category: 1,
+                    tags: 1,
+                    features: 1,
+                    amenities: 1,
+                    'settings.workingHours': 1,
+                    'settings.appointmentSettings': 1,
+                    distance: 1
+                }
+            },
+            {
+                $facet: {
+                    data: [
+                        { $skip: skip },
+                        { $limit: limitNumber }
+                    ],
+                    metadata: [
+                        { $count: "total" }
+                    ]
+                }
+            }
+        ];
 
-        const total = await Business.countDocuments(query);
+        // ================== Execute Query ==================
+        let result;
+        try {
+            result = await Business.aggregate(pipeline).allowDiskUse(true); // Allow disk use for large datasets
+        } catch (aggregateError) {
+            // Handle geospatial index errors gracefully
+            if (aggregateError.message && aggregateError.message.includes('geoNear')) {
+                console.error('Geospatial query error:', aggregateError.message);
+                return res.status(503).json({
+                    success: false,
+                    message: "Location-based search is temporarily unavailable. Please try again later.",
+                    code: "GEOSPATIAL_ERROR"
+                });
+            }
+            throw aggregateError;
+        }
 
-        // Calculate distance for each business (approximate)
-        const businessesWithDistance = businesses.map(business => {
-            const distance = calculateDistance(
-                latitude, 
-                longitude, 
-                business.location.coordinates[1], // lat
-                business.location.coordinates[0]  // lng
-            );
+        // ================== Process Results ==================
+        const businesses = result[0]?.data || [];
+        const total = result[0]?.metadata?.[0]?.total || 0;
 
+        // Fetch services for all businesses
+        const Service = require("../models/Service");
+        const businessIds = businesses.map(b => b._id);
+        const servicesMap = {};
+        
+        if (businessIds.length > 0) {
+            const services = await Service.find({
+                business: { $in: businessIds },
+                isActive: true,
+                isAvailableOnline: true
+            })
+                .select('name price duration category business')
+                .sort({ displayOrder: 1, name: 1 })
+                .lean();
+            
+            // Group services by business (limit to 5 per business)
+            services.forEach(service => {
+                if (!servicesMap[service.business]) {
+                    servicesMap[service.business] = [];
+                }
+                if (servicesMap[service.business].length < 5) {
+                    servicesMap[service.business].push({
+                        name: service.name,
+                        price: service.price,
+                        duration: service.duration,
+                        category: service.category
+                    });
+                }
+            });
+        }
+
+        // Format businesses for response
+        const formattedBusinesses = businesses.map(business => {
+            const distance = business.distance || 0;
             return {
                 id: business._id,
                 name: business.name,
@@ -472,6 +635,7 @@ const getBusinessesNearby = async (req, res, next) => {
                 address: business.address,
                 city: business.city,
                 state: business.state,
+                country: business.country,
                 phone: business.phone,
                 email: business.email,
                 website: business.website,
@@ -481,49 +645,75 @@ const getBusinessesNearby = async (req, res, next) => {
                 googleMapsUrl: business.googleMapsUrl,
                 images: business.images,
                 socialMedia: business.socialMedia,
-                ratings: business.ratings,
+                ratings: business.ratings || { average: 0, totalReviews: 0 },
                 category: business.category,
-                tags: business.tags,
-                features: business.features,
-                amenities: business.amenities,
+                tags: business.tags || [],
+                features: business.features || [],
+                amenities: business.amenities || [],
+                services: servicesMap[business._id] || [],
                 workingHours: business.settings?.workingHours,
-                distance: Math.round(distance), // Distance in meters
-                distanceKm: (distance / 1000).toFixed(2) // Distance in kilometers
+                appointmentSettings: {
+                    allowOnlineBooking: business.settings?.appointmentSettings?.allowOnlineBooking,
+                    slotDuration: business.settings?.appointmentSettings?.slotDuration
+                },
+                distance: Math.round(distance),
+                distanceKm: parseFloat((distance / 1000).toFixed(2))
             };
         });
 
-        return res.json({
+        // ================== Build Response ==================
+        const response = {
             success: true,
-            data: businessesWithDistance,
+            data: formattedBusinesses,
             pagination: {
                 total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit)
+                page: pageNumber,
+                limit: limitNumber,
+                pages: Math.ceil(total / limitNumber),
+                hasMore: skip + limitNumber < total
             },
             searchLocation: {
                 latitude,
                 longitude,
-                maxDistance: parseInt(maxDistance)
+                maxDistance: maxDistanceMeters,
+                maxDistanceKm: parseFloat((maxDistanceMeters / 1000).toFixed(2))
+            },
+            meta: {
+                resultsCount: formattedBusinesses.length,
+                searchRadius: `${(maxDistanceMeters / 1000).toFixed(1)} km`
             }
-        });
+        };
+
+        // ================== Cache Response ==================
+        // Cache for 5 minutes (300 seconds) - matches backend cache duration
+        await setCache(cacheKey, response, 300);
+
+        return res.json(response);
+
     } catch (err) {
+        // Enhanced error logging for production
+        console.error('[getBusinessesNearby] Error:', {
+            message: err.message,
+            stack: err.stack,
+            query: req.query,
+            timestamp: new Date().toISOString()
+        });
+
+        // Handle specific MongoDB errors
+        if (err.name === 'MongoError' || err.name === 'MongoServerError') {
+            if (err.message && err.message.includes('geoNear')) {
+                return res.status(503).json({
+                    success: false,
+                    message: "Location-based search is temporarily unavailable. Please try again later.",
+                    code: "GEOSPATIAL_SERVICE_UNAVAILABLE"
+                });
+            }
+        }
+
+        // Generic error response
         next(err);
     }
 };
-
-// Helper function to calculate distance between two points (Haversine formula)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // Earth's radius in meters
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in meters
-}
 
 // ================== Update Business (Admin + Manager shared endpoint) ==================
 const updateBusiness = async (req, res, next) => {

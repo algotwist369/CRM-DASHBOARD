@@ -726,7 +726,437 @@ const getAppointmentStats = async (req, res, next) => {
     }
 };
 
+// ================== PUBLIC APPOINTMENT ROUTES (No Authentication) ==================
+
+// Get business info for booking (by businessLink)
+const getBusinessInfoForBooking = async (req, res, next) => {
+    try {
+        const { businessLink } = req.params;
+        
+        const business = await Business.findOne({ businessLink, isActive: true })
+            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags _id')
+            .populate('staff', 'name role specialization isActive')
+            .lean();
+        
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+        
+        // Check if online booking is allowed
+        if (!business.settings?.appointmentSettings?.allowOnlineBooking) {
+            return res.status(403).json({
+                success: false,
+                message: "Online booking is not available for this business"
+            });
+        }
+        
+        // Fetch services separately
+        const services = await Service.find({ 
+            business: business._id, 
+            isActive: true,
+            isAvailableOnline: true 
+        })
+            .select('name price duration category serviceType description images')
+            .sort({ displayOrder: 1, name: 1 })
+            .lean();
+        
+        return res.json({
+            success: true,
+            data: {
+                ...business,
+                services: services || [],
+                staff: business.staff || [],
+                workingHours: business.settings?.workingHours,
+                appointmentSettings: business.settings?.appointmentSettings
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Get available time slots (by businessLink)
+const getAvailableSlotsForBooking = async (req, res, next) => {
+    try {
+        const { businessLink } = req.params;
+        const { date, staffId } = req.query;
+        
+        if (!date) {
+            return res.status(400).json({
+                success: false,
+                message: "Date is required"
+            });
+        }
+        
+        const business = await Business.findOne({ businessLink, isActive: true })
+            .select('settings businessLink')
+            .lean();
+        
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+        
+        if (!business.settings?.appointmentSettings?.allowOnlineBooking) {
+            return res.status(403).json({
+                success: false,
+                message: "Online booking is not available"
+            });
+        }
+        
+        const appointmentDate = new Date(date);
+        const startOfDay = new Date(appointmentDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(appointmentDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        // Get existing appointments for the date
+        const query = {
+            business: business._id,
+            appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+            status: { $nin: ['cancelled', 'no_show'] }
+        };
+        
+        if (staffId) {
+            query.staff = staffId;
+        }
+        
+        const existingAppointments = await Appointment.find(query)
+            .select('startTime endTime staff')
+            .lean();
+        
+        // Generate available slots
+        const { generateAvailableSlots } = require("../utils/appointmentUtils");
+        const slots = generateAvailableSlots(
+            business,
+            appointmentDate,
+            existingAppointments,
+            staffId || null
+        );
+        
+        return res.json({
+            success: true,
+            data: {
+                date: date,
+                availableSlots: slots.map(slot => slot.startTime),
+                slots: slots
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Book appointment (public - by businessLink)
+const bookAppointmentPublic = async (req, res, next) => {
+    try {
+        const { businessLink } = req.params;
+        const {
+            customerInfo,
+            appointmentDate,
+            startTime,
+            endTime,
+            services,
+            staffId,
+            customerNotes,
+            specialRequests
+        } = req.body;
+        
+        // Validate required fields
+        if (!customerInfo || !customerInfo.name || !customerInfo.email || !customerInfo.phone) {
+            return res.status(400).json({
+                success: false,
+                message: "Customer information (name, email, phone) is required"
+            });
+        }
+        
+        if (!appointmentDate || !startTime || !endTime) {
+            return res.status(400).json({
+                success: false,
+                message: "Appointment date, start time, and end time are required"
+            });
+        }
+        
+        if (!services || services.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "At least one service is required"
+            });
+        }
+        
+        // Get business
+        const business = await Business.findOne({ businessLink, isActive: true });
+        
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+        
+        if (!business.settings?.appointmentSettings?.allowOnlineBooking) {
+            return res.status(403).json({
+                success: false,
+                message: "Online booking is not available for this business"
+            });
+        }
+        
+        // Find or create customer
+        let customer = await Customer.findOne({
+            business: business._id,
+            $or: [
+                { email: customerInfo.email },
+                { phone: customerInfo.phone }
+            ]
+        });
+        
+        if (!customer) {
+            // Create new customer
+            const [firstName, ...lastNameParts] = customerInfo.name.split(' ');
+            customer = await Customer.create({
+                business: business._id,
+                firstName: firstName,
+                lastName: lastNameParts.join(' ') || '',
+                email: customerInfo.email,
+                phone: customerInfo.phone,
+                dateOfBirth: customerInfo.dateOfBirth || undefined,
+                gender: customerInfo.gender || undefined,
+                address: customerInfo.address || undefined,
+                preferences: customerInfo.preferences || {},
+                customerType: 'new',
+                source: 'online_booking',
+                marketingConsent: {
+                    email: customerInfo.marketingConsent?.email || false,
+                    sms: customerInfo.marketingConsent?.sms || false
+                }
+            });
+        } else {
+            // Update customer info if provided
+            if (customerInfo.address) customer.address = customerInfo.address;
+            if (customerInfo.dateOfBirth) customer.dateOfBirth = new Date(customerInfo.dateOfBirth);
+            if (customerInfo.gender) customer.gender = customerInfo.gender;
+            await customer.save();
+        }
+        
+        // Get or create service
+        const serviceData = services[0]; // Use first service for now
+        let service = null;
+        
+        if (serviceData.serviceId) {
+            service = await Service.findOne({
+                _id: serviceData.serviceId,
+                business: business._id
+            });
+        }
+        
+        if (!service && serviceData.serviceName) {
+            // Create service on the fly if it doesn't exist
+            service = await Service.create({
+                business: business._id,
+                name: serviceData.serviceName,
+                category: serviceData.serviceCategory || 'General',
+                serviceType: serviceData.serviceType || 'service',
+                price: serviceData.price || 0,
+                duration: serviceData.duration || 60,
+                isActive: true
+            });
+        }
+        
+        if (!service) {
+            return res.status(400).json({
+                success: false,
+                message: "Service not found or could not be created"
+            });
+        }
+        
+        // Calculate pricing
+        const totalPrice = services.reduce((sum, s) => sum + (s.price || 0), 0);
+        const totalDuration = services.reduce((sum, s) => sum + (s.duration || 60), 0);
+        
+        // Validate booking
+        const { validateAppointmentBooking } = require("../utils/appointmentUtils");
+        const appointmentDateObj = new Date(appointmentDate);
+        const startOfDay = new Date(appointmentDateObj);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(appointmentDateObj);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const existingAppointments = await Appointment.find({
+            business: business._id,
+            appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+            status: { $nin: ['cancelled', 'no_show'] }
+        });
+        
+        const validation = validateAppointmentBooking({
+            appointmentDate,
+            startTime,
+            endTime,
+            staff: staffId
+        }, business, existingAppointments);
+        
+        if (!validation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: validation.errors.join(', ')
+            });
+        }
+        
+        // Create appointment
+        const appointment = await Appointment.create({
+            business: business._id,
+            customer: customer._id,
+            service: service._id,
+            staff: staffId || undefined,
+            appointmentDate: appointmentDateObj,
+            startTime: startTime,
+            endTime: endTime,
+            duration: totalDuration,
+            servicePrice: totalPrice,
+            totalAmount: totalPrice,
+            customerNotes: customerNotes || '',
+            specialRequests: specialRequests || '',
+            bookingSource: 'online',
+            paymentStatus: 'pending',
+            status: 'pending',
+            createdBy: customer._id,
+            createdByModel: 'Customer'
+        });
+        
+        // Generate confirmation code
+        const confirmationCode = appointment.bookingNumber || `CONF${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        appointment.bookingNumber = confirmationCode;
+        await appointment.save();
+        
+        // Populate appointment for response
+        await appointment.populate('business', 'name branch address phone');
+        await appointment.populate('service', 'name price duration');
+        if (appointment.staff) {
+            await appointment.populate('staff', 'name role');
+        }
+        await appointment.populate('customer', 'firstName lastName email phone');
+        
+        return res.status(201).json({
+            success: true,
+            message: "Appointment booked successfully",
+            data: {
+                appointment: appointment,
+                confirmationCode: confirmationCode
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Get appointment by confirmation code (public)
+const getAppointmentByConfirmationCode = async (req, res, next) => {
+    try {
+        const { confirmationCode } = req.params;
+        
+        const appointment = await Appointment.findOne({ bookingNumber: confirmationCode })
+            .populate('business', 'name branch address phone email')
+            .populate('service', 'name price duration')
+            .populate('staff', 'name role specialization')
+            .populate('customer', 'firstName lastName email phone')
+            .lean();
+        
+        if (!appointment) {
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found"
+            });
+        }
+        
+        return res.json({
+            success: true,
+            data: {
+                ...appointment,
+                confirmationCode: appointment.bookingNumber
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Cancel appointment by confirmation code (public)
+const cancelAppointmentByCode = async (req, res, next) => {
+    try {
+        const { confirmationCode } = req.params;
+        const { reason } = req.body;
+        
+        const appointment = await Appointment.findOne({ bookingNumber: confirmationCode })
+            .populate('business');
+        
+        if (!appointment) {
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found"
+            });
+        }
+        
+        if (appointment.status === 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                message: "Appointment is already cancelled"
+            });
+        }
+        
+        if (appointment.status === 'completed') {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot cancel a completed appointment"
+            });
+        }
+        
+        // Check cancellation policy
+        const { canCancelAppointment } = require("../utils/appointmentUtils");
+        const cancellationCheck = canCancelAppointment(appointment, appointment.business);
+        
+        if (!cancellationCheck.canCancel) {
+            return res.status(400).json({
+                success: false,
+                message: cancellationCheck.reason
+            });
+        }
+        
+        // Cancel appointment
+        appointment.status = 'cancelled';
+        appointment.cancellationReason = reason || 'Cancelled by customer';
+        appointment.cancelledAt = new Date();
+        appointment.cancelledBy = appointment.customer;
+        appointment.cancelledByModel = 'Customer';
+        await appointment.save();
+        
+        // Invalidate cache
+        await deleteCache(`business:${appointment.business}:appointments`);
+        
+        return res.json({
+            success: true,
+            message: "Appointment cancelled successfully",
+            data: {
+                appointment: appointment,
+                refundAmount: cancellationCheck.refundAmount || 0
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
+    // Public routes
+    getBusinessInfoForBooking,
+    getAvailableSlotsForBooking,
+    bookAppointmentPublic,
+    getAppointmentByConfirmationCode,
+    cancelAppointmentByCode,
+    // Protected routes
     createAppointment,
     getAppointments,
     getAppointmentById,
