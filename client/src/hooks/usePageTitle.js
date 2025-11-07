@@ -18,7 +18,8 @@ const ROUTE_TITLES = {
     '/careers': `Careers - ${APP_NAME}`,
     '/notifications': `Notifications - ${APP_NAME}`,
     '/contact': `Contact - ${APP_NAME}`,
-    '/free-listing': `Free Listing - ${APP_NAME}`
+    '/free-listing': `Free Listing - ${APP_NAME}`,
+    '/check-appointment': `Check Appointment Status - ${APP_NAME}`
   },
   // Path prefix matches
   prefix: {

@@ -864,7 +864,8 @@ const bookAppointmentPublic = async (req, res, next) => {
             services,
             staffId,
             customerNotes,
-            specialRequests
+            specialRequests,
+            paymentMethod
         } = req.body;
         
         // Validate required fields
@@ -886,6 +887,15 @@ const bookAppointmentPublic = async (req, res, next) => {
             return res.status(400).json({
                 success: false,
                 message: "At least one service is required"
+            });
+        }
+        
+        // Validate payment method if provided
+        const validPaymentMethods = ['cash', 'card', 'upi', 'netbanking', 'wallet', 'online'];
+        if (paymentMethod && !validPaymentMethods.includes(paymentMethod)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid payment method. Must be one of: ${validPaymentMethods.join(', ')}`
             });
         }
         
@@ -915,6 +925,57 @@ const bookAppointmentPublic = async (req, res, next) => {
             ]
         });
         
+        // Helper function to parse address string into object
+        const parseAddress = (addressString) => {
+            if (!addressString) return undefined;
+            
+            // If already an object, return as is
+            if (typeof addressString === 'object' && addressString !== null) {
+                return addressString;
+            }
+            
+            // If it's a string, try to parse it
+            if (typeof addressString === 'string') {
+                // Try to extract zip code (6 digits at the end)
+                const zipMatch = addressString.match(/\b(\d{6})\b/);
+                const zipCode = zipMatch ? zipMatch[1] : undefined;
+                
+                // Try to extract state (common Indian states)
+                const states = ['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Gujarat', 'Rajasthan', 
+                               'West Bengal', 'Uttar Pradesh', 'Punjab', 'Haryana', 'Andhra Pradesh', 
+                               'Telangana', 'Kerala', 'Madhya Pradesh', 'Bihar', 'Odisha', 'Assam'];
+                let state = undefined;
+                for (const s of states) {
+                    if (addressString.includes(s)) {
+                        state = s;
+                        break;
+                    }
+                }
+                
+                // Try to extract city (common pattern: city name before state)
+                let city = undefined;
+                if (state) {
+                    const stateIndex = addressString.indexOf(state);
+                    const beforeState = addressString.substring(0, stateIndex).trim();
+                    // Get the last part before state (likely city)
+                    const parts = beforeState.split(',').map(p => p.trim()).filter(p => p);
+                    if (parts.length > 0) {
+                        city = parts[parts.length - 1];
+                    }
+                }
+                
+                return {
+                    street: addressString,
+                    city: city,
+                    state: state,
+                    country: 'India',
+                    zipCode: zipCode
+                };
+            }
+            
+            return undefined;
+        };
+        
         if (!customer) {
             // Create new customer
             const [firstName, ...lastNameParts] = customerInfo.name.split(' ');
@@ -924,12 +985,12 @@ const bookAppointmentPublic = async (req, res, next) => {
                 lastName: lastNameParts.join(' ') || '',
                 email: customerInfo.email,
                 phone: customerInfo.phone,
-                dateOfBirth: customerInfo.dateOfBirth || undefined,
+                dateOfBirth: customerInfo.dateOfBirth ? new Date(customerInfo.dateOfBirth) : undefined,
                 gender: customerInfo.gender || undefined,
-                address: customerInfo.address || undefined,
+                address: parseAddress(customerInfo.address),
                 preferences: customerInfo.preferences || {},
                 customerType: 'new',
-                source: 'online_booking',
+                source: 'online', // Valid enum values: "walk-in", "online", "referral", "social_media", "advertisement", "other"
                 marketingConsent: {
                     email: customerInfo.marketingConsent?.email || false,
                     sms: customerInfo.marketingConsent?.sms || false
@@ -937,25 +998,39 @@ const bookAppointmentPublic = async (req, res, next) => {
             });
         } else {
             // Update customer info if provided
-            if (customerInfo.address) customer.address = customerInfo.address;
+            if (customerInfo.address) {
+                customer.address = parseAddress(customerInfo.address);
+            }
             if (customerInfo.dateOfBirth) customer.dateOfBirth = new Date(customerInfo.dateOfBirth);
             if (customerInfo.gender) customer.gender = customerInfo.gender;
             await customer.save();
         }
         
-        // Get or create service
-        const serviceData = services[0]; // Use first service for now
+        // Get or create service (use first service for appointment model which supports single service)
+        const serviceData = services[0];
         let service = null;
         
-        if (serviceData.serviceId) {
+        // Try to find service by ID first
+        if (serviceData.serviceId || serviceData._id || serviceData.id) {
+            const serviceId = serviceData.serviceId || serviceData._id || serviceData.id;
             service = await Service.findOne({
-                _id: serviceData.serviceId,
-                business: business._id
+                _id: serviceId,
+                business: business._id,
+                isActive: true
             });
         }
         
+        // If not found by ID, try to find by name
         if (!service && serviceData.serviceName) {
-            // Create service on the fly if it doesn't exist
+            service = await Service.findOne({
+                business: business._id,
+                name: serviceData.serviceName,
+                isActive: true
+            });
+        }
+        
+        // If still not found, create service on the fly
+        if (!service && serviceData.serviceName) {
             service = await Service.create({
                 business: business._id,
                 name: serviceData.serviceName,
@@ -974,7 +1049,7 @@ const bookAppointmentPublic = async (req, res, next) => {
             });
         }
         
-        // Calculate pricing
+        // Calculate pricing from all services (for display purposes)
         const totalPrice = services.reduce((sum, s) => sum + (s.price || 0), 0);
         const totalDuration = services.reduce((sum, s) => sum + (s.duration || 60), 0);
         
@@ -1022,6 +1097,7 @@ const bookAppointmentPublic = async (req, res, next) => {
             specialRequests: specialRequests || '',
             bookingSource: 'online',
             paymentStatus: 'pending',
+            paymentMethod: paymentMethod || 'cash', // Accept payment method from request
             status: 'pending',
             createdBy: customer._id,
             createdByModel: 'Customer'
@@ -1059,10 +1135,10 @@ const getAppointmentByConfirmationCode = async (req, res, next) => {
         const { confirmationCode } = req.params;
         
         const appointment = await Appointment.findOne({ bookingNumber: confirmationCode })
-            .populate('business', 'name branch address phone email')
-            .populate('service', 'name price duration')
-            .populate('staff', 'name role specialization')
-            .populate('customer', 'firstName lastName email phone')
+            .populate('business', 'name branch address city state country phone email website')
+            .populate('service', 'name price duration category serviceType description')
+            .populate('staff', 'name role specialization phone email')
+            .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
             .lean();
         
         if (!appointment) {

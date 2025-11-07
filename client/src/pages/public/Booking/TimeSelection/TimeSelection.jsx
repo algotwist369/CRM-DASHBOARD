@@ -54,14 +54,14 @@ const TimeSelection = () => {
   }
 
   const handleDateChange = async (date) => {
+    if (!date) return
+    
     setSelectedDate(date)
     setSelectedTime('')
     sessionStorage.setItem('selectedDate', date)
     sessionStorage.removeItem('selectedTime')
     
-    if (date) {
-      await fetchAvailableSlots(date)
-    }
+    await fetchAvailableSlots(date)
   }
 
   const fetchAvailableSlots = async (date) => {
@@ -111,6 +111,11 @@ const TimeSelection = () => {
       toast.error('Please select a time slot')
       return
     }
+    
+    // Ensure data is saved before navigation
+    sessionStorage.setItem('selectedDate', selectedDate)
+    sessionStorage.setItem('selectedTime', selectedTime)
+    
     navigate(`/book/${businessLink}/customer`) // Go to customer info page
   }
 

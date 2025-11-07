@@ -70,6 +70,12 @@ const BusinessInfo = () => {
 
   const handleBookNow = () => {
     if (business && business.services && business.services.length > 0) {
+      // Clear previous booking data when starting a new booking
+      sessionStorage.removeItem('selectedServices')
+      sessionStorage.removeItem('selectedStaff')
+      sessionStorage.removeItem('selectedDate')
+      sessionStorage.removeItem('selectedTime')
+      sessionStorage.removeItem('customerInfo')
       navigate(`/book/${businessLink}/services`)
     } else {
       toast.error('No services available for this business')

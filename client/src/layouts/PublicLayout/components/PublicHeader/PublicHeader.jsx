@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { FaBell } from 'react-icons/fa'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { FaBell, FaSearch } from 'react-icons/fa'
 import { Button } from '../../../../components'
 
 const PublicHeader = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notificationCount] = useState(0) // TODO: Implement notification fetching logic
 
@@ -25,6 +26,10 @@ const PublicHeader = () => {
 
   const handleNotifications = () => {
     navigate('/notifications')
+  }
+
+  const handleCheckAppointment = () => {
+    navigate('/check-appointment')
   }
 
   return (
@@ -48,28 +53,50 @@ const PublicHeader = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-4 xl:space-x-6">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className="text-sm xl:text-base text-gray-700 hover:text-primary-600 font-medium transition-colors whitespace-nowrap"
-              >
-                {item.name}
-              </Link>
-            ))}
+            {navigationItems.map((item) => {
+              const isActive = location.pathname === item.href
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`relative text-sm xl:text-base font-medium transition-colors whitespace-nowrap pb-1 ${
+                    isActive
+                      ? 'text-primary-600 border-b-2 border-primary-600'
+                      : 'text-gray-700 hover:text-primary-600 hover:border-b-2 hover:border-primary-300'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              )
+            })}
           </nav>
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-2 xl:space-x-3">
+            <button
+              onClick={handleCheckAppointment}
+              className="flex items-center gap-1.5 text-sm xl:text-base text-gray-700 hover:text-primary-600 font-medium transition-colors whitespace-nowrap px-2 py-1 rounded-md hover:bg-gray-50"
+              title="Check Appointment Status"
+            >
+              <span>Check Status</span>
+            </button>
             <Link
               to="/advertise"
-              className="text-sm xl:text-base text-gray-700 hover:text-primary-600 font-medium transition-colors whitespace-nowrap"
+              className={`relative text-sm xl:text-base font-medium transition-colors whitespace-nowrap pb-1 ${
+                location.pathname === '/advertise'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-700 hover:text-primary-600 hover:border-b-2 hover:border-primary-300'
+              }`}
             >
               Advertise
             </Link>
             <Link
               to="/careers"
-              className="text-sm xl:text-base text-gray-700 hover:text-primary-600 font-medium transition-colors whitespace-nowrap"
+              className={`relative text-sm xl:text-base font-medium transition-colors whitespace-nowrap pb-1 ${
+                location.pathname === '/careers'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-700 hover:text-primary-600 hover:border-b-2 hover:border-primary-300'
+              }`}
             >
               We are hiring
             </Link>
@@ -171,17 +198,34 @@ const PublicHeader = () => {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-3 sm:py-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <nav className="flex flex-col space-y-1 sm:space-y-2">
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className="text-sm sm:text-base text-gray-700 hover:text-primary-600 hover:bg-gray-50 font-medium transition-colors px-4 py-2.5 sm:py-3 rounded-md"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
+              {navigationItems.map((item) => {
+                const isActive = location.pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`text-sm sm:text-base font-medium transition-colors px-4 py-2.5 sm:py-3 rounded-md ${
+                      isActive
+                        ? 'text-primary-600 bg-primary-50 border-l-4 border-primary-600'
+                        : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                )
+              })}
               <div className="px-4 pt-2 space-y-1 sm:space-y-2 border-t border-gray-200 mt-2">
+                <button
+                  onClick={() => {
+                    handleCheckAppointment()
+                    setMobileMenuOpen(false)
+                  }}
+                  className="w-full text-left flex items-center gap-2 text-sm sm:text-base text-gray-700 hover:text-primary-600 hover:bg-gray-50 font-medium transition-colors px-4 py-2.5 sm:py-3 rounded-md"
+                >
+                  <FaSearch className="w-4 h-4" />
+                  <span>Check Appointment Status</span>
+                </button>
                 <Link
                   to="/advertise"
                   className="block text-sm sm:text-base text-gray-700 hover:text-primary-600 hover:bg-gray-50 font-medium transition-colors px-4 py-2.5 sm:py-3 rounded-md"

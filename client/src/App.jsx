@@ -62,6 +62,7 @@ import {
 } from './pages/public'
 import { BusinessInfo, ServiceSelection, StaffSelection, TimeSelection, CustomerInfo, BookingConfirmation } from './pages/public/Booking'
 import AppointmentStatus from './pages/public/AppointmentStatus/AppointmentStatus'
+import CheckAppointment from './pages/public/CheckAppointment/CheckAppointment'
 
 // Shared Pages
 import { Error, NotFound, Unauthorized } from './pages/shared'
@@ -201,6 +202,7 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="contact" element={<Contact />} />
                 <Route path="free-listing" element={<FreeListing />} />
+                <Route path="check-appointment" element={<CheckAppointment />} />
                 <Route path="appointment/:confirmationCode" element={<AppointmentStatus />} />
                 <Route path="book/:businessLink/services" element={<ServiceSelection />} />
                 <Route path="book/:businessLink/staff" element={<StaffSelection />} />

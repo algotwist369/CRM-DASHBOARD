@@ -12,7 +12,11 @@ import {
   FaPhone,
   FaEnvelope,
   FaDollarSign,
-  FaPrint
+  FaPrint,
+  FaCreditCard,
+  FaMobileAlt,
+  FaWallet,
+  FaMoneyBillWave
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
@@ -22,15 +26,21 @@ const BookingConfirmation = () => {
   const { businessLink } = useParams()
   const [business, setBusiness] = useState(null)
   const [bookingData, setBookingData] = useState(null)
-  const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [appointment, setAppointment] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  
+  // Online payment discount configuration
+  const ONLINE_PAYMENT_DISCOUNT = 10 // 10% discount
+  const onlinePaymentMethods = ['upi', 'card', 'netbanking', 'wallet', 'online']
+  const isOnlinePayment = onlinePaymentMethods.includes(paymentMethod)
 
   // Update page title
   usePageTitle()
 
   useEffect(() => {
     loadBookingData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessLink])
 
   const loadBookingData = () => {
@@ -41,8 +51,24 @@ const BookingConfirmation = () => {
     const selectedTime = sessionStorage.getItem('selectedTime')
     const customerInfo = JSON.parse(sessionStorage.getItem('customerInfo') || '{}')
 
-    if (!businessData || selectedServices.length === 0 || !selectedDate || !selectedTime || !customerInfo.name) {
-      toast.error('Please complete all booking steps')
+    // Debug: Log what's missing
+    const missingSteps = []
+    if (!businessData) missingSteps.push('Business information')
+    if (selectedServices.length === 0) missingSteps.push('Service selection')
+    if (!selectedDate) missingSteps.push('Date selection')
+    if (!selectedTime) missingSteps.push('Time selection')
+    if (!customerInfo || !customerInfo.name) missingSteps.push('Customer information')
+
+    if (missingSteps.length > 0) {
+      console.error('Missing booking steps:', missingSteps)
+      console.error('SessionStorage data:', {
+        businessData: !!businessData,
+        selectedServices: selectedServices.length,
+        selectedDate,
+        selectedTime,
+        customerInfo
+      })
+      toast.error(`Please complete: ${missingSteps.join(', ')}`)
       navigate(`/${businessLink}`)
       return
     }
@@ -59,6 +85,8 @@ const BookingConfirmation = () => {
         customer: customerInfo
       })
     } catch (error) {
+      console.error('Error parsing booking data:', error)
+      toast.error('Failed to load booking data')
       navigate(`/${businessLink}`)
     }
   }
@@ -75,10 +103,26 @@ const BookingConfirmation = () => {
 
   const calculateTotalPrice = () => {
     if (!bookingData?.services) return 0
-    return bookingData.services.reduce((total, service) => {
+    const basePrice = bookingData.services.reduce((total, service) => {
       const price = typeof service === 'object' ? (service.price || service.cost || 0) : 0
       return total + price
     }, 0)
+    return basePrice
+  }
+  
+  const calculateDiscountedPrice = () => {
+    const basePrice = calculateTotalPrice()
+    if (isOnlinePayment) {
+      const discount = (basePrice * ONLINE_PAYMENT_DISCOUNT) / 100
+      return basePrice - discount
+    }
+    return basePrice
+  }
+  
+  const calculateDiscount = () => {
+    if (!isOnlinePayment) return 0
+    const basePrice = calculateTotalPrice()
+    return (basePrice * ONLINE_PAYMENT_DISCOUNT) / 100
   }
 
   const calculateTotalDuration = () => {
@@ -167,6 +211,9 @@ const BookingConfirmation = () => {
       const servicesArray = bookingData.services.map(service => {
         if (typeof service === 'object') {
           return {
+            serviceId: service._id || service.id || undefined,
+            _id: service._id || service.id || undefined,
+            id: service._id || service.id || undefined,
             serviceName: service.name || service.serviceName || service.title || 'Service',
             serviceType: getServiceType(service, business?.type),
             serviceCategory: service.category || service.serviceCategory || undefined,
@@ -183,13 +230,40 @@ const BookingConfirmation = () => {
       })
 
       // Calculate end time
-      const [startHour, startMinute] = bookingData.time.split(':')
-      const startMinutes = parseInt(startHour) * 60 + parseInt(startMinute)
+      // Handle time format (could be "14:30" or "2:30 PM")
+      let timeStr = bookingData.time.trim()
+      let isPM = false
+      
+      // Check for AM/PM
+      if (timeStr.includes('PM') || timeStr.includes('pm')) {
+        isPM = true
+        timeStr = timeStr.replace(/PM|pm/gi, '').trim()
+      } else if (timeStr.includes('AM') || timeStr.includes('am')) {
+        timeStr = timeStr.replace(/AM|am/gi, '').trim()
+      }
+      
+      // Extract hours and minutes
+      const [hourStr, minuteStr] = timeStr.split(':')
+      let hours = parseInt(hourStr, 10) || 0
+      const minutes = parseInt(minuteStr, 10) || 0
+      
+      // Convert to 24-hour format
+      if (isPM && hours !== 12) {
+        hours += 12
+      } else if (!isPM && hours === 12) {
+        hours = 0
+      }
+      
+      // Calculate end time
+      const startMinutes = hours * 60 + minutes
       const totalMinutes = calculateTotalDuration()
       const endMinutes = startMinutes + totalMinutes
       const endHour = Math.floor(endMinutes / 60)
       const endMinute = endMinutes % 60
-      const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
+      
+      // Handle hours that go past 24 (next day)
+      const finalHour = endHour % 24
+      const endTime = `${String(finalHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
 
       const bookingPayload = {
         customerInfo: {
@@ -209,7 +283,8 @@ const BookingConfirmation = () => {
         services: servicesArray,
         staffId: bookingData.staff?._id || bookingData.staff?.id || null,
         customerNotes: bookingData.customer.notes || '',
-        specialRequests: bookingData.customer.specialRequests || ''
+        specialRequests: bookingData.customer.specialRequests || '',
+        paymentMethod: paymentMethod
       }
 
       const result = await appointmentService.bookAppointment(businessLink, bookingPayload)
@@ -270,7 +345,9 @@ const BookingConfirmation = () => {
     )
   }
 
-  const totalPrice = calculateTotalPrice()
+  const basePrice = calculateTotalPrice()
+  const discount = calculateDiscount()
+  const finalPrice = calculateDiscountedPrice()
   const totalDuration = calculateTotalDuration()
 
   return (
@@ -357,14 +434,151 @@ const BookingConfirmation = () => {
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
                   
                   <div className="space-y-3 mb-4">
+                    {isOnlinePayment && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          <FaDollarSign className="text-green-600 text-sm" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {ONLINE_PAYMENT_DISCOUNT}% Discount Applied
+                            </p>
+                            <p className="text-xs text-gray-600 mt-0.5">
+                              You save ₹{discount.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {!isOnlinePayment && paymentMethod === 'cash' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-start gap-2">
+                          <FaDollarSign className="text-blue-600 text-sm mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900 mb-2">
+                              Save {ONLINE_PAYMENT_DISCOUNT}% with Online Payment
+                            </p>
+                            <div className="bg-white rounded p-2 border border-gray-200">
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-gray-600">Cash Payment:</span>
+                                <span className="font-medium text-gray-900">₹{basePrice.toLocaleString()}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-600">Online Payment:</span>
+                                <span className="font-semibold text-green-600">₹{finalPrice.toLocaleString()}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-gray-100">
+                                <span className="text-gray-700">You Save:</span>
+                                <span className="font-semibold text-green-600">₹{discount.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-600 mt-2">
+                              Select UPI, Card, Wallet, Net Banking, or Online to avail discount
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Total Price</span>
-                      <span className="text-xl font-bold text-green-600">₹{totalPrice.toLocaleString()}</span>
+                      <span className="text-gray-600">Base Price</span>
+                      <span className={`text-base font-medium ${isOnlinePayment ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        ₹{basePrice.toLocaleString()}
+                      </span>
                     </div>
+                    {isOnlinePayment && (
+                      <>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-green-600 font-medium">Discount ({ONLINE_PAYMENT_DISCOUNT}%)</span>
+                          <span className="text-green-600 font-semibold">-₹{discount.toLocaleString()}</span>
+                        </div>
+                        <div className="border-t border-gray-200 pt-2 mt-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-700 font-semibold">Final Price</span>
+                            <span className="text-xl font-bold text-green-600">₹{finalPrice.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {!isOnlinePayment && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 font-semibold">Total Price</span>
+                        <span className="text-xl font-bold text-green-600">₹{basePrice.toLocaleString()}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Duration</span>
                       <span className="text-gray-900">{totalDuration} minutes</span>
                     </div>
+                  </div>
+
+                  {/* Payment Method Selection */}
+                  <div className="border-t border-gray-200 pt-4 mb-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Method</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: 'cash', label: 'Cash', icon: FaMoneyBillWave, isOnline: false },
+                        { value: 'upi', label: 'UPI', icon: FaMobileAlt, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
+                        { value: 'card', label: 'Card', icon: FaCreditCard, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
+                        { value: 'wallet', label: 'Wallet', icon: FaWallet, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
+                        { value: 'netbanking', label: 'Net Banking', icon: FaCreditCard, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
+                        { value: 'online', label: 'Online', icon: FaMobileAlt, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` }
+                      ].map((method) => {
+                        const Icon = method.icon
+                        const isSelected = paymentMethod === method.value
+                        const isOnlineMethod = method.isOnline
+                        return (
+                          <button
+                            key={method.value}
+                            type="button"
+                            onClick={() => setPaymentMethod(method.value)}
+                            className={`relative flex items-center gap-2 p-2.5 rounded-lg border-2 transition-all text-sm ${
+                              isSelected
+                                ? isOnlineMethod
+                                  ? 'border-green-500 bg-green-50 text-green-700 font-semibold'
+                                  : 'border-primary-600 bg-primary-50 text-primary-700 font-semibold'
+                                : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <Icon className={`${isSelected ? (isOnlineMethod ? 'text-green-600' : 'text-primary-600') : 'text-gray-500'}`} />
+                            <span className="flex-1 text-left">{method.label}</span>
+                            {method.badge && (
+                              <span className="absolute -top-1.5 -right-1.5 bg-green-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
+                                {method.badge}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {isOnlinePayment && (
+                      <div className="mt-3 p-2.5 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-xs text-gray-700">
+                          Discount of ₹{discount.toLocaleString()} applied to your booking
+                        </p>
+                      </div>
+                    )}
+                    {!isOnlinePayment && paymentMethod === 'cash' && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-xs font-medium text-gray-900 mb-2">
+                          Online Payment Discount Available
+                        </p>
+                        <div className="bg-white rounded p-2 border border-gray-200 mb-2">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-gray-600">Cash:</span>
+                            <span className="font-medium text-gray-900">₹{basePrice.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-600">Online:</span>
+                            <span className="font-semibold text-green-600">₹{finalPrice.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Get {ONLINE_PAYMENT_DISCOUNT}% off with UPI, Card, Wallet, Net Banking, or Online payment
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Payment will be collected at the time of service
+                    </p>
                   </div>
 
                   <button
