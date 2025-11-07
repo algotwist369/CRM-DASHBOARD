@@ -7,6 +7,9 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 // Staff routes
 router.use(authMiddleware, roleMiddleware(["staff"]));
 
+// ================== Staff Dashboard ==================
+router.get("/dashboard", staffController.getStaffDashboard);
+
 // ================== Staff Profile ==================
 router.get("/profile", staffController.getMyProfile);
 router.put("/profile", staffController.updateMyProfile);
