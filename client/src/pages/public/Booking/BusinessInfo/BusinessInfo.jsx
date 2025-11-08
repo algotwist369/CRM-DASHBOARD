@@ -23,6 +23,7 @@ import {
   FaChevronRight
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
+import { usePageTitle } from '../../../../hooks/usePageTitle'
 
 const BusinessInfo = () => {
   const navigate = useNavigate()
@@ -31,6 +32,9 @@ const BusinessInfo = () => {
   const [business, setBusiness] = useState(null)
   const [error, setError] = useState(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+  // Update page title based on business name
+  usePageTitle(business ? `${business.name}${business.branch ? ` - ${business.branch}` : ''} - Booking App` : null)
 
   const fetchBusinessInfo = useCallback(async () => {
     try {
@@ -66,6 +70,12 @@ const BusinessInfo = () => {
 
   const handleBookNow = () => {
     if (business && business.services && business.services.length > 0) {
+      // Clear previous booking data when starting a new booking
+      sessionStorage.removeItem('selectedServices')
+      sessionStorage.removeItem('selectedStaff')
+      sessionStorage.removeItem('selectedDate')
+      sessionStorage.removeItem('selectedTime')
+      sessionStorage.removeItem('customerInfo')
       navigate(`/book/${businessLink}/services`)
     } else {
       toast.error('No services available for this business')
@@ -73,18 +83,24 @@ const BusinessInfo = () => {
   }
 
   const formatWorkingHours = (workingHours) => {
-    if (!workingHours || !workingHours.days) return []
+    if (!workingHours) return []
     
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    return days.map((day) => {
-      const dayKey = day.toLowerCase()
-      const hours = workingHours[dayKey]
-      if (!hours || (!hours.open && !hours.close)) {
-        return { day, hours: 'Closed' }
-      }
+    // Backend structure: { open: "09:00", close: "18:00", days: ["monday", "tuesday", ...] }
+    const { open, close, days } = workingHours
+    
+    // If no days array or no open/close times, return empty
+    if (!days || !Array.isArray(days) || days.length === 0 || !open || !close) {
+      return []
+    }
+    
+    const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    
+    return allDays.map((dayKey, index) => {
+      const isOpen = days.includes(dayKey)
       return {
-        day,
-        hours: hours.open && hours.close ? `${hours.open} - ${hours.close}` : 'Closed'
+        day: dayNames[index],
+        hours: isOpen ? `${open} - ${close}` : 'Closed'
       }
     })
   }

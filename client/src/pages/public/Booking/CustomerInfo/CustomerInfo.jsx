@@ -11,6 +11,7 @@ import {
   FaCalendarAlt,
   FaMapMarkerAlt
 } from 'react-icons/fa'
+import { usePageTitle } from '../../../../hooks/usePageTitle'
 
 const CustomerInfo = () => {
   const navigate = useNavigate()
@@ -28,6 +29,9 @@ const CustomerInfo = () => {
     specialRequests: ''
   })
   const [errors, setErrors] = useState({})
+
+  // Update page title
+  usePageTitle()
 
   useEffect(() => {
     loadBusinessData()

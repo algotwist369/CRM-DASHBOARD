@@ -9,6 +9,7 @@ import {
   FaClock,
   FaDollarSign
 } from 'react-icons/fa'
+import { usePageTitle } from '../../../../hooks/usePageTitle'
 
 const ServiceSelection = () => {
   const navigate = useNavigate()
@@ -18,10 +19,19 @@ const ServiceSelection = () => {
   const [selectedServices, setSelectedServices] = useState([])
   const [error, setError] = useState(null)
 
+  // Update page title
+  usePageTitle()
+
   useEffect(() => {
     loadBusinessData()
-    loadSelectedServices()
   }, [businessLink])
+
+  useEffect(() => {
+    // Load selected services after business data is loaded
+    if (business) {
+      loadSelectedServices()
+    }
+  }, [business])
 
   const loadBusinessData = () => {
     const businessData = sessionStorage.getItem('bookingBusiness')
@@ -41,12 +51,36 @@ const ServiceSelection = () => {
   }
 
   const loadSelectedServices = () => {
+    // Only load selected services if they exist and are valid
+    // This allows users to go back and still see their selections
     const saved = sessionStorage.getItem('selectedServices')
     if (saved) {
       try {
-        setSelectedServices(JSON.parse(saved))
+        const parsed = JSON.parse(saved)
+        // Verify that the saved services are still valid (exist in current business services)
+        if (business && business.services) {
+          const validServices = parsed.filter(savedService => {
+            const savedId = typeof savedService === 'object' 
+              ? savedService.id || savedService._id || savedService.name 
+              : savedService
+            return business.services.some(service => {
+              const serviceId = service.id || service._id || service.name
+              return serviceId === savedId
+            })
+          })
+          setSelectedServices(validServices)
+          // Update sessionStorage with only valid services
+          if (validServices.length !== parsed.length) {
+            sessionStorage.setItem('selectedServices', JSON.stringify(validServices))
+          }
+        } else {
+          // If business not loaded yet, just set the services (will be validated later)
+          setSelectedServices(parsed)
+        }
       } catch (error) {
         console.error('Failed to load selected services')
+        // Clear invalid data
+        sessionStorage.removeItem('selectedServices')
       }
     }
   }

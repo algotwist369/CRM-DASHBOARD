@@ -20,6 +20,7 @@ import {
 } from 'react-icons/fa'
 import apiClient from '../../../services/api/client'
 import { endpoints } from '../../../constants/api/endpoints'
+import { usePageTitle } from '../../../hooks/usePageTitle'
 
 const AppointmentStatus = () => {
   const navigate = useNavigate()
@@ -29,6 +30,9 @@ const AppointmentStatus = () => {
   const [cancelling, setCancelling] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+
+  // Update page title
+  usePageTitle()
 
   useEffect(() => {
     if (confirmationCode) {
@@ -213,13 +217,33 @@ const AppointmentStatus = () => {
             </h3>
             <div className="space-y-2">
               <p className="text-gray-900 font-medium">
-                {formatDateTime(appointment.appointmentDate, appointment.startTime)}
+                {appointment.appointmentDate 
+                  ? new Date(appointment.appointmentDate).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
+                  : 'N/A'}
               </p>
-              {appointment.endTime && (
-                <p className="text-sm text-gray-600">Ends at {appointment.endTime}</p>
-              )}
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                {appointment.startTime && (
+                  <div className="flex items-center gap-1">
+                    <FaClock className="text-primary-500" />
+                    <span className="font-medium">Start: {appointment.startTime}</span>
+                  </div>
+                )}
+                {appointment.endTime && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">End: {appointment.endTime}</span>
+                  </div>
+                )}
+              </div>
               {appointment.duration && (
                 <p className="text-sm text-gray-600">Duration: {appointment.duration} minutes</p>
+              )}
+              {appointment.bookingSource && (
+                <p className="text-sm text-gray-500">Booking Source: <span className="capitalize">{appointment.bookingSource.replace('_', ' ')}</span></p>
               )}
             </div>
           </div>
@@ -237,12 +261,31 @@ const AppointmentStatus = () => {
                   <p className="text-sm text-gray-600">{appointment.business.branch}</p>
                 )}
                 {appointment.business.address && (
-                  <p className="text-sm text-gray-600">{appointment.business.address}</p>
+                  <p className="text-sm text-gray-600">
+                    {typeof appointment.business.address === 'object' 
+                      ? `${appointment.business.address.street || ''}${appointment.business.address.city ? ', ' + appointment.business.address.city : ''}${appointment.business.address.state ? ', ' + appointment.business.address.state : ''}${appointment.business.address.zipCode ? ' - ' + appointment.business.address.zipCode : ''}`.trim() || appointment.business.address.street
+                      : appointment.business.address}
+                    {appointment.business.city && typeof appointment.business.address !== 'object' && `, ${appointment.business.city}`}
+                    {appointment.business.state && typeof appointment.business.address !== 'object' && `, ${appointment.business.state}`}
+                  </p>
                 )}
                 {appointment.business.phone && (
                   <p className="text-sm text-gray-600 flex items-center gap-2">
                     <FaPhone className="text-gray-400" />
                     {appointment.business.phone}
+                  </p>
+                )}
+                {appointment.business.email && (
+                  <p className="text-sm text-gray-600 flex items-center gap-2">
+                    <FaEnvelope className="text-gray-400" />
+                    {appointment.business.email}
+                  </p>
+                )}
+                {appointment.business.website && (
+                  <p className="text-sm text-gray-600">
+                    <a href={appointment.business.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
+                      {appointment.business.website}
+                    </a>
                   </p>
                 )}
               </div>
@@ -251,22 +294,37 @@ const AppointmentStatus = () => {
 
           {/* Services */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Services</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Service</h3>
             <div className="space-y-2">
-              {Array.isArray(appointment.services) && appointment.services.length > 0
-                ? appointment.services.map((service, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <span className="text-gray-900">{service?.serviceName || service}</span>
-                      {service?.price && (
-                        <span className="text-gray-600">{formatCurrency(service.price)}</span>
-                      )}
-                    </div>
-                  ))
-                : appointment.serviceName && (
-                    <div className="p-2 bg-gray-50 rounded">
-                      <span className="text-gray-900">{appointment.serviceName}</span>
-                    </div>
+              {appointment.service ? (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-gray-900 font-medium">
+                      {appointment.service.name || appointment.service.serviceName || 'Service'}
+                    </span>
+                    {appointment.service.price && (
+                      <span className="text-gray-700 font-semibold">
+                        {formatCurrency(appointment.service.price)}
+                      </span>
+                    )}
+                  </div>
+                  {appointment.service.duration && (
+                    <p className="text-sm text-gray-600">Duration: {appointment.service.duration} minutes</p>
                   )}
+                  {appointment.service.category && (
+                    <p className="text-sm text-gray-600">Category: {appointment.service.category}</p>
+                  )}
+                  {appointment.service.description && (
+                    <p className="text-sm text-gray-600 mt-2">{appointment.service.description}</p>
+                  )}
+                </div>
+              ) : appointment.serviceName ? (
+                <div className="p-2 bg-gray-50 rounded">
+                  <span className="text-gray-900">{appointment.serviceName}</span>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">No service information available</p>
+              )}
             </div>
           </div>
 
@@ -280,13 +338,19 @@ const AppointmentStatus = () => {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Amount</span>
                 <span className="text-lg font-bold text-green-600">
-                  {formatCurrency(appointment.finalPrice || appointment.totalPrice || 0)}
+                  {formatCurrency(appointment.finalPrice || appointment.totalAmount || appointment.servicePrice || 0)}
                 </span>
               </div>
-              {appointment.basePrice && (
+              {appointment.servicePrice && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Base Price</span>
-                  <span className="text-gray-900">{formatCurrency(appointment.basePrice)}</span>
+                  <span className="text-gray-600">Service Price</span>
+                  <span className="text-gray-900">{formatCurrency(appointment.servicePrice)}</span>
+                </div>
+              )}
+              {appointment.additionalCharges > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Additional Charges</span>
+                  <span className="text-gray-900">+{formatCurrency(appointment.additionalCharges)}</span>
                 </div>
               )}
               {appointment.discount > 0 && (
@@ -298,7 +362,34 @@ const AppointmentStatus = () => {
               {appointment.tax > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Tax</span>
-                  <span className="text-gray-900">{formatCurrency(appointment.tax)}</span>
+                  <span className="text-gray-900">+{formatCurrency(appointment.tax)}</span>
+                </div>
+              )}
+              {appointment.paymentStatus && (
+                <div className="pt-2 mt-2 border-t border-gray-200">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Payment Status</span>
+                    <span className={`font-semibold ${
+                      appointment.paymentStatus === 'paid' ? 'text-green-600' :
+                      appointment.paymentStatus === 'partial' ? 'text-yellow-600' :
+                      appointment.paymentStatus === 'refunded' ? 'text-blue-600' :
+                      'text-gray-600'
+                    }`}>
+                      {appointment.paymentStatus.charAt(0).toUpperCase() + appointment.paymentStatus.slice(1)}
+                    </span>
+                  </div>
+                  {appointment.paymentMethod && (
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-gray-600">Payment Method</span>
+                      <span className="text-gray-900 capitalize">{appointment.paymentMethod}</span>
+                    </div>
+                  )}
+                  {appointment.paidAmount > 0 && (
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-gray-600">Paid Amount</span>
+                      <span className="text-gray-900 font-semibold">{formatCurrency(appointment.paidAmount)}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -312,18 +403,32 @@ const AppointmentStatus = () => {
               <FaUserTie className="text-primary-600" />
               Assigned Staff
             </h3>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <FaUser className="text-primary-600" />
               </div>
-              <div>
-                <p className="text-gray-900 font-medium">{appointment.staff.name}</p>
+              <div className="flex-1">
+                <p className="text-gray-900 font-medium text-lg">{appointment.staff.name}</p>
                 {appointment.staff.role && (
-                  <p className="text-sm text-gray-600">{appointment.staff.role}</p>
+                  <p className="text-sm text-gray-600 mt-1">{appointment.staff.role}</p>
                 )}
                 {appointment.staff.specialization && (
-                  <p className="text-sm text-gray-500">Specialization: {appointment.staff.specialization}</p>
+                  <p className="text-sm text-gray-500 mt-1">Specialization: {appointment.staff.specialization}</p>
                 )}
+                <div className="mt-2 space-y-1">
+                  {appointment.staff.phone && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                      <FaPhone className="text-gray-400" />
+                      {appointment.staff.phone}
+                    </p>
+                  )}
+                  {appointment.staff.email && (
+                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                      <FaEnvelope className="text-gray-400" />
+                      {appointment.staff.email}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -339,16 +444,47 @@ const AppointmentStatus = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Name</p>
-                <p className="text-gray-900 font-medium">{appointment.customer.name}</p>
+                <p className="text-gray-900 font-medium">
+                  {appointment.customer.firstName || appointment.customer.name || ''} 
+                  {appointment.customer.lastName ? ` ${appointment.customer.lastName}` : ''}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Phone</p>
-                <p className="text-gray-900 font-medium">{appointment.customer.phone}</p>
+                <p className="text-gray-900 font-medium">{appointment.customer.phone || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="text-gray-900 font-medium">{appointment.customer.email}</p>
+                <p className="text-gray-900 font-medium">{appointment.customer.email || 'N/A'}</p>
               </div>
+              {appointment.customer.address && (
+                <div>
+                  <p className="text-sm text-gray-600">Address</p>
+                  <p className="text-gray-900 font-medium">
+                    {typeof appointment.customer.address === 'object'
+                      ? `${appointment.customer.address.street || ''}${appointment.customer.address.city ? ', ' + appointment.customer.address.city : ''}${appointment.customer.address.state ? ', ' + appointment.customer.address.state : ''}${appointment.customer.address.zipCode ? ' - ' + appointment.customer.address.zipCode : ''}`.trim() || appointment.customer.address.street
+                      : appointment.customer.address}
+                  </p>
+                </div>
+              )}
+              {appointment.customer.dateOfBirth && (
+                <div>
+                  <p className="text-sm text-gray-600">Date of Birth</p>
+                  <p className="text-gray-900 font-medium">
+                    {new Date(appointment.customer.dateOfBirth).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+              {appointment.customer.gender && (
+                <div>
+                  <p className="text-sm text-gray-600">Gender</p>
+                  <p className="text-gray-900 font-medium capitalize">{appointment.customer.gender}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
