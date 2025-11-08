@@ -211,7 +211,7 @@ const ManagerLogin = () => {
           </button>
         </form>
 
-        {/* Admin Login Link */}
+        {/* Other Login Links */}
         <div className='mt-6 space-y-2'>
           <p className='text-center text-gray-600 text-sm'>
             Are you an admin?{' '}
@@ -220,6 +220,15 @@ const ManagerLogin = () => {
               className='font-medium text-gray-800 hover:underline'
             >
               Admin Login
+            </Link>
+          </p>
+          <p className='text-center text-gray-600 text-sm'>
+            Are you staff?{' '}
+            <Link
+              to='/auth/staff-login'
+              className='font-medium text-gray-800 hover:underline'
+            >
+              Staff Login
             </Link>
           </p>
           <p className='text-center text-gray-600 text-sm'>

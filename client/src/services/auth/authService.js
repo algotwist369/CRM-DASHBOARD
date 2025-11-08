@@ -24,6 +24,7 @@ class AuthService {
         rememberMe: true
       };
     } else {
+      // For manager and staff, use the same username storage
       return {
         username: localStorage.getItem('rememberedUsername') || '',
         rememberMe: true
@@ -92,14 +93,15 @@ class AuthService {
         this.clearRememberMe();
       }
 
-      // Decode token to get user ID
+      // Decode token to get user ID and role
       const decoded = decodeToken(accessToken);
       const userId = decoded?.id || null;
+      const role = decoded?.role || 'manager';
 
       // Store auth data
       localStorage.setItem('authToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken || '');
-      localStorage.setItem('userRole', 'manager');
+      localStorage.setItem('userRole', role);
       if (userId) {
         localStorage.setItem('userId', userId);
       }
@@ -107,7 +109,7 @@ class AuthService {
       // Create user object with business info
       const user = {
         id: userId,
-        role: 'manager',
+        role: role,
         business: business || null
       };
 
@@ -119,6 +121,65 @@ class AuthService {
       };
     } catch (error) {
       console.error('Manager login error in authService:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Login failed',
+      };
+    }
+  }
+
+  // Login staff with username and PIN
+  async loginStaff(credentials) {
+    try {
+      const response = await apiClient.post(endpoints.auth.login, credentials);
+      const { accessToken, refreshToken, business, manager } = response.data;
+
+      if (!accessToken) {
+        return { success: false, error: 'Invalid response from server' };
+      }
+
+      // Decode token to get user ID and role
+      const decoded = decodeToken(accessToken);
+      const userId = decoded?.id || null;
+      const role = decoded?.role || 'staff';
+
+      // Verify it's actually a staff role
+      if (role !== 'staff') {
+        return { success: false, error: 'Invalid credentials for staff login' };
+      }
+
+      // Handle Remember Me for staff
+      if (credentials.rememberMe) {
+        this.saveRememberMe(credentials, 'staff');
+      } else {
+        this.clearRememberMe();
+      }
+
+      // Store auth data
+      localStorage.setItem('authToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken || '');
+      localStorage.setItem('userRole', role);
+      if (userId) {
+        localStorage.setItem('userId', userId);
+      }
+      
+      // Create user object with business and manager info
+      const user = {
+        id: userId,
+        role: role,
+        business: business || null,
+        manager: manager || null
+      };
+
+      return { 
+        success: true, 
+        user, 
+        token: accessToken,
+        business: business,
+        manager: manager
+      };
+    } catch (error) {
+      console.error('Staff login error in authService:', error);
       return {
         success: false,
         error: error.response?.data?.message || 'Login failed',
