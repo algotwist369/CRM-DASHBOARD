@@ -92,8 +92,54 @@ const validateAppointmentBooking = (appointmentData, business, existingAppointme
     const appointmentDate = new Date(appointmentData.appointmentDate);
     const now = new Date();
     
+    // Helper function to parse time string to 24-hour format
+    const parseTimeTo24Hour = (timeStr) => {
+        if (!timeStr) return { hours: 0, minutes: 0 };
+        
+        let time = timeStr.trim();
+        let isPM = false;
+        
+        // Check for AM/PM
+        if (time.includes('PM') || time.includes('pm')) {
+            isPM = true;
+            time = time.replace(/PM|pm/gi, '').trim();
+        } else if (time.includes('AM') || time.includes('am')) {
+            time = time.replace(/AM|am/gi, '').trim();
+        }
+        
+        // Extract hours and minutes
+        const parts = time.split(':');
+        if (parts.length < 2) return { hours: 0, minutes: 0 };
+        
+        let hours = parseInt(parts[0], 10) || 0;
+        const minutes = parseInt(parts[1], 10) || 0;
+        
+        // Convert to 24-hour format
+        if (isPM && hours !== 12) {
+            hours += 12;
+        } else if (!isPM && hours === 12) {
+            hours = 0;
+        }
+        
+        return { hours, minutes };
+    };
+    
+    // Parse the start time
+    const timeParts = parseTimeTo24Hour(appointmentData.startTime);
+    
     // Create appointment datetime by combining date with start time
-    const appointmentDateTime = new Date(`${appointmentData.appointmentDate}T${appointmentData.startTime}:00`);
+    // Ensure date is in YYYY-MM-DD format
+    const dateStr = appointmentDate.toISOString().split('T')[0];
+    const appointmentDateTime = new Date(
+        appointmentDate.getFullYear(),
+        appointmentDate.getMonth(),
+        appointmentDate.getDate(),
+        timeParts.hours,
+        timeParts.minutes,
+        0,
+        0
+    );
+    
     const hoursUntilAppointment = (appointmentDateTime - now) / (1000 * 60 * 60);
     
     if (hoursUntilAppointment < settings.minAdvanceBookingHours) {
@@ -114,7 +160,44 @@ const validateAppointmentBooking = (appointmentData, business, existingAppointme
     const appointmentStartTime = appointmentData.startTime;
     const appointmentEndTime = appointmentData.endTime;
     
-    if (appointmentStartTime < workingHours.open || appointmentEndTime > workingHours.close) {
+    // Helper function to convert time string to minutes for comparison
+    const timeToMinutes = (timeStr) => {
+        if (!timeStr) return 0;
+        // Handle formats like "09:00", "9:00", "09:00 AM", "9:00 PM"
+        let time = timeStr.trim();
+        let isPM = false;
+        
+        // Check for AM/PM
+        if (time.includes('PM') || time.includes('pm')) {
+            isPM = true;
+            time = time.replace(/PM|pm/gi, '').trim();
+        } else if (time.includes('AM') || time.includes('am')) {
+            time = time.replace(/AM|am/gi, '').trim();
+        }
+        
+        // Extract hours and minutes
+        const parts = time.split(':');
+        if (parts.length < 2) return 0;
+        
+        let hours = parseInt(parts[0], 10) || 0;
+        const minutes = parseInt(parts[1], 10) || 0;
+        
+        // Convert to 24-hour format
+        if (isPM && hours !== 12) {
+            hours += 12;
+        } else if (!isPM && hours === 12) {
+            hours = 0;
+        }
+        
+        return hours * 60 + minutes;
+    };
+    
+    const startMinutes = timeToMinutes(appointmentStartTime);
+    const endMinutes = timeToMinutes(appointmentEndTime);
+    const openMinutes = timeToMinutes(workingHours.open);
+    const closeMinutes = timeToMinutes(workingHours.close);
+    
+    if (startMinutes < openMinutes || endMinutes > closeMinutes) {
         errors.push("Appointment time must be within business working hours");
     }
     
@@ -125,13 +208,16 @@ const validateAppointmentBooking = (appointmentData, business, existingAppointme
             return false; // Different staff, no conflict
         }
         
-        const appointmentStart = appointmentData.startTime;
-        const appointmentEnd = appointmentData.endTime;
-        const existingStart = appointment.startTime;
-        const existingEnd = appointment.endTime;
+        // Use timeToMinutes for proper time comparison
+        const appointmentStart = timeToMinutes(appointmentData.startTime);
+        const appointmentEnd = timeToMinutes(appointmentData.endTime);
+        const existingStart = timeToMinutes(appointment.startTime);
+        const existingEnd = timeToMinutes(appointment.endTime);
         
         // Check for overlap (including buffer time)
-        return (appointmentStart < existingEnd) && (appointmentEnd > existingStart);
+        const bufferMinutes = settings.bufferTime || 0;
+        return (appointmentStart < existingEnd + bufferMinutes) && 
+               (appointmentEnd > existingStart - bufferMinutes);
     });
     
     if (hasConflict) {

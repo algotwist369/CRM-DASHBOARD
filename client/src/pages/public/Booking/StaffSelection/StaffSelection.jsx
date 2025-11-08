@@ -9,6 +9,7 @@ import {
   FaUser,
   FaUserTie
 } from 'react-icons/fa'
+import { usePageTitle } from '../../../../hooks/usePageTitle'
 
 const StaffSelection = () => {
   const navigate = useNavigate()
@@ -16,6 +17,9 @@ const StaffSelection = () => {
   const [business, setBusiness] = useState(null)
   const [selectedStaff, setSelectedStaff] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Update page title
+  usePageTitle()
 
   useEffect(() => {
     loadBusinessData()
@@ -55,9 +59,12 @@ const StaffSelection = () => {
   }
 
   const handleContinue = () => {
-    if (!selectedStaff) {
-      toast.error('Please select a staff member or choose "Any Available"')
-      return
+    // Staff can be null (any available) or an object
+    // Ensure data is saved before navigation
+    if (selectedStaff) {
+      sessionStorage.setItem('selectedStaff', JSON.stringify(selectedStaff))
+    } else {
+      sessionStorage.setItem('selectedStaff', JSON.stringify(null))
     }
     navigate(`/book/${businessLink}/time`) // Go to time selection page
   }
@@ -68,7 +75,8 @@ const StaffSelection = () => {
 
   const handleAnyAvailable = () => {
     setSelectedStaff(null)
-    sessionStorage.removeItem('selectedStaff')
+    // Save null explicitly to indicate "any available" was selected
+    sessionStorage.setItem('selectedStaff', JSON.stringify(null))
     navigate(`/book/${businessLink}/time`) // Go to time selection page
   }
 
