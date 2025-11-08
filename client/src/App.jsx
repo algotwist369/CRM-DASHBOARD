@@ -58,7 +58,14 @@ import {
   Careers,
   Notifications,
   Contact,
-  FreeListing
+  FreeListing,
+  BookDemo,
+  GoogleMyBusinessReviews,
+  FacebookReviews,
+  YelpReviews,
+  TripAdvisorReviews,
+  ReviewsManagement,
+  YelpPlaybook
 } from './pages/public'
 import { BusinessInfo, ServiceSelection, StaffSelection, TimeSelection, CustomerInfo, BookingConfirmation } from './pages/public/Booking'
 import AppointmentStatus from './pages/public/AppointmentStatus/AppointmentStatus'
@@ -203,6 +210,13 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="contact" element={<Contact />} />
                 <Route path="free-listing" element={<FreeListing />} />
+              <Route path="book-demo" element={<BookDemo />} />
+              <Route path="google-my-business-reviews" element={<GoogleMyBusinessReviews />} />
+              <Route path="facebook-reviews" element={<FacebookReviews />} />
+              <Route path="yelp-reviews" element={<YelpReviews />} />
+              <Route path="tripadvisor-reviews" element={<TripAdvisorReviews />} />
+              <Route path="reviews-management" element={<ReviewsManagement />} />
+              <Route path="resources/yelp-playbook" element={<YelpPlaybook />} />
                 <Route path="check-appointment" element={<CheckAppointment />} />
                 <Route path="appointment/:confirmationCode" element={<AppointmentStatus />} />
                 <Route path="book/:businessLink/services" element={<ServiceSelection />} />

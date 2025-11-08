@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { usePageTitle } from '../../../hooks/usePageTitle'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   FaStore,
   FaUsers,
@@ -13,6 +13,16 @@ import {
 
 const ForBusinesses = () => {
   usePageTitle('For Businesses - Booking App')
+  const location = useLocation()
+
+  useEffect(() => {
+    const hash = location.hash?.replace('#', '') || location.state?.scrollTo
+    if (!hash) return
+    const element = document.getElementById(hash)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [location])
 
   const benefits = [
     {
@@ -63,7 +73,7 @@ const ForBusinesses = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-16 sm:py-20 lg:py-24">
+      <div id="overview" className="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-16 sm:py-20 lg:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
@@ -83,7 +93,7 @@ const ForBusinesses = () => {
       </div>
 
       {/* Benefits Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+      <div id="benefits" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
             Why Businesses Love Us
@@ -113,7 +123,7 @@ const ForBusinesses = () => {
       </div>
 
       {/* Features Section */}
-      <div className="bg-white py-16 sm:py-20">
+      <div id="features" className="bg-white py-16 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -149,7 +159,7 @@ const ForBusinesses = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-primary-600 text-white py-16">
+      <div id="get-started" className="bg-primary-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to Transform Your Business?</h2>
           <p className="text-xl text-primary-100 mb-8 max-w-2xl mx-auto">

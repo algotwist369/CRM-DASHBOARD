@@ -19,6 +19,13 @@ const ROUTE_TITLES = {
     '/notifications': `Notifications - ${APP_NAME}`,
     '/contact': `Contact - ${APP_NAME}`,
     '/free-listing': `Free Listing - ${APP_NAME}`,
+    '/book-demo': `Book a Demo - ${APP_NAME}`,
+    '/google-my-business-reviews': `Google My Business Reviews - ${APP_NAME}`,
+    '/facebook-reviews': `Facebook Reviews - ${APP_NAME}`,
+    '/yelp-reviews': `Yelp Reviews - ${APP_NAME}`,
+    '/tripadvisor-reviews': `TripAdvisor Reviews - ${APP_NAME}`,
+    '/reviews-management': `Reviews Management - ${APP_NAME}`,
+    '/resources/yelp-playbook': `Yelp Playbook - ${APP_NAME}`,
     '/check-appointment': `Check Appointment Status - ${APP_NAME}`
   },
   // Path prefix matches
