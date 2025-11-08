@@ -9,25 +9,22 @@ const StaffLayout = () => {
   const location = useLocation()
 
   useEffect(() => {
-    // Simulate authentication check
+    // Check authentication
     const checkAuth = async () => {
       try {
-        // In a real app, this would check for valid staff tokens
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Check for auth token and role
+        const authToken = localStorage.getItem('authToken')
+        const userRole = localStorage.getItem('userRole')
         
-        // Mock authentication check
-        const isAuthenticated = true // This would come from your auth context
-        const userRole = 'staff' // This would come from your auth context
-        
-        if (!isAuthenticated || userRole !== 'staff') {
-          navigate('/unauthorized')
+        if (!authToken || userRole !== 'staff') {
+          navigate('/auth/staff-login')
           return
         }
         
         setIsLoading(false)
       } catch (error) {
         console.error('Authentication check failed:', error)
-        navigate('/auth/login')
+        navigate('/auth/staff-login')
       }
     }
 
@@ -35,11 +32,35 @@ const StaffLayout = () => {
   }, [navigate])
 
   useEffect(() => {
-    // Handle sidebar collapse state in localStorage
-    const savedState = localStorage.getItem('staffSidebarCollapsed')
-    if (savedState !== null) {
-      setSidebarCollapsed(JSON.parse(savedState))
+    // On mobile, sidebar should be collapsed by default
+    // On desktop, check localStorage for saved state
+    const checkMobile = () => {
+      if (window.innerWidth < 1024) {
+        // Mobile: sidebar collapsed by default
+        setSidebarCollapsed(true)
+      } else {
+        // Desktop: check localStorage
+        const savedState = localStorage.getItem('staffSidebarCollapsed')
+        if (savedState !== null) {
+          setSidebarCollapsed(JSON.parse(savedState))
+        } else {
+          // Default to expanded on desktop
+          setSidebarCollapsed(false)
+        }
+      }
     }
+    
+    checkMobile()
+    
+    // Handle window resize
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarCollapsed(true)
+      }
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const handleSidebarToggle = () => {
@@ -66,14 +87,26 @@ const StaffLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <StaffSidebar
-        isCollapsed={sidebarCollapsed}
-        onToggle={handleSidebarToggle}
-      />
+      {/* Sidebar - Fixed width on desktop (256px expanded, 64px collapsed), overlay on mobile */}
+      <div className={`
+        ${sidebarCollapsed ? 'w-16' : 'w-64'} 
+        ${sidebarCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}
+        fixed lg:fixed
+        inset-y-0 left-0
+        z-50 lg:z-30
+        transition-transform duration-300 ease-in-out
+        flex-shrink-0
+      `}>
+        <StaffSidebar
+          isCollapsed={sidebarCollapsed}
+          onToggle={handleSidebarToggle}
+        />
+      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main Content - Adjusts margin on desktop to account for fixed sidebar */}
+      <div className={`flex-1 flex flex-col overflow-hidden w-full transition-all duration-300 ${
+        sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+      }`}>
         {/* Header */}
         <StaffHeader
           onSidebarToggle={handleSidebarToggle}
@@ -82,26 +115,28 @@ const StaffLayout = () => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
             <Outlet />
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-4 py-3">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center space-x-4">
-              <span>© 2024 RAMA CRM CRM</span>
-              <span>•</span>
+        <footer className="bg-white border-t border-gray-200 px-3 sm:px-4 lg:px-6 py-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-xs sm:text-sm text-gray-600">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <span>© 2024 RAMA CRM</span>
+              <span className="hidden sm:inline">•</span>
               <span>Staff Portal</span>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <a href="/staff/help" className="hover:text-gray-900">
                 Help
               </a>
+              <span className="hidden sm:inline">•</span>
               <a href="/staff/support" className="hover:text-gray-900">
                 Support
               </a>
+              <span className="hidden sm:inline">•</span>
               <a href="/staff/privacy" className="hover:text-gray-900">
                 Privacy
               </a>

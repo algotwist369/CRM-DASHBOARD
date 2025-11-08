@@ -15,7 +15,7 @@ const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
 };
 
-// ================== Add Daily Business Record ==================
+// ================== Add Daily Business Record(admin and manager) ==================
 const addDailyBusiness = async (req, res, next) => {
     try {
         const { businessId, date, notes, weather, specialEvents } = req.body;

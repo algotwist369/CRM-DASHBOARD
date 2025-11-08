@@ -55,9 +55,16 @@ export const endpoints = {
 
   // Staff endpoints
   staff: {
+    dashboard: `${API_BASE_URL}/staff/dashboard`,
     profile: `${API_BASE_URL}/staff/profile`,
     updateProfile: `${API_BASE_URL}/staff/profile`,
     business: `${API_BASE_URL}/staff/business`,
+    // Notifications (prepared for future implementation)
+    notifications: `${API_BASE_URL}/staff/notifications`,
+    unreadCount: `${API_BASE_URL}/staff/notifications/unread-count`,
+    recentNotifications: `${API_BASE_URL}/staff/notifications/recent`,
+    markNotificationRead: (id) => `${API_BASE_URL}/staff/notifications/${id}/read`,
+    markAllNotificationsRead: `${API_BASE_URL}/staff/notifications/read-all`,
   },
 
   // Appointment endpoints

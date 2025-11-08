@@ -1,103 +1,199 @@
-import React, { useState } from 'react'
-import { Button, Dropdown } from '../../../../components'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Button } from '../../../../components'
+import { HiMenu, HiX } from 'react-icons/hi'
+import authService from '../../../../services/auth/authService'
+import staffService from '../../../../services/staff/staffService'
 
 const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
-  const [notifications] = useState([
+  const location = useLocation()
+  const navigate = useNavigate()
+  
+  const [notifications, setNotifications] = useState([
     {
       id: 1,
       title: 'New appointment assigned',
       message: 'You have a new appointment with Sarah Johnson at 2 PM',
       time: '10 minutes ago',
-      unread: true
+      unread: true,
+      createdAt: new Date(Date.now() - 10 * 60 * 1000)
     },
     {
       id: 2,
       title: 'Schedule update',
       message: 'Your schedule has been updated for tomorrow',
       time: '1 hour ago',
-      unread: true
+      unread: true,
+      createdAt: new Date(Date.now() - 60 * 60 * 1000)
     },
     {
       id: 3,
       title: 'Performance review',
       message: 'Your monthly performance review is now available',
       time: '2 hours ago',
-      unread: false
+      unread: false,
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
     }
   ])
 
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
+  const [userInfo, setUserInfo] = useState(null)
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
+
+  useEffect(() => {
+    try {
+      const user = authService.getCurrentUser()
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        setUserInfo(JSON.parse(storedUser))
+      } else if (user) {
+        setUserInfo(user)
+      }
+    } catch (e) {
+      console.error('Error getting user info:', e)
+    }
+  }, [])
+
+  // Fetch notifications from server (prepared for when endpoint is available)
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoadingNotifications(true)
+      // Uncomment when server endpoint is ready:
+      // const res = await staffService.getNotifications()
+      // if (res.success) {
+      //   setNotifications(res.data.data || res.data || [])
+      // }
+    } catch (e) {
+      console.error('Error fetching notifications:', e)
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Fetch notifications on mount
+    // fetchNotifications()
+    // Uncomment when server endpoint is ready
+  }, [fetchNotifications])
 
   const unreadCount = notifications.filter(n => n.unread).length
 
-  const handleLogout = () => {
-    // In a real app, this would clear auth tokens and redirect
-    console.log('Logging out...')
+  // Function to generate breadcrumb items from current route
+  const getBreadcrumbs = () => {
+    const pathname = location.pathname
+    const pathSegments = pathname.split('/').filter(Boolean)
+    
+    // Route name mappings
+    const routeNames = {
+      'staff': 'Staff',
+      'dashboard': 'Dashboard',
+      'profile': 'My Profile',
+      'business': 'My Business',
+      'settings': 'Settings',
+    }
+
+    const breadcrumbs = []
+    
+    // Always start with Staff
+    if (pathSegments.length > 0 && pathSegments[0] === 'staff') {
+      breadcrumbs.push({ name: 'Staff', path: '/staff' })
+      
+      // Build breadcrumb for remaining segments
+      let currentPath = '/staff'
+      for (let i = 1; i < pathSegments.length; i++) {
+        const segment = pathSegments[i]
+        currentPath += `/${segment}`
+        const name = routeNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+        breadcrumbs.push({ name, path: currentPath })
+      }
+      
+      // If on dashboard or just /staff, ensure Dashboard is shown
+      if (breadcrumbs.length === 1) {
+        if (pathname === '/staff/dashboard' || pathname === '/staff') {
+          breadcrumbs.push({ name: 'Dashboard', path: '/staff/dashboard' })
+        }
+      }
+    }
+    
+    return breadcrumbs
   }
 
-  const handleNotificationClick = (notificationId) => {
-    // In a real app, this would mark notification as read
-    console.log('Notification clicked:', notificationId)
+  const breadcrumbs = getBreadcrumbs()
+  const ChevronIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  )
+
+  const handleLogout = () => {
+    authService.logout()
+    navigate('/auth/staff-login')
   }
+
+  const handleNotificationClick = async (notificationId) => {
+    try {
+      // Mark notification as read when endpoint is available
+      // await staffService.markNotificationRead(notificationId)
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, unread: false } : n)
+      )
+    } catch (e) {
+      console.error('Error marking notification as read:', e)
+    }
+  }
+
+  const staffName = userInfo?.name || userInfo?.staff?.name || 'Staff User'
+  const staffEmail = userInfo?.email || userInfo?.staff?.email || 'staff@elitehair.com'
+  const staffRole = userInfo?.role || userInfo?.staff?.role || 'Staff Member'
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
-      <div className="flex items-center justify-between">
+    <header className="w-full h-16 bg-white/90 backdrop-blur border-b border-gray-200 flex-shrink-0">
+      <div className="h-full px-4 flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
+          {/* Sidebar toggle (mobile) */}
+          <button
+            type="button"
             onClick={onSidebarToggle}
-            className="mr-4 text-gray-600 hover:text-gray-900"
+            className="lg:hidden mr-3 inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            aria-label="Toggle sidebar"
           >
-            {isSidebarCollapsed ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-          </Button>
-
+            {isSidebarCollapsed ? <HiMenu className="h-6 w-6" /> : <HiX className="h-6 w-6" />}
+          </button>
           {/* Breadcrumb */}
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
-            <span>Staff</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-gray-900 font-medium">Dashboard</span>
+            {breadcrumbs.map((crumb, index) => (
+              <React.Fragment key={crumb.path}>
+                {index === breadcrumbs.length - 1 ? (
+                  <span className="text-gray-900 font-medium">{crumb.name}</span>
+                ) : (
+                  <>
+                    <span 
+                      className="hover:text-gray-900 cursor-pointer"
+                      onClick={() => navigate(crumb.path)}
+                    >
+                      {crumb.name}
+                    </span>
+                    <ChevronIcon />
+                  </>
+                )}
+              </React.Fragment>
+            ))}
           </nav>
         </div>
 
         {/* Right side */}
         <div className="flex items-center space-x-4">
-          {/* Quick Actions */}
-          <div className="hidden md:flex items-center space-x-2">
-            <Button variant="outline" size="sm">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              View Schedule
-            </Button>
-            <Button variant="outline" size="sm">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              My Performance
-            </Button>
-          </div>
-
           {/* Search */}
-          <div className="hidden lg:block">
+          <div className="hidden md:block">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search appointments, customers..."
-                className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Search..."
+                className="w-64 lg:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <svg
                 className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
@@ -115,15 +211,18 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setNotificationMenuOpen(!notificationMenuOpen)}
+              onClick={() => {
+                setNotificationMenuOpen(!notificationMenuOpen)
+                setUserMenuOpen(false)
+              }}
               className="relative text-gray-600 hover:text-gray-900"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {unreadCount}
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </Button>
@@ -133,31 +232,38 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="p-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                  {loadingNotifications && (
+                    <div className="w-4 h-4 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin mt-2"></div>
+                  )}
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      onClick={() => handleNotificationClick(notification.id)}
-                      className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                        notification.unread ? 'bg-purple-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start">
-                        <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                          notification.unread ? 'bg-purple-500' : 'bg-gray-300'
-                        }`}></div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-gray-900">{notification.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                          <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        onClick={() => handleNotificationClick(notification.id)}
+                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                          notification.unread ? 'bg-primary-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start">
+                          <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
+                            notification.unread ? 'bg-primary-500' : 'bg-gray-300'
+                          }`}></div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-medium text-gray-900">{notification.title}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                            <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 text-sm">No new notifications.</div>
+                  )}
                 </div>
                 <div className="p-4 border-t border-gray-200">
-                  <Button variant="outline" size="sm" className="w-full">
+                  <Button variant="outline" size="sm" className="w-full text-sm font-medium text-primary-600 border-primary-200 bg-primary-50 hover:bg-primary-100">
                     View All Notifications
                   </Button>
                 </div>
@@ -170,17 +276,20 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              onClick={() => {
+                setUserMenuOpen(!userMenuOpen)
+                setNotificationMenuOpen(false)
+              }}
               className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
             >
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium">Staff User</p>
-                <p className="text-xs text-gray-500">Senior Stylist</p>
+                <p className="text-sm font-medium">{staffName}</p>
+                <p className="text-xs text-gray-500">{staffRole}</p>
               </div>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -237,13 +346,16 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
       </div>
 
       {/* Click outside to close dropdowns */}
-      {(userMenuOpen || notificationMenuOpen) && (
+      {userMenuOpen && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => {
-            setUserMenuOpen(false)
-            setNotificationMenuOpen(false)
-          }}
+          onClick={() => setUserMenuOpen(false)}
+        ></div>
+      )}
+      {notificationMenuOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setNotificationMenuOpen(false)}
         ></div>
       )}
     </header>
