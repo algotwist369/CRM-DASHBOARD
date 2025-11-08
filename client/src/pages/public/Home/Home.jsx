@@ -583,21 +583,49 @@ const Home = () => {
                 {businesses.length !== filteredBusinesses.length && ` (filtered from ${businesses.length} total)`}
               </div>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
             {filteredBusinesses.map((business) => {
               // Format phone number for WhatsApp
               const whatsappNumber = business.phone?.replace(/[^0-9]/g, '') || business.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
               const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null
               
+              // Format location address (e.g., "Rajouri Garden, Delhi")
+              const formatLocation = () => {
+                if (business.address) {
+                  const addressParts = business.address.split(',').map(part => part.trim()).filter(part => part.length > 0)
+                  if (addressParts.length >= 2) {
+                    const area = addressParts.length > 2 ? addressParts[addressParts.length - 2] : addressParts[0]
+                    const city = addressParts[addressParts.length - 1]
+                    return `${area}, ${city}`
+                  }
+                  if (business.city) {
+                    return `${business.address}, ${business.city}`
+                  }
+                  return business.address
+                }
+                if (business.area && business.city) {
+                  return `${business.area}, ${business.city}`
+                }
+                if (business.city && business.state) {
+                  return `${business.city}, ${business.state}`
+                }
+                if (business.city) {
+                  return business.city
+                }
+                return ''
+              }
+
+              const locationText = formatLocation()
+              
               return (
               <div
                 key={business.id || business._id}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer transition-transform hover:scale-[1.02] sm:hover:scale-105"
+                className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
                 style={{ minHeight: 'auto', maxHeight: 'none' }}
                 onClick={() => navigate(`/${business.businessLink}`)}
               >
                 {/* Business Image - Hero Section */}
-                <div className="relative h-32 sm:h-40 md:h-48 lg:h-56 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
+                <div className="relative h-28 sm:h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
                   {business.images?.banner || business.images?.thumbnail ? (
                     <img
                       src={business.images.banner || business.images.thumbnail}
@@ -626,22 +654,11 @@ const Home = () => {
                   
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
-                  
-                  {/* Rating Badge - Top Right */}
-                  {business.ratings?.average > 0 && (
-                    <div className="absolute top-1.5 sm:top-2 md:top-4 right-1.5 sm:right-2 md:right-4 bg-white/98 backdrop-blur-sm px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-md sm:rounded-lg flex items-center gap-0.5 sm:gap-1 md:gap-1.5 shadow-lg border border-gray-100">
-                      <FaStar className="text-yellow-500 text-xs sm:text-sm" />
-                      <span className="text-gray-900 font-bold text-xs sm:text-sm">{business.ratings.average.toFixed(1)}</span>
-                      {business.ratings.totalReviews > 0 && (
-                        <span className="text-gray-500 text-[10px] sm:text-xs ml-0.5 hidden sm:inline">({business.ratings.totalReviews})</span>
-                      )}
-                    </div>
-                  )}
 
                   {/* Type Badge - Top Left */}
                   {business.type && (
-                    <div className="absolute top-1.5 sm:top-2 md:top-4 left-1.5 sm:left-2 md:left-4">
-                      <span className="inline-block px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 bg-primary-600/95 backdrop-blur-sm text-white rounded-md sm:rounded-lg text-[10px] sm:text-xs font-semibold capitalize shadow-lg">
+                    <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
+                      <span className="inline-block px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary-600/95 backdrop-blur-sm text-white rounded text-[10px] sm:text-xs font-semibold capitalize shadow-lg">
                         {business.type}
                       </span>
                     </div>
@@ -649,8 +666,8 @@ const Home = () => {
 
                   {/* Distance Badge - Bottom Right (for nearby mode) */}
                   {viewMode === 'nearby' && business.distanceKm && (
-                    <div className="absolute bottom-1.5 sm:bottom-2 md:bottom-4 right-1.5 sm:right-2 md:right-4">
-                      <span className="inline-flex items-center gap-0.5 sm:gap-1 md:gap-1.5 px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 bg-white/95 backdrop-blur-sm text-gray-900 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-semibold shadow-lg border border-gray-200">
+                    <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
+                      <span className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/95 backdrop-blur-sm text-gray-900 rounded text-[10px] sm:text-xs font-semibold shadow-lg border border-gray-200">
                         <FaLocationArrow className="text-primary-600 text-[10px] sm:text-xs" />
                         {business.distanceKm} km
                       </span>
@@ -659,104 +676,118 @@ const Home = () => {
                 </div>
 
                 {/* Business Info */}
-                <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 flex-1 flex flex-col">
-                  {/* Header Section */}
-                  <div className="mb-1.5 sm:mb-2 md:mb-3">
-                    <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 mb-0.5 sm:mb-1 md:mb-1.5 line-clamp-1">
-                      {business.name}
-                    </h3>
-                    {business.branch && (
-                      <p className="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2 line-clamp-1">{business.branch}</p>
+                <div className="p-2 sm:p-2.5 md:p-3 flex-1 flex flex-col">
+                  {/* Title and Rating - Inline */}
+                  <div className="mb-1.5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-1 flex-1">
+                        {business.name}
+                      </h3>
+                      {business.ratings?.average > 0 && (
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <FaStar className="text-yellow-500 text-xs sm:text-sm" />
+                          <span className="text-gray-900 font-bold text-xs sm:text-sm">{business.ratings.average.toFixed(1)}</span>
+                          {business.ratings.totalReviews > 0 && (
+                            <span className="text-gray-500 text-[10px] sm:text-xs ml-0.5">({business.ratings.totalReviews})</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    {business.description && (
+                      <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2">
+                        {business.description}
+                      </p>
                     )}
-                    
-                    {/* Location */}
-                    {business.city && (
-                      <div className="flex items-center gap-1 sm:gap-1.5 text-gray-600 mb-1.5 sm:mb-2 md:mb-3">
+
+                    {/* Location with icon */}
+                    {locationText && (
+                      <div className="flex items-center gap-1 text-gray-600 mb-1.5">
                         <FaMapMarkerAlt className="text-primary-500 text-[10px] sm:text-xs flex-shrink-0" />
                         <span className="text-xs sm:text-sm line-clamp-1">
-                          {business.city}{business.state && `, ${business.state}`}
+                          {locationText}
                         </span>
                         {viewMode === 'nearby' && business.distanceKm && (
-                          <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5 sm:ml-1">• {business.distanceKm} km</span>
+                          <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5">• {business.distanceKm} km</span>
                         )}
                       </div>
                     )}
                   </div>
 
-                  {/* Description */}
-                  {business.description && (
-                    <p className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2 md:mb-3 line-clamp-2 hidden sm:block">
-                      {business.description}
-                    </p>
-                  )}
+                  {/* Services and Features - Same Style for Mobile and Desktop */}
+                  {(() => {
+                    const servicesCount = business.services?.length || 0
+                    const featuresCount = business.features?.length || 0
+                    // Show the same number of items based on minimum count
+                    const displayCount = servicesCount > 0 && featuresCount > 0 
+                      ? Math.min(servicesCount, featuresCount)
+                      : 0
+                    
+                    return (
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-1.5">
+                        {/* Services Section */}
+                        <div className="flex flex-col min-w-0">
+                          <div className="text-xs font-semibold text-gray-700 mb-1">Services:</div>
+                          {displayCount > 0 ? (
+                            <ul className="space-y-0.5">
+                              {business.services.slice(0, displayCount).map((service, idx) => (
+                                <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
+                                  <span className="text-primary-500 mt-0.5 flex-shrink-0 text-xs">•</span>
+                                  <span className="break-words flex-1">{service.name || service}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">No services listed</p>
+                          )}
+                        </div>
 
-                  {/* Services */}
-                  {business.services && business.services.length > 0 && (
-                    <div className="mb-1.5 sm:mb-2 md:mb-3">
-                      <div className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-1.5 hidden sm:block">Services:</div>
-                      <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                        {business.services.slice(0, 2).map((service, idx) => (
-                          <span key={idx} className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-50 text-blue-700 rounded text-[10px] sm:text-xs">
-                            {service.name}
-                          </span>
-                        ))}
-                        {business.services.length > 2 && (
-                          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 rounded text-[10px] sm:text-xs">
-                            +{business.services.length - 2}
-                          </span>
-                        )}
+                        {/* Features Section */}
+                        <div className="flex flex-col min-w-0">
+                          <div className="text-xs font-semibold text-gray-700 mb-1">Features:</div>
+                          {displayCount > 0 ? (
+                            <ul className="space-y-0.5">
+                              {business.features.slice(0, displayCount).map((feature, idx) => (
+                                <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
+                                  <FaCheckCircle className="text-green-500 text-[10px] mt-0.5 flex-shrink-0" />
+                                  <span className="break-words flex-1">{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">No features listed</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Features - Hidden on mobile */}
-                  {business.features && business.features.length > 0 && (
-                    <div className="mb-1.5 sm:mb-2 md:mb-3 hidden sm:block">
-                      <div className="text-xs font-semibold text-gray-700 mb-1.5">Features:</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {business.features.slice(0, 3).map((feature, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
-                            <FaCheckCircle className="text-xs" />
-                            {feature}
-                          </span>
-                        ))}
-                        {business.features.length > 3 && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                            +{business.features.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Spacer */}
-                  <div className="flex-1 hidden sm:block"></div>
+                    )
+                  })()}
 
                   {/* Action Buttons */}
-                  <div className="space-y-1.5 sm:space-y-2 md:space-y-2.5 pt-2 sm:pt-3 border-t border-gray-100">
+                  <div className="space-y-1.5 pt-1.5 border-t border-gray-100">
                     {/* Primary Book Button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         handleBookAppointment(business.businessLink)
                       }}
-                      className="w-full flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 bg-primary-600 text-white rounded-lg sm:rounded-xl font-semibold shadow-md text-xs sm:text-sm md:text-base"
+                      className="w-full flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs sm:text-sm transition-colors duration-200 hover:bg-primary-700"
                     >
-                      <FaCalendarAlt className="text-xs sm:text-sm" />
+                      <FaCalendarAlt className="text-xs" />
                       <span className="hidden sm:inline">Book Appointment</span>
                       <span className="sm:hidden">Book</span>
                     </button>
 
                     {/* Call and WhatsApp Buttons */}
-                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5">
+                    <div className="grid grid-cols-2 gap-1.5">
                       {/* Call Button */}
                       {business.phone && (
                         <a
                           href={`tel:${business.phone}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-blue-50 text-blue-700 rounded-lg sm:rounded-xl border border-blue-200 font-medium text-[10px] sm:text-xs md:text-sm"
+                          className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
                         >
-                          <FaPhone className="text-[10px] sm:text-xs" />
+                          <FaPhone className="text-[10px]" />
                           <span>Call</span>
                         </a>
                       )}
@@ -768,9 +799,9 @@ const Home = () => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-green-50 text-green-700 rounded-lg sm:rounded-xl border border-green-200 font-medium text-[10px] sm:text-xs md:text-sm"
+                          className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
                         >
-                          <FaWhatsapp className="text-[10px] sm:text-xs" />
+                          <FaWhatsapp className="text-[10px]" />
                           <span className="hidden sm:inline">WhatsApp</span>
                           <span className="sm:hidden">WA</span>
                         </a>
