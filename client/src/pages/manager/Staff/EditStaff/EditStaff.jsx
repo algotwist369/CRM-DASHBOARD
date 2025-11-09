@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaIdBadge,
-  FaDollarSign,
+  FaRupeeSign,
   FaPercent,
   FaBriefcase,
   FaUserTag,
@@ -202,7 +202,7 @@ const EditStaff = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 cursor-pointer border border-gray-300 rounded-lg p-2 hover:bg-blue-50 transition-colors"
         >
           <FaArrowLeft />
           <span>Back</span>
@@ -245,7 +245,7 @@ const EditStaff = () => {
                   Phone Number <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaPhoneAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="tel"
                     name="phone"
@@ -354,7 +354,7 @@ const EditStaff = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Salary</label>
                 <div className="relative">
-                  <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="number"
                     name="salary"

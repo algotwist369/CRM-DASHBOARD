@@ -54,6 +54,106 @@ class StaffService {
     }
   }
 
+  // Transactions
+  async createTransaction(payload) {
+    try {
+      const response = await apiClient.post(endpoints.staff.transactions, payload)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add transaction'
+      }
+    }
+  }
+
+  async getTransactions(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.staff.transactions, { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch transactions'
+      }
+    }
+  }
+
+  async getTransactionById(id) {
+    try {
+      const response = await apiClient.get(endpoints.staff.transaction(id))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch transaction'
+      }
+    }
+  }
+
+  async updateTransaction(id, payload) {
+    try {
+      const response = await apiClient.put(endpoints.staff.transaction(id), payload)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update transaction'
+      }
+    }
+  }
+
+  async deleteTransaction(id) {
+    try {
+      const response = await apiClient.delete(endpoints.staff.transaction(id))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete transaction'
+      }
+    }
+  }
+
+  // Daily business - create record
+  async createDailyBusiness(payload) {
+    try {
+      const response = await apiClient.post(endpoints.dailyBusiness.create, payload)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add daily business record'
+      }
+    }
+  }
+
+  // Daily business - fetch summary for a date
+  async getDailyBusinessSummary(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.dailyBusiness.getSummary, { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily summary'
+      }
+    }
+  }
+
+  // Daily business - fetch records
+  async getDailyBusinessRecords(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.dailyBusiness.list, { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily business records'
+      }
+    }
+  }
+
   // Get notifications (prepared for future implementation)
   async getNotifications() {
     try {

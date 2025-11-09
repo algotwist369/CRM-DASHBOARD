@@ -9,27 +9,27 @@ router.use(authMiddleware);
 
 // ================== Daily Business Routes ==================
 
-// Add daily business record (Manager only)
+// Add daily business record (Manager + Staff)
 router.post("/", 
-    roleMiddleware(["manager"]), 
+    roleMiddleware(["manager", "staff"]), 
     dailyBusinessController.addDailyBusiness
 );
 
-// Get daily business records (Manager + Admin)
+// Get daily business records (Manager + Admin + Staff)
 router.get("/", 
-    roleMiddleware(["manager", "admin"]), 
+    roleMiddleware(["manager", "admin", "staff"]), 
     dailyBusinessController.getDailyBusinessRecords
 );
 
-// Get daily summary (Manager + Admin)
+// Get daily summary (Manager + Admin + Staff)
 router.get("/summary", 
-    roleMiddleware(["manager", "admin"]), 
+    roleMiddleware(["manager", "admin", "staff"]), 
     dailyBusinessController.getDailySummary
 );
 
-// Get business analytics (Manager + Admin)
+// Get business analytics (Manager + Admin + Staff)
 router.get("/analytics", 
-    roleMiddleware(["manager", "admin"]), 
+    roleMiddleware(["manager", "admin", "staff"]), 
     dailyBusinessController.getBusinessAnalytics
 );
 

@@ -45,6 +45,9 @@ const dailyBusinessSchema = new mongoose.Schema(
         weather: { type: String }, // For business correlation
         specialEvents: [{ type: String }], // Festivals, holidays, etc.
 
+        createdBy: { type: mongoose.Schema.Types.ObjectId, refPath: 'createdByRole' },
+        createdByRole: { type: String, enum: ['manager', 'staff', 'admin'] },
+
         isCompleted: { type: Boolean, default: false },
         completedAt: { type: Date }
     },

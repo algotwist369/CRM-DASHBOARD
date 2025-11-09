@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaIdBadge,
-  FaDollarSign,
+  FaRupeeSign,
   FaPercent,
   FaBriefcase,
   FaUserTag,
@@ -97,7 +97,7 @@ const StaffDetails = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 cursor-pointer border border-gray-300 rounded-lg p-2 hover:bg-blue-50 transition-colors"
         >
           <FaArrowLeft />
           <span>Back</span>
@@ -133,7 +133,7 @@ const StaffDetails = () => {
               </div>
               {staff.phone && (
                 <div className="flex items-center gap-3">
-                  <FaPhone className="text-gray-400 text-xl" />
+                  <FaPhoneAlt className="text-gray-400 text-xl" />
                   <div>
                     <p className="text-sm text-gray-500">Phone Number</p>
                     <p className="font-medium text-gray-900">{staff.phone}</p>
@@ -194,7 +194,7 @@ const StaffDetails = () => {
               </div>
               {staff.salary && (
                 <div className="flex items-center gap-3">
-                  <FaDollarSign className="text-gray-400 text-xl" />
+                  <FaRupeeSign className="text-gray-400 text-xl" />
                   <div>
                     <p className="text-sm text-gray-500">Salary</p>
                     <p className="font-medium text-gray-900">{formatCurrency(staff.salary)}</p>

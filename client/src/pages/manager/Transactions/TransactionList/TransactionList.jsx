@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
-  FaDollarSign,
+  FaRupeeSign,
   FaCalendarAlt,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaSpinner,
   FaSearch,
   FaFilter,
@@ -278,7 +278,7 @@ const TransactionList = () => {
                             </div>
                             {transaction.customerPhone && (
                               <div className="text-sm text-gray-500 flex items-center gap-1">
-                                <FaPhone className="text-xs" />
+                                <FaPhoneAlt className="text-xs" />
                                 {transaction.customerPhone}
                               </div>
                             )}
@@ -300,7 +300,7 @@ const TransactionList = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          <FaDollarSign className="text-green-600" />
+                          <FaRupeeSign className="text-green-600" />
                           <span className="text-sm font-semibold text-gray-900">
                             {formatCurrency(transaction.finalPrice)}
                           </span>

@@ -4,11 +4,11 @@ import { toast } from 'react-hot-toast'
 import {
   FaArrowLeft,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaMapMarkerAlt,
   FaCalendarAlt,
-  FaDollarSign,
+  FaRupeeSign,
   FaStar,
   FaEdit,
   FaPlus,
@@ -18,9 +18,16 @@ import {
   FaHistory,
   FaStickyNote,
   FaChartLine,
-  FaBirthdayCake
+  FaBirthdayCake,
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+import {
+  normalizeCustomerDetails,
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  mapTimeline
+} from '../utils/customerUtils'
 
 const CustomerDetails = () => {
   const navigate = useNavigate()
@@ -68,22 +75,24 @@ const CustomerDetails = () => {
           navigate('/manager/customers')
           return
         }
-        
-        setCustomer(customerData)
+        const normalizedCustomer = normalizeCustomerDetails(customerData)
+
+        setCustomer(normalizedCustomer)
         setAppointments(responseData?.appointments || [])
         setTransactions(responseData?.transactions || [])
         setAnalytics(responseData?.analytics)
         setEditForm({
-          name: customerData.name || '',
-          email: customerData.email || '',
-          phone: customerData.phone || '',
-          dateOfBirth: customerData.dateOfBirth ? new Date(customerData.dateOfBirth).toISOString().split('T')[0] : '',
-          gender: customerData.gender || '',
+          firstName: normalizedCustomer.firstName || '',
+          lastName: normalizedCustomer.lastName || '',
+          email: normalizedCustomer.email || '',
+          phone: normalizedCustomer.phone || '',
+          dateOfBirth: normalizedCustomer.dateOfBirth ? new Date(normalizedCustomer.dateOfBirth).toISOString().split('T')[0] : '',
+          gender: normalizedCustomer.gender || '',
           address: {
-            street: customerData.address?.street || '',
-            city: customerData.address?.city || '',
-            state: customerData.address?.state || '',
-            pincode: customerData.address?.pincode || '',
+            street: normalizedCustomer.address.street || '',
+            city: normalizedCustomer.address.city || '',
+            state: normalizedCustomer.address.state || '',
+            pincode: normalizedCustomer.address.pincode || '',
           }
         })
       } else {
@@ -110,13 +119,7 @@ const CustomerDetails = () => {
         // Handle both response structures: result.data.data.timeline or result.data.timeline
         const responseData = result.data?.data || result.data
         const timelineData = responseData?.timeline || responseData?.data?.timeline || []
-        
-        // Ensure timeline is always an array
-        if (Array.isArray(timelineData)) {
-          setTimeline(timelineData)
-        } else {
-          setTimeline([])
-        }
+        setTimeline(mapTimeline(timelineData))
       } else {
         setTimeline([])
       }
@@ -155,8 +158,36 @@ const CustomerDetails = () => {
   }
 
   const handleUpdateCustomer = async () => {
+    if (!editForm.firstName?.trim()) {
+      toast.error('First name is required')
+      return
+    }
+
     try {
-      const result = await managerService.updateCustomer(customerId, editForm)
+      const payload = {
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName?.trim() || '',
+        email: editForm.email?.trim() || undefined,
+        phone: editForm.phone?.trim() || undefined,
+        gender: editForm.gender || undefined,
+        dateOfBirth: editForm.dateOfBirth || undefined,
+        address: {
+          street: editForm.address?.street?.trim() || '',
+          city: editForm.address?.city?.trim() || '',
+          state: editForm.address?.state?.trim() || '',
+          zipCode: editForm.address?.pincode?.trim() || ''
+        }
+      }
+
+      if (!payload.address.street && !payload.address.city && !payload.address.state && !payload.address.zipCode) {
+        delete payload.address
+      } else if (!payload.address.zipCode) {
+        delete payload.address.zipCode
+      }
+
+      if (!payload.dateOfBirth) delete payload.dateOfBirth
+
+      const result = await managerService.updateCustomer(customerId, payload)
       if (result.success) {
         toast.success('Customer updated successfully')
         setIsEditing(false)
@@ -168,35 +199,6 @@ const CustomerDetails = () => {
       toast.error('Failed to update customer')
       console.error(error)
     }
-  }
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount || 0)
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const formatDateTime = (dateString) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   const getStatusBadge = (status) => {
@@ -231,6 +233,31 @@ const CustomerDetails = () => {
 
   if (!customer) return null
 
+  const metrics = customer.metrics || {}
+
+  const getStatusInfo = () => {
+    if (customer.isBlacklisted) {
+      return {
+        label: 'Blacklisted',
+        className: 'bg-red-100 text-red-800'
+      }
+    }
+
+    if (customer.isActive === false) {
+      return {
+        label: 'Inactive',
+        className: 'bg-yellow-100 text-yellow-800'
+      }
+    }
+
+    return {
+      label: 'Active',
+      className: 'bg-green-100 text-green-800'
+    }
+  }
+
+  const { label: statusLabel, className: statusClass } = getStatusInfo()
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -245,15 +272,11 @@ const CustomerDetails = () => {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                customer.status === 'active' ? 'bg-green-100 text-green-800' :
-                customer.status === 'inactive' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                {customer.status}
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+                {statusLabel}
               </span>
             </div>
-            <p className="text-gray-600 mt-1">Customer ID: {customer._id.slice(-8)}</p>
+            <p className="text-gray-600 mt-1">Customer ID: {customer.id ? customer.id.toString().slice(-8) : 'N/A'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -304,19 +327,32 @@ const CustomerDetails = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                     {isEditing ? (
                       <input
                         type="text"
-                        value={editForm.name}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                        value={editForm.firstName}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, firstName: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
                       <p className="text-gray-900 flex items-center gap-2">
                         <FaUser className="text-gray-400" />
-                        {customer.name}
+                        {customer.firstName}
                       </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editForm.lastName}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, lastName: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{customer.lastName || '—'}</p>
                     )}
                   </div>
                   <div>
@@ -331,7 +367,7 @@ const CustomerDetails = () => {
                     ) : (
                       <p className="text-gray-900 flex items-center gap-2">
                         <FaEnvelope className="text-gray-400" />
-                        {customer.email}
+                        {customer.email || 'Not set'}
                       </p>
                     )}
                   </div>
@@ -346,8 +382,8 @@ const CustomerDetails = () => {
                       />
                     ) : (
                       <p className="text-gray-900 flex items-center gap-2">
-                        <FaPhone className="text-gray-400" />
-                        {customer.phone}
+                        <FaPhoneAlt className="text-gray-400" />
+                        {customer.phone || 'Not set'}
                       </p>
                     )}
                   </div>
@@ -481,16 +517,16 @@ const CustomerDetails = () => {
                     Total Visits
                   </span>
                   <span className="text-lg font-bold text-gray-900">
-                    {customer.stats?.totalVisits || 0}
+                    {metrics.totalVisits || 0}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 flex items-center gap-2">
-                    <FaDollarSign />
+                    <FaRupeeSign />
                     Total Spent
                   </span>
                   <span className="text-lg font-bold text-green-600">
-                    {formatCurrency(customer.stats?.totalSpent || 0)}
+                    {formatCurrency(metrics.totalSpent || 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -499,7 +535,7 @@ const CustomerDetails = () => {
                     Average Rating
                   </span>
                   <span className="text-lg font-bold text-yellow-600">
-                    {(customer.stats?.averageRating || 0).toFixed(1)}
+                    {(metrics.averageRating || 0).toFixed(1)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -508,7 +544,7 @@ const CustomerDetails = () => {
                     Last Visit
                   </span>
                   <span className="text-sm font-medium text-gray-900">
-                    {formatDate(customer.stats?.lastVisit)}
+                    {formatDate(metrics.lastVisit)}
                   </span>
                 </div>
               </div>
@@ -566,7 +602,7 @@ const CustomerDetails = () => {
                     {event.type === 'appointment' ? (
                       <FaCalendarAlt className={event.type === 'appointment' ? 'text-blue-600' : 'text-green-600'} />
                     ) : (
-                      <FaDollarSign className="text-green-600" />
+                      <FaRupeeSign className="text-green-600" />
                     )}
                   </div>
                   <div className="flex-1">
@@ -696,7 +732,7 @@ const CustomerDetails = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <FaDollarSign className="text-green-600" />
+              <FaRupeeSign className="text-green-600" />
               Transactions ({transactions.length})
             </h2>
             <button
@@ -709,11 +745,11 @@ const CustomerDetails = () => {
           </div>
           {!Array.isArray(transactions) || transactions.length === 0 ? (
             <div className="text-center py-12">
-              <FaDollarSign className="mx-auto text-gray-400 text-4xl mb-4" />
+              <FaRupeeSign className="mx-auto text-gray-400 text-4xl mb-4" />
               <p className="text-gray-500 mb-4">No transactions found</p>
               <button
                 onClick={() => navigate(`/manager/transactions/add?customer=${customerId}`)}
-                className="text-primary-600 hover:text-primary-700 font-medium"
+                className="text-primary-600 hover:text-primary-700 font-medium" title='click to create new transaction'
               >
                 Create new transaction →
               </button>
@@ -891,7 +927,7 @@ const CustomerDetails = () => {
                       {event.type === 'appointment' ? (
                         <FaCalendarAlt className={event.type === 'appointment' ? 'text-blue-600 text-xs' : 'text-green-600 text-xs'} />
                       ) : (
-                        <FaDollarSign className="text-green-600 text-xs" />
+                        <FaRupeeSign className="text-green-600 text-xs" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

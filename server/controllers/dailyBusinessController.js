@@ -19,54 +19,83 @@ const isValidObjectId = (id) => {
 const addDailyBusiness = async (req, res, next) => {
     try {
         const { businessId, date, notes, weather, specialEvents } = req.body;
-        const managerId = req.user.id;
+        const userRole = req.user?.role;
 
-        // Validate businessId
-        if (!businessId || !isValidObjectId(businessId)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Valid Business ID is required" 
+        if (!date) {
+            return res.status(400).json({
+                success: false,
+                message: "Date is required"
             });
         }
 
-        // Check if business exists and manager has access
-        const business = await Business.findById(businessId);
+        let managerId = req.user.id;
+        let resolvedBusinessId = businessId || req.user.businessId;
+
+        if (userRole === "staff") {
+            managerId = req.user.managerId;
+            resolvedBusinessId = req.user.businessId;
+
+            if (!managerId || !resolvedBusinessId) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Staff account is not linked to a manager or business"
+                });
+            }
+        }
+
+        if (!resolvedBusinessId || !isValidObjectId(resolvedBusinessId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid Business ID is required"
+            });
+        }
+
+        // Check if business exists
+        const business = await Business.findById(resolvedBusinessId);
         if (!business) {
             return res.status(404).json({ success: false, message: "Business not found" });
         }
 
         // Check if daily record already exists for this date
+        const targetDate = new Date(date);
         const existingRecord = await DailyBusiness.findOne({
-            business: businessId,
-            date: new Date(date)
+            business: resolvedBusinessId,
+            date: targetDate
         });
 
         if (existingRecord) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Daily business record already exists for this date" 
+            return res.status(400).json({
+                success: false,
+                message: "Daily business record already exists for this date"
             });
         }
 
         // Get transactions for this date to calculate metrics
-        const startOfDay = new Date(date);
+        const startOfDay = new Date(targetDate);
         startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
+        const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
 
         const transactions = await Transaction.find({
-            business: businessId,
+            business: resolvedBusinessId,
             transactionDate: { $gte: startOfDay, $lte: endOfDay }
         }).populate('staff');
 
         // Calculate metrics from transactions
         const metrics = calculateDailyMetrics(transactions);
 
+        // Normalize special events (accept string, array, etc.)
+        const normalizedSpecialEvents = Array.isArray(specialEvents)
+            ? specialEvents.map(event => String(event).trim()).filter(Boolean)
+            : typeof specialEvents === "string"
+                ? specialEvents.split(/[\n,]+/).map(event => event.trim()).filter(Boolean)
+                : [];
+
         // Create daily business record
         const dailyBusiness = await DailyBusiness.create({
-            business: businessId,
+            business: resolvedBusinessId,
             manager: managerId,
-            date: new Date(date),
+            date: targetDate,
             businessType: business.type,
             totalCustomers: metrics.totalCustomers,
             totalIncome: metrics.totalRevenue,
@@ -74,7 +103,7 @@ const addDailyBusiness = async (req, res, next) => {
             netProfit: metrics.totalRevenue,
             services: Object.entries(metrics.serviceBreakdown).map(([serviceType, data]) => ({
                 serviceName: serviceType,
-                serviceType: serviceType,
+                serviceType,
                 customerCount: data.count,
                 totalRevenue: data.revenue,
                 averagePrice: data.count > 0 ? data.revenue / data.count : 0
@@ -86,7 +115,7 @@ const addDailyBusiness = async (req, res, next) => {
                 commission: data.commission
             })),
             metrics: {
-                walkInCustomers: metrics.totalCustomers, // Can be refined later
+                walkInCustomers: metrics.totalCustomers,
                 appointmentCustomers: 0,
                 repeatCustomers: 0,
                 newCustomers: metrics.totalCustomers,
@@ -95,14 +124,18 @@ const addDailyBusiness = async (req, res, next) => {
             },
             notes,
             weather,
-            specialEvents: specialEvents || [],
+            specialEvents: normalizedSpecialEvents,
+            createdBy: req.user.id,
+            createdByRole: userRole,
             isCompleted: true,
             completedAt: new Date()
         });
 
         // Invalidate cache
-        await deleteCache(`business:${businessId}:daily-business`);
-        await deleteCache(`manager:${managerId}:daily-business`);
+        await deleteCache(`business:${resolvedBusinessId}:daily-business`);
+        if (managerId) {
+            await deleteCache(`manager:${managerId}:daily-business`);
+        }
 
         return res.status(201).json({
             success: true,
@@ -118,26 +151,37 @@ const addDailyBusiness = async (req, res, next) => {
 const getDailyBusinessRecords = async (req, res, next) => {
     try {
         const { businessId, startDate, endDate, page = 1, limit = 10 } = req.query;
-        const managerId = req.user.id;
+        const userRole = req.user?.role;
+        const isStaff = userRole === "staff";
+        const managerId = isStaff ? req.user.managerId : req.user.id;
 
-        const cacheKey = `daily-business:${businessId || managerId}:${startDate}:${endDate}:${page}:${limit}`;
-        
+        if (isStaff && (!managerId || !req.user.businessId)) {
+            return res.status(403).json({
+                success: false,
+                message: "Staff account is not linked to a manager or business"
+            });
+        }
+
+        let resolvedBusinessId = isStaff ? req.user.businessId : (businessId || req.user.businessId);
+
+        if (!resolvedBusinessId && userRole === "manager") {
+            const manager = await require("../models/Manager").findById(managerId).populate('business');
+            if (manager && manager.business) {
+                resolvedBusinessId = manager.business._id;
+            }
+        }
+
+        const cacheKey = `daily-business:${resolvedBusinessId || managerId}:${startDate}:${endDate}:${page}:${limit}`;
+
         // Try cache first
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
 
-        let query = {};
-        
-        if (businessId) {
-            query.business = businessId;
-        } else {
-            // If no businessId, get records for manager's business
-            const manager = await require("../models/Manager").findById(managerId).populate('business');
-            if (manager && manager.business) {
-                query.business = manager.business._id;
-            }
+        const query = {};
+        if (resolvedBusinessId) {
+            query.business = resolvedBusinessId;
         }
 
         if (startDate && endDate) {
@@ -150,6 +194,7 @@ const getDailyBusinessRecords = async (req, res, next) => {
         const records = await DailyBusiness.find(query)
             .populate('business', 'name type branch')
             .populate('manager', 'name username')
+            .populate('createdBy', 'name username email phone role')
             .sort({ date: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
@@ -161,8 +206,8 @@ const getDailyBusinessRecords = async (req, res, next) => {
             data: records.map(r => r.toObject()),
             pagination: {
                 total,
-                page: parseInt(page),
-                limit: parseInt(limit),
+                page: parseInt(page, 10),
+                limit: parseInt(limit, 10),
                 pages: Math.ceil(total / limit)
             }
         };
@@ -248,19 +293,34 @@ const deleteDailyBusiness = async (req, res, next) => {
 const getBusinessAnalytics = async (req, res, next) => {
     try {
         const { businessId, period = 'monthly' } = req.query;
-        const managerId = req.user.id;
+        const userRole = req.user?.role;
+        const isStaff = userRole === "staff";
+        const managerId = isStaff ? req.user.managerId : req.user.id;
 
-        let query = {};
-        
-        if (businessId) {
-            query.business = businessId;
-        } else {
-            // Get manager's business
+        if (isStaff && (!managerId || !req.user.businessId)) {
+            return res.status(403).json({
+                success: false,
+                message: "Staff account is not linked to a manager or business"
+            });
+        }
+
+        let resolvedBusinessId = isStaff ? req.user.businessId : (businessId || req.user.businessId);
+
+        if (!resolvedBusinessId && userRole === "manager") {
             const manager = await require("../models/Manager").findById(managerId).populate('business');
             if (manager && manager.business) {
-                query.business = manager.business._id;
+                resolvedBusinessId = manager.business._id;
             }
         }
+
+        if (!resolvedBusinessId) {
+            return res.status(400).json({
+                success: false,
+                message: "Business context not found"
+            });
+        }
+
+        const query = { business: resolvedBusinessId };
 
         // Set date range based on period
         const endDate = new Date();
@@ -305,7 +365,16 @@ const getBusinessAnalytics = async (req, res, next) => {
 const getDailySummary = async (req, res, next) => {
     try {
         const { businessId, date } = req.query;
-        const managerId = req.user.id;
+        const userRole = req.user?.role;
+        const isStaff = userRole === "staff";
+        const managerId = isStaff ? req.user.managerId : req.user.id;
+
+        if (isStaff && (!managerId || !req.user.businessId)) {
+            return res.status(403).json({
+                success: false,
+                message: "Staff account is not linked to a manager or business"
+            });
+        }
 
         const targetDate = date ? new Date(date) : new Date();
         const startOfDay = new Date(targetDate);
@@ -313,25 +382,31 @@ const getDailySummary = async (req, res, next) => {
         const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
 
-        let businessQuery = businessId ? { _id: businessId } : {};
-        
-        if (!businessId) {
-            // Get manager's business
+        let resolvedBusinessId = isStaff ? req.user.businessId : (businessId || req.user.businessId);
+
+        if (!resolvedBusinessId && userRole === "manager") {
             const manager = await require("../models/Manager").findById(managerId).populate('business');
             if (manager && manager.business) {
-                businessQuery._id = manager.business._id;
+                resolvedBusinessId = manager.business._id;
             }
+        }
+
+        if (!resolvedBusinessId) {
+            return res.status(400).json({
+                success: false,
+                message: "Business context not found"
+            });
         }
 
         // Get daily business record
         const dailyRecord = await DailyBusiness.findOne({
-            business: businessQuery._id,
+            business: resolvedBusinessId,
             date: { $gte: startOfDay, $lte: endOfDay }
         }).populate('business', 'name type branch');
 
         // Get transactions for the day
         const transactions = await Transaction.find({
-            business: businessQuery._id,
+            business: resolvedBusinessId,
             transactionDate: { $gte: startOfDay, $lte: endOfDay }
         }).populate('staff', 'name role');
 
@@ -339,7 +414,7 @@ const getDailySummary = async (req, res, next) => {
             date: targetDate,
             business: dailyRecord?.business || null,
             dailyRecord: dailyRecord || null,
-            transactions: transactions,
+            transactions,
             totals: {
                 revenue: transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0),
                 customers: transactions.length,
@@ -364,3 +439,4 @@ module.exports = {
     getBusinessAnalytics,
     getDailySummary
 };
+

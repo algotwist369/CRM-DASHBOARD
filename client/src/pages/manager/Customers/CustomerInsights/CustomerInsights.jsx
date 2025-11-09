@@ -17,11 +17,18 @@ import {
   FaBullseye
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+  normalizeCustomerInsightsPayload,
+  SEGMENT_META
+} from '../utils/customerUtils'
 
 const CustomerInsights = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [insights, setInsights] = useState(null)
+  const [insightsData, setInsightsData] = useState(null)
 
   useEffect(() => {
     fetchInsights()
@@ -33,31 +40,26 @@ const CustomerInsights = () => {
       const result = await managerService.getCustomerInsights()
       
       if (result.success) {
-        const insightsData = result.data?.data || result.data
-        if (insightsData) {
-          setInsights(insightsData)
+        const raw = result.data?.data || result.data
+        const normalized = raw ? normalizeCustomerInsightsPayload(raw) : null
+
+        if (normalized) {
+          setInsightsData(normalized)
         } else {
           toast.error('No insights data available')
-          setInsights(null)
+          setInsightsData(null)
         }
       } else {
         toast.error(result.error || 'Failed to fetch insights')
-        setInsights(null)
+        setInsightsData(null)
       }
     } catch (error) {
       toast.error('Failed to fetch insights')
       console.error(error)
-      setInsights(null)
+      setInsightsData(null)
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount || 0)
   }
 
   if (loading) {
@@ -71,7 +73,7 @@ const CustomerInsights = () => {
     )
   }
 
-  if (!insights) {
+  if (!insightsData) {
     return (
       <div className="p-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -81,7 +83,8 @@ const CustomerInsights = () => {
     )
   }
 
-  const { insights: insightList = [], recommendations = [], analytics } = insights
+  const { insights: insightList = [], recommendations = [], analytics } = insightsData
+  const totalSegments = Object.values(analytics.segments || {}).reduce((sum, count) => sum + (count || 0), 0)
 
   return (
     <div className="p-6 space-y-6">
@@ -167,22 +170,22 @@ const CustomerInsights = () => {
               <FaUsers className="text-blue-500" />
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">New</span>
-                <span className="font-semibold text-gray-900">{analytics.segments?.new || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Returning</span>
-                <span className="font-semibold text-gray-900">{analytics.segments?.returning || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Loyal</span>
-                <span className="font-semibold text-gray-900">{analytics.segments?.loyal || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Inactive</span>
-                <span className="font-semibold text-red-600">{analytics.segments?.inactive || 0}</span>
-              </div>
+              {['new', 'returning', 'loyal', 'inactive'].map((key) => (
+                <div key={key} className="flex justify-between">
+                  <span className="text-gray-600">{SEGMENT_META[key]?.label || key}</span>
+                  <span className={`font-semibold ${key === 'inactive' ? 'text-red-600' : 'text-gray-900'}`}>
+                    {formatNumber(analytics.segments[key] || 0)}
+                  </span>
+                </div>
+              ))}
+              {totalSegments > 0 && (
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Active Customers</span>
+                  <span>
+                    {formatPercentage(((analytics.segments.new + analytics.segments.returning + analytics.segments.loyal) / totalSegments) * 100 || 0)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -197,13 +200,13 @@ const CustomerInsights = () => {
                 <div>
                   <p className="text-gray-600">Average Value</p>
                   <p className="text-lg font-bold text-green-600">
-                    {formatCurrency(analytics.value.averageValue || 0)}
+                    {formatCurrency(analytics.value.averageValue)}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-600">Total Revenue</p>
                   <p className="text-lg font-bold text-blue-600">
-                    {formatCurrency(analytics.value.totalRevenue || 0)}
+                    {formatCurrency(analytics.value.totalRevenue)}
                   </p>
                 </div>
               </div>
@@ -220,15 +223,15 @@ const CustomerInsights = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Last 30 Days</span>
-                  <span className="font-semibold text-gray-900">{analytics.retention.last30Days || 0}</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(analytics.retention.last30Days || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Last 60 Days</span>
-                  <span className="font-semibold text-gray-900">{analytics.retention.last60Days || 0}</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(analytics.retention.last60Days || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Last 90 Days</span>
-                  <span className="font-semibold text-gray-900">{analytics.retention.last90Days || 0}</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(analytics.retention.last90Days || 0)}</span>
                 </div>
               </div>
             </div>
@@ -247,7 +250,7 @@ const CustomerInsights = () => {
                   <div className="flex items-center gap-2">
                     <FaArrowUp className="text-green-500" />
                     <p className="text-lg font-bold text-green-600">
-                      {analytics.growth.length > 0 ? analytics.growth[analytics.growth.length - 1].count : 0}
+                      {formatNumber(analytics.growth.length > 0 ? analytics.growth[analytics.growth.length - 1].count : 0)}
                     </p>
                   </div>
                 </div>

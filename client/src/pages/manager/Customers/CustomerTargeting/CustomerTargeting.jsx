@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -18,6 +18,13 @@ import {
   FaMapMarkerAlt
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+import {
+  formatCurrency,
+  formatDate,
+  formatNumber,
+  normalizeTargetCustomerRecords,
+  SEGMENT_META
+} from '../utils/customerUtils'
 
 const CustomerTargeting = () => {
   const navigate = useNavigate()
@@ -105,12 +112,13 @@ const CustomerTargeting = () => {
       
       if (result.success) {
         const customers = result.data?.data?.customers || result.data?.customers || []
-        setTargetCustomers(customers)
+        const normalized = normalizeTargetCustomerRecords(customers)
+        setTargetCustomers(normalized)
         
-        if (customers.length === 0) {
+        if (normalized.length === 0) {
           toast.success('No customers found matching the criteria')
         } else {
-          toast.success(`Found ${customers.length} customers`)
+          toast.success(`Found ${normalized.length} customers`)
         }
       } else {
         toast.error(result.error || 'Failed to search customers')
@@ -149,15 +157,26 @@ const CustomerTargeting = () => {
     setSearchTerm('')
   }
 
-  const filteredCustomers = searchTerm
-    ? targetCustomers.filter(customer =>
-        customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.phone?.includes(searchTerm)
-      )
-    : targetCustomers
+  const filteredCustomers = useMemo(() => {
+    if (!searchTerm) return targetCustomers
+    const term = searchTerm.toLowerCase()
+    return targetCustomers.filter((customer) =>
+      customer.name?.toLowerCase().includes(term) ||
+      customer.email?.toLowerCase().includes(term) ||
+      customer.phone?.includes(term)
+    )
+  }, [searchTerm, targetCustomers])
 
   const commonServices = ['Haircut', 'Facial', 'Massage', 'Manicure', 'Pedicure', 'Hair Spa', 'Hair Color', 'Beard Trim', 'Waxing', 'Nail Art']
+
+  const customerTypeOptions = [
+    { value: '', label: 'All Types' },
+    { value: 'new', label: SEGMENT_META.new.label },
+    { value: 'returning', label: SEGMENT_META.returning.label },
+    { value: 'loyalty', label: SEGMENT_META.loyal.label },
+    { value: 'inactive', label: SEGMENT_META.inactive.label },
+    { value: 'high_value', label: SEGMENT_META.highValue?.label || 'High Value Customers' }
+  ]
 
   return (
     <div className="p-6 space-y-6">
@@ -201,12 +220,11 @@ const CustomerTargeting = () => {
                 onChange={(e) => handleCriteriaChange('customerType', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">All Types</option>
-                <option value="new">New Customers</option>
-                <option value="returning">Returning Customers</option>
-                <option value="loyalty">Loyal Customers</option>
-                <option value="inactive">Inactive Customers</option>
-                <option value="high_value">High Value Customers</option>
+                {customerTypeOptions.map((option) => (
+                  <option key={option.value || 'all'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -441,25 +459,9 @@ const CustomerTargeting = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredCustomers.map((customer) => {
-                  const formatCurrency = (amount) => {
-                    return new Intl.NumberFormat('en-IN', {
-                      style: 'currency',
-                      currency: 'INR'
-                    }).format(amount || 0)
-                  }
-                  
-                  const formatDate = (dateString) => {
-                    if (!dateString) return 'Never'
-                    const date = new Date(dateString)
-                    return date.toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })
-                  }
                   
                   return (
-                    <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
@@ -484,27 +486,27 @@ const CustomerTargeting = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <FaEnvelope className="text-gray-400" />
-                          {customer.email}
+                          {customer.email || 'N/A'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {customer.stats?.totalVisits || 0}
+                          {formatNumber(customer.totalVisits || 0)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-green-600">
-                          {formatCurrency(customer.stats?.totalSpent || 0)}
+                          {formatCurrency(customer.totalSpent || 0)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">
-                          {formatDate(customer.stats?.lastVisit)}
+                          {formatDate(customer.lastVisit, 'Never')}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <button
-                          onClick={() => navigate(`/manager/customers/${customer._id}`)}
+                          onClick={() => navigate(`/manager/customers/${customer.id}`)}
                           className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                           title="View Details"
                         >

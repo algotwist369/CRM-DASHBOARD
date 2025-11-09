@@ -59,6 +59,8 @@ export const endpoints = {
     profile: `${API_BASE_URL}/staff/profile`,
     updateProfile: `${API_BASE_URL}/staff/profile`,
     business: `${API_BASE_URL}/staff/business`,
+    transactions: `${API_BASE_URL}/staff/transactions`,
+    transaction: (id) => `${API_BASE_URL}/staff/transactions/${id}`,
     // Notifications (prepared for future implementation)
     notifications: `${API_BASE_URL}/staff/notifications`,
     unreadCount: `${API_BASE_URL}/staff/notifications/unread-count`,
@@ -113,9 +115,9 @@ export const endpoints = {
     stats: `${API_BASE_URL}/customers/stats`,
     addNote: (id) => `${API_BASE_URL}/customers/${id}/notes`,
     getTimeline: (id) => `${API_BASE_URL}/customers/${id}/timeline`,
-    getSegments: `${API_BASE_URL}/customers/analytics/segments`,
-    getAnalytics: `${API_BASE_URL}/customers/analytics/overview`,
-    getInsights: `${API_BASE_URL}/customers/analytics/insights`,
+    getSegments: `${API_BASE_URL}/notifications/analytics/customers`,
+    getAnalytics: `${API_BASE_URL}/notifications/analytics/customers`,
+    getInsights: `${API_BASE_URL}/notifications/analytics/customers`,
     getTargetCustomers: `${API_BASE_URL}/customers/analytics/target`,
   },
 

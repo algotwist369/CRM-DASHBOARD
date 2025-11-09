@@ -104,45 +104,63 @@ const StaffLayout = () => {
       </div>
 
       {/* Main Content - Adjusts margin on desktop to account for fixed sidebar */}
-      <div className={`flex-1 flex flex-col overflow-hidden w-full transition-all duration-300 ${
-        sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-      }`}>
-        {/* Header */}
-        <StaffHeader
-          onSidebarToggle={handleSidebarToggle}
-          isSidebarCollapsed={sidebarCollapsed}
-        />
+      <div className="flex-1 flex flex-col w-full">
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 z-40">
+          <div
+            className={`transition-all duration-300 ${
+              sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+            }`}
+          >
+            <StaffHeader
+              onSidebarToggle={handleSidebarToggle}
+              isSidebarCollapsed={sidebarCollapsed}
+            />
+          </div>
+        </div>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
+        <main
+          className={`flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pt-20 pb-24 transition-all duration-300 ${
+            sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+          }`}
+        >
           <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
             <Outlet />
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-3 sm:px-4 lg:px-6 py-3">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-xs sm:text-sm text-gray-600">
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <span>© 2024 RAMA CRM</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Staff Portal</span>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <a href="/staff/help" className="hover:text-gray-900">
-                Help
-              </a>
-              <span className="hidden sm:inline">•</span>
-              <a href="/staff/support" className="hover:text-gray-900">
-                Support
-              </a>
-              <span className="hidden sm:inline">•</span>
-              <a href="/staff/privacy" className="hover:text-gray-900">
-                Privacy
-              </a>
-            </div>
+        {/* Fixed Footer */}
+        <div className="fixed bottom-0 left-0 right-0 z-30">
+          <div
+            className={`transition-all duration-300 ${
+              sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+            }`}
+          >
+            <footer className="bg-white border-t border-gray-200 px-3 sm:px-4 lg:px-6 py-3">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-xs sm:text-sm text-gray-600">
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                  <span>© 2024 RAMA CRM</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>Staff Portal</span>
+                </div>
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                  <a href="/staff/help" className="hover:text-gray-900">
+                    Help
+                  </a>
+                  <span className="hidden sm:inline">•</span>
+                  <a href="/staff/support" className="hover:text-gray-900">
+                    Support
+                  </a>
+                  <span className="hidden sm:inline">•</span>
+                  <a href="/staff/privacy" className="hover:text-gray-900">
+                    Privacy
+                  </a>
+                </div>
+              </div>
+            </footer>
           </div>
-        </footer>
+        </div>
       </div>
 
       {/* Mobile Sidebar Overlay */}

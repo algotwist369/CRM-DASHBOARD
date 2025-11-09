@@ -46,6 +46,8 @@ import StaffDashboard from './pages/staff/Dashboard/StaffDashboard'
 import StaffProfile from './pages/staff/Profile/StaffProfile'
 import StaffBusiness from './pages/staff/Business/StaffBusiness'
 import StaffSettings from './pages/staff/StaffSettings/StaffSettings'
+import StaffDailyBusiness from './pages/staff/DailyBusiness/StaffDailyBusiness'
+import { StaffTransactionList, AddStaffTransaction, EditStaffTransaction, StaffTransactionDetails } from './pages/staff'
 
 // Public Pages
 import {
@@ -187,6 +189,11 @@ function App() {
                 <Route path="dashboard" element={<StaffDashboard />} />
                 <Route path="profile" element={<StaffProfile />} />
                 <Route path="business" element={<StaffBusiness />} />
+                <Route path="transactions" element={<StaffTransactionList />} />
+                <Route path="transactions/add" element={<AddStaffTransaction />} />
+                <Route path="transactions/:id/edit" element={<EditStaffTransaction />} />
+                <Route path="transactions/:id" element={<StaffTransactionDetails />} />
+                <Route path="daily-business" element={<StaffDailyBusiness />} />
                 <Route path="settings" element={<StaffSettings />} />
                 <Route index element={<Navigate to="/staff/dashboard" replace />} />
               </Route>
