@@ -43,6 +43,9 @@ router.get("/:id", appointmentController.getAppointmentById);
 // Update appointment
 router.put("/:id", appointmentController.updateAppointment);
 
+// Update appointment status
+router.put("/:id/status", appointmentController.updateAppointmentStatus);
+
 // ================== Appointment Actions ==================
 
 // Confirm appointment

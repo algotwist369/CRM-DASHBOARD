@@ -8,7 +8,7 @@ import {
   FaEnvelope,
   FaClipboardList,
   FaTags,
-  FaDollarSign,
+  FaRupeeSign,
   FaPercent,
   FaCreditCard,
   FaStickyNote,
@@ -156,9 +156,9 @@ const StaffTransactionDetails = () => {
         <section className="space-y-4 mt-6">
           <h2 className="text-lg font-semibold text-gray-900">Pricing</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <InfoRow icon={FaDollarSign} label="Base Price" value={formatCurrency(transaction.basePrice)} />
+            <InfoRow icon={FaRupeeSign} label="Base Price" value={formatCurrency(transaction.basePrice)} />
             <InfoRow icon={FaPercent} label="Discount" value={formatCurrency(transaction.discount)} />
-            <InfoRow icon={FaDollarSign} label="Tax" value={formatCurrency(transaction.tax)} />
+            <InfoRow icon={FaRupeeSign} label="Tax" value={formatCurrency(transaction.tax)} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <InfoRow icon={FaCreditCard} label="Payment Method" value={transaction.paymentMethod || '—'} />

@@ -5,20 +5,20 @@ import {
   FaArrowLeft,
   FaCalendarAlt,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaSpinner,
   FaEdit,
   FaCheckCircle,
   FaTimesCircle,
   FaClock,
-  FaDollarSign,
   FaMapMarkerAlt,
   FaUserTie,
   FaStickyNote,
   FaExclamationCircle
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+import normalizeAppointment from '../../../../utils/appointment/normalizeAppointment'
 
 const AppointmentDetails = () => {
   const navigate = useNavigate()
@@ -51,11 +51,11 @@ const AppointmentDetails = () => {
       // Use getAppointments and filter, or create a separate endpoint call
       // For now, we'll get all and filter client-side, but ideally should have getAppointmentById
       const result = await managerService.getAppointments({})
-      
+
       if (result.success) {
-        const appointments = result.data?.data || result.data || []
+        const appointments = (result.data?.data || result.data || []).map(normalizeAppointment)
         const foundAppointment = appointments.find(apt => apt._id === appointmentId)
-        
+
         if (foundAppointment) {
           setAppointment(foundAppointment)
           setStatusUpdate({
@@ -96,7 +96,18 @@ const AppointmentDetails = () => {
       if (result.success) {
         toast.success('Appointment status updated successfully')
         setShowStatusModal(false)
-        fetchAppointmentDetails()
+
+        const updatedData = normalizeAppointment(result.data?.data || {
+          ...appointment,
+          status: statusUpdate.status,
+          completionNotes: statusUpdate.notes
+        })
+
+        setAppointment(updatedData)
+        setStatusUpdate({
+          status: updatedData.status || '',
+          notes: updatedData.completionNotes || ''
+        })
       } else {
         toast.error(result.error || 'Failed to update appointment status')
       }
@@ -244,8 +255,10 @@ const AppointmentDetails = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmation Code</label>
-                <p className="text-gray-900 font-mono">{appointment.confirmationCode || 'N/A'}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Booking Number</label>
+                <p className="text-gray-900 font-mono">
+                  {appointment.bookingNumber || appointment.confirmationCode || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
@@ -282,7 +295,7 @@ const AppointmentDetails = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <FaPhone className="text-gray-400" />
+                <FaPhoneAlt className="text-gray-400" />
                 <div>
                   <p className="text-sm font-medium text-gray-700">Phone</p>
                   <p className="text-gray-900">{appointment.customer?.phone || 'N/A'}</p>
@@ -363,13 +376,13 @@ const AppointmentDetails = () => {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Amount</span>
                 <span className="text-lg font-bold text-green-600">
-                  {formatCurrency(appointment.finalPrice || appointment.totalPrice || 0)}
+                  {formatCurrency(appointment.totalAmount || appointment.finalPrice || appointment.totalPrice || 0)}
                 </span>
               </div>
-              {appointment.basePrice && (
+              {appointment.servicePrice && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Base Price</span>
-                  <span className="text-gray-900">{formatCurrency(appointment.basePrice)}</span>
+                  <span className="text-gray-900">{formatCurrency(appointment.servicePrice)}</span>
                 </div>
               )}
               {appointment.discount > 0 && (
@@ -384,6 +397,22 @@ const AppointmentDetails = () => {
                   <span className="text-gray-900">{formatCurrency(appointment.tax)}</span>
                 </div>
               )}
+              {appointment.paidAmount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Amount Paid</span>
+                  <span className="text-gray-900">{formatCurrency(appointment.paidAmount)}</span>
+                </div>
+              )}
+              {appointment.advanceAmount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Advance Amount</span>
+                  <span className="text-gray-900">{formatCurrency(appointment.advanceAmount)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Payment Status</span>
+                <span className="text-gray-900 capitalize">{appointment.paymentStatus}</span>
+              </div>
             </div>
           </div>
 
@@ -395,10 +424,16 @@ const AppointmentDetails = () => {
                 <p className="text-xs text-gray-500">Created</p>
                 <p className="text-sm text-gray-900">{formatDate(appointment.createdAt)}</p>
               </div>
-              {appointment.confirmedAt && (
+              {appointment.confirmationSentAt && (
                 <div>
-                  <p className="text-xs text-gray-500">Confirmed</p>
-                  <p className="text-sm text-gray-900">{formatDate(appointment.confirmedAt)}</p>
+                  <p className="text-xs text-gray-500">Confirmation Sent</p>
+                  <p className="text-sm text-gray-900">{formatDate(appointment.confirmationSentAt)}</p>
+                </div>
+              )}
+              {appointment.checkInTime && (
+                <div>
+                  <p className="text-xs text-gray-500">Check-In</p>
+                  <p className="text-sm text-gray-900">{formatDate(appointment.checkInTime)}</p>
                 </div>
               )}
               {appointment.completedAt && (

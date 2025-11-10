@@ -11,7 +11,7 @@ import {
   FaPhone,
   FaEnvelope,
   FaMapMarkerAlt,
-  FaDollarSign,
+  FaRupeeSign,
   FaUserTie,
   FaPrint,
   FaShare,
@@ -331,7 +331,7 @@ const AppointmentStatus = () => {
           {/* Pricing */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FaDollarSign className="text-green-600" />
+              <FaRupeeSign className="text-green-600" />
               Pricing
             </h3>
             <div className="space-y-2">

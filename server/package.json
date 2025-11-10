@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "seed:manager-customers": "node scripts/seedManagerCustomers.js",
+    "seed:manager-appointments": "node scripts/seedManagerAppointments.js",
+    "seed:manager-transactions": "node scripts/seedManagerTransactions.js"
   },
   "keywords": [],
   "author": "",

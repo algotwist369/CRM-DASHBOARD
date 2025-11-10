@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   FaCalendarAlt,
-  FaDollarSign,
+  FaRupeeSign,
   FaUsers,
   FaStickyNote,
   FaCloudSun,
@@ -190,7 +190,7 @@ const EditDailyBusiness = () => {
               Total Expenses (₹)
             </label>
             <div className="relative">
-              <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="number"
                 name="totalExpenses"

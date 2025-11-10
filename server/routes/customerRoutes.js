@@ -15,6 +15,12 @@ router.post("/", customerController.createCustomer);
 // Get customers with filtering and pagination
 router.get("/", customerController.getCustomers);
 
+// Customer analytics & insights
+router.get("/analytics", customerController.getCustomerAnalytics);
+router.get("/analytics/segments", customerController.getCustomerSegments);
+router.get("/analytics/insights", customerController.getCustomerInsights);
+router.post("/analytics/target", customerController.getTargetCustomers);
+
 // Get customer statistics
 router.get("/stats", customerController.getCustomerStats);
 

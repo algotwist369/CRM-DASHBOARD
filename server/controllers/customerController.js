@@ -3,6 +3,45 @@ const Customer = require("../models/Customer");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
+const {
+    getCustomerAnalytics: buildCustomerAnalytics,
+    getCustomerInsights: buildCustomerInsights,
+    getTargetCustomers: buildTargetCustomers
+} = require("../utils/customerAnalytics");
+
+const resolveBusinessContext = async (req, { requireBusinessIdForAdmin = false } = {}) => {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    const { businessId } = req.query;
+
+    if (userRole === 'admin') {
+        if (requireBusinessIdForAdmin && !businessId) {
+            return { error: { status: 400, message: "Business ID is required" } };
+        }
+        if (!businessId) {
+            return { error: { status: 400, message: "Business ID is required" } };
+        }
+        const business = await Business.findOne({ _id: businessId, admin: userId });
+        if (!business) {
+            return { error: { status: 404, message: "Business not found or access denied" } };
+        }
+        return { business };
+    }
+
+    if (userRole === 'manager') {
+        const manager = await Manager.findById(userId);
+        if (!manager) {
+            return { error: { status: 404, message: "Manager not found" } };
+        }
+        const business = await Business.findById(manager.business);
+        if (!business) {
+            return { error: { status: 404, message: "Business not found or access denied" } };
+        }
+        return { business, manager };
+    }
+
+    return { error: { status: 403, message: "Access denied" } };
+};
 
 // ================== Create Customer ==================
 const createCustomer = async (req, res, next) => {
@@ -583,6 +622,83 @@ const redeemLoyaltyPoints = async (req, res, next) => {
     }
 };
 
+const respondWithCustomerAnalytics = async (req, res, next) => {
+    try {
+        const { business, error } = await resolveBusinessContext(req, { requireBusinessIdForAdmin: req.user.role === 'admin' });
+        if (error) {
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
+
+        const { startDate, endDate, groupBy } = req.query;
+        const cacheKey = `business:${business._id}:customer:analytics:${startDate || 'all'}:${endDate || 'all'}:${groupBy || 'month'}`;
+
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", data: cachedData });
+        }
+
+        const analytics = await buildCustomerAnalytics(business._id, { startDate, endDate, groupBy });
+        await setCache(cacheKey, analytics, 300);
+
+        return res.json({
+            success: true,
+            data: analytics
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getCustomerInsightsData = async (req, res, next) => {
+    try {
+        const { business, error } = await resolveBusinessContext(req, { requireBusinessIdForAdmin: req.user.role === 'admin' });
+        if (error) {
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
+
+        const cacheKey = `business:${business._id}:customer:insights`;
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", data: cachedData });
+        }
+
+        const insights = await buildCustomerInsights(business._id);
+        await setCache(cacheKey, insights, 300);
+
+        return res.json({
+            success: true,
+            data: insights
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getTargetCustomersData = async (req, res, next) => {
+    try {
+        const { business, error } = await resolveBusinessContext(req, { requireBusinessIdForAdmin: req.user.role === 'admin' });
+        if (error) {
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
+
+        const criteria = req.body || {};
+        const customers = await buildTargetCustomers(business._id, criteria);
+
+        return res.json({
+            success: true,
+            data: {
+                total: customers.length,
+                customers
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getCustomerAnalyticsData = respondWithCustomerAnalytics;
+const getCustomerSegmentsData = respondWithCustomerAnalytics;
+
 module.exports = {
     createCustomer,
     getCustomers,
@@ -591,5 +707,9 @@ module.exports = {
     deleteCustomer,
     getCustomerStats,
     addLoyaltyPoints,
-    redeemLoyaltyPoints
+    redeemLoyaltyPoints,
+    getCustomerAnalytics: getCustomerAnalyticsData,
+    getCustomerSegments: getCustomerSegmentsData,
+    getCustomerInsights: getCustomerInsightsData,
+    getTargetCustomers: getTargetCustomersData
 };

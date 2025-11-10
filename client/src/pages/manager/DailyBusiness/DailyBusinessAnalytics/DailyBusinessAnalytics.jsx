@@ -5,7 +5,7 @@ import {
   FaChartBar,
   FaChartPie,
   FaUsers,
-  FaDollarSign,
+  FaRupeeSign,
   FaArrowLeft,
   FaSpinner,
   FaArrowUp,
@@ -144,7 +144,7 @@ const DailyBusinessAnalytics = () => {
             {analytics.totalRevenue !== undefined && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-2">
-                  <FaDollarSign className="text-green-600 text-2xl" />
+                  <FaRupeeSign className="text-green-600 text-2xl" />
                   {analytics.revenueGrowth !== undefined && (
                     <span className={`flex items-center gap-1 text-sm ${
                       analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'
@@ -193,7 +193,7 @@ const DailyBusinessAnalytics = () => {
 
             {analytics.totalExpenses !== undefined && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <FaDollarSign className="text-red-600 text-2xl mb-2" />
+                <FaRupeeSign className="text-red-600 text-2xl mb-2" />
                 <p className="text-sm text-gray-500 mb-1">Total Expenses</p>
                 <p className="text-2xl font-bold text-red-600">
                   {formatCurrency(analytics.totalExpenses)}

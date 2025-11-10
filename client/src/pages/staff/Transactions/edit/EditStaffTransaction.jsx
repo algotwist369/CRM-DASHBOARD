@@ -7,7 +7,7 @@ import {
   FaEnvelope,
   FaClipboardList,
   FaTags,
-  FaDollarSign,
+  FaRupeeSign,
   FaPercent,
   FaCreditCard,
   FaStickyNote,
@@ -292,7 +292,7 @@ const EditStaffTransaction = () => {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Pricing & Payment</h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <InputField
-                icon={FaDollarSign}
+                icon={FaRupeeSign}
                 label="Base Price (₹)"
                 name="basePrice"
                 type="number"
@@ -315,7 +315,7 @@ const EditStaffTransaction = () => {
                 error={errors.discount}
               />
               <InputField
-                icon={FaDollarSign}
+                icon={FaRupeeSign}
                 label="Tax (₹)"
                 name="tax"
                 type="number"

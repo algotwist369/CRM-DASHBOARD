@@ -19,7 +19,7 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaTrophy,
-  FaDollarSign,
+  FaRupeeSign,
   FaPercentage,
   FaMousePointer,
   FaEnvelopeOpen,
@@ -237,7 +237,7 @@ const CampaignList = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Total Revenue</span>
-            <FaDollarSign className="text-green-500" />
+            <FaRupeeSign className="text-green-500" />
           </div>
           <p className="text-3xl font-bold text-gray-900">
             {formatCurrency(campaigns.reduce((sum, c) => sum + (c.performance?.totalRevenue || 0), 0))}

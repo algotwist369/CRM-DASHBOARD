@@ -11,7 +11,7 @@ import {
   FaSpinner,
   FaArrowUp,
   FaArrowDown,
-  FaDollarSign,
+  FaRupeeSign,
   FaStar,
   FaCalendarAlt,
   FaBullseye
@@ -93,9 +93,9 @@ const CustomerInsights = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/customers')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className=" p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 border border-gray-300"
           >
-            <FaArrowLeft className="text-gray-600" />
+            <FaArrowLeft className="text-gray-600" /> <span className="text-gray-600">Back</span>
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -194,7 +194,7 @@ const CustomerInsights = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-gray-700">Customer Value</h3>
-                <FaDollarSign className="text-green-500" />
+                <FaRupeeSign className="text-green-500" />
               </div>
               <div className="space-y-2 text-sm">
                 <div>

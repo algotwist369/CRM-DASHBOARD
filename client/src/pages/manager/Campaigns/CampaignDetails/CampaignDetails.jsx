@@ -12,7 +12,7 @@ import {
   FaPlay,
   FaPause,
   FaStop,
-  FaDollarSign,
+  FaRupeeSign,
   FaPercentage,
   FaEnvelopeOpen,
   FaMousePointer,

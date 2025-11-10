@@ -13,6 +13,10 @@ const AppointmentCalendar = ({
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState(view)
 
+  useEffect(() => {
+    setViewMode(view)
+  }, [view])
+
   const today = new Date()
   const currentMonth = currentDate.getMonth()
   const currentYear = currentDate.getFullYear()

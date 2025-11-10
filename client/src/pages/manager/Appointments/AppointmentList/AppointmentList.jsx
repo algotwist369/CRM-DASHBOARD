@@ -10,7 +10,7 @@ import {
   FaEdit,
   FaClock,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaMapMarkerAlt,
   FaCheckCircle,
@@ -20,6 +20,7 @@ import {
   FaArrowDown
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+import normalizeAppointment from '../../../../utils/appointment/normalizeAppointment'
 
 const AppointmentList = () => {
   const navigate = useNavigate()
@@ -56,14 +57,17 @@ const AppointmentList = () => {
 
       if (result.success) {
         let fetchedAppointments = result.data?.data || result.data || []
+        fetchedAppointments = fetchedAppointments.map(normalizeAppointment)
         
         // Client-side search
         if (searchTerm) {
+          const term = searchTerm.toLowerCase()
           fetchedAppointments = fetchedAppointments.filter(apt =>
-            apt.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            apt.customer?.name?.toLowerCase().includes(term) ||
             apt.customer?.phone?.includes(searchTerm) ||
-            apt.customer?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            apt.confirmationCode?.toLowerCase().includes(searchTerm.toLowerCase())
+            apt.customer?.email?.toLowerCase().includes(term) ||
+            apt.confirmationCode?.toLowerCase().includes(term) ||
+            apt.bookingNumber?.toLowerCase().includes(term)
           )
         }
 
@@ -168,7 +172,13 @@ const AppointmentList = () => {
       if (result.success) {
         toast.success('Appointment status updated successfully')
         setStatusUpdateModal({ show: false, appointment: null })
-        fetchAppointments() // Refresh list
+        setAppointments(prev =>
+          prev.map(item =>
+            item._id === appointment._id
+              ? normalizeAppointment({ ...item, ...result.data?.data, status: newStatus, staffNotes: notes })
+              : item
+          )
+        )
       } else {
         toast.error(result.error || 'Failed to update appointment status')
       }
@@ -189,7 +199,14 @@ const AppointmentList = () => {
 
       if (result.success) {
         toast.success('Status updated successfully')
-        fetchAppointments() // Refresh list
+        const updated = result.data?.data || { status: newStatus }
+        setAppointments(prev =>
+          prev.map(item =>
+            item._id === appointment._id
+              ? normalizeAppointment({ ...item, ...updated })
+              : item
+          )
+        )
       } else {
         toast.error(result.error || 'Failed to update status')
       }
@@ -317,7 +334,7 @@ const AppointmentList = () => {
                             )}
                           </div>
                           {appointment.confirmationCode && (
-                            <div className="text-xs text-gray-500">Code: {appointment.confirmationCode}</div>
+                            <div className="text-xs text-gray-500">booking ID: {appointment.confirmationCode}</div>
                           )}
                         </div>
                       </td>
@@ -325,7 +342,7 @@ const AppointmentList = () => {
                         <div className="text-sm">
                           <div className="font-medium text-gray-900">{appointment.customer?.name || 'N/A'}</div>
                           <div className="text-xs text-gray-500 flex items-center gap-2">
-                            <FaPhone className="text-gray-400" />
+                            <FaPhoneAlt className="text-gray-400" />
                             {appointment.customer?.phone || 'N/A'}
                           </div>
                         </div>
@@ -347,7 +364,7 @@ const AppointmentList = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-gray-900">
-                          {formatCurrency(appointment.finalPrice || appointment.totalPrice || 0)}
+                          {formatCurrency(appointment.totalAmount || appointment.finalPrice || appointment.totalPrice || 0)}
                         </div>
                       </td>
                       <td className="px-6 py-4">

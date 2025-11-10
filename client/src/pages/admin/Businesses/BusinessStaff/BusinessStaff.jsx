@@ -5,7 +5,7 @@ import {
   FaPhone,
   FaEnvelope,
   FaIdBadge,
-  FaDollarSign,
+  FaRupeeSign,
   FaStar,
   FaSpinner,
   FaChevronLeft,
@@ -295,7 +295,7 @@ const BusinessStaff = () => {
                       <div>
                         <p className="text-xs text-gray-500">Revenue</p>
                         <p className="font-semibold text-gray-800 flex items-center justify-center gap-1">
-                          <FaDollarSign className="text-xs" />
+                          <FaRupeeSign className="text-xs" />
                           {member.performance.totalRevenue.toLocaleString("en-IN")}
                         </p>
                       </div>

@@ -13,7 +13,7 @@ import {
   FaUserClock,
   FaCrown,
   FaSearch,
-  FaDollarSign,
+  FaRupeeSign,
   FaChartLine
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
@@ -133,9 +133,9 @@ const CustomerSegments = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/customers')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className=" p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 border border-gray-300"
           >
-            <FaArrowLeft className="text-gray-600" />
+            <FaArrowLeft className="text-gray-600" /> <span className="text-gray-600">Back</span>
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

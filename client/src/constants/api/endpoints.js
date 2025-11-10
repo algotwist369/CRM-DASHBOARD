@@ -115,9 +115,9 @@ export const endpoints = {
     stats: `${API_BASE_URL}/customers/stats`,
     addNote: (id) => `${API_BASE_URL}/customers/${id}/notes`,
     getTimeline: (id) => `${API_BASE_URL}/customers/${id}/timeline`,
-    getSegments: `${API_BASE_URL}/notifications/analytics/customers`,
-    getAnalytics: `${API_BASE_URL}/notifications/analytics/customers`,
-    getInsights: `${API_BASE_URL}/notifications/analytics/customers`,
+    getSegments: `${API_BASE_URL}/customers/analytics/segments`,
+    getAnalytics: `${API_BASE_URL}/customers/analytics`,
+    getInsights: `${API_BASE_URL}/customers/analytics/insights`,
     getTargetCustomers: `${API_BASE_URL}/customers/analytics/target`,
   },
 

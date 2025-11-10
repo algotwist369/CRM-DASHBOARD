@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
   FaCalendarAlt,
-  FaDollarSign,
+  FaRupeeSign,
   FaUsers,
   FaStickyNote,
   FaCloudSun,
@@ -156,7 +156,7 @@ const DailyBusinessDetails = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
               <div className="flex items-center gap-3 mb-2">
-                <FaDollarSign className="text-green-600 text-2xl" />
+                <FaRupeeSign className="text-green-600 text-2xl" />
                 <div>
                   <p className="text-sm text-gray-500">Total Income</p>
                   <p className="text-2xl font-bold text-gray-900">

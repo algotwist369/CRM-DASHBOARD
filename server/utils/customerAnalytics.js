@@ -12,41 +12,31 @@ const Transaction = require("../models/Transaction");
  */
 const getCustomerAnalytics = async (businessId, filters = {}) => {
     const { startDate, endDate } = filters;
-    
-    // Get customer segments (without date filter - segments should always show all customers)
-    const segments = await getCustomerSegments(businessId);
-    
-    // Get total customers (always count all customers for the business, not filtered by date)
-    const totalCustomers = await Customer.countDocuments({ business: businessId });
-    
-    // Get new customers in date range (if date filter provided)
+
+    const customers = await Customer.find({ business: businessId })
+        .select('createdAt stats totalVisits totalSpent averageSpent loyaltyPoints averageRating lastVisit firstVisit isActive');
+
+    const segments = await getCustomerSegments(businessId, customers);
+    const totalCustomers = customers.length;
+
     let newCustomersInRange = segments.new;
     if (startDate && endDate) {
-        newCustomersInRange = await Customer.countDocuments({
-            business: businessId,
-            'stats.totalVisits': 1,
-            createdAt: {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate)
-            }
-        });
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        newCustomersInRange = customers.filter((customer) => {
+            if (!customer.createdAt) return false;
+            const createdAt = new Date(customer.createdAt);
+            const visits = getStatValue(customer, 'totalVisits', 0);
+            return createdAt >= start && createdAt <= end && visits <= 1;
+        }).length;
     }
-    
-    // Get customer lifecycle data
-    const lifecycleData = await getCustomerLifecycleData(businessId, filters);
-    
-    // Get customer value analysis
-    const valueAnalysis = await getCustomerValueAnalysis(businessId, filters);
-    
-    // Get customer retention data
-    const retentionData = await getCustomerRetentionData(businessId, filters);
-    
-    // Get customer preferences
+
+    const lifecycleData = await getCustomerLifecycleData(businessId, filters, customers);
+    const valueAnalysis = await getCustomerValueAnalysis(businessId, filters, customers);
+    const retentionData = await getCustomerRetentionData(businessId, filters, customers);
     const preferences = await getCustomerPreferences(businessId);
-    
-    // Get customer growth over time
     const growthData = await getCustomerGrowthData(businessId, filters);
-    
+
     return {
         overview: {
             totalCustomers,
@@ -69,15 +59,18 @@ const getCustomerAnalytics = async (businessId, filters = {}) => {
  * @param {string} businessId - Business ID
  * @returns {Object} - Customer segments
  */
-const getCustomerSegments = async (businessId) => {
+const getCustomerSegments = async (businessId, customers = null) => {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
     const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
-    
-    // Check if business has any customers first
-    const totalCustomers = await Customer.countDocuments({ business: businessId });
-    
-    if (totalCustomers === 0) {
+
+    let dataset = customers;
+    if (!dataset) {
+        dataset = await Customer.find({ business: businessId })
+            .select('stats totalVisits totalSpent lastVisit isActive');
+    }
+
+    if (!dataset || dataset.length === 0) {
         return {
             new: 0,
             returning: 0,
@@ -87,37 +80,43 @@ const getCustomerSegments = async (businessId) => {
             recent: 0
         };
     }
-    
+
     const segments = {
-        new: await Customer.countDocuments({
-            business: businessId,
-            'stats.totalVisits': { $exists: true, $eq: 1 }
-        }),
-        returning: await Customer.countDocuments({
-            business: businessId,
-            'stats.totalVisits': { $gte: 2, $lte: 4 }
-        }),
-        loyal: await Customer.countDocuments({
-            business: businessId,
-            'stats.totalVisits': { $gte: 5 }
-        }),
-        inactive: await Customer.countDocuments({
-            business: businessId,
-            $or: [
-                { 'stats.lastVisit': { $exists: false } },
-                { 'stats.lastVisit': { $lt: ninetyDaysAgo } }
-            ]
-        }),
-        highValue: await Customer.countDocuments({
-            business: businessId,
-            'stats.totalSpent': { $gte: 5000 }
-        }),
-        recent: await Customer.countDocuments({
-            business: businessId,
-            'stats.lastVisit': { $gte: thirtyDaysAgo }
-        })
+        new: 0,
+        returning: 0,
+        loyal: 0,
+        inactive: 0,
+        highValue: 0,
+        recent: 0
     };
-    
+
+    dataset.forEach((customer) => {
+        const visits = getStatValue(customer, 'totalVisits', 0);
+        const totalSpent = getStatValue(customer, 'totalSpent', 0);
+        const lastVisit = getDateValue(customer, 'lastVisit');
+        const isActive = customer.isActive !== undefined ? customer.isActive : true;
+
+        if (visits <= 1) {
+            segments.new += 1;
+        } else if (visits >= 2 && visits <= 4) {
+            segments.returning += 1;
+        } else if (visits >= 5) {
+            segments.loyal += 1;
+        }
+
+        if (totalSpent >= 5000) {
+            segments.highValue += 1;
+        }
+
+        if (lastVisit && lastVisit >= thirtyDaysAgo) {
+            segments.recent += 1;
+        }
+
+        if (!isActive || !lastVisit || lastVisit < ninetyDaysAgo) {
+            segments.inactive += 1;
+        }
+    });
+
     return segments;
 };
 
@@ -127,37 +126,52 @@ const getCustomerSegments = async (businessId) => {
  * @param {Object} filters - Date filters
  * @returns {Object} - Lifecycle data
  */
-const getCustomerLifecycleData = async (businessId, filters = {}) => {
+const getCustomerLifecycleData = async (businessId, filters = {}, customers = null) => {
     const { startDate, endDate } = filters;
-    
-    let matchQuery = { business: businessId };
-    if (startDate && endDate) {
-        matchQuery.createdAt = {
-            $gte: new Date(startDate),
-            $lte: new Date(endDate)
+
+    let dataset = customers;
+    if (!dataset) {
+        const query = { business: businessId };
+        if (startDate && endDate) {
+            query.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+        dataset = await Customer.find(query)
+            .select('stats totalSpent totalVisits loyaltyPoints averageRating createdAt');
+    } else if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        dataset = dataset.filter((customer) => {
+            if (!customer.createdAt) return false;
+            const createdAt = new Date(customer.createdAt);
+            return createdAt >= start && createdAt <= end;
+        });
+    }
+
+    if (!dataset || dataset.length === 0) {
+        return {
+            avgFirstVisit: 0,
+            avgTotalSpent: 0,
+            avgLoyaltyPoints: 0,
+            avgRating: 0,
+            totalRevenue: 0
         };
     }
-    
-    const lifecycleData = await Customer.aggregate([
-        { $match: matchQuery },
-        {
-            $group: {
-                _id: null,
-                avgFirstVisit: { $avg: { $ifNull: ['$stats.totalVisits', 0] } },
-                avgTotalSpent: { $avg: { $ifNull: ['$stats.totalSpent', 0] } },
-                avgLoyaltyPoints: { $avg: { $ifNull: ['$stats.loyaltyPoints', 0] } },
-                avgRating: { $avg: { $ifNull: ['$stats.averageRating', 0] } },
-                totalRevenue: { $sum: { $ifNull: ['$stats.totalSpent', 0] } }
-            }
-        }
-    ]);
-    
-    return lifecycleData[0] || {
-        avgFirstVisit: 0,
-        avgTotalSpent: 0,
-        avgLoyaltyPoints: 0,
-        avgRating: 0,
-        totalRevenue: 0
+
+    const count = dataset.length;
+    const totalVisitsSum = dataset.reduce((sum, customer) => sum + getStatValue(customer, 'totalVisits', 0), 0);
+    const totalSpentSum = dataset.reduce((sum, customer) => sum + getStatValue(customer, 'totalSpent', 0), 0);
+    const loyaltyPointsSum = dataset.reduce((sum, customer) => sum + getStatValue(customer, 'loyaltyPoints', 0), 0);
+    const ratingSum = dataset.reduce((sum, customer) => sum + getStatValue(customer, 'averageRating', 0), 0);
+
+    return {
+        avgFirstVisit: count > 0 ? totalVisitsSum / count : 0,
+        avgTotalSpent: count > 0 ? totalSpentSum / count : 0,
+        avgLoyaltyPoints: count > 0 ? loyaltyPointsSum / count : 0,
+        avgRating: count > 0 ? ratingSum / count : 0,
+        totalRevenue: totalSpentSum
     };
 };
 
@@ -171,17 +185,32 @@ const getStatValue = (customer, key, fallback = 0) => {
     return fallback;
 };
 
+const getDateValue = (customer, key) => {
+    let value = null;
+    if (customer?.stats && customer.stats[key]) {
+        value = customer.stats[key];
+    } else if (customer && customer[key]) {
+        value = customer[key];
+    }
+    return value ? new Date(value) : null;
+};
+
 /**
  * Get customer value analysis
  * @param {string} businessId - Business ID
  * @param {Object} filters - Date filters
  * @returns {Object} - Value analysis
  */
-const getCustomerValueAnalysis = async (businessId, filters = {}) => {
-    const customers = await Customer.find({ business: businessId })
-        .select('stats totalSpent totalVisits averageSpent loyaltyPoints averageRating');
-    
-    if (customers.length === 0) {
+const getCustomerValueAnalysis = async (businessId, filters = {}, customers = null) => {
+    let dataset = customers;
+    if (!dataset) {
+        dataset = await Customer.find({ business: businessId })
+            .select('stats totalSpent totalVisits averageSpent loyaltyPoints averageRating');
+    } else {
+        dataset = customers.map((customer) => (customer?.toObject ? customer.toObject() : customer));
+    }
+
+    if (!dataset || dataset.length === 0) {
         return {
             avgFirstVisit: 0,
             avgTotalSpent: 0,
@@ -193,15 +222,15 @@ const getCustomerValueAnalysis = async (businessId, filters = {}) => {
             averageValue: 0
         };
     }
-    
+
     // Calculate averages from customer stats
-    const totalSpent = customers.reduce((sum, c) => sum + getStatValue(c, 'totalSpent', 0), 0);
-    const totalVisits = customers.reduce((sum, c) => sum + getStatValue(c, 'totalVisits', 0), 0);
-    const totalRating = customers.reduce((sum, c) => sum + getStatValue(c, 'averageRating', 0), 0);
-    const totalLoyaltyPoints = customers.reduce((sum, c) => sum + getStatValue(c, 'loyaltyPoints', 0), 0);
-    
+    const totalSpent = dataset.reduce((sum, c) => sum + getStatValue(c, 'totalSpent', 0), 0);
+    const totalVisits = dataset.reduce((sum, c) => sum + getStatValue(c, 'totalVisits', 0), 0);
+    const totalRating = dataset.reduce((sum, c) => sum + getStatValue(c, 'averageRating', 0), 0);
+    const totalLoyaltyPoints = dataset.reduce((sum, c) => sum + getStatValue(c, 'loyaltyPoints', 0), 0);
+
     // Get top 10 customers
-    const topCustomers = customers
+    const topCustomers = dataset
         .slice()
         .sort((a, b) => (getStatValue(b, 'totalSpent', 0) - getStatValue(a, 'totalSpent', 0)))
         .slice(0, 10)
@@ -222,21 +251,21 @@ const getCustomerValueAnalysis = async (businessId, filters = {}) => {
     
     // Value distribution
     const valueRanges = {
-        low: customers.filter(c => getStatValue(c, 'totalSpent', 0) < 1000).length,
-        medium: customers.filter(c => {
+        low: dataset.filter(c => getStatValue(c, 'totalSpent', 0) < 1000).length,
+        medium: dataset.filter(c => {
             const spend = getStatValue(c, 'totalSpent', 0);
             return spend >= 1000 && spend < 5000;
         }).length,
-        high: customers.filter(c => getStatValue(c, 'totalSpent', 0) >= 5000).length
+        high: dataset.filter(c => getStatValue(c, 'totalSpent', 0) >= 5000).length
     };
-    
-    const denominator = customers.length > 0 ? customers.length : 1;
-    const averageValue = customers.length > 0 ? totalSpent / denominator : 0;
-    const avgFirstVisit = customers.length > 0 ? totalVisits / denominator : 0;
-    const avgTotalSpent = customers.length > 0 ? totalSpent / denominator : 0;
-    const avgRating = customers.length > 0 ? totalRating / denominator : 0;
-    const avgLoyaltyPoints = customers.length > 0 ? totalLoyaltyPoints / denominator : 0;
-    
+
+    const denominator = dataset.length > 0 ? dataset.length : 1;
+    const averageValue = dataset.length > 0 ? totalSpent / denominator : 0;
+    const avgFirstVisit = dataset.length > 0 ? totalVisits / denominator : 0;
+    const avgTotalSpent = dataset.length > 0 ? totalSpent / denominator : 0;
+    const avgRating = dataset.length > 0 ? totalRating / denominator : 0;
+    const avgLoyaltyPoints = dataset.length > 0 ? totalLoyaltyPoints / denominator : 0;
+
     return {
         avgFirstVisit,
         avgTotalSpent,
@@ -255,45 +284,48 @@ const getCustomerValueAnalysis = async (businessId, filters = {}) => {
  * @param {Object} filters - Date filters
  * @returns {Object} - Retention data
  */
-const getCustomerRetentionData = async (businessId, filters = {}) => {
+const getCustomerRetentionData = async (businessId, filters = {}, customers = null) => {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
     const sixtyDaysAgo = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));
     const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
-    
+
+    let dataset = customers;
+    if (!dataset) {
+        dataset = await Customer.find({ business: businessId })
+            .select('stats.lastVisit lastVisit');
+    }
+
+    if (!dataset || dataset.length === 0) {
+        return {
+            last30Days: 0,
+            last60Days: 0,
+            last90Days: 0,
+            over90Days: 0
+        };
+    }
+
     const retentionData = {
-        last30Days: await Customer.countDocuments({
-            business: businessId,
-            $or: [
-                { 'stats.lastVisit': { $gte: thirtyDaysAgo } },
-                { lastVisit: { $gte: thirtyDaysAgo } }
-            ]
-        }),
-        last60Days: await Customer.countDocuments({
-            business: businessId,
-            $or: [
-                { 'stats.lastVisit': { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } },
-                { lastVisit: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }
-            ]
-        }),
-        last90Days: await Customer.countDocuments({
-            business: businessId,
-            $or: [
-                { 'stats.lastVisit': { $gte: ninetyDaysAgo, $lt: sixtyDaysAgo } },
-                { lastVisit: { $gte: ninetyDaysAgo, $lt: sixtyDaysAgo } }
-            ]
-        }),
-        over90Days: await Customer.countDocuments({
-            business: businessId,
-            $or: [
-                { 'stats.lastVisit': { $lt: ninetyDaysAgo } },
-                { lastVisit: { $lt: ninetyDaysAgo } },
-                { lastVisit: { $exists: false } },
-                { 'stats.lastVisit': { $exists: false } }
-            ]
-        })
+        last30Days: 0,
+        last60Days: 0,
+        last90Days: 0,
+        over90Days: 0
     };
-    
+
+    dataset.forEach((customer) => {
+        const lastVisit = getDateValue(customer, 'lastVisit');
+
+        if (lastVisit && lastVisit >= thirtyDaysAgo) {
+            retentionData.last30Days += 1;
+        } else if (lastVisit && lastVisit >= sixtyDaysAgo) {
+            retentionData.last60Days += 1;
+        } else if (lastVisit && lastVisit >= ninetyDaysAgo) {
+            retentionData.last90Days += 1;
+        } else {
+            retentionData.over90Days += 1;
+        }
+    });
+
     return retentionData;
 };
 
@@ -392,110 +424,83 @@ const getCustomerGrowthData = async (businessId, filters = {}) => {
  * @param {Object} criteria - Targeting criteria
  * @returns {Array} - List of customer IDs
  */
-const getTargetCustomers = async (businessId, criteria) => {
-    let query = { business: businessId };
-    
-    // Apply targeting criteria
-    if (criteria.customerType) {
-        switch (criteria.customerType) {
-            case 'new':
-                query['stats.totalVisits'] = 1;
-                break;
-            case 'returning':
-                query['stats.totalVisits'] = { $gte: 2, $lte: 4 };
-                break;
-            case 'loyalty':
-                query['stats.totalVisits'] = { $gte: 5 };
-                break;
-            case 'inactive':
-                const ninetyDaysAgo = new Date(Date.now() - (90 * 24 * 60 * 60 * 1000));
-                query['stats.lastVisit'] = { $lt: ninetyDaysAgo };
-                break;
-            case 'high_value':
-                query['stats.totalSpent'] = { $gte: 5000 };
-                break;
-        }
-    }
-    
-    if (criteria.minVisits) {
-        query.$or = [
-            { 'stats.totalVisits': { $gte: criteria.minVisits } },
-            { totalVisits: { $gte: criteria.minVisits } }
-        ];
-    }
-    if (criteria.maxVisits) {
-        const maxVisitsCondition = {
-            $or: [
-                { 'stats.totalVisits': { $lte: criteria.maxVisits } },
-                { totalVisits: { $lte: criteria.maxVisits } }
-            ]
-        };
-        query.$and = query.$and || [];
-        query.$and.push(maxVisitsCondition);
-    }
-    if (criteria.minSpent) {
-        query.$and = query.$and || [];
-        query.$and.push({
-            $or: [
-                { 'stats.totalSpent': { $gte: criteria.minSpent } },
-                { totalSpent: { $gte: criteria.minSpent } }
-            ]
-        });
-    }
-    if (criteria.maxSpent) {
-        query.$and = query.$and || [];
-        query.$and.push({
-            $or: [
-                { 'stats.totalSpent': { $lte: criteria.maxSpent } },
-                { totalSpent: { $lte: criteria.maxSpent } }
-            ]
-        });
-    }
-    if (criteria.lastVisitDays) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - criteria.lastVisitDays);
-        query.$and = query.$and || [];
-        query.$and.push({
-            $or: [
-                { 'stats.lastVisit': { $gte: cutoffDate } },
-                { lastVisit: { $gte: cutoffDate } }
-            ]
-        });
-    }
-    if (criteria.preferredServices?.length) {
-        query['preferences.preferredServices'] = { $in: criteria.preferredServices };
-    }
+const getTargetCustomers = async (businessId, criteria = {}) => {
+    const query = { business: businessId };
+
     if (criteria.gender?.length) {
         query.gender = { $in: criteria.gender };
-    }
-    if (criteria.ageRange) {
-        const now = new Date();
-        if (criteria.ageRange.min) {
-            const maxBirthDate = new Date(now.getFullYear() - criteria.ageRange.min, now.getMonth(), now.getDate());
-            query.dateOfBirth = { $lte: maxBirthDate };
-        }
-        if (criteria.ageRange.max) {
-            const minBirthDate = new Date(now.getFullYear() - criteria.ageRange.max, now.getMonth(), now.getDate());
-            query.dateOfBirth = { ...query.dateOfBirth, $gte: minBirthDate };
-        }
     }
     if (criteria.location?.city) query['address.city'] = criteria.location.city;
     if (criteria.location?.state) query['address.state'] = criteria.location.state;
     if (criteria.location?.pincode) query['address.pincode'] = criteria.location.pincode;
-    
-    // Get customers with additional details for better targeting
+
     const customers = await Customer.find(query)
-        .select('_id name firstName lastName email phone dateOfBirth gender address stats.totalVisits stats.totalSpent stats.lastVisit totalVisits totalSpent lastVisit preferences.preferredServices')
+        .select('firstName lastName email phone gender dateOfBirth address preferences stats totalVisits totalSpent averageSpent loyaltyPoints lastVisit createdAt isActive customerType')
         .lean();
-    
-    // Sort by relevance for targeting (by default, sort by total spent descending)
-    customers.sort((a, b) => {
-        const aSpent = getStatValue(a, 'totalSpent', 0);
-        const bSpent = getStatValue(b, 'totalSpent', 0);
-        return bSpent - aSpent;
+
+    if (!customers.length) return [];
+
+    const ninetyDaysAgo = new Date(Date.now() - (90 * 24 * 60 * 60 * 1000));
+
+    const filtered = customers.filter((customer) => {
+        const visits = getStatValue(customer, 'totalVisits', 0);
+        const totalSpent = getStatValue(customer, 'totalSpent', 0);
+        const lastVisit = getDateValue(customer, 'lastVisit');
+
+        if (criteria.customerType) {
+            const type = String(criteria.customerType).toLowerCase();
+            if (type === 'new' && !(visits <= 1)) return false;
+            if (type === 'returning' && !(visits >= 2 && visits <= 4)) return false;
+            if ((type === 'loyal' || type === 'loyalty') && visits < 5) return false;
+            if (type === 'inactive' && !( !lastVisit || lastVisit < ninetyDaysAgo)) return false;
+            if ((type === 'high_value' || type === 'highvalue') && totalSpent < 5000) return false;
+        }
+
+        if (criteria.minVisits && visits < criteria.minVisits) return false;
+        if (criteria.maxVisits && visits > criteria.maxVisits) return false;
+
+        if (criteria.minSpent && totalSpent < criteria.minSpent) return false;
+        if (criteria.maxSpent && totalSpent > criteria.maxSpent) return false;
+
+        if (criteria.lastVisitDays) {
+            if (!lastVisit) return false;
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - criteria.lastVisitDays);
+            if (lastVisit < cutoffDate) return false;
+        }
+
+        if (criteria.preferredServices?.length) {
+            const preferredServices = customer.preferences?.preferredServices || [];
+            const normalizedServices = preferredServices.map((service) => {
+                if (typeof service === 'string') return service.toLowerCase();
+                if (!service) return null;
+                return (service.name || service.serviceName || service.title || '').toLowerCase();
+            }).filter(Boolean);
+
+            const hasMatch = criteria.preferredServices.some((service) =>
+                normalizedServices.includes(service.toLowerCase())
+            );
+
+            if (!hasMatch) return false;
+        }
+
+        if (criteria.ageRange?.min || criteria.ageRange?.max) {
+            if (!customer.dateOfBirth) return false;
+            const birthDate = new Date(customer.dateOfBirth);
+            if (Number.isNaN(birthDate.getTime())) return false;
+            const ageDifMs = Date.now() - birthDate.getTime();
+            const ageDate = new Date(ageDifMs);
+            const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+            if (criteria.ageRange.min && age < criteria.ageRange.min) return false;
+            if (criteria.ageRange.max && age > criteria.ageRange.max) return false;
+        }
+
+        return true;
     });
-    
-    return customers;
+
+    filtered.sort((a, b) => getStatValue(b, 'totalSpent', 0) - getStatValue(a, 'totalSpent', 0));
+
+    return filtered;
 };
 
 /**

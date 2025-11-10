@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import {
   FaChartLine,
   FaUsers,
-  FaDollarSign,
+  FaRupeeSign,
   FaArrowLeft,
   FaSpinner,
   FaCalendarAlt,

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   FaCalendarAlt,
-  FaDollarSign,
+  FaRupeeSign,
   FaUsers,
   FaSpinner,
   FaEye,
@@ -280,7 +280,7 @@ const AdminDailyBusinessList = () => {
                   {/* Revenue */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-gray-600">
-                      <FaDollarSign className="text-green-600" />
+                      <FaRupeeSign className="text-green-600" />
                       <span className="text-sm">Revenue</span>
                     </div>
                     <span className="font-semibold text-gray-900">

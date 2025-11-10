@@ -7,15 +7,13 @@ import {
   FaEnvelope,
   FaClipboardList,
   FaTags,
-  FaDollarSign,
+  FaRupeeSign,
   FaPercent,
   FaCreditCard,
   FaStickyNote,
   FaStar,
   FaSave,
   FaSpinner,
-  FaRubleSign,
-  FaRupeeSign
 } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import staffService from '../../../../services/staff/staffService'

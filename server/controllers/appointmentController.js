@@ -1225,6 +1225,150 @@ const cancelAppointmentByCode = async (req, res, next) => {
     }
 };
 
+// ================== Update Appointment Status ==================
+const updateAppointmentStatus = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { status, notes } = req.body;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: "Status is required"
+            });
+        }
+
+        const allowedStatuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'];
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid status. Allowed statuses: ${allowedStatuses.join(', ')}`
+            });
+        }
+
+        const appointment = await Appointment.findById(id)
+            .populate('business', 'admin')
+            .populate('customer', 'firstName lastName email phone')
+            .populate('service', 'name duration price')
+            .populate('staff', 'name role phone');
+
+        if (!appointment) {
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found"
+            });
+        }
+
+        const business = await Business.findById(appointment.business._id);
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+
+        if (userRole === 'admin') {
+            if (business.admin.toString() !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (!manager || manager.business.toString() !== business._id.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        } else {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied"
+            });
+        }
+
+        const now = new Date();
+        const durationMinutes = appointment.duration || 60;
+
+        switch (status) {
+            case 'pending':
+                appointment.status = 'pending';
+                appointment.checkInTime = null;
+                appointment.checkOutTime = null;
+                appointment.completedAt = null;
+                appointment.actualDuration = null;
+                appointment.cancellationReason = null;
+                appointment.cancelledAt = null;
+                appointment.cancelledBy = null;
+                appointment.cancelledByModel = null;
+                break;
+            case 'confirmed':
+                appointment.status = 'confirmed';
+                appointment.confirmationSent = true;
+                appointment.confirmationSentAt = now;
+                break;
+            case 'in_progress':
+                appointment.status = 'in_progress';
+                appointment.checkInTime = appointment.checkInTime || now;
+                break;
+            case 'completed':
+                appointment.status = 'completed';
+                appointment.checkInTime = appointment.checkInTime || new Date(now.getTime() - durationMinutes * 60000);
+                appointment.checkOutTime = now;
+                appointment.completedAt = now;
+                appointment.actualDuration = Math.max(durationMinutes, Math.round((appointment.checkOutTime - appointment.checkInTime) / (1000 * 60)));
+                break;
+            case 'cancelled':
+                appointment.status = 'cancelled';
+                appointment.cancellationReason = notes || appointment.cancellationReason || 'Cancelled by manager';
+                appointment.cancelledAt = now;
+                appointment.cancelledBy = userId;
+                appointment.cancelledByModel = userRole === 'admin' ? 'Admin' : 'Manager';
+                appointment.checkInTime = null;
+                appointment.checkOutTime = null;
+                appointment.completedAt = null;
+                appointment.actualDuration = null;
+                break;
+            case 'no_show':
+                appointment.status = 'no_show';
+                appointment.completedAt = null;
+                break;
+            case 'rescheduled':
+                appointment.status = 'rescheduled';
+                appointment.rescheduledAt = now;
+                appointment.rescheduledBy = userId;
+                appointment.rescheduledByModel = userRole === 'admin' ? 'Admin' : 'Manager';
+                break;
+        }
+
+        if (notes !== undefined) {
+            appointment.staffNotes = notes;
+        }
+
+        appointment.updatedBy = userId;
+        appointment.updatedByModel = userRole === 'admin' ? 'Admin' : 'Manager';
+
+        await appointment.save();
+        await appointment.populate([
+            { path: 'customer', select: 'firstName lastName email phone' },
+            { path: 'service', select: 'name duration price' },
+            { path: 'staff', select: 'name role phone' }
+        ]);
+
+        return res.json({
+            success: true,
+            message: "Appointment status updated successfully",
+            data: appointment
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     // Public routes
     getBusinessInfoForBooking,
@@ -1244,5 +1388,6 @@ module.exports = {
     rescheduleAppointment,
     markNoShow,
     addReview,
-    getAppointmentStats
+    getAppointmentStats,
+    updateAppointmentStatus
 };

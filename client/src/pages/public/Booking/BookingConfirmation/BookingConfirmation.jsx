@@ -11,7 +11,7 @@ import {
   FaUser,
   FaPhone,
   FaEnvelope,
-  FaDollarSign,
+  FaRupeeSign,
   FaPrint,
   FaCreditCard,
   FaMobileAlt,
@@ -437,7 +437,7 @@ const BookingConfirmation = () => {
                     {isOnlinePayment && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
                         <div className="flex items-center gap-2">
-                          <FaDollarSign className="text-green-600 text-sm" />
+                          <FaRupeeSign className="text-green-600 text-sm" />
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-900">
                               {ONLINE_PAYMENT_DISCOUNT}% Discount Applied
@@ -452,7 +452,7 @@ const BookingConfirmation = () => {
                     {!isOnlinePayment && paymentMethod === 'cash' && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                         <div className="flex items-start gap-2">
-                          <FaDollarSign className="text-blue-600 text-sm mt-0.5" />
+                          <FaRupeeSign className="text-blue-600 text-sm mt-0.5" />
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-900 mb-2">
                               Save {ONLINE_PAYMENT_DISCOUNT}% with Online Payment
