@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -6,29 +6,21 @@ import {
   FaSpinner,
   FaCalendarAlt,
   FaMapMarkerAlt,
-  FaPhone,
-  FaArrowRight,
   FaClock,
   FaUsers,
   FaStar,
-  FaEnvelope,
-  FaGlobe,
   FaCheckCircle,
-  FaTag,
-  FaFacebook,
-  FaInstagram,
-  FaTwitter,
   FaWhatsapp,
-  FaExternalLinkAlt,
   FaLocationArrow,
   FaMapPin,
   FaSync,
   FaChevronLeft,
   FaChevronRight
 } from 'react-icons/fa'
+import { IoMdCall } from 'react-icons/io'
 import apiClient from '../../../services/api/client'
 
-// Cache utility functions
+// Constants
 const CACHE_KEYS = {
   LOCATION: 'business_location_cache',
   NEARBY_BUSINESSES: 'nearby_businesses_cache',
@@ -39,6 +31,16 @@ const CACHE_DURATION = {
   LOCATION: 24 * 60 * 60 * 1000, // 24 hours
   BUSINESSES: 5 * 60 * 1000 // 5 minutes
 }
+
+const PLACEHOLDERS = [
+  'Search by business name...',
+  'Search by location...',
+  'Search by area...',
+  'Search by city...',
+  'Search by state...',
+  'Search by service type...',
+  'Search by business link...'
+]
 
 const getCachedData = (key) => {
   try {
@@ -87,6 +89,49 @@ const Home = () => {
   const [maxDistance, setMaxDistance] = useState(5000) // Default 5km
   const [nearbyLoading, setNearbyLoading] = useState(false)
   const [cardImageIndexes, setCardImageIndexes] = useState({})
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState('')
+
+  // Animated placeholder
+  useEffect(() => {
+    if (searchTerm) {
+      setAnimatedPlaceholder('')
+      return
+    }
+
+    let currentIndex = 0
+    let charIndex = 0
+    let isDeleting = false
+    let timeoutId = null
+
+    const typePlaceholder = () => {
+      const currentPlaceholder = PLACEHOLDERS[currentIndex]
+      let typingSpeed = 100
+
+      if (isDeleting) {
+        setAnimatedPlaceholder(currentPlaceholder.substring(0, charIndex - 1))
+        charIndex--
+        typingSpeed = 50
+        if (charIndex === 0) {
+          isDeleting = false
+          currentIndex = (currentIndex + 1) % PLACEHOLDERS.length
+          typingSpeed = 500
+        }
+      } else {
+        setAnimatedPlaceholder(currentPlaceholder.substring(0, charIndex + 1))
+        charIndex++
+        typingSpeed = 100
+        if (charIndex === currentPlaceholder.length) {
+          typingSpeed = 2000
+          isDeleting = true
+        }
+      }
+
+      timeoutId = setTimeout(typePlaceholder, typingSpeed)
+    }
+
+    timeoutId = setTimeout(typePlaceholder, 1000)
+    return () => timeoutId && clearTimeout(timeoutId)
+  }, [searchTerm])
 
   // Get user location
   const getUserLocation = useCallback(() => {
@@ -294,7 +339,7 @@ const Home = () => {
   }, [viewMode])
 
   // Filter businesses by search term (client-side for nearby mode)
-  const filteredBusinesses = React.useMemo(() => {
+  const filteredBusinesses = useMemo(() => {
     if (!searchTerm.trim()) return businesses
     
     const searchLower = searchTerm.toLowerCase().trim()
@@ -425,24 +470,23 @@ const Home = () => {
             
             {/* Direct Booking Input */}
             <form onSubmit={handleDirectBooking} className="max-w-2xl mx-auto px-2">
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="flex-1 relative">
-                  <FaSearch className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm sm:text-base" />
+                  <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-base" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search businesses or enter business link..."
-                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-white text-sm sm:text-base lg:text-lg"
+                    placeholder={searchTerm ? '' : animatedPlaceholder || PLACEHOLDERS[0]}
+                    className="w-full pl-12 pr-4 py-3.5 rounded-lg text-gray-900 bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base placeholder:text-gray-400"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-primary-600 rounded-lg font-semibold hover:bg-primary-50 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base lg:text-lg whitespace-nowrap"
+                  className="px-6 py-3.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center gap-2 text-base whitespace-nowrap transition-colors"
                 >
-                  <FaCalendarAlt />
-                  <span className="hidden sm:inline">Book Now</span>
-                  <span className="sm:hidden">Book</span>
+                  <FaSearch className="text-sm" />
+                  <span>Search</span>
                 </button>
               </div>
             </form>
@@ -824,20 +868,21 @@ const Home = () => {
                             e.stopPropagation()
                             handleBookAppointment(business.businessLink)
                           }}
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs transition-colors duration-200 hover:bg-primary-700"
+                          className="flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs transition-colors duration-200 hover:bg-primary-700"
                         >
-                          <FaCalendarAlt className="text-xs" />
-                          <span>Book</span>
+                          <FaCalendarAlt className="text-xs flex-shrink-0" />
+                          <span className="truncate">Book</span>
                         </button>
 
                         {business.phone && (
                           <a
                             href={`tel:${business.phone}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
+                            className="flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
+                            title="Call"
                           >
-                            <FaPhone className="text-[10px]" />
-                            <span>Phone</span>
+                            <IoMdCall className="text-[10px] flex-shrink-0" />
+                            <span className="truncate">Call</span>
                           </a>
                         )}
 
@@ -847,10 +892,10 @@ const Home = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
+                            className="flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
                           >
-                            <FaWhatsapp className="text-[10px]" />
-                            <span>WhatsApp</span>
+                            <FaWhatsapp className="text-[10px] flex-shrink-0" />
+                            <span className="truncate">WA</span>
                           </a>
                         )}
                       </div>
@@ -1012,7 +1057,7 @@ const Home = () => {
                             onClick={(e) => e.stopPropagation()}
                             className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
                           >
-                            <FaPhone className="text-xs" />
+                            <IoMdCall className="text-xs" />
                             <span>Call</span>
                           </a>
                         )}
