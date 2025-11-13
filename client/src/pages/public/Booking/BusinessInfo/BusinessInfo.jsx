@@ -17,12 +17,21 @@ import {
   FaFacebook,
   FaInstagram,
   FaTwitter,
+  FaUsers,
   FaTag,
   FaArrowLeft,
   FaChevronLeft,
   FaChevronRight
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
+
+const DEFAULT_STAFF_MEMBERS = [
+  { name: 'Aditya Sinha', role: 'Stylist', specialization: 'Threading' },
+  { name: 'Pooja Agarwal', role: 'Stylist', specialization: 'Makeup' },
+  { name: 'Yash Chopra', role: 'Stylist', specialization: 'Hair Treatment' },
+  { name: 'Vedant Singh', role: 'Therapist', specialization: 'Hair Coloring' },
+  { name: 'Anjali Reddy', role: 'Receptionist', specialization: 'Hair Styling' }
+]
 
 const BusinessInfo = () => {
   const navigate = useNavigate()
@@ -462,11 +471,7 @@ const BusinessInfo = () => {
           <div className="space-y-6">
             {renderHeroSlider()}
 
-            <div className="lg:hidden space-y-4">
-              {renderHeroSidebarContent()}
-            </div>
-
-            <div className="space-y-4 sm:space-y-6">
+            <div className="lg:hidden space-y-4 sm:space-y-6">
               {/* About Section */}
               {business.description && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -636,6 +641,253 @@ const BusinessInfo = () => {
                   </div>
                 </div>
               )}
+
+              {/* Location - Mobile */}
+              {(mapsEmbedUrl || business.googleMapsUrl) && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
+                    <span>Location</span>
+                  </h2>
+                  {mapsEmbedUrl ? (
+                    <div className="rounded-lg overflow-hidden border border-gray-200">
+                      <iframe
+                        width="100%"
+                        height="300"
+                        className="sm:h-[400px]"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={mapsEmbedUrl}
+                        title="Business Location"
+                      ></iframe>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-100 h-64 sm:h-96 flex items-center justify-center">
+                      <p className="text-gray-500 text-sm">Map unavailable</p>
+                    </div>
+                  )}
+                  {business.googleMapsUrl && (
+                    <a
+                      href={business.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-primary-600 font-medium text-sm sm:text-base"
+                    >
+                      Open in Google Maps
+                      <FaArrowRight className="text-xs sm:text-sm" />
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Booking CTA */}
+              {renderBookingCard()}
+            </div>
+
+            <div className="hidden lg:block space-y-4 sm:space-y-6">
+              {/* About Section */}
+              {business.description && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">About</h2>
+                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{business.description}</p>
+                </div>
+              )}
+
+              {/* Services Section */}
+              {business.services && business.services.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                    {business.services.map((service, index) => {
+                      const isObject = typeof service === 'object' && service !== null
+                      const name =
+                        (isObject && (service.name || service.serviceName || service.title)) ||
+                        (typeof service === 'string' ? service : `Service ${index + 1}`)
+                      const price = isObject && service.price ? `₹${service.price}` : ''
+                      const duration = isObject && service.duration ? `${service.duration} min` : ''
+                      const meta = [price, duration].filter(Boolean).join(' • ')
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-start gap-2 px-2.5 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs border border-green-100"
+                        >
+                          <FaCheckCircle className="text-[10px] mt-0.5" />
+                          <div className="flex flex-col leading-tight">
+                            <span className="font-medium text-green-700">{name}</span>
+                            {meta && <span className="text-[10px] text-gray-500">{meta}</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Features Section */}
+              {business.features && business.features.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {business.features.map((feature, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs sm:text-sm border border-purple-100"
+                      >
+                        <FaCheckCircle className="text-xs" />
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Amenities Section */}
+              {business.amenities && business.amenities.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {business.amenities.map((amenity, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs sm:text-sm border border-indigo-100"
+                      >
+                        <FaCheckCircle className="text-xs" />
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact Information */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Contact Information</h2>
+                <div className="space-y-3 sm:space-y-4">
+                  {business.address && (
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <FaMapMarkerAlt className="text-primary-600 mt-1 flex-shrink-0 text-sm sm:text-base" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Address</p>
+                        <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                          {business.address}
+                          {business.city && `, ${business.city}`}
+                          {business.state && `, ${business.state}`}
+                          {business.country && `, ${business.country}`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {business.phone && (
+                    <a
+                      href={`tel:${business.phone}`}
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                    >
+                      <FaPhone className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Phone</p>
+                        <p className="text-sm sm:text-base text-primary-600 font-medium">{business.phone}</p>
+                      </div>
+                    </a>
+                  )}
+                  {business.email && (
+                    <a
+                      href={`mailto:${business.email}`}
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                    >
+                      <FaEnvelope className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Email</p>
+                        <p className="text-sm sm:text-base text-primary-600 font-medium break-all">{business.email}</p>
+                      </div>
+                    </a>
+                  )}
+                  {business.website && (
+                    <a
+                      href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                    >
+                      <FaGlobe className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Website</p>
+                        <p className="text-sm sm:text-base text-primary-600 font-medium break-all">{business.website}</p>
+                      </div>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Working Hours */}
+              {workingHoursList.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <FaClock className="text-primary-600 text-base sm:text-lg" />
+                    <span>Working Hours</span>
+                  </h2>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    {workingHoursList.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                        <span className="text-xs sm:text-sm font-medium text-gray-700">{item.day}</span>
+                        <span className="text-xs sm:text-sm text-gray-600">{item.hours}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Team Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">Meet the Team</h2>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                      Experienced professionals dedicated to delivering great service.
+                    </p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2 text-primary-600 text-sm font-medium">
+                    <FaUsers />
+                    <span>Trusted Experts</span>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {DEFAULT_STAFF_MEMBERS.map((member, index) => (
+                    <div key={index} className="p-3 sm:p-4 border border-gray-100 rounded-lg bg-gray-50 shadow-sm">
+                      <p className="text-sm sm:text-base font-semibold text-gray-900">{member.name}</p>
+                      <p className="text-[11px] sm:text-xs uppercase tracking-wide text-primary-600 mt-1">{member.role}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                        Specializes in <span className="font-medium text-gray-800">{member.specialization}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category & Tags */}
+              {(business.category || (business.tags && business.tags.length > 0)) && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Categories & Tags</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {business.category && (
+                      <span className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm border border-blue-100">
+                        <FaTag className="text-xs" />
+                        {business.category}
+                      </span>
+                    )}
+                    {business.tags && business.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs sm:text-sm border border-gray-200"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -651,7 +903,7 @@ const BusinessInfo = () => {
 
         {/* Location - Full Width */}
         {(mapsEmbedUrl || business.googleMapsUrl) && (
-          <div className="mt-6 sm:mt-8">
+          <div className="hidden lg:block mt-6 sm:mt-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
