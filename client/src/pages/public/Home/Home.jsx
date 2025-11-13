@@ -22,7 +22,9 @@ import {
   FaExternalLinkAlt,
   FaLocationArrow,
   FaMapPin,
-  FaSync
+  FaSync,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa'
 import apiClient from '../../../services/api/client'
 
@@ -84,6 +86,7 @@ const Home = () => {
   const [locationError, setLocationError] = useState(null)
   const [maxDistance, setMaxDistance] = useState(5000) // Default 5km
   const [nearbyLoading, setNearbyLoading] = useState(false)
+  const [cardImageIndexes, setCardImageIndexes] = useState({})
 
   // Get user location
   const getUserLocation = useCallback(() => {
@@ -378,6 +381,35 @@ const Home = () => {
     }
   }
 
+  const collectBusinessImages = useCallback((business) => {
+    if (!business?.images) return []
+    const images = []
+    if (business.images.banner) images.push(business.images.banner)
+    if (business.images.thumbnail) images.push(business.images.thumbnail)
+    if (business.images.logo) images.push(business.images.logo)
+    if (Array.isArray(business.images.gallery)) {
+      business.images.gallery.forEach((img) => {
+        if (img) images.push(img)
+      })
+    }
+    return images
+  }, [])
+
+  const handleCardImageChange = useCallback((businessKey, direction, total) => {
+    if (total <= 1) return
+    setCardImageIndexes((prev) => {
+      const current = prev[businessKey] ?? 0
+      const nextIndex =
+        direction === 'prev'
+          ? (current - 1 + total) % total
+          : (current + 1) % total
+      return {
+        ...prev,
+        [businessKey]: nextIndex
+      }
+    })
+  }, [])
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -617,195 +649,387 @@ const Home = () => {
 
               const locationText = formatLocation()
               
+               const businessKey = business.id || business._id || business.businessLink
+               const cardImages = collectBusinessImages(business)
+               const totalImages = cardImages.length
+               const currentImageIndex = cardImageIndexes[businessKey] ?? 0
+               const currentImage = cardImages[currentImageIndex] || null
+               const desktopImage = cardImages[0] || null
+
               return (
               <div
                 key={business.id || business._id}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
+                className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden cursor-pointer"
                 style={{ minHeight: 'auto', maxHeight: 'none' }}
                 onClick={() => navigate(`/${business.businessLink}`)}
               >
-                {/* Business Image - Hero Section */}
-                <div className="relative h-28 sm:h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
-                  {business.images?.banner || business.images?.thumbnail ? (
-                    <img
-                      src={business.images.banner || business.images.thumbnail}
-                      alt={business.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                        e.target.nextSibling.style.display = 'flex'
-                      }}
-                    />
-                  ) : null}
-                  <div 
-                    className={`w-full h-full flex items-center justify-center ${business.images?.banner || business.images?.thumbnail ? 'hidden' : 'flex'}`}
-                  >
-                    {business.images?.logo ? (
+                {/* Mobile Layout */}
+                <div className="flex sm:hidden">
+                  {/* Business Image */}
+                  <div className="relative w-[40%] aspect-square bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
+                    {currentImage ? (
                       <img
-                        src={business.images.logo}
+                        src={currentImage}
                         alt={business.name}
-                        className="max-w-[65%] max-h-[65%] object-contain"
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.nextSibling.style.display = 'flex'
+                        }}
                       />
-                    ) : (
-                      <FaCalendarAlt className="text-primary-400 text-3xl sm:text-4xl lg:text-6xl" />
+                    ) : null}
+                    <div
+                      className={`w-full h-full flex items-center justify-center ${currentImage ? 'hidden' : 'flex'}`}
+                    >
+                      {business.images?.logo ? (
+                        <img
+                          src={business.images.logo}
+                          alt={business.name}
+                          className="max-w-[65%] max-h-[65%] object-contain"
+                        />
+                      ) : (
+                        <FaCalendarAlt className="text-primary-400 text-3xl" />
+                      )}
+                    </div>
+
+                    {business.type && (
+                      <div className="absolute top-1.5 left-1.5">
+                        <span className="inline-block px-1.5 py-0.5 bg-primary-600/95 text-white rounded text-[10px] font-semibold capitalize shadow-md">
+                          {business.type}
+                        </span>
+                      </div>
+                    )}
+
+                    {viewMode === 'nearby' && business.distanceKm && (
+                      <div className="absolute bottom-1.5 right-1.5">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/95 text-gray-900 rounded text-[10px] font-semibold shadow-md border border-gray-200">
+                          <FaLocationArrow className="text-primary-600 text-[10px]" />
+                          {business.distanceKm} km
+                        </span>
+                      </div>
+                    )}
+
+                    {cardImages.length > 1 && (
+                      <div className="absolute inset-0 flex items-center justify-between px-2">
+                        <button
+                          type="button"
+                          className="text-white"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCardImageChange(businessKey, 'prev', cardImages.length)
+                          }}
+                        >
+                          <FaChevronLeft className="text-base drop-shadow" />
+                        </button>
+                        <button
+                          type="button"
+                          className="text-white"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCardImageChange(businessKey, 'next', cardImages.length)
+                          }}
+                        >
+                          <FaChevronRight className="text-base drop-shadow" />
+                        </button>
+                      </div>
+                    )}
+                    {totalImages > 1 && (
+                      <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1.5">
+                        {cardImages.map((_, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCardImageChange(businessKey, idx, cardImages.length)
+                            }}
+                            className={`h-1.5 w-1.5 rounded-full ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
-                  
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
 
-                  {/* Type Badge - Top Left */}
-                  {business.type && (
-                    <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
-                      <span className="inline-block px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary-600/95 backdrop-blur-sm text-white rounded text-[10px] sm:text-xs font-semibold capitalize shadow-lg">
-                        {business.type}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Distance Badge - Bottom Right (for nearby mode) */}
-                  {viewMode === 'nearby' && business.distanceKm && (
-                    <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
-                      <span className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/95 backdrop-blur-sm text-gray-900 rounded text-[10px] sm:text-xs font-semibold shadow-lg border border-gray-200">
-                        <FaLocationArrow className="text-primary-600 text-[10px] sm:text-xs" />
-                        {business.distanceKm} km
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Business Info */}
-                <div className="p-2 sm:p-2.5 md:p-3 flex-1 flex flex-col">
-                  {/* Title and Rating - Inline */}
-                  <div className="mb-1.5">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-1 flex-1">
-                        {business.name}
-                      </h3>
-                      {business.ratings?.average > 0 && (
-                        <div className="flex items-center gap-0.5 flex-shrink-0">
-                          <FaStar className="text-yellow-500 text-xs sm:text-sm" />
-                          <span className="text-gray-900 font-bold text-xs sm:text-sm">{business.ratings.average.toFixed(1)}</span>
-                          {business.ratings.totalReviews > 0 && (
-                            <span className="text-gray-500 text-[10px] sm:text-xs ml-0.5">({business.ratings.totalReviews})</span>
+                  {/* Business Info */}
+                  <div className="flex-1 min-w-0 p-3 flex flex-col justify-between">
+                    <div className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-bold text-gray-900">
+                            {business.name}
+                          </h3>
+                          {business.ratings?.average > 0 && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <FaStar className="text-yellow-500 text-xs" />
+                              <span className="text-gray-900 font-semibold text-xs">
+                                {business.ratings.average.toFixed(1)}
+                              </span>
+                              {business.ratings.totalReviews > 0 && (
+                                <span className="text-gray-500 text-[10px]">
+                                  ({business.ratings.totalReviews} reviews)
+                                </span>
+                              )}
+                              {business.ratings.average >= 4.5 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full whitespace-nowrap ml-auto">
+                                  <FaStar className="text-amber-500 text-[10px]" />
+                                  Top Rated
+                                </span>
+                              )}
+                            </div>
                           )}
+                        </div>
+                      </div>
+
+                      {locationText && (
+                        <div className="flex items-center gap-1 text-gray-600">
+                          <FaMapMarkerAlt className="text-primary-500 text-[10px] flex-shrink-0" />
+                          <span className="text-xs line-clamp-1">
+                            {locationText}
+                          </span>
+                          {viewMode === 'nearby' && business.distanceKm && (
+                            <span className="text-[10px] text-gray-400 ml-0.5">• {business.distanceKm} km</span>
+                          )}
+                        </div>
+                      )}
+
+                      {business.services?.length > 0 && (
+                        <div className="mt-1.5">
+                          <div className="text-[11px] font-semibold text-gray-700 mb-1">
+                            Popular Services
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {business.services.slice(0, 3).map((service, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center px-2 py-1 bg-primary-50 text-primary-700 text-[10px] rounded-full border border-primary-100"
+                              >
+                                {service.name || service}
+                              </span>
+                            ))}
+                            {business.services.length > 3 && (
+                              <span className="text-[10px] text-gray-500">
+                                +{business.services.length - 3} more
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Description */}
-                    {business.description && (
-                      <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2">
-                        {business.description}
-                      </p>
-                    )}
+                    <div className="pt-2 border-t border-gray-100">
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleBookAppointment(business.businessLink)
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs transition-colors duration-200 hover:bg-primary-700"
+                        >
+                          <FaCalendarAlt className="text-xs" />
+                          <span>Book</span>
+                        </button>
 
-                    {/* Location with icon */}
-                    {locationText && (
-                      <div className="flex items-center gap-1 text-gray-600 mb-1.5">
-                        <FaMapMarkerAlt className="text-primary-500 text-[10px] sm:text-xs flex-shrink-0" />
-                        <span className="text-xs sm:text-sm line-clamp-1">
-                          {locationText}
-                        </span>
-                        {viewMode === 'nearby' && business.distanceKm && (
-                          <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5">• {business.distanceKm} km</span>
+                        {business.phone && (
+                          <a
+                            href={`tel:${business.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
+                          >
+                            <FaPhone className="text-[10px]" />
+                            <span>Phone</span>
+                          </a>
+                        )}
+
+                        {whatsappUrl && (
+                          <a
+                            href={whatsappUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
+                          >
+                            <FaWhatsapp className="text-[10px]" />
+                            <span>WhatsApp</span>
+                          </a>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop & Tablet Layout */}
+                <div className="hidden sm:flex sm:flex-col h-full">
+                  <div className="relative h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
+                    {desktopImage ? (
+                      <img
+                        src={desktopImage}
+                        alt={business.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={`w-full h-full flex items-center justify-center ${desktopImage ? 'hidden' : 'flex'}`}
+                    >
+                      {business.images?.logo ? (
+                        <img
+                          src={business.images.logo}
+                          alt={business.name}
+                          className="max-w-[65%] max-h-[65%] object-contain"
+                        />
+                      ) : (
+                        <FaCalendarAlt className="text-primary-400 text-4xl lg:text-6xl" />
+                      )}
+                    </div>
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+
+                    {business.type && (
+                      <div className="absolute top-2 left-2">
+                        <span className="inline-block px-2 py-1 bg-primary-600/95 text-white rounded text-xs font-semibold capitalize shadow-lg">
+                          {business.type}
+                        </span>
+                      </div>
+                    )}
+
+                    {viewMode === 'nearby' && business.distanceKm && (
+                      <div className="absolute bottom-2 right-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 text-gray-900 rounded text-xs font-semibold shadow-lg border border-gray-200">
+                          <FaLocationArrow className="text-primary-600 text-xs" />
+                          {business.distanceKm} km
+                        </span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Services and Features - Same Style for Mobile and Desktop */}
-                  {(() => {
-                    const servicesCount = business.services?.length || 0
-                    const featuresCount = business.features?.length || 0
-                    // Show the same number of items based on minimum count
-                    const displayCount = servicesCount > 0 && featuresCount > 0 
-                      ? Math.min(servicesCount, featuresCount)
-                      : 0
-                    
-                    return (
-                      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-1.5">
-                        {/* Services Section */}
-                        <div className="flex flex-col min-w-0">
-                          <div className="text-xs font-semibold text-gray-700 mb-1">Services:</div>
-                          {displayCount > 0 ? (
-                            <ul className="space-y-0.5">
-                              {business.services.slice(0, displayCount).map((service, idx) => (
-                                <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
-                                  <span className="text-primary-500 mt-0.5 flex-shrink-0 text-xs">•</span>
-                                  <span className="break-words flex-1">{service.name || service}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-xs text-gray-400 italic">No services listed</p>
-                          )}
-                        </div>
-
-                        {/* Features Section */}
-                        <div className="flex flex-col min-w-0">
-                          <div className="text-xs font-semibold text-gray-700 mb-1">Features:</div>
-                          {displayCount > 0 ? (
-                            <ul className="space-y-0.5">
-                              {business.features.slice(0, displayCount).map((feature, idx) => (
-                                <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
-                                  <FaCheckCircle className="text-green-500 text-[10px] mt-0.5 flex-shrink-0" />
-                                  <span className="break-words flex-1">{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-xs text-gray-400 italic">No features listed</p>
-                          )}
-                        </div>
+                  <div className="p-2.5 md:p-3 flex-1 flex flex-col">
+                    <div className="mb-1.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-base md:text-lg font-bold text-gray-900 flex-1">
+                          {business.name}
+                        </h3>
+                        {business.ratings?.average > 0 && (
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                            <FaStar className="text-yellow-500 text-sm" />
+                            <span className="text-gray-900 font-bold text-sm">{business.ratings.average.toFixed(1)}</span>
+                            {business.ratings.totalReviews > 0 && (
+                              <span className="text-gray-500 text-xs ml-0.5">({business.ratings.totalReviews})</span>
+                            )}
+                            {business.ratings.average >= 4.5 && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] font-semibold rounded-full whitespace-nowrap ml-auto">
+                                <FaStar className="text-amber-500 text-xs" />
+                                Top Rated
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )
-                  })()}
 
-                  {/* Action Buttons */}
-                  <div className="space-y-1.5 pt-1.5 border-t border-gray-100">
-                    {/* Primary Book Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleBookAppointment(business.businessLink)
-                      }}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs sm:text-sm transition-colors duration-200 hover:bg-primary-700"
-                    >
-                      <FaCalendarAlt className="text-xs" />
-                      <span className="hidden sm:inline">Book Appointment</span>
-                      <span className="sm:hidden">Book</span>
-                    </button>
-
-                    {/* Call and WhatsApp Buttons */}
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {/* Call Button */}
-                      {business.phone && (
-                        <a
-                          href={`tel:${business.phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
-                        >
-                          <FaPhone className="text-[10px]" />
-                          <span>Call</span>
-                        </a>
+                      {business.description && (
+                        <p className="text-sm text-gray-600 mb-1 line-clamp-2">
+                          {business.description}
+                        </p>
                       )}
 
-                      {/* WhatsApp Button */}
-                      {whatsappUrl && (
-                        <a
-                          href={whatsappUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
-                        >
-                          <FaWhatsapp className="text-[10px]" />
-                          <span className="hidden sm:inline">WhatsApp</span>
-                          <span className="sm:hidden">WA</span>
-                        </a>
+                      {locationText && (
+                        <div className="flex items-center gap-1 text-gray-600 mb-1.5">
+                          <FaMapMarkerAlt className="text-primary-500 text-xs flex-shrink-0" />
+                          <span className="text-sm line-clamp-1">
+                            {locationText}
+                          </span>
+                          {viewMode === 'nearby' && business.distanceKm && (
+                            <span className="text-xs text-gray-400 ml-0.5">• {business.distanceKm} km</span>
+                          )}
+                        </div>
                       )}
+                    </div>
+
+                    {(() => {
+                      const servicesCount = business.services?.length || 0
+                      const featuresCount = business.features?.length || 0
+                      const displayCount = servicesCount > 0 && featuresCount > 0
+                        ? Math.min(servicesCount, featuresCount)
+                        : 0
+
+                      return (
+                        <div className="grid grid-cols-2 gap-3 md:gap-4 mb-2">
+                          <div className="flex flex-col min-w-0">
+                            <div className="text-xs font-semibold text-gray-700 mb-1">Services:</div>
+                            {displayCount > 0 ? (
+                              <ul className="space-y-1">
+                                {business.services.slice(0, displayCount).map((service, idx) => (
+                                  <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
+                                    <span className="text-primary-500 mt-0.5 flex-shrink-0 text-xs">•</span>
+                                    <span className="break-words flex-1">{service.name || service}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-xs text-gray-400 italic">No services listed</p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col min-w-0">
+                            <div className="text-xs font-semibold text-gray-700 mb-1">Features:</div>
+                            {displayCount > 0 ? (
+                              <ul className="space-y-1">
+                                {business.features.slice(0, displayCount).map((feature, idx) => (
+                                  <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
+                                    <FaCheckCircle className="text-green-500 text-[11px] mt-0.5 flex-shrink-0" />
+                                    <span className="break-words flex-1">{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-xs text-gray-400 italic">No features listed</p>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    <div className="mt-auto space-y-1.5 pt-2 border-t border-gray-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleBookAppointment(business.businessLink)
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-sm transition-colors duration-200 hover:bg-primary-700"
+                      >
+                        <FaCalendarAlt className="text-sm" />
+                        <span>Book Appointment</span>
+                      </button>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {business.phone && (
+                          <a
+                            href={`tel:${business.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
+                          >
+                            <FaPhone className="text-xs" />
+                            <span>Call</span>
+                          </a>
+                        )}
+
+                        {whatsappUrl && (
+                          <a
+                            href={whatsappUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
+                          >
+                            <FaWhatsapp className="text-xs" />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
