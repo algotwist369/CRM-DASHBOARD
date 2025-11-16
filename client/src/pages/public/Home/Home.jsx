@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -7,33 +7,20 @@ import {
   FaCalendarAlt,
   FaMapMarkerAlt,
   FaPhone,
+  FaArrowRight,
   FaClock,
   FaUsers,
   FaStar,
   FaCheckCircle,
   FaWhatsapp,
   FaLocationArrow,
-  FaSync,
-  FaTimes
+  FaMapPin,
+  FaSync
 } from 'react-icons/fa'
+import { IoMdCall } from 'react-icons/io'
 import apiClient from '../../../services/api/client'
-import { usePageTitle } from '../../../hooks/usePageTitle'
 
-const LOCATION_PREFERENCE_KEY = 'home_view_mode_preference'
-
-const getInitialViewMode = () => {
-  if (typeof window === 'undefined') return 'nearby'
-  const stored = window.localStorage.getItem(LOCATION_PREFERENCE_KEY)
-  if (stored === 'all' || stored === 'nearby') return stored
-  return 'nearby'
-}
-
-const getInitialLocationPromptState = () => {
-  if (typeof window === 'undefined') return false
-  return !window.localStorage.getItem(LOCATION_PREFERENCE_KEY)
-}
-
-// Constants
+// Cache utility functions
 const CACHE_KEYS = {
   LOCATION: 'business_location_cache',
   NEARBY_BUSINESSES: 'nearby_businesses_cache',
@@ -41,53 +28,10 @@ const CACHE_KEYS = {
 }
 
 const CACHE_DURATION = {
-  LOCATION: 24 * 60 * 60 * 1000,
-  BUSINESSES: 5 * 60 * 1000
+  LOCATION: 24 * 60 * 60 * 1000, // 24 hours
+  BUSINESSES: 5 * 60 * 1000 // 5 minutes
 }
 
-const PLACEHOLDERS = [
-  'Search by business name...',
-  'Search by location...',
-  'Search by area...',
-  'Search by city...',
-  'Search by state...',
-  'Search by service type...',
-  'Search by business link...'
-]
-
-const BUSINESS_TYPES = [
-  { value: '', label: 'All Types' },
-  { value: 'salon', label: 'Salon' },
-  { value: 'spa', label: 'Spa' },
-  { value: 'hotel', label: 'Hotel' },
-  { value: 'restaurant', label: 'Restaurant' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'gym', label: 'Gym' },
-  { value: 'clinic', label: 'Clinic' },
-  { value: 'cafe', label: 'Cafe' },
-  { value: 'studio', label: 'Studio' },
-  { value: 'education', label: 'Education' },
-  { value: 'automotive', label: 'Automotive' },
-  { value: 'others', label: 'Others' }
-]
-
-const DISTANCE_OPTIONS = [
-  { value: 2000, label: '2 km' },
-  { value: 5000, label: '5 km' },
-  { value: 10000, label: '10 km' },
-  { value: 20000, label: '20 km' },
-  { value: 50000, label: '50 km' }
-]
-
-const FEATURES = [
-  { icon: FaCalendarAlt, title: 'Easy Booking', description: 'Book appointments in just a few clicks with our simple and intuitive interface' },
-  { icon: FaClock, title: 'Real-Time Availability', description: 'See available time slots in real-time and book instantly' },
-  { icon: FaUsers, title: 'Verified Businesses', description: 'Connect with trusted and verified businesses in your area' }
-]
-
-const AREA_KEYWORDS = ['area', 'locality', 'sector', 'block', 'street', 'road', 'lane', 'colony']
-
-// Cache utilities
 const getCachedData = (key) => {
   try {
     const cached = localStorage.getItem(key)
@@ -163,71 +107,6 @@ const Home = () => {
   const [locationError, setLocationError] = useState(null)
   const [maxDistance, setMaxDistance] = useState(5000)
   const [nearbyLoading, setNearbyLoading] = useState(false)
-  const [animatedPlaceholder, setAnimatedPlaceholder] = useState('')
-  const [manualLocation, setManualLocation] = useState(null)
-  const [showLocationPrompt, setShowLocationPrompt] = useState(() => getInitialLocationPromptState())
-  const [showLocationFallbackModal, setShowLocationFallbackModal] = useState(false)
-  const [manualLocationModalOpen, setManualLocationModalOpen] = useState(false)
-  const [manualLocationOptions, setManualLocationOptions] = useState([])
-  const [manualLocationSuggestions, setManualLocationSuggestions] = useState([])
-  const [manualLocationSearch, setManualLocationSearch] = useState('')
-  const [manualLocationLoading, setManualLocationLoading] = useState(false)
-  const [manualLocationSuggestionsLoading, setManualLocationSuggestionsLoading] = useState(false)
-  const [manualLocationSearchError, setManualLocationSearchError] = useState(null)
-  const [manualLocationCoords, setManualLocationCoords] = useState(null)
-  const [hasShownFallback, setHasShownFallback] = useState(false)
-  const [lastNoBusinessMessage, setLastNoBusinessMessage] = useState('')
-  const geocodeCacheRef = useRef(new Map())
-  const requestLocksRef = useRef(new Set())
-
-  usePageTitle()
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(LOCATION_PREFERENCE_KEY, viewMode)
-  }, [viewMode])
-
-  // Animated placeholder
-  useEffect(() => {
-    if (searchTerm) {
-      setAnimatedPlaceholder('')
-      return
-    }
-
-    let currentIndex = 0
-    let charIndex = 0
-    let isDeleting = false
-    let timeoutId = null
-
-    const typePlaceholder = () => {
-      const currentPlaceholder = PLACEHOLDERS[currentIndex]
-      let typingSpeed = 100
-
-      if (isDeleting) {
-        setAnimatedPlaceholder(currentPlaceholder.substring(0, charIndex - 1))
-        charIndex--
-        typingSpeed = 50
-        if (charIndex === 0) {
-          isDeleting = false
-          currentIndex = (currentIndex + 1) % PLACEHOLDERS.length
-          typingSpeed = 500
-        }
-      } else {
-        setAnimatedPlaceholder(currentPlaceholder.substring(0, charIndex + 1))
-        charIndex++
-        typingSpeed = 100
-        if (charIndex === currentPlaceholder.length) {
-          typingSpeed = 2000
-          isDeleting = true
-        }
-      }
-
-      timeoutId = setTimeout(typePlaceholder, typingSpeed)
-    }
-
-    timeoutId = setTimeout(typePlaceholder, 1000)
-    return () => timeoutId && clearTimeout(timeoutId)
-  }, [searchTerm])
 
   // Get user location
   const getUserLocation = useCallback(() => {
@@ -465,12 +344,10 @@ const Home = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode])
 
-  // Optimized filtering with memoization
-  const filteredBusinesses = useMemo(() => {
-    const dataset = businesses
-
-    if (!searchTerm.trim()) return dataset
-
+  // Filter businesses by search term (client-side for nearby mode)
+  const filteredBusinesses = React.useMemo(() => {
+    if (!searchTerm.trim()) return businesses
+    
     const searchLower = searchTerm.toLowerCase().trim()
     const searchTerms = searchLower.split(/\s+/).filter(Boolean)
 
@@ -855,15 +732,7 @@ const Home = () => {
     }
   }, [navigate])
 
-  const filteredManualLocationOptions = useMemo(() => {
-    if (!manualLocationSearch.trim()) return manualLocationOptions
-    const searchLower = manualLocationSearch.toLowerCase()
-    return manualLocationOptions.filter((option) => option.label.toLowerCase().includes(searchLower))
-  }, [manualLocationOptions, manualLocationSearch])
-
-  const isLoading = loading || nearbyLoading
-  const hasResults = filteredBusinesses.length > 0
-
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {showLocationPrompt && locationLoading && (
@@ -906,7 +775,7 @@ const Home = () => {
                 </div>
                 <button
                   type="submit"
-                  className="hidden px-6 py-3.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center gap-2 text-base whitespace-nowrap transition-colors"
+                  className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-primary-600 rounded-lg font-semibold hover:bg-primary-50 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base lg:text-lg whitespace-nowrap"
                 >
                   <FaSearch className="text-sm" />
                   <span>Search</span>
@@ -1101,203 +970,202 @@ const Home = () => {
                   return ''
                 }
 
-                const locationText = formatLocation()
-
-                return (
-                  <div
-                    key={business.id || business._id}
-                    className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
-                    style={{ minHeight: 'auto', maxHeight: 'none' }}
-                    onClick={() => navigate(`/${business.businessLink}`)}
+              const locationText = formatLocation()
+              
+              return (
+              <div
+                key={business.id || business._id}
+                className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
+                style={{ minHeight: 'auto', maxHeight: 'none' }}
+                onClick={() => navigate(`/${business.businessLink}`)}
+              >
+                {/* Business Image - Hero Section */}
+                <div className="relative h-28 sm:h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
+                  {business.images?.banner || business.images?.thumbnail ? (
+                    <img
+                      src={business.images.banner || business.images.thumbnail}
+                      alt={business.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    className={`w-full h-full flex items-center justify-center ${business.images?.banner || business.images?.thumbnail ? 'hidden' : 'flex'}`}
                   >
-                    {/* Business Image - Hero Section */}
-                    <div className="relative h-28 sm:h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
-                      {business.images?.banner || business.images?.thumbnail ? (
-                        <img
-                          src={business.images.banner || business.images.thumbnail}
-                          alt={business.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                            e.target.nextSibling.style.display = 'flex'
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className={`w-full h-full flex items-center justify-center ${business.images?.banner || business.images?.thumbnail ? 'hidden' : 'flex'}`}
-                      >
-                        {business.images?.logo ? (
-                          <img
-                            src={business.images.logo}
-                            alt={business.name}
-                            className="max-w-[65%] max-h-[65%] object-contain"
-                          />
-                        ) : (
-                          <FaCalendarAlt className="text-primary-400 text-3xl sm:text-4xl lg:text-6xl" />
-                        )}
-                      </div>
+                    {business.images?.logo ? (
+                      <img
+                        src={business.images.logo}
+                        alt={business.name}
+                        className="max-w-[65%] max-h-[65%] object-contain"
+                      />
+                    ) : (
+                      <FaCalendarAlt className="text-primary-400 text-3xl sm:text-4xl lg:text-6xl" />
+                    )}
+                  </div>
+                  
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
 
-                      {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+                  {/* Type Badge - Top Left */}
+                  {business.type && (
+                    <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
+                      <span className="inline-block px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary-600/95 backdrop-blur-sm text-white rounded text-[10px] sm:text-xs font-semibold capitalize shadow-lg">
+                        {business.type}
+                      </span>
+                    </div>
+                  )}
 
-                      {/* Type Badge - Top Left */}
-                      {business.type && (
-                        <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
-                          <span className="inline-block px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary-600/95 backdrop-blur-sm text-white rounded text-[10px] sm:text-xs font-semibold capitalize shadow-lg">
-                            {business.type}
-                          </span>
-                        </div>
-                      )}
+                  {/* Distance Badge - Bottom Right (for nearby mode) */}
+                  {viewMode === 'nearby' && business.distanceKm && (
+                    <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
+                      <span className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/95 backdrop-blur-sm text-gray-900 rounded text-[10px] sm:text-xs font-semibold shadow-lg border border-gray-200">
+                        <FaLocationArrow className="text-primary-600 text-[10px] sm:text-xs" />
+                        {business.distanceKm} km
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-                      {/* Distance Badge - Bottom Right (for nearby mode) */}
-                      {viewMode === 'nearby' && business.distanceKm && (
-                        <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
-                          <span className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/95 backdrop-blur-sm text-gray-900 rounded text-[10px] sm:text-xs font-semibold shadow-lg border border-gray-200">
-                            <FaLocationArrow className="text-primary-600 text-[10px] sm:text-xs" />
-                            {business.distanceKm} km
-                          </span>
+                {/* Business Info */}
+                <div className="p-2 sm:p-2.5 md:p-3 flex-1 flex flex-col">
+                  {/* Title and Rating - Inline */}
+                  <div className="mb-1.5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-1 flex-1">
+                        {business.name}
+                      </h3>
+                      {business.ratings?.average > 0 && (
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <FaStar className="text-yellow-500 text-xs sm:text-sm" />
+                          <span className="text-gray-900 font-bold text-xs sm:text-sm">{business.ratings.average.toFixed(1)}</span>
+                          {business.ratings.totalReviews > 0 && (
+                            <span className="text-gray-500 text-[10px] sm:text-xs ml-0.5">({business.ratings.totalReviews})</span>
+                          )}
                         </div>
                       )}
                     </div>
 
-                    {/* Business Info */}
-                    <div className="p-2 sm:p-2.5 md:p-3 flex-1 flex flex-col">
-                      {/* Title and Rating - Inline */}
-                      <div className="mb-1.5">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-1 flex-1">
-                            {business.name}
-                          </h3>
-                          {business.ratings?.average > 0 && (
-                            <div className="flex items-center gap-0.5 flex-shrink-0">
-                              <FaStar className="text-yellow-500 text-xs sm:text-sm" />
-                              <span className="text-gray-900 font-bold text-xs sm:text-sm">{business.ratings.average.toFixed(1)}</span>
-                              {business.ratings.totalReviews > 0 && (
-                                <span className="text-gray-500 text-[10px] sm:text-xs ml-0.5">({business.ratings.totalReviews})</span>
-                              )}
-                            </div>
+                    {/* Description */}
+                    {business.description && (
+                      <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2">
+                        {business.description}
+                      </p>
+                    )}
+
+                    {/* Location with icon */}
+                    {locationText && (
+                      <div className="flex items-center gap-1 text-gray-600 mb-1.5">
+                        <FaMapMarkerAlt className="text-primary-500 text-[10px] sm:text-xs flex-shrink-0" />
+                        <span className="text-xs sm:text-sm line-clamp-1">
+                          {locationText}
+                        </span>
+                        {viewMode === 'nearby' && business.distanceKm && (
+                          <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5">• {business.distanceKm} km</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Services and Features - Same Style for Mobile and Desktop */}
+                  {(() => {
+                    const servicesCount = business.services?.length || 0
+                    const featuresCount = business.features?.length || 0
+                    // Show the same number of items based on minimum count
+                    const displayCount = servicesCount > 0 && featuresCount > 0 
+                      ? Math.min(servicesCount, featuresCount)
+                      : 0
+                    
+                    return (
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-1.5">
+                        {/* Services Section */}
+                        <div className="flex flex-col min-w-0">
+                          <div className="text-xs font-semibold text-gray-700 mb-1">Services:</div>
+                          {displayCount > 0 ? (
+                            <ul className="space-y-0.5">
+                              {business.services.slice(0, displayCount).map((service, idx) => (
+                                <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
+                                  <span className="text-primary-500 mt-0.5 flex-shrink-0 text-xs">•</span>
+                                  <span className="break-words flex-1">{service.name || service}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">No services listed</p>
                           )}
                         </div>
 
-                        {/* Description */}
-                        {business.description && (
-                          <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2">
-                            {business.description}
-                          </p>
-                        )}
-
-                        {/* Location with icon */}
-                        {locationText && (
-                          <div className="flex items-center gap-1 text-gray-600 mb-1.5">
-                            <FaMapMarkerAlt className="text-primary-500 text-[10px] sm:text-xs flex-shrink-0" />
-                            <span className="text-xs sm:text-sm line-clamp-1">
-                              {locationText}
-                            </span>
-                            {viewMode === 'nearby' && business.distanceKm && (
-                              <span className="text-[10px] sm:text-xs text-gray-400 ml-0.5">• {business.distanceKm} km</span>
-                            )}
-                          </div>
-                        )}
+                        {/* Features Section */}
+                        <div className="flex flex-col min-w-0">
+                          <div className="text-xs font-semibold text-gray-700 mb-1">Features:</div>
+                          {displayCount > 0 ? (
+                            <ul className="space-y-0.5">
+                              {business.features.slice(0, displayCount).map((feature, idx) => (
+                                <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
+                                  <FaCheckCircle className="text-green-500 text-[10px] mt-0.5 flex-shrink-0" />
+                                  <span className="break-words flex-1">{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">No features listed</p>
+                          )}
+                        </div>
                       </div>
+                    )
+                  })()}
 
-                      {/* Services and Features - Same Style for Mobile and Desktop */}
-                      {(() => {
-                        const servicesCount = business.services?.length || 0
-                        const featuresCount = business.features?.length || 0
-                        // Show the same number of items based on minimum count
-                        const displayCount = servicesCount > 0 && featuresCount > 0
-                          ? Math.min(servicesCount, featuresCount)
-                          : 0
+                  {/* Action Buttons */}
+                  <div className="space-y-1.5 pt-1.5 border-t border-gray-100">
+                    {/* Primary Book Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleBookAppointment(business.businessLink)
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs sm:text-sm transition-colors duration-200 hover:bg-primary-700"
+                    >
+                      <FaCalendarAlt className="text-xs" />
+                      <span className="hidden sm:inline">Book Appointment</span>
+                      <span className="sm:hidden">Book</span>
+                    </button>
 
-                        return (
-                          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-1.5">
-                            {/* Services Section */}
-                            <div className="flex flex-col min-w-0">
-                              <div className="text-xs font-semibold text-gray-700 mb-1">Services:</div>
-                              {displayCount > 0 ? (
-                                <ul className="space-y-0.5">
-                                  {business.services.slice(0, displayCount).map((service, idx) => (
-                                    <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
-                                      <span className="text-primary-500 mt-0.5 flex-shrink-0 text-xs">•</span>
-                                      <span className="break-words flex-1">{service.name || service}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p className="text-xs text-gray-400 italic">No services listed</p>
-                              )}
-                            </div>
-
-                            {/* Features Section */}
-                            <div className="flex flex-col min-w-0">
-                              <div className="text-xs font-semibold text-gray-700 mb-1">Features:</div>
-                              {displayCount > 0 ? (
-                                <ul className="space-y-0.5">
-                                  {business.features.slice(0, displayCount).map((feature, idx) => (
-                                    <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
-                                      <FaCheckCircle className="text-green-500 text-[10px] mt-0.5 flex-shrink-0" />
-                                      <span className="break-words flex-1">{feature}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p className="text-xs text-gray-400 italic">No features listed</p>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })()}
-
-                      {/* Action Buttons */}
-                      <div className="space-y-1.5 pt-1.5 border-t border-gray-100">
-                        {/* Primary Book Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleBookAppointment(business.businessLink)
-                          }}
-                          className="w-full flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs sm:text-sm transition-colors duration-200 hover:bg-primary-700"
+                    {/* Call and WhatsApp Buttons */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {/* Call Button */}
+                      {business.phone && (
+                        <a
+                          href={`tel:${business.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
                         >
-                          <FaCalendarAlt className="text-xs" />
-                          <span className="hidden sm:inline">Book Appointment</span>
-                          <span className="sm:hidden">Book</span>
-                        </button>
+                          <FaPhone className="text-[10px]" />
+                          <span>Call</span>
+                        </a>
+                      )}
 
-                        {/* Call and WhatsApp Buttons */}
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {/* Call Button */}
-                          {business.phone && (
-                            <a
-                              href={`tel:${business.phone}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
-                            >
-                              <FaPhone className="text-[10px]" />
-                              <span>Call</span>
-                            </a>
-                          )}
-
-                          {/* WhatsApp Button */}
-                          {whatsappUrl && (
-                            <a
-                              href={whatsappUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
-                            >
-                              <FaWhatsapp className="text-[10px]" />
-                              <span className="hidden sm:inline">WhatsApp</span>
-                              <span className="sm:hidden">WA</span>
-                            </a>
-                          )}
-                        </div>
-                      </div>
+                      {/* WhatsApp Button */}
+                      {whatsappUrl && (
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] sm:text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
+                        >
+                          <FaWhatsapp className="text-[10px]" />
+                          <span className="hidden sm:inline">WhatsApp</span>
+                          <span className="sm:hidden">WA</span>
+                        </a>
+                      )}
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              </div>
+            )})}
             </div>
           </>
         )}
