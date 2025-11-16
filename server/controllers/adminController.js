@@ -204,32 +204,39 @@ const createBusiness = async (req, res, next) => {
             bankDetails, // { accountName, accountNumber, bankName, ifscCode, branch, upiId, qrCode }
             
             // Business Capacity
-            capacity, // { seating, parking, rooms, area }
+            capacity, // { seatingCapacity, parkingSpaces, numberOfRooms, numberOfFloors, totalArea }
             
             // Ratings & Reviews
-            ratings, // { average, total, distribution }
+            ratings, // { average, totalReviews, fiveStars, fourStars, threeStars, twoStars, oneStar }
             
             // Features & Amenities
             features,
             amenities,
             
+            // Languages Supported
+            languages, // [{ type: String }] e.g., ["English", "Hindi", "Marathi"]
+            
             // SEO & Marketing
-            seo, // { metaTitle, metaDescription, metaKeywords, ogImage }
+            seo, // { metaTitle, metaDescription, keywords, ogImage }
             
             // Subscription
-            subscription, // { plan, startDate, endDate, features }
+            subscription, // { plan, startDate, endDate, isActive, features }
             
             // Statistics
             statistics, // { totalCustomers, totalAppointments, totalRevenue, totalOrders, averageRating }
             
             // Notification Preferences
-            notificationPreferences, // { email, sms, whatsapp, push }
+            notificationPreferences, // { emailNotifications, smsNotifications, whatsappNotifications, pushNotifications }
             
             // Custom Fields
-            customFields, // Flexible key-value pairs
+            customFields, // Flexible key-value pairs [{ key, value, type }]
+            
+            // Business Hours & Days Off
+            businessHours, // Mixed type for flexible business hours structure
+            daysOff, // [{ type: Date }] Specific dates when business is closed
             
             // Holidays
-            holidays, // [{ name, date }]
+            holidays, // [{ name, date, reason }]
             
             // Settings
             settings 
@@ -299,20 +306,29 @@ const createBusiness = async (req, res, next) => {
         if (features) businessData.features = features;
         if (amenities) businessData.amenities = amenities;
         
+        // Languages Supported
+        if (languages) businessData.languages = languages;
+        
         // SEO
         if (seo) businessData.seo = seo;
         
         // Subscription
         if (subscription) businessData.subscription = subscription;
         
-        // Statistics
-        if (statistics) businessData.statistics = statistics;
+        // Statistics - map to 'stats' as per model
+        if (statistics) businessData.stats = statistics;
         
-        // Notification Preferences
-        if (notificationPreferences) businessData.notificationPreferences = notificationPreferences;
+        // Notification Preferences - map to 'notifications' as per model
+        if (notificationPreferences) businessData.notifications = notificationPreferences;
         
         // Custom Fields
         if (customFields) businessData.customFields = customFields;
+        
+        // Business Hours
+        if (businessHours) businessData.businessHours = businessHours;
+        
+        // Days Off
+        if (daysOff) businessData.daysOff = daysOff;
         
         // Holidays
         if (holidays) businessData.holidays = holidays;

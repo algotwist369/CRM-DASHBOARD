@@ -345,10 +345,8 @@ const BusinessList = () => {
 
   // Memoized handlers
   const handleAdd = useCallback(() => {
-    setFormData(INITIAL_FORM_DATA);
-    setFormErrors({});
-    setIsCreateModalOpen(true);
-  }, []);
+     navigate('/admin/businesses/create');
+  }, [navigate]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
