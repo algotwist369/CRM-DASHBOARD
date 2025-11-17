@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -7,8 +7,9 @@ import {
   FaArrowRight,
   FaCheckCircle,
   FaClock,
-  FaDollarSign
+  FaChevronDown
 } from 'react-icons/fa'
+import { FiCheck, FiPlus } from 'react-icons/fi'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import appointmentService from '../../../../services/public/appointmentService'
 
@@ -94,6 +95,10 @@ const ServiceSelection = () => {
   const [selectedOptions, setSelectedOptions] = useState({})
   const [expandedServiceId, setExpandedServiceId] = useState(null)
   const [servicesLoading, setServicesLoading] = useState(false)
+  const [customerInfo, setCustomerInfo] = useState(null)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [selectedStaffSummary, setSelectedStaffSummary] = useState(null)
   const [error, setError] = useState(null)
 
   // Update page title
@@ -132,34 +137,52 @@ const ServiceSelection = () => {
     }
   }, [businessLink])
 
-  const loadBusinessData = useCallback(() => {
+  useEffect(() => {
     const businessData = sessionStorage.getItem('bookingBusiness')
+    const storedCustomer = sessionStorage.getItem('customerInfo')
+    const storedDate = sessionStorage.getItem('selectedDate')
+    const storedTime = sessionStorage.getItem('selectedTime')
+    const storedStaff = sessionStorage.getItem('selectedStaff')
+    let parsedBusiness = null
     if (businessData) {
       try {
-        const parsed = JSON.parse(businessData)
-        setBusiness(parsed)
+        parsedBusiness = JSON.parse(businessData)
+        setBusiness(parsedBusiness)
       } catch (error) {
         console.error('Failed to parse stored business data', error)
         sessionStorage.removeItem('bookingBusiness')
       } finally {
         setLoading(false)
       }
-      fetchBusinessServices(false)
     } else {
-      fetchBusinessServices(true)
+      setLoading(false)
     }
+    if (storedCustomer) {
+      try {
+        setCustomerInfo(JSON.parse(storedCustomer))
+      } catch {
+        sessionStorage.removeItem('customerInfo')
+      }
+    }
+
+    if (storedDate) setSelectedDate(storedDate)
+    if (storedTime) setSelectedTime(storedTime)
+
+    if (storedStaff) {
+      try {
+        const parsedStaff = JSON.parse(storedStaff)
+        setSelectedStaffSummary({
+          name: parsedStaff.name,
+          title: parsedStaff.title,
+          avatar: parsedStaff.avatar
+        })
+      } catch {
+        sessionStorage.removeItem('selectedStaff')
+      }
+    }
+
+    fetchBusinessServices(!parsedBusiness)
   }, [fetchBusinessServices])
-
-  useEffect(() => {
-    loadBusinessData()
-  }, [loadBusinessData])
-
-useEffect(() => {
-  if (business) {
-    console.log('[Booking] Business data loaded:', business)
-    console.log('[Booking] Available services:', business.services || [])
-  }
-}, [business])
 
   useEffect(() => {
     if (!business?.services) return
@@ -179,14 +202,7 @@ useEffect(() => {
     })
   }, [business])
 
-  useEffect(() => {
-    // Load selected services after business data is loaded
-    if (business) {
-      loadSelectedServices()
-    }
-  }, [business])
-
-  const loadSelectedServices = () => {
+  const loadSelectedServices = useCallback(() => {
     const saved = sessionStorage.getItem('selectedServices')
     if (!saved) {
       setSelectedServices([])
@@ -232,7 +248,13 @@ useEffect(() => {
       sessionStorage.removeItem('selectedServices')
       setSelectedServices([])
     }
-  }
+  }, [business])
+
+  useEffect(() => {
+    if (business) {
+      loadSelectedServices()
+    }
+  }, [business, loadSelectedServices])
 
   const toggleService = (service) => {
     const serviceId = getServiceId(service)
@@ -325,17 +347,18 @@ useEffect(() => {
     return Number(service) || 0
   }
 
-  const calculateTotal = () => {
-    return selectedServices.reduce((total, service) => {
-      return total + getServicePrice(service)
-    }, 0)
-  }
+  const totalPrice = useMemo(
+    () => selectedServices.reduce((total, service) => total + getServicePrice(service), 0),
+    [selectedServices]
+  )
 
-  const calculateTotalDuration = () => {
-    return selectedServices.reduce((total, service) => {
-      return total + getServiceDuration(service)
-    }, 0)
-  }
+  const totalDuration = useMemo(
+    () => selectedServices.reduce((total, service) => total + getServiceDuration(service), 0),
+    [selectedServices]
+  )
+
+  const services = useMemo(() => business?.services || [], [business])
+  const serviceCount = services.length
 
   const handleContinue = () => {
     if (selectedServices.length === 0) {
@@ -378,40 +401,46 @@ useEffect(() => {
     )
   }
 
-  const services = business?.services || []
-
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-6 text-center sm:text-left space-y-2">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <FaArrowLeft />
             Back
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Select Services</h1>
-          <p className="text-gray-600 mt-2">Choose the services you'd like to book</p>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Select Services</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Choose the services you'd like to book</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Services List */}
-          <div className="lg:col-span-2">
-            {servicesLoading && (
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
-                <FaSpinner className="animate-spin" />
-                Updating services...
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-600">
+              <div className="text-center sm:text-left space-y-1">
+                <p className="font-medium text-gray-900">{business.name}</p>
+                <p>{serviceCount} {serviceCount === 1 ? 'service' : 'services'}</p>
               </div>
-            )}
+              {servicesLoading && (
+                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                  <FaSpinner className="animate-spin" />
+                  Updating…
+                </div>
+              )}
+            </div>
+
             {services.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-                <p className="text-gray-600">No services available</p>
+              <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+                <p className="text-gray-500">This business has not published any bookable services yet.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {services.map((service, index) => {
+              services.map((service, index) => {
                   const serviceId = getServiceId(service) || `service-${index}`
                   const options = getServiceOptions(service)
                   const hasOptions = options.length > 0
@@ -438,46 +467,58 @@ useEffect(() => {
                   return (
                     <div
                       key={serviceId}
-                      className={`bg-white rounded-xl border ${isSelected ? 'border-gray-900' : 'border-gray-200'} p-5`}
+                      className={`bg-white rounded-xl border ${isSelected ? 'border-gray-900 shadow-sm' : 'border-gray-200'} p-4 sm:p-5 transition`}
                     >
-                      <button
-                        type="button"
-                        className="w-full text-left flex items-start justify-between gap-4"
-                        onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={`w-4 h-4 rounded-full border mt-1.5 flex items-center justify-center ${isSelected ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
-                              }`}
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleService(service)}
+                            disabled={!hasOptions}
+                            className={`w-8 h-8 rounded-full border flex items-center justify-center transition ${
+                              isSelected ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-500'
+                            } ${!hasOptions ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            {isSelected && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
-                          </div>
-                          <div>
-                            <p className="text-base font-semibold text-gray-900">{getRawServiceName(service)}</p>
-                            {service?.category && (
-                              <p className="text-xs text-gray-500 mt-0.5">{service.category}</p>
-                            )}
-                            <div className="flex items-center gap-4 text-sm text-gray-600 mt-2 flex-wrap">
-                              {durationSummary && (
-                                <span className="flex items-center gap-1">
-                                  <FaClock />
-                                  {durationSummary}
-                                </span>
-                              )}
-                              <span className="flex items-center gap-1">
-                                <FaDollarSign />
-                                {priceSummary}
-                              </span>
+                            {isSelected ? <FiCheck className="text-sm" /> : <FiPlus className="text-sm" />}
+                          </button>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wide flex-wrap">
+                              <span>{service.category || 'Service'}</span>
+                              <span>•</span>
+                              <span>{service.serviceType || 'General'}</span>
                             </div>
+                            <button
+                              type="button"
+                              className="flex items-center gap-2 text-left"
+                              onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
+                            >
+                              <p className="text-lg font-medium text-gray-900">{getRawServiceName(service)}</p>
+                              <FaChevronDown
+                                className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              />
+                            </button>
                           </div>
                         </div>
-                        <span className="text-sm text-gray-500">
-                          {isExpanded ? 'Hide' : 'View options'}
-                        </span>
-                      </button>
+                        <div className="sm:text-right">
+                          <p className="text-sm text-gray-500">From</p>
+                          <p className="text-lg font-semibold text-gray-900">{priceSummary}</p>
+                          {durationSummary && (
+                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1 justify-start sm:justify-end">
+                              <FaClock />
+                              {durationSummary}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {service?.description && (
+                        <p className="text-sm text-gray-500 mt-3">
+                          {service.description}
+                        </p>
+                      )}
 
                       {isExpanded && (
-                        <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+                        <div className="mt-4 border-t border-gray-100 pt-4 space-y-3">
                           {hasOptions ? (
                             options.map(option => {
                               const optionSelected = selectedOptionId === option.id && isSelected
@@ -486,10 +527,9 @@ useEffect(() => {
                                   key={option.id}
                                   type="button"
                                   onClick={() => handleOptionChange(service, option.id, true)}
-                                  className={`w-full text-left px-4 py-3 rounded-lg border flex items-center justify-between ${optionSelected
-                                    ? 'border-gray-900 bg-gray-50 text-gray-900'
-                                    : 'border-gray-200 text-gray-700 hover:border-gray-400'
-                                    }`}
+                                  className={`w-full text-left px-4 py-3 rounded-lg border flex items-center justify-between ${
+                                    optionSelected ? 'border-gray-900 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:border-gray-400'
+                                  }`}
                                 >
                                   <div>
                                     <p className="text-sm font-medium">
@@ -511,31 +551,17 @@ useEffect(() => {
                               This service is currently unavailable.
                             </p>
                           )}
-                          <div className="flex items-center justify-between pt-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleService(service)}
-                              disabled={!hasOptions}
-                              className={`text-sm px-4 py-2 rounded-lg border font-medium ${isSelected
-                                ? 'border-gray-900 text-gray-900'
-                                : 'border-gray-300 text-gray-600'
-                                } ${!hasOptions ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              {isSelected ? 'Remove service' : 'Add service'}
-                            </button>
-                          </div>
                         </div>
                       )}
                     </div>
                   )
-                })}
-              </div>
+                })
             )}
           </div>
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:sticky lg:top-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
 
               <div className="space-y-3 mb-4">
@@ -550,32 +576,82 @@ useEffect(() => {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Estimated Duration</span>
                   <span className="text-gray-900 font-medium">
-                    {calculateTotalDuration() ? `${calculateTotalDuration()} min` : '--'}
+                    {totalDuration ? `${totalDuration} min` : '--'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Estimated Price</span>
                   <span className="text-gray-900 font-semibold text-lg">
                     {formatPrice(
-                      calculateTotal(),
+                      totalPrice,
                       business?.currency || selectedServices[0]?.currency || 'INR'
                     )}
                   </span>
                 </div>
               </div>
 
-              <div className="border-t border-gray-200 pt-4 space-y-3">
-                {selectedServices.length > 0 && (
+              <div className="border-t border-gray-200 pt-4 space-y-4 text-sm text-gray-700">
+                {customerInfo && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Contact</p>
+                    <p className="font-medium text-gray-900">{customerInfo.name}</p>
+                    {customerInfo.phone && <p>{customerInfo.phone}</p>}
+                    {customerInfo.email && <p className="text-gray-500">{customerInfo.email}</p>}
+                  </div>
+                )}
+
+                {(selectedDate || selectedTime || selectedStaffSummary) && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-700">Selected Services:</p>
-                    {selectedServices.map((service, index) => (
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Appointment</p>
+                    {selectedDate && (
+                      <div className="flex items-center justify-between">
+                        <span>Date</span>
+                        <span className="font-medium text-gray-900">
+                          {new Date(selectedDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                    {selectedTime && (
+                      <div className="flex items-center justify-between">
+                        <span>Time</span>
+                        <span className="font-medium text-gray-900">{selectedTime}</span>
+                      </div>
+                    )}
+                    {selectedStaffSummary && (
+                      <div className="flex items-center justify-between">
+                        <span>Staff</span>
+                        <span className="flex items-center gap-2 font-medium text-gray-900">
+                          {selectedStaffSummary.avatar ? (
+                            <img
+                              src={selectedStaffSummary.avatar}
+                              alt={selectedStaffSummary.name}
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-600">
+                              <FiCheck />
+                            </span>
+                          )}
+                          {selectedStaffSummary.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-gray-700">Selected Services:</p>
+                  {selectedServices.length === 0 ? (
+                    <p className="text-xs text-gray-500">No services selected yet.</p>
+                  ) : (
+                    selectedServices.map((service, index) => (
                       <div key={index} className="text-xs text-gray-700 flex items-center gap-2">
                         <FaCheckCircle className="text-gray-500" />
                         {getServiceName(service)}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    ))
+                  )}
+                </div>
               </div>
 
               <button

@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Badge, Input, Dropdown } from '../../common'
+import { FiCheck, FiMail, FiPhone, FiUser } from 'react-icons/fi'
 
 const StaffSelector = ({ 
   staff = [],
@@ -16,12 +17,24 @@ const StaffSelector = ({
   const [searchTerm, setSearchTerm] = useState('')
   const [filterSpecialty, setFilterSpecialty] = useState('')
 
-  const filteredStaff = staff.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.specialties?.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesSpecialty = !filterSpecialty || member.specialties?.includes(filterSpecialty)
-    return matchesSearch && matchesSpecialty
-  })
+  const getStaffId = (member) => member?._id || member?.id || member?.staffId || member?.email || member?.name
+
+  const uniqueSpecialties = useMemo(() => {
+    const specialties = new Set()
+    staff.forEach(member => member.specialties?.forEach(specialty => specialties.add(specialty)))
+    return Array.from(specialties)
+  }, [staff])
+
+  const filteredStaff = useMemo(() => {
+    return staff.filter(member => {
+      const lowerTerm = searchTerm.toLowerCase()
+      const nameMatch = member.name?.toLowerCase().includes(lowerTerm)
+      const specialtyMatch = member.specialties?.some(s => s.toLowerCase().includes(lowerTerm))
+      const matchesSearch = !searchTerm || nameMatch || specialtyMatch
+      const matchesSpecialty = !filterSpecialty || member.specialties?.includes(filterSpecialty)
+      return matchesSearch && matchesSpecialty
+    })
+  }, [staff, searchTerm, filterSpecialty])
 
   const handleStaffSelect = (staffMember) => {
     if (disabled) return
@@ -47,19 +60,19 @@ const StaffSelector = ({
   }
 
   const getStaffClasses = (staffMember) => {
-    const isSelected = selectedStaff?.id === staffMember.id
+    const isSelected = getStaffId(selectedStaff) === getStaffId(staffMember)
     const availability = getAvailabilityStatus(staffMember)
-    const baseClasses = 'w-full p-4 text-left border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2'
+    const baseClasses = 'w-full p-4 text-left border rounded-xl transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
     
     if (disabled || availability.status === 'unavailable') {
       return `${baseClasses} bg-gray-50 border-gray-200 cursor-not-allowed opacity-60`
     }
     
     if (isSelected) {
-      return `${baseClasses} bg-primary-50 border-primary-300 ring-2 ring-primary-200`
+      return `${baseClasses} bg-gray-900 text-white border-gray-900 shadow-lg focus-visible:ring-gray-700`
     }
     
-    return `${baseClasses} bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50 focus:ring-primary-500`
+    return `${baseClasses} bg-white border-gray-200 hover:border-gray-400 hover:bg-gray-50 focus-visible:ring-gray-500`
   }
 
   const getAvailabilityBadgeColor = (status) => {
@@ -109,16 +122,8 @@ const StaffSelector = ({
     return stars
   }
 
-  const getUniqueSpecialties = () => {
-    const specialties = new Set()
-    staff.forEach(member => {
-      member.specialties?.forEach(specialty => specialties.add(specialty))
-    })
-    return Array.from(specialties)
-  }
-
   return (
-    <div className={className}>
+    <div className={`space-y-6 ${className}`}>
       {/* Header */}
       <div className="mb-6">
         <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -140,11 +145,11 @@ const StaffSelector = ({
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         
-        {showSpecialties && getUniqueSpecialties().length > 0 && (
+        {showSpecialties && uniqueSpecialties.length > 0 && (
           <Dropdown
             options={[
               { label: 'All Specialties', value: '' },
-              ...getUniqueSpecialties().map(specialty => ({
+              ...uniqueSpecialties.map(specialty => ({
                 label: specialty,
                 value: specialty
               }))
@@ -170,19 +175,18 @@ const StaffSelector = ({
         ) : (
           filteredStaff.map((staffMember) => {
             const availability = getAvailabilityStatus(staffMember)
-            const isSelected = selectedStaff?.id === staffMember.id
+            const isSelected = getStaffId(selectedStaff) === getStaffId(staffMember)
 
             return (
               <button
-                key={staffMember.id}
+                key={getStaffId(staffMember)}
                 onClick={() => handleStaffSelect(staffMember)}
                 className={getStaffClasses(staffMember)}
                 disabled={disabled || availability.status === 'unavailable'}
               >
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
                       {staffMember.avatar ? (
                         <img
                           src={staffMember.avatar}
@@ -190,36 +194,27 @@ const StaffSelector = ({
                           className="w-12 h-12 rounded-full object-cover"
                         />
                       ) : (
-                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
+                        <FiUser />
                       )}
                     </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">
+                        {staffMember.name}
+                      </h4>
+                      {staffMember.title && (
+                        <p className="text-sm text-gray-600">
+                          {staffMember.title}
+                        </p>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <FiCheck className="text-primary-600 text-lg" />
+                    )}
                   </div>
 
-                  {/* Staff Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-medium text-gray-900 truncate">
-                          {staffMember.name}
-                        </h4>
-                        {staffMember.title && (
-                          <p className="text-sm text-gray-600">
-                            {staffMember.title}
-                          </p>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-
-                    {/* Specialties */}
-                    {showSpecialties && staffMember.specialties && staffMember.specialties.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
+                  <div className="flex-1 min-w-0 space-y-3">
+                    {showSpecialties && staffMember.specialties?.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
                         {staffMember.specialties.map((specialty, index) => (
                           <Badge key={index} variant="default" size="sm">
                             {specialty}
@@ -228,15 +223,29 @@ const StaffSelector = ({
                       </div>
                     )}
 
-                    {/* Rating and Availability */}
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
+                      {staffMember.phone && (
+                        <span className="inline-flex items-center gap-1">
+                          <FiPhone className="text-gray-400" />
+                          {staffMember.phone}
+                        </span>
+                      )}
+                      {staffMember.email && (
+                        <span className="inline-flex items-center gap-1">
+                          <FiMail className="text-gray-400" />
+                          {staffMember.email}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
                       {showRating && staffMember.rating && (
                         <div className="flex items-center gap-1">
                           <div className="flex">
                             {renderStars(staffMember.rating)}
                           </div>
-                          <span className="text-gray-600">
-                            {staffMember.rating} ({staffMember.reviewCount || 0} reviews)
+                          <span className="text-gray-600 text-xs sm:text-sm">
+                            {staffMember.rating} ({staffMember.reviewCount || 0})
                           </span>
                         </div>
                       )}
