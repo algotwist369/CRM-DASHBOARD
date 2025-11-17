@@ -39,9 +39,12 @@ const createService = async (req, res, next) => {
             });
         }
 
+        // Remove businessId from serviceData to prevent override
+        const { businessId, ...cleanServiceData } = serviceData;
+        
         // Create service
         const service = await Service.create({
-            ...serviceData,
+            ...cleanServiceData,
             business: business._id,
             createdBy: userId,
             createdByModel: userRole === 'admin' ? 'Admin' : 'Manager'
@@ -124,12 +127,6 @@ const getServices = async (req, res, next) => {
             query.serviceType = serviceType;
         }
 
-        if (minPrice || maxPrice) {
-            query.price = {};
-            if (minPrice) query.price.$gte = Number(minPrice);
-            if (maxPrice) query.price.$lte = Number(maxPrice);
-        }
-
         // Search
         if (search) {
             query.$or = [
@@ -139,11 +136,16 @@ const getServices = async (req, res, next) => {
             ];
         }
 
+        // Price filtering - handle both old format (price) and new format (pricingOptions)
+        // Note: We'll filter in memory after fetching to handle both formats properly
+        const minPriceFilter = minPrice ? Number(minPrice) : null;
+        const maxPriceFilter = maxPrice ? Number(maxPrice) : null;
+
         // Sort options
         const sortOptions = {};
         sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-        const services = await Service.find(query)
+        let services = await Service.find(query)
             .populate('assignedStaff', 'name role')
             .populate('packageDetails.includedServices.service', 'name price')
             .skip((page - 1) * limit)
@@ -151,7 +153,32 @@ const getServices = async (req, res, next) => {
             .sort(sortOptions)
             .lean();
 
-        const total = await Service.countDocuments(query);
+        // Filter by price if minPrice or maxPrice specified (handle both old and new format)
+        if (minPriceFilter !== null || maxPriceFilter !== null) {
+            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+            services = services.filter(service => {
+                const { price } = getServicePriceAndDuration(service);
+                if (minPriceFilter !== null && price < minPriceFilter) return false;
+                if (maxPriceFilter !== null && price > maxPriceFilter) return false;
+                return true;
+            });
+        }
+
+        // Get total count (need to recalculate if price filtering was applied)
+        let total;
+        if (minPriceFilter !== null || maxPriceFilter !== null) {
+            // If price filtering, we need to count after filtering
+            const allServices = await Service.find(query).lean();
+            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+            total = allServices.filter(service => {
+                const { price } = getServicePriceAndDuration(service);
+                if (minPriceFilter !== null && price < minPriceFilter) return false;
+                if (maxPriceFilter !== null && price > maxPriceFilter) return false;
+                return true;
+            }).length;
+        } else {
+            total = await Service.countDocuments(query);
+        }
 
         const response = {
             success: true,
@@ -193,10 +220,13 @@ const getServiceById = async (req, res, next) => {
             });
         }
 
+        // Get business ID (handle both populated and unpopulated)
+        const businessId = service.business?._id || service.business;
+        
         // Verify access
         if (userRole === 'admin') {
             const business = await Business.findOne({
-                _id: service.business._id,
+                _id: businessId,
                 admin: userId
             });
             if (!business) {
@@ -207,7 +237,7 @@ const getServiceById = async (req, res, next) => {
             }
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            if (manager.business.toString() !== service.business._id.toString()) {
+            if (manager.business.toString() !== businessId.toString()) {
                 return res.status(403).json({
                     success: false,
                     message: "Access denied"
@@ -263,8 +293,11 @@ const updateService = async (req, res, next) => {
             }
         }
 
+        // Remove protected fields from updates (cannot be changed)
+        const { business, businessId, createdBy, createdByModel, _id, __v, ...allowedUpdates } = updates;
+        
         // Update service
-        Object.assign(service, updates);
+        Object.assign(service, allowedUpdates);
         service.updatedBy = userId;
         service.updatedByModel = userRole === 'admin' ? 'Admin' : 'Manager';
 
@@ -283,7 +316,7 @@ const updateService = async (req, res, next) => {
     }
 };
 
-// ================== Delete Service (Soft Delete) ==================
+// ================== Delete Service ==================
 const deleteService = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -299,10 +332,13 @@ const deleteService = async (req, res, next) => {
             });
         }
 
+        // Store business ID for cache invalidation before deletion
+        const businessId = service.business;
+
         // Verify access
         if (userRole === 'admin') {
             const business = await Business.findOne({
-                _id: service.business,
+                _id: businessId,
                 admin: userId
             });
             if (!business) {
@@ -313,7 +349,7 @@ const deleteService = async (req, res, next) => {
             }
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            if (manager.business.toString() !== service.business.toString()) {
+            if (manager.business.toString() !== businessId.toString()) {
                 return res.status(403).json({
                     success: false,
                     message: "Access denied"
@@ -321,18 +357,118 @@ const deleteService = async (req, res, next) => {
             }
         }
 
-        // Soft delete
-        service.isActive = false;
-        service.updatedBy = userId;
-        service.updatedByModel = userRole === 'admin' ? 'Admin' : 'Manager';
-        await service.save();
+        // Hard delete - remove from database
+        await Service.findByIdAndDelete(id);
 
         // Invalidate cache
-        await deleteCache(`business:${service.business}:services`);
+        await deleteCache(`business:${businessId}:services`);
 
         return res.json({
             success: true,
             message: "Service deleted successfully"
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Public Business Services (for booking) ==================
+const getPublicBusinessServices = async (req, res, next) => {
+    try {
+        const { identifier } = req.params;
+        if (!identifier) {
+            return res.status(400).json({
+                success: false,
+                message: "Business identifier is required"
+            });
+        }
+
+        const isObjectId = /^[a-f\d]{24}$/i.test(identifier);
+        const business = await Business.findOne({
+            isActive: true,
+            $or: [
+                { businessLink: identifier },
+                ...(isObjectId ? [{ _id: identifier }] : [])
+            ]
+        })
+            .select("_id name branch description phone email website images settings appointmentSettings")
+            .lean();
+
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+
+        const services = await Service.find({
+            business: business._id,
+            isActive: true,
+            $or: [
+                { allowOnlineBooking: { $ne: false } },
+                { allowOnlineBooking: { $exists: false } }
+            ]
+        })
+            .select("name description category serviceType pricingType price duration bufferTime currency pricingOptions allowOnlineBooking availableDays tags images thumbnail stats ratings displayOrder")
+            .sort({ displayOrder: 1, name: 1 })
+            .lean();
+
+        const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+
+        const normalizedServices = services.map((service) => {
+            const { price, duration } = getServicePriceAndDuration(service);
+
+            return {
+                _id: service._id,
+                name: service.name,
+                description: service.description,
+                category: service.category,
+                serviceType: service.serviceType,
+                pricingType: service.pricingType,
+                price: service.price,
+                duration: service.duration,
+                bufferTime: service.bufferTime,
+                currency: service.currency || business.settings?.currency || "INR",
+                allowOnlineBooking: service.allowOnlineBooking !== false,
+                availableDays: service.availableDays || [],
+                tags: service.tags || [],
+                thumbnail: service.thumbnail || service.images?.thumbnail || null,
+                images: service.images || {},
+                stats: service.stats || {},
+                ratings: service.ratings || {},
+                defaultPrice: price,
+                defaultDuration: duration,
+                pricingOptions: (service.pricingOptions || []).map((option) => ({
+                    _id: option._id,
+                    name: option.name,
+                    label: option.name || (option.duration ? `${option.duration} min` : "Option"),
+                    duration: option.duration,
+                    price: option.price,
+                    originalPrice: option.originalPrice || null,
+                    isActive: option.isActive !== false
+                }))
+            };
+        });
+
+        return res.json({
+            success: true,
+            data: {
+                business: {
+                    _id: business._id,
+                    name: business.name,
+                    branch: business.branch,
+                    description: business.description,
+                    phone: business.phone,
+                    email: business.email,
+                    website: business.website,
+                    images: business.images || {},
+                    appointmentSettings: business.settings?.appointmentSettings || {},
+                    currency: business.settings?.currency || "INR",
+                    allowOnlineBooking:
+                        business.settings?.appointmentSettings?.allowOnlineBooking !== false
+                },
+                services: normalizedServices
+            }
         });
     } catch (err) {
         next(err);
@@ -449,25 +585,34 @@ const getServiceCategories = async (req, res, next) => {
         }
 
         // Get unique categories with service count
-        const categories = await Service.aggregate([
-            { $match: { business: business._id, isActive: true } },
-            {
-                $group: {
-                    _id: '$category',
-                    count: { $sum: 1 },
-                    averagePrice: { $avg: '$price' }
-                }
-            },
-            { $sort: { count: -1 } }
-        ]);
+        // First get all services to calculate average price (handling both old and new format)
+        const allServices = await Service.find({ business: business._id, isActive: true }).lean();
+        const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+
+        // Group by category and calculate averages
+        const categoryMap = {};
+        allServices.forEach(service => {
+            const category = service.category;
+            const { price } = getServicePriceAndDuration(service);
+
+            if (!categoryMap[category]) {
+                categoryMap[category] = { count: 0, totalPrice: 0 };
+            }
+            categoryMap[category].count += 1;
+            categoryMap[category].totalPrice += price;
+        });
+
+        const categories = Object.entries(categoryMap)
+            .map(([category, data]) => ({
+                category,
+                serviceCount: data.count,
+                averagePrice: Math.round(data.totalPrice / data.count)
+            }))
+            .sort((a, b) => b.serviceCount - a.serviceCount);
 
         return res.json({
             success: true,
-            data: categories.map(cat => ({
-                category: cat._id,
-                serviceCount: cat.count,
-                averagePrice: Math.round(cat.averagePrice)
-            }))
+            data: categories
         });
     } catch (err) {
         next(err);
@@ -537,6 +682,7 @@ module.exports = {
     getServiceById,
     updateService,
     deleteService,
+    getPublicBusinessServices,
     getPopularServices,
     getFeaturedServices,
     getServiceCategories,
