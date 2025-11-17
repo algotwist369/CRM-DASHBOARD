@@ -254,7 +254,7 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
               <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <HiOutlineHome className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold tracking-wide ml-3 truncate">CRM Admin</h1>
+              <h1 className="text-xl font-bold tracking-wide ml-3 truncate">admin</h1>
             </div>
             <Button
               variant="ghost"

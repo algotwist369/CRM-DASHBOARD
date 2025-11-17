@@ -2,67 +2,153 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   HiOutlineCube, HiOutlinePlus, HiOutlineSearch, HiOutlineRefresh,
-  HiOutlineEye, HiOutlinePencil, HiOutlineTrash, HiOutlineTag
+  HiOutlineEye, HiOutlinePencil, HiOutlineTrash
 } from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
 
-const StatsCard = memo(({ title, value, icon, color }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className={`text-2xl font-bold mt-2 ${color}`}>{value}</p>
-      </div>
-      <div className={`p-3 rounded-full ${color.replace('text', 'bg').replace('600', '100')}`}>
-        {icon}
-      </div>
-    </div>
+const StatsCard = memo(({ title, value, description }) => (
+  <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <p className="text-xs uppercase tracking-wide text-gray-500">{title}</p>
+    <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
+    {description && <p className="text-xs text-gray-400 mt-1">{description}</p>}
   </div>
 ));
 
-const ServiceRow = memo(({ service, onView, onEdit, onDelete }) => (
-  <tr className="hover:bg-gray-50 transition-colors">
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center">
-        <div className="h-10 w-10 flex-shrink-0">
-          <div className="h-10 w-10 rounded bg-primary-100 flex items-center justify-center">
-            <HiOutlineCube className="w-6 h-6 text-primary-600" />
+const currencySymbols = {
+  INR: '₹',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AED: 'د.إ',
+};
+
+const formatCurrency = (value, currency = 'INR') => {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) {
+    return '--';
+  }
+  const symbol = currencySymbols[currency] || '';
+  const amount = Number(value).toLocaleString('en-IN');
+  return symbol ? `${symbol}${amount}` : `${currency} ${amount}`;
+};
+
+const getPricingSummary = (service) => {
+  const currency = service.currency || 'INR';
+  const activeOptions = (service.pricingOptions || []).filter(
+    (option) => option && option.isActive !== false && option.price
+  );
+
+  if (service.pricingType === 'variable' && activeOptions.length > 0) {
+    const prices = activeOptions.map((option) => Number(option.price)).filter((price) => !Number.isNaN(price));
+    const durations = activeOptions
+      .map((option) => Number(option.duration))
+      .filter((duration) => !Number.isNaN(duration));
+
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const minDuration = durations.length ? Math.min(...durations) : null;
+    const maxDuration = durations.length ? Math.max(...durations) : null;
+
+    return {
+      isVariable: true,
+      priceRange: minPrice === maxPrice
+        ? formatCurrency(minPrice, currency)
+        : `${formatCurrency(minPrice, currency)} - ${formatCurrency(maxPrice, currency)}`,
+      durationRange: minDuration === null
+        ? '--'
+        : minDuration === maxDuration
+          ? `${minDuration} min`
+          : `${minDuration}-${maxDuration} min`,
+      options: activeOptions.map((option) => ({
+        key: option._id || `${option.duration}-${option.price}`,
+        duration: option.duration,
+        price: option.price
+      })),
+      currency
+    };
+  }
+
+  return {
+    isVariable: false,
+    priceRange: service.price ? formatCurrency(service.price, currency) : '--',
+    durationRange: service.duration ? `${service.duration} min` : '--',
+    options: [],
+    currency
+  };
+};
+
+const ServiceRow = memo(({ service, onView, onEdit, onDelete }) => {
+  const pricingInfo = getPricingSummary(service);
+
+  return (
+    <tr className="hover:bg-gray-50 transition-colors">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 flex-shrink-0">
+            <div className="h-10 w-10 rounded bg-primary-100 flex items-center justify-center">
+              <HiOutlineCube className="w-6 h-6 text-primary-600" />
+            </div>
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">{service.name}</div>
+            <div className="text-sm text-gray-500">{service.category}</div>
           </div>
         </div>
-        <div className="ml-4">
-          <div className="text-sm font-medium text-gray-900">{service.name}</div>
-          <div className="text-sm text-gray-500">{service.category}</div>
-        </div>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-      ₹{service.price?.toLocaleString()}
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-      {service.duration} min
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <span className={`px-2 py-1 text-xs rounded-full ${service.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-        {service.isActive ? 'Active' : 'Inactive'}
-      </span>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-      {service.totalBookings || service.bookingCount || 0}
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-      <button onClick={() => onView(service._id)} className="text-blue-600 hover:text-blue-900 mr-3">
-        <HiOutlineEye className="w-5 h-5" />
-      </button>
-      <button onClick={() => onEdit(service._id)} className="text-green-600 hover:text-green-900 mr-3">
-        <HiOutlinePencil className="w-5 h-5" />
-      </button>
-      <button onClick={() => onDelete(service._id)} className="text-red-600 hover:text-red-900">
-        <HiOutlineTrash className="w-5 h-5" />
-      </button>
-    </td>
-  </tr>
-));
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {pricingInfo.isVariable ? (
+          <div>
+            <p className="font-medium text-gray-900">{pricingInfo.priceRange}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {pricingInfo.options.length
+                ? `${pricingInfo.options.length} option${pricingInfo.options.length > 1 ? 's' : ''}`
+                : 'Variable pricing'}
+            </p>
+          </div>
+        ) : (
+          <p className="font-medium text-gray-900">{pricingInfo.priceRange}</p>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {pricingInfo.durationRange}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`px-2 py-1 text-xs rounded-full ${service.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {service.isActive ? 'Active' : 'Inactive'}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {service.totalBookings || service.bookingCount || service.stats?.totalBookings || 0}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button onClick={() => onView(service._id)} className="text-blue-600 hover:text-blue-900 mr-3">
+          <HiOutlineEye className="w-5 h-5" />
+        </button>
+        <button onClick={() => onEdit(service._id)} className="text-green-600 hover:text-green-900 mr-3">
+          <HiOutlinePencil className="w-5 h-5" />
+        </button>
+        <button onClick={() => onDelete(service._id)} className="text-red-600 hover:text-red-900">
+          <HiOutlineTrash className="w-5 h-5" />
+        </button>
+      </td>
+    </tr>
+  );
+});
+
+const isValidObjectId = (value) => typeof value === 'string' && /^[a-f\d]{24}$/i.test(value);
+
+const resolveBusinessId = (storedValue, businessList = []) => {
+  if (!storedValue || storedValue === 'undefined' || storedValue === 'null') return '';
+  if (isValidObjectId(storedValue)) return storedValue;
+
+  const matchById = businessList.find(biz => biz._id === storedValue);
+  if (matchById) return matchById._id;
+
+  const matchByName = businessList.find(biz => biz.name === storedValue);
+  if (matchByName) return matchByName._id;
+
+  return '';
+};
 
 const ServiceList = () => {
   const navigate = useNavigate();
@@ -73,29 +159,50 @@ const ServiceList = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [stats, setStats] = useState({ total: 0, active: 0, categories: 0, popular: 0 });
   const [businesses, setBusinesses] = useState([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState(localStorage.getItem('selectedBusinessId') || '');
+  const [selectedBusinessId, setSelectedBusinessId] = useState('');
   const [categories, setCategories] = useState([]);
+  const [businessesLoaded, setBusinessesLoaded] = useState(false);
 
   // Fetch businesses
   const fetchBusinesses = useCallback(async () => {
     try {
       const response = await adminService.getBusinesses();
       if (response.success) {
-        setBusinesses(response.data || []);
-        if (!selectedBusinessId && response.data && response.data.length > 0) {
-          const firstBusinessId = response.data[0]._id;
-          setSelectedBusinessId(firstBusinessId);
-          localStorage.setItem('selectedBusinessId', firstBusinessId);
+        const businessList = (response.data || []).map((business) => ({
+          ...business,
+          _id: business?._id || business?.id || business?.businessId || business?._id
+        }));
+        setBusinesses(businessList);
+        setBusinessesLoaded(true);
+
+        // Resolve businessId from localStorage (might be name or invalid)
+        const storedValue = localStorage.getItem('selectedBusinessId');
+        const resolvedBusinessId = resolveBusinessId(storedValue, businessList);
+        let nextBusinessId = resolvedBusinessId;
+
+        // If no valid businessId found, use first business
+        if (!nextBusinessId && businessList.length > 0) {
+          nextBusinessId = businessList[0]._id;
+        }
+
+        // Only set if we have a valid ObjectId
+        if (nextBusinessId && isValidObjectId(nextBusinessId)) {
+          setSelectedBusinessId(nextBusinessId);
+          localStorage.setItem('selectedBusinessId', nextBusinessId);
+        } else {
+          // Clear invalid value from localStorage
+          localStorage.removeItem('selectedBusinessId');
         }
       }
     } catch (error) {
       console.error('Failed to fetch businesses:', error);
+      setBusinessesLoaded(true);
     }
-  }, [selectedBusinessId]);
+  }, []);
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
-    if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null' || selectedBusinessId.trim() === '') {
+    if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) {
       return;
     }
     try {
@@ -109,7 +216,8 @@ const ServiceList = () => {
   }, [selectedBusinessId]);
 
   const fetchServices = useCallback(async () => {
-    if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null' || selectedBusinessId.trim() === '') {
+    // Validate businessId before making API calls
+    if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) {
       setLoading(false);
       return;
     }
@@ -161,14 +269,17 @@ const ServiceList = () => {
   }, [fetchBusinesses]);
 
   useEffect(() => {
-    if (selectedBusinessId) {
+    // Only fetch services/categories after businesses are loaded and we have a valid businessId
+    if (businessesLoaded && selectedBusinessId && isValidObjectId(selectedBusinessId)) {
       fetchCategories();
       fetchServices();
+    } else if (businessesLoaded && !selectedBusinessId) {
+      // If businesses loaded but no valid businessId, stop loading
+      setLoading(false);
     }
-  }, [fetchServices, fetchCategories, selectedBusinessId]);
+  }, [businessesLoaded, selectedBusinessId, fetchServices, fetchCategories]);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this service?')) return;
     try {
       const response = await adminService.deleteService(id);
       if (response.success) {
@@ -201,37 +312,38 @@ const ServiceList = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatsCard key="total" title="Total Services" value={stats.total} icon={<HiOutlineCube className="w-6 h-6 text-blue-600" />} color="text-blue-600" />
-        <StatsCard key="active" title="Active" value={stats.active} icon={<HiOutlineCube className="w-6 h-6 text-green-600" />} color="text-green-600" />
-        <StatsCard key="categories" title="Categories" value={stats.categories} icon={<HiOutlineTag className="w-6 h-6 text-purple-600" />} color="text-purple-600" />
-        <StatsCard key="popular" title="Popular" value={stats.popular} icon={<HiOutlineCube className="w-6 h-6 text-yellow-600" />} color="text-yellow-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard title="Total Services" value={stats.total} description="All services under this business" />
+        <StatsCard title="Active" value={stats.active} description="Currently visible to clients" />
+        <StatsCard title="Categories" value={stats.categories} description="Unique service categories" />
+        <StatsCard title="Popular" value={stats.popular} description="Trending or most viewed" />
       </div>
 
       {/* Business Selector */}
       {businesses.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <HiOutlineCube className="w-5 h-5 text-blue-600" />
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Business</label>
-              <select
-                value={selectedBusinessId}
-                onChange={(e) => {
-                  setSelectedBusinessId(e.target.value);
-                  localStorage.setItem('selectedBusinessId', e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-              >
-                {businesses.map((business) => (
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Business</label>
+          {businesses.filter(biz => biz?._id).length === 0 ? (
+            <p className="text-sm text-gray-500">No valid businesses found.</p>
+          ) : (
+            <select
+              value={selectedBusinessId}
+              onChange={(e) => {
+                setSelectedBusinessId(e.target.value);
+                localStorage.setItem('selectedBusinessId', e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 bg-white"
+            >
+              {businesses
+                .filter((business) => business && business._id)
+                .map((business) => (
                   <option key={business._id} value={business._id}>
                     {business.name}
                   </option>
                 ))}
-              </select>
-            </div>
-          </div>
+            </select>
+          )}
         </div>
       )}
 

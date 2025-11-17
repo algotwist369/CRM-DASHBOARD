@@ -93,8 +93,9 @@ const createAppointment = async (req, res, next) => {
             }
         }
 
-        // Calculate pricing
-        const servicePrice = service.price;
+        // Calculate pricing (handle both old format and new pricingOptions)
+        const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+        const { price: servicePrice, duration: serviceDuration } = getServicePriceAndDuration(service);
         const discount = 0; // Can be calculated based on loyalty, membership, etc.
         const tax = servicePrice * 0.18; // 18% GST (can be configurable)
         const totalAmount = servicePrice + tax - discount;
@@ -108,7 +109,7 @@ const createAppointment = async (req, res, next) => {
             appointmentDate: new Date(appointmentDate),
             startTime,
             endTime,
-            duration: service.duration,
+            duration: serviceDuration,
             servicePrice,
             tax,
             discount,
@@ -1031,15 +1032,25 @@ const bookAppointmentPublic = async (req, res, next) => {
         
         // If still not found, create service on the fly
         if (!service && serviceData.serviceName) {
-            service = await Service.create({
+            const servicePayload = {
                 business: business._id,
                 name: serviceData.serviceName,
                 category: serviceData.serviceCategory || 'General',
                 serviceType: serviceData.serviceType || 'service',
-                price: serviceData.price || 0,
-                duration: serviceData.duration || 60,
                 isActive: true
-            });
+            };
+            
+            // If pricingOptions provided, use them; otherwise use single price/duration
+            if (serviceData.pricingOptions && Array.isArray(serviceData.pricingOptions) && serviceData.pricingOptions.length > 0) {
+                servicePayload.pricingOptions = serviceData.pricingOptions;
+                servicePayload.pricingType = 'variable';
+            } else {
+                servicePayload.price = serviceData.price || 0;
+                servicePayload.duration = serviceData.duration || 60;
+                servicePayload.pricingType = 'fixed';
+            }
+            
+            service = await Service.create(servicePayload);
         }
         
         if (!service) {
@@ -1050,8 +1061,15 @@ const bookAppointmentPublic = async (req, res, next) => {
         }
         
         // Calculate pricing from all services (for display purposes)
-        const totalPrice = services.reduce((sum, s) => sum + (s.price || 0), 0);
-        const totalDuration = services.reduce((sum, s) => sum + (s.duration || 60), 0);
+        const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+        const totalPrice = services.reduce((sum, s) => {
+            const { price } = getServicePriceAndDuration(s);
+            return sum + price;
+        }, 0);
+        const totalDuration = services.reduce((sum, s) => {
+            const { duration } = getServicePriceAndDuration(s);
+            return sum + duration;
+        }, 0);
         
         // Validate booking
         const { validateAppointmentBooking } = require("../utils/appointmentUtils");

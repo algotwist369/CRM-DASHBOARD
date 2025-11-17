@@ -100,20 +100,25 @@ const getPublicBusinesses = async (req, res, next) => {
                 isActive: true,
                 isAvailableOnline: true
             })
-                .select('name price duration category business')
+                .select('name price duration category business pricingOptions')
                 .sort({ displayOrder: 1, name: 1 })
                 .lean();
+            
+            // Use helper function to get price and duration (handles both old and new format)
+            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
             
             services.forEach(service => {
                 if (!servicesMap[service.business]) {
                     servicesMap[service.business] = [];
                 }
                 if (servicesMap[service.business].length < 5) {
+                    const { price, duration } = getServicePriceAndDuration(service);
                     servicesMap[service.business].push({
                         name: service.name,
-                        price: service.price,
-                        duration: service.duration,
-                        category: service.category
+                        price: price,
+                        duration: duration,
+                        category: service.category,
+                        pricingOptions: service.pricingOptions || null // Include pricingOptions if available
                     });
                 }
             });
@@ -702,9 +707,12 @@ const getBusinessesNearby = async (req, res, next) => {
                 isActive: true,
                 isAvailableOnline: true
             })
-                .select('name price duration category business')
+                .select('name price duration category business pricingOptions')
                 .sort({ displayOrder: 1, name: 1 })
                 .lean();
+            
+            // Use helper function to get price and duration (handles both old and new format)
+            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
             
             // Group services by business (limit to 5 per business)
             services.forEach(service => {
@@ -712,11 +720,13 @@ const getBusinessesNearby = async (req, res, next) => {
                     servicesMap[service.business] = [];
                 }
                 if (servicesMap[service.business].length < 5) {
+                    const { price, duration } = getServicePriceAndDuration(service);
                     servicesMap[service.business].push({
                         name: service.name,
-                        price: service.price,
-                        duration: service.duration,
-                        category: service.category
+                        price: price,
+                        duration: duration,
+                        category: service.category,
+                        pricingOptions: service.pricingOptions || null // Include pricingOptions if available
                     });
                 }
             });
