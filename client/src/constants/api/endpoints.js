@@ -149,6 +149,7 @@ export const endpoints = {
     featured: `${API_BASE_URL}/services/featured`,
     categories: `${API_BASE_URL}/services/categories`,
     updateInventory: (id) => `${API_BASE_URL}/services/${id}/inventory`,
+    publicByBusiness: (identifier) => `${API_BASE_URL}/services/public/business/${identifier}`,
   },
 
   // Daily Business endpoints

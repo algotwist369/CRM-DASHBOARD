@@ -33,22 +33,32 @@ const serviceSchema = new mongoose.Schema(
         // Pricing
         price: { 
             type: Number, 
-            required: true,
+            required: false, // Optional - use pricingOptions as primary
             min: 0 
         },
         originalPrice: { type: Number, min: 0 }, // For showing discounts
         currency: { type: String, default: "INR" },
         
-        // Pricing Options
+        // Pricing Options - Primary pricing mechanism (duration-price pairs)
         pricingType: {
             type: String,
             enum: ["fixed", "variable", "package", "membership"],
-            default: "fixed"
+            default: "variable"
         },
         pricingOptions: [{
-            name: { type: String },
-            price: { type: Number },
-            duration: { type: Number } // in minutes
+            name: { type: String, trim: true }, // Optional label (e.g., "Standard", "Premium")
+            price: { 
+                type: Number, 
+                required: true,
+                min: 0 
+            },
+            duration: { 
+                type: Number, // in minutes
+                required: true,
+                min: 1
+            },
+            originalPrice: { type: Number, min: 0 }, // For showing discounts on specific option
+            isActive: { type: Boolean, default: true }
         }],
         
         // Service Type
@@ -58,9 +68,10 @@ const serviceSchema = new mongoose.Schema(
             default: "service"
         },
         
-        // Duration (for services)
+        // Duration (for services) - Optional, kept for backward compatibility
         duration: { 
             type: Number, // in minutes
+            required: false,
             default: 30 
         },
         bufferTime: { type: Number, default: 0 }, // Minutes buffer after service
@@ -222,6 +233,20 @@ serviceSchema.index({ business: 1, price: 1 });
 serviceSchema.index({ business: 1, 'ratings.average': -1 });
 serviceSchema.index({ business: 1, displayOrder: 1 });
 serviceSchema.index({ tags: 1 });
+serviceSchema.index({ 'pricingOptions.price': 1 });
+serviceSchema.index({ 'pricingOptions.duration': 1 });
+
+// Pre-save validation: Ensure at least one pricing option for variable pricing
+serviceSchema.pre('save', function(next) {
+    // If pricingType is variable and pricingOptions is empty, require at least one option
+    if (this.pricingType === 'variable' && (!this.pricingOptions || this.pricingOptions.length === 0)) {
+        // If no pricingOptions, require at least price and duration
+        if (!this.price || !this.duration) {
+            return next(new Error('Variable pricing requires at least one pricing option with price and duration'));
+        }
+    }
+    next();
+});
 
 // Virtual for discount percentage
 serviceSchema.virtual('discountPercentage').get(function() {
@@ -233,7 +258,63 @@ serviceSchema.virtual('discountPercentage').get(function() {
 
 // Virtual for formatted price
 serviceSchema.virtual('formattedPrice').get(function() {
-    return `${this.currency} ${this.price.toFixed(2)}`;
+    if (this.pricingOptions && this.pricingOptions.length > 0) {
+        const activeOptions = this.pricingOptions.filter(opt => opt.isActive !== false);
+        if (activeOptions.length > 0) {
+            const prices = activeOptions.map(opt => `${this.currency} ${opt.price.toFixed(2)}`);
+            return prices.join(', ');
+        }
+    }
+    if (this.price) {
+        return `${this.currency} ${this.price.toFixed(2)}`;
+    }
+    return 'Price not set';
+});
+
+// Virtual for service name with duration-price pairs (e.g., "ServiceName > 30min - ₹500, 60min - ₹900")
+serviceSchema.virtual('nameWithPricing').get(function() {
+    if (this.pricingOptions && this.pricingOptions.length > 0) {
+        const activeOptions = this.pricingOptions.filter(opt => opt.isActive !== false);
+        if (activeOptions.length > 0) {
+            const pricingPairs = activeOptions.map(opt => {
+                const duration = opt.duration >= 60 
+                    ? `${(opt.duration / 60).toFixed(1)}hr` 
+                    : `${opt.duration}min`;
+                return `${duration} - ${this.currency} ${opt.price.toFixed(2)}`;
+            });
+            return `${this.name} > ${pricingPairs.join(', ')}`;
+        }
+    }
+    // Fallback to single price/duration if pricingOptions not set
+    if (this.price && this.duration) {
+        const duration = this.duration >= 60 
+            ? `${(this.duration / 60).toFixed(1)}hr` 
+            : `${this.duration}min`;
+        return `${this.name} > ${duration} - ${this.currency} ${this.price.toFixed(2)}`;
+    }
+    return this.name;
+});
+
+// Virtual for minimum price from pricing options
+serviceSchema.virtual('minPrice').get(function() {
+    if (this.pricingOptions && this.pricingOptions.length > 0) {
+        const activeOptions = this.pricingOptions.filter(opt => opt.isActive !== false);
+        if (activeOptions.length > 0) {
+            return Math.min(...activeOptions.map(opt => opt.price));
+        }
+    }
+    return this.price || 0;
+});
+
+// Virtual for maximum price from pricing options
+serviceSchema.virtual('maxPrice').get(function() {
+    if (this.pricingOptions && this.pricingOptions.length > 0) {
+        const activeOptions = this.pricingOptions.filter(opt => opt.isActive !== false);
+        if (activeOptions.length > 0) {
+            return Math.max(...activeOptions.map(opt => opt.price));
+        }
+    }
+    return this.price || 0;
 });
 
 // Virtual for low stock status
@@ -303,6 +384,53 @@ serviceSchema.methods.addInventory = async function(quantity = 1) {
         }
         await this.save();
     }
+};
+
+// Method to get active pricing options
+serviceSchema.methods.getActivePricingOptions = function() {
+    if (!this.pricingOptions || this.pricingOptions.length === 0) {
+        // Fallback to single price/duration
+        if (this.price && this.duration) {
+            return [{
+                name: null,
+                price: this.price,
+                duration: this.duration,
+                originalPrice: this.originalPrice,
+                isActive: true
+            }];
+        }
+        return [];
+    }
+    return this.pricingOptions.filter(opt => opt.isActive !== false);
+};
+
+// Method to get pricing option by duration
+serviceSchema.methods.getPricingOptionByDuration = function(duration) {
+    const activeOptions = this.getActivePricingOptions();
+    return activeOptions.find(opt => opt.duration === duration) || null;
+};
+
+// Method to add a pricing option
+serviceSchema.methods.addPricingOption = function(name, price, duration, originalPrice = null) {
+    if (!this.pricingOptions) {
+        this.pricingOptions = [];
+    }
+    this.pricingOptions.push({
+        name: name || null,
+        price: price,
+        duration: duration,
+        originalPrice: originalPrice,
+        isActive: true
+    });
+    return this;
+};
+
+// Method to remove a pricing option by duration
+serviceSchema.methods.removePricingOption = function(duration) {
+    if (this.pricingOptions) {
+        this.pricingOptions = this.pricingOptions.filter(opt => opt.duration !== duration);
+    }
+    return this;
 };
 
 // Static method to get popular services

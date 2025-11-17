@@ -21,7 +21,7 @@ const AuthHeader = () => {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-semibold text-gray-900 tracking-tight">
-                RAMA CRM
+                RAMA
               </h1>
               <p className="text-xs text-gray-500">Premium Hair Services</p>
             </div>
