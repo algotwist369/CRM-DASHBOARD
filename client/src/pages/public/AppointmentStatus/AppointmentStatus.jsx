@@ -156,13 +156,13 @@ const AppointmentStatus = () => {
   if (!appointment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center max-w-md">
+        <div className="bg-white   border border-gray-200 p-8 text-center max-w-md">
           <FaTimesCircle className="mx-auto text-red-500 text-4xl mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Appointment Not Found</h2>
           <p className="text-gray-600 mb-6">The appointment with this confirmation code could not be found.</p>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             Go Home
           </button>
@@ -175,7 +175,7 @@ const AppointmentStatus = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -187,7 +187,7 @@ const AppointmentStatus = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
               >
                 <FaPrint />
                 Print
@@ -197,12 +197,12 @@ const AppointmentStatus = () => {
         </div>
 
         {/* Status Card */}
-        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-8 text-center">
+        <div className="bg-white   border border-gray-200 p-8 text-center">
           <div className="flex justify-center mb-4">
             {getStatusIcon(appointment.status)}
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Appointment {appointment.status?.replace('_', ' ').toUpperCase()}</h2>
-          <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium border-2 ${getStatusBadge(appointment.status)}`}>
+          <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium border ${getStatusBadge(appointment.status)}`}>
             {appointment.status?.replace('_', ' ') || 'Pending'}
           </span>
         </div>
@@ -210,7 +210,7 @@ const AppointmentStatus = () => {
         {/* Appointment Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Date & Time */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FaClock className="text-primary-600" />
               Date & Time
@@ -250,7 +250,7 @@ const AppointmentStatus = () => {
 
           {/* Business Information */}
           {appointment.business && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <FaMapMarkerAlt className="text-primary-600" />
                 Business
@@ -293,11 +293,11 @@ const AppointmentStatus = () => {
           )}
 
           {/* Services */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Service</h3>
             <div className="space-y-2">
               {appointment.service ? (
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 ">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-gray-900 font-medium">
                       {appointment.service.name || appointment.service.serviceName || 'Service'}
@@ -329,9 +329,8 @@ const AppointmentStatus = () => {
           </div>
 
           {/* Pricing */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FaDollarSign className="text-green-600" />
               Pricing
             </h3>
             <div className="space-y-2">
@@ -398,7 +397,7 @@ const AppointmentStatus = () => {
 
         {/* Staff Information */}
         {appointment.staff && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FaUserTie className="text-primary-600" />
               Assigned Staff
@@ -436,7 +435,7 @@ const AppointmentStatus = () => {
 
         {/* Customer Information */}
         {appointment.customer && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FaUser className="text-primary-600" />
               Your Information
@@ -491,7 +490,7 @@ const AppointmentStatus = () => {
 
         {/* Notes */}
         {(appointment.customerNotes || appointment.specialRequests) && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
             <div className="space-y-3">
               {appointment.customerNotes && (
@@ -512,7 +511,7 @@ const AppointmentStatus = () => {
 
         {/* Cancellation Section */}
         {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Need to Cancel?</h3>
@@ -520,7 +519,7 @@ const AppointmentStatus = () => {
               </div>
               <button
                 onClick={() => setShowCancelModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white  hover:bg-red-700 transition-colors"
               >
                 <FaTimesCircle />
                 Cancel Appointment
@@ -531,7 +530,7 @@ const AppointmentStatus = () => {
 
         {/* Cancellation Info */}
         {appointment.status === 'cancelled' && (
-          <div className="bg-red-50 rounded-xl border border-red-200 p-6">
+          <div className="bg-red-50  border border-red-200 p-6">
             <div className="flex items-start gap-3">
               <FaTimesCircle className="text-red-600 text-2xl mt-1" />
               <div>
@@ -552,11 +551,11 @@ const AppointmentStatus = () => {
         )}
 
         {/* Actions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
             >
               <FaArrowLeft />
               Back to Home
@@ -568,7 +567,7 @@ const AppointmentStatus = () => {
       {/* Cancel Appointment Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+          <div className="bg-white   p-6 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
               <FaExclamationTriangle className="text-red-600 text-2xl" />
               <h2 className="text-lg font-semibold text-gray-900">Cancel Appointment</h2>
@@ -586,7 +585,7 @@ const AppointmentStatus = () => {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Please provide a reason for cancellation..."
               />
             </div>
@@ -595,7 +594,7 @@ const AppointmentStatus = () => {
               <button
                 onClick={handleCancelAppointment}
                 disabled={cancelling || !cancelReason.trim()}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-red-600 text-white  hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {cancelling ? (
                   <>
@@ -611,7 +610,7 @@ const AppointmentStatus = () => {
                   setShowCancelModal(false)
                   setCancelReason('')
                 }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
               >
                 Keep Appointment
               </button>

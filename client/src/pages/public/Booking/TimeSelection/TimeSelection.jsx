@@ -26,6 +26,7 @@ const TimeSelection = () => {
   usePageTitle()
 
   useEffect(() => {
+    window.scrollTo(0, 0)
     loadBusinessData()
     loadSelectedTime()
     const today = new Date().toISOString().split('T')[0]
@@ -55,12 +56,12 @@ const TimeSelection = () => {
 
   const handleDateChange = async (date) => {
     if (!date) return
-    
+
     setSelectedDate(date)
     setSelectedTime('')
     sessionStorage.setItem('selectedDate', date)
     sessionStorage.removeItem('selectedTime')
-    
+
     await fetchAvailableSlots(date)
   }
 
@@ -70,11 +71,11 @@ const TimeSelection = () => {
     try {
       setLoadingSlots(true)
       const selectedStaff = JSON.parse(sessionStorage.getItem('selectedStaff') || 'null')
-      
+
       const params = {
         date: date
       }
-      
+
       if (selectedStaff && selectedStaff._id) {
         params.staffId = selectedStaff._id
       }
@@ -111,11 +112,11 @@ const TimeSelection = () => {
       toast.error('Please select a time slot')
       return
     }
-    
+
     // Ensure data is saved before navigation
     sessionStorage.setItem('selectedDate', selectedDate)
     sessionStorage.setItem('selectedTime', selectedTime)
-    
+
     navigate(`/book/${businessLink}/customer`) // Go to customer info page
   }
 
@@ -204,6 +205,7 @@ const TimeSelection = () => {
                   <FaClock className="text-primary-600" />
                   Available Time Slots
                 </h2>
+
                 {loadingSlots ? (
                   <div className="flex items-center justify-center py-12">
                     <FaSpinner className="animate-spin text-primary-600 text-2xl mr-3" />
@@ -227,13 +229,12 @@ const TimeSelection = () => {
                           key={index}
                           onClick={() => isAvailable && selectTime(slotTime)}
                           disabled={!isAvailable}
-                          className={`p-3 rounded-lg border-2 transition-all ${
-                            isSelected
-                              ? 'border-primary-500 bg-primary-50 text-primary-900 font-semibold'
+                          className={`p-3 rounded-lg border-2 transition-all ${isSelected
+                              ? 'border-green-200 bg-green-200 text-green-700 shadow-md font-semibold' // Selected State (Solid Green)
                               : isAvailable
-                              ? 'border-gray-200 hover:border-primary-300 hover:bg-gray-50 text-gray-900'
-                              : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
-                          }`}
+                                ? 'border-green-200 bg-green-50 text-green-700 hover:border-green-400 hover:bg-green-100' // Available State (Light Green)
+                                : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-50' // Unavailable State
+                            }`}
                         >
                           {formatTime(slotTime)}
                         </button>
@@ -247,9 +248,9 @@ const TimeSelection = () => {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-[4.1rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
-              
+
               <div className="space-y-3 mb-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Business</span>
