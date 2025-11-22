@@ -9,7 +9,6 @@ import {
   FaEnvelope,
   FaPhone,
   FaCalendarAlt,
-  FaMapMarkerAlt
 } from 'react-icons/fa'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 
@@ -25,8 +24,8 @@ const CustomerInfo = () => {
     dateOfBirth: '',
     gender: '',
     address: '',
-    notes: '',
-    specialRequests: ''
+    notes: '' || 'NA',
+    specialRequests: '' || 'NA',
   })
   const [errors, setErrors] = useState({})
 
@@ -140,160 +139,168 @@ const CustomerInfo = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-              {/* Required Fields */}
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Required Information</h2>
-                <div className="space-y-4">
-                  {/* Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FaUser className="inline mr-2" />
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        errors.name ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="Enter your full name"
-                    />
-                    {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-                  </div>
+         <div className="lg:col-span-2">
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+    
+    {/* Required Fields */}
+    <div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Required Information</h2>
+      
+      {/* FIX: Changed from flex/justify-center to a responsive grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <FaUser className="inline mr-2" />
+            Full Name *
+          </label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              errors.name ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="Full name"
+          />
+          {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+        </div>
 
-                  {/* Email */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FaEnvelope className="inline mr-2" />
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        errors.email ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="your.email@example.com"
-                    />
-                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-                  </div>
+        {/* Email */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <FaEnvelope className="inline mr-2" />
+            Email Address *
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              errors.email ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="your.email@example.com"
+          />
+          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+        </div>
 
-                  {/* Phone */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FaPhone className="inline mr-2" />
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        errors.phone ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="10-digit phone number"
-                      maxLength={10}
-                    />
-                    {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
-                  </div>
-                </div>
-              </div>
+        {/* Phone */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <FaPhone className="inline mr-2" />
+            Phone Number *
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              errors.phone ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="10-digit phone number"
+            maxLength={10}
+          />
+          {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+        </div>
+      </div>
+    </div>
 
-              {/* Optional Fields */}
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Optional Information</h2>
-                <div className="space-y-4">
-                  {/* Date of Birth */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FaCalendarAlt className="inline mr-2" />
-                      Date of Birth
-                    </label>
-                    <input
-                      type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                    <select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">Select gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                      <option value="prefer_not_to_say">Prefer not to say</option>
-                    </select>
-                  </div>
-
-                  {/* Address */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FaMapMarkerAlt className="inline mr-2" />
-                      Address
-                    </label>
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="Enter your address (optional)"
-                    />
-                  </div>
-
-                  {/* Notes */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
-                    <textarea
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleChange}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="Any additional information..."
-                    />
-                  </div>
-
-                  {/* Special Requests */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests</label>
-                    <textarea
-                      name="specialRequests"
-                      value={formData.specialRequests}
-                      onChange={handleChange}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="Any special requests or preferences..."
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+    {/* Optional Fields */}
+    <div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Optional Information</h2>
+      <div className="space-y-4">
+        
+        {/* DOB and Gender Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Date of Birth */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <FaCalendarAlt className="inline mr-2" />
+              Date of Birth
+            </label>
+            <input
+              type="date"
+              name="dateOfBirth"
+              value={formData.dateOfBirth}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              max={new Date().toISOString().split('T')[0]}
+            />
           </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Address */}
+        {/* <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <FaMapMarkerAlt className="inline mr-2" />
+            Address
+          </label>
+          <textarea
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            rows={3}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Enter your address (optional)"
+          />
+        </div> */}
+
+        {/* Notes */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            rows={3}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Any additional information..."
+          />
+        </div>
+
+        {/* Special Requests */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests</label>
+          <textarea
+            name="specialRequests"
+            value={formData.specialRequests}
+            onChange={handleChange}
+            rows={3}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Any special requests or preferences..."
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-[4.1rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
-              
+
               <div className="space-y-3 mb-4 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Business</span>
@@ -328,15 +335,15 @@ const CustomerInfo = () => {
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600">Time</span>
                           <span className="text-gray-900 font-medium">
-                            {selectedTime.includes('AM') || selectedTime.includes('PM') 
-                              ? selectedTime 
+                            {selectedTime.includes('AM') || selectedTime.includes('PM')
+                              ? selectedTime
                               : (() => {
-                                  const [hours, minutes] = selectedTime.split(':')
-                                  const hour = parseInt(hours)
-                                  const ampm = hour >= 12 ? 'PM' : 'AM'
-                                  const hour12 = hour % 12 || 12
-                                  return `${hour12}:${minutes} ${ampm}`
-                                })()}
+                                const [hours, minutes] = selectedTime.split(':')
+                                const hour = parseInt(hours)
+                                const ampm = hour >= 12 ? 'PM' : 'AM'
+                                const hour12 = hour % 12 || 12
+                                return `${hour12}:${minutes} ${ampm}`
+                              })()}
                           </span>
                         </div>
                       )}

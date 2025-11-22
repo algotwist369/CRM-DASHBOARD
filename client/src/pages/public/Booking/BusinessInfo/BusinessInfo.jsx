@@ -93,18 +93,18 @@ const BusinessInfo = () => {
 
   const formatWorkingHours = (workingHours) => {
     if (!workingHours) return []
-    
+
     // Backend structure: { open: "09:00", close: "18:00", days: ["monday", "tuesday", ...] }
     const { open, close, days } = workingHours
-    
+
     // If no days array or no open/close times, return empty
     if (!days || !Array.isArray(days) || days.length === 0 || !open || !close) {
       return []
     }
-    
+
     const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
+
     return allDays.map((dayKey, index) => {
       const isOpen = days.includes(dayKey)
       return {
@@ -145,20 +145,20 @@ const BusinessInfo = () => {
   // Get Google Maps embed URL
   const getGoogleMapsEmbedUrl = () => {
     if (!business?.googleMapsUrl && !business?.location) return null
-    
+
     if (business.googleMapsUrl && business.googleMapsUrl.includes('embed')) {
       return business.googleMapsUrl
     }
-    
+
     if (business.location?.coordinates) {
       const [lng, lat] = business.location.coordinates
       return `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12093.599315348!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v${Date.now()}!5m2!1sen!2sus`
     }
-    
+
     if (business.googleMapsUrl) {
       const placeIdMatch = business.googleMapsUrl.match(/place\/([^/]+)/)
       const coordsMatch = business.googleMapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-      
+
       if (placeIdMatch) {
         return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s${placeIdMatch[1]}!2s!5e0!3m2!1sen!2sus!4v${Date.now()}!5m2!1sen!2sus`
       } else if (coordsMatch) {
@@ -167,7 +167,7 @@ const BusinessInfo = () => {
         return `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12093.599315348!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v${Date.now()}!5m2!1sen!2sus`
       }
     }
-    
+
     return null
   }
 
@@ -366,7 +366,7 @@ const BusinessInfo = () => {
 
   const renderHeroSlider = () => (
     <div className="relative h-[40vh] sm:h-[45vh] lg:h-[50vh] rounded-3xl overflow-hidden bg-gray-200">
-          {allImages.length > 0 ? (
+      {allImages.length > 0 ? (
         <>
           <img
             src={allImages[currentImageIndex].src}
@@ -908,7 +908,7 @@ const BusinessInfo = () => {
           </div>
 
           <div className="hidden lg:flex flex-col gap-4">
-            <div className="sticky top-24 z-20">{renderBookingCard()}</div>
+            <div className="sticky top-[4rem] z-20">{renderBookingCard()}</div>
             <div className="space-y-4">
               {renderStaffCard()}
               {renderFollowUsCard()}

@@ -289,7 +289,7 @@ const StaffSelection = () => {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="  rounded-2xl border border-gray-200 p-6 lg:sticky lg:top-6">
+            <div className="  rounded-2xl border border-gray-200 p-6 lg:sticky lg:top-[4rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
               
               <div className="space-y-4 mb-4 text-sm text-gray-700">
