@@ -13,6 +13,11 @@ const isValidObjectId = (id) => {
 };
 const Staff = require("../models/Staff");
 const Transaction = require("../models/Transaction");
+const Customer = require("../models/Customer");
+const Service = require("../models/Service");
+const Appointment = require("../models/Appointment");
+const Invoice = require("../models/Invoice");
+const Campaign = require("../models/Campaign");
 const { setCache, getCache, deleteCache, getOrSet } = require("../utils/cache");
 const { cacheKeys } = require("../config/redis");
 const { formatCurrency } = require("../utils/businessUtils");
@@ -1091,8 +1096,141 @@ const updateAdminPassword = async (req, res, next) => {
     }
 };
 
+// ================== Get Admin Stats ==================
+const getAdminStats = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const cacheKey = `admin:${adminId}:stats`;
+
+        // Try cache first
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", ...cachedData });
+        }
+
+        // Get all businesses for this admin
+        const businesses = await Business.find({ admin: adminId }).select('_id');
+        const businessIds = businesses.map(b => b._id);
+
+        // Count all entities in parallel for better performance
+        const [
+            totalBusinesses,
+            activeBusinesses,
+            totalManagers,
+            activeManagers,
+            totalStaff,
+            activeStaff,
+            totalCustomers,
+            activeCustomers,
+            totalServices,
+            activeServices,
+            totalAppointments,
+            completedAppointments,
+            pendingAppointments,
+            cancelledAppointments,
+            totalTransactions,
+            totalInvoices,
+            paidInvoices,
+            totalCampaigns
+        ] = await Promise.all([
+            Business.countDocuments({ admin: adminId }),
+            Business.countDocuments({ admin: adminId, isActive: true }),
+            Manager.countDocuments({ business: { $in: businessIds } }),
+            Manager.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Staff.countDocuments({ business: { $in: businessIds } }),
+            Staff.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Customer.countDocuments({ business: { $in: businessIds } }),
+            Customer.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Service.countDocuments({ business: { $in: businessIds } }),
+            Service.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Appointment.countDocuments({ business: { $in: businessIds } }),
+            Appointment.countDocuments({ business: { $in: businessIds }, status: 'completed' }),
+            Appointment.countDocuments({ business: { $in: businessIds }, status: 'pending' }),
+            Appointment.countDocuments({ business: { $in: businessIds }, status: 'cancelled' }),
+            Transaction.countDocuments({ business: { $in: businessIds } }),
+            Invoice.countDocuments({ business: { $in: businessIds } }),
+            Invoice.countDocuments({ business: { $in: businessIds }, paymentStatus: 'paid' }),
+            Campaign.countDocuments({ business: { $in: businessIds } })
+        ]);
+
+        // Calculate total revenue
+        const transactions = await Transaction.find({ business: { $in: businessIds } })
+            .select('finalPrice')
+            .lean();
+        const totalRevenue = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
+
+        const stats = {
+            businesses: {
+                total: totalBusinesses,
+                active: activeBusinesses,
+                inactive: totalBusinesses - activeBusinesses
+            },
+            managers: {
+                total: totalManagers,
+                active: activeManagers,
+                inactive: totalManagers - activeManagers
+            },
+            staff: {
+                total: totalStaff,
+                active: activeStaff,
+                inactive: totalStaff - activeStaff
+            },
+            customers: {
+                total: totalCustomers,
+                active: activeCustomers,
+                inactive: totalCustomers - activeCustomers
+            },
+            services: {
+                total: totalServices,
+                active: activeServices,
+                inactive: totalServices - activeServices
+            },
+            appointments: {
+                total: totalAppointments,
+                completed: completedAppointments,
+                pending: pendingAppointments,
+                cancelled: cancelledAppointments
+            },
+            transactions: {
+                total: totalTransactions,
+                totalRevenue: formatCurrency(totalRevenue),
+                totalRevenueRaw: totalRevenue
+            },
+            invoices: {
+                total: totalInvoices,
+                paid: paidInvoices,
+                unpaid: totalInvoices - paidInvoices
+            },
+            campaigns: {
+                total: totalCampaigns
+            },
+            // Grand totals
+            grandTotals: {
+                allEntities: totalBusinesses + totalManagers + totalStaff + totalCustomers +
+                    totalServices + totalAppointments + totalTransactions +
+                    totalInvoices + totalCampaigns,
+                allActiveEntities: activeBusinesses + activeManagers + activeStaff +
+                    activeCustomers + activeServices
+            }
+        };
+
+        const response = {
+            success: true,
+            data: stats
+        };
+
+        // Cache for 5 minutes
+        await setCache(cacheKey, response, 300);
+
+        return res.json(response);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getAdminDashboard,
+    getAdminStats,
     createBusiness,
     getBusinesses,
     getBusinessById,
