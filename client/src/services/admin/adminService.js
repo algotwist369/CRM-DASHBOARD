@@ -17,6 +17,19 @@ class AdminService {
     }
   }
 
+  // Get admin stats
+  async getStats() {
+    try {
+      const response = await apiClient.get(endpoints.admin.stats)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch stats'
+      }
+    }
+  }
+
   // Get managers
   async getManagers(params = {}) {
     try {
@@ -456,7 +469,7 @@ class AdminService {
       }
     }
   }
- 
+
 
   // Launch campaign
   async launchCampaign(id) {

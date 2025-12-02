@@ -10,7 +10,12 @@ import {
   FaArrowUp,
   FaArrowLeft,
   FaChartPie,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaClipboardList,
+  FaFileInvoiceDollar,
+  FaBullhorn,
+  FaCheckCircle,
+  FaTimesCircle
 } from "react-icons/fa";
 import { HiRefresh } from "react-icons/hi";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -130,6 +135,7 @@ const BusinessCard = memo(({ business }) => (
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -149,11 +155,21 @@ const AdminDashboard = () => {
       fetchingRef.current = true;
       setLoading(true);
       setError(null);
-      const res = await adminService.getDashboard(currentPage, itemsPerPage);
-      if (res.success) {
-        setDashboard(res.data.data || res.data);
+
+      // Fetch both dashboard and stats
+      const [dashboardRes, statsRes] = await Promise.all([
+        adminService.getDashboard(currentPage, itemsPerPage),
+        adminService.getStats()
+      ]);
+
+      if (dashboardRes.success) {
+        setDashboard(dashboardRes.data.data || dashboardRes.data);
       } else {
-        setError(res.error || "Failed to load dashboard");
+        setError(dashboardRes.error || "Failed to load dashboard");
+      }
+
+      if (statsRes.success) {
+        setStats(statsRes.data.data || statsRes.data);
       }
     } catch (e) {
       setError("Failed to load dashboard");
@@ -181,13 +197,17 @@ const AdminDashboard = () => {
 
   // Memoized stat cards data
   const statCards = useMemo(() => [
-    { icon: FaBuilding, title: "Businesses", value: dashboard?.stats?.businesses?.total ?? 0, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
-    { icon: FaUserTie, title: "Managers", value: dashboard?.stats?.managers ?? 0, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
-    { icon: FaUsers, title: "Staff", value: dashboard?.stats?.staff ?? 0, iconBg: "bg-green-100", iconColor: "text-green-600" },
-    { icon: FaMoneyBillWave, title: "Revenue", value: dashboard?.stats?.totalRevenue ?? "₹0", iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
-    { icon: FaChartLine, title: "Customers", value: dashboard?.stats?.totalCustomers ?? 0, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
-    { icon: FaExchangeAlt, title: "Transactions", value: dashboard?.stats?.recentTransactions ?? 0, iconBg: "bg-pink-100", iconColor: "text-pink-600" }
-  ], [dashboard?.stats]);
+    { icon: FaBuilding, title: "Businesses", value: stats?.businesses?.total ?? dashboard?.stats?.businesses?.total ?? 0, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+    { icon: FaUserTie, title: "Managers", value: stats?.managers?.total ?? dashboard?.stats?.managers ?? 0, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
+    { icon: FaUsers, title: "Staff", value: stats?.staff?.total ?? dashboard?.stats?.staff ?? 0, iconBg: "bg-green-100", iconColor: "text-green-600" },
+    { icon: FaChartLine, title: "Customers", value: stats?.customers?.total ?? dashboard?.stats?.totalCustomers ?? 0, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
+    { icon: FaClipboardList, title: "Services", value: stats?.services?.total ?? 0, iconBg: "bg-teal-100", iconColor: "text-teal-600" },
+    { icon: FaCalendarAlt, title: "Appointments", value: stats?.appointments?.total ?? 0, iconBg: "bg-indigo-100", iconColor: "text-indigo-600" },
+    { icon: FaMoneyBillWave, title: "Revenue", value: stats?.transactions?.totalRevenue ?? dashboard?.stats?.totalRevenue ?? "₹0", iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+    { icon: FaExchangeAlt, title: "Transactions", value: stats?.transactions?.total ?? dashboard?.stats?.recentTransactions ?? 0, iconBg: "bg-pink-100", iconColor: "text-pink-600" },
+    { icon: FaFileInvoiceDollar, title: "Invoices", value: stats?.invoices?.total ?? 0, iconBg: "bg-yellow-100", iconColor: "text-yellow-600" },
+    { icon: FaBullhorn, title: "Campaigns", value: stats?.campaigns?.total ?? 0, iconBg: "bg-red-100", iconColor: "text-red-600" }
+  ], [dashboard?.stats, stats]);
 
   // Memoized business types
   const businessTypes = useMemo(() => {
@@ -290,6 +310,16 @@ const AdminDashboard = () => {
               <span>Overview</span>
             </button>
             <button
+              onClick={() => setActiveTab('stats')}
+              className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'stats'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              <FaChartLine />
+              <span>Comprehensive Stats</span>
+            </button>
+            <button
               onClick={() => setActiveTab('daily-business')}
               className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'daily-business'
                 ? 'border-primary-600 text-primary-600'
@@ -307,7 +337,7 @@ const AdminDashboard = () => {
       {activeTab === 'overview' && (
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
             {statCards.map((card) => (
               <StatCard key={card.title} {...card} />
             ))}
@@ -344,8 +374,8 @@ const AdminDashboard = () => {
                   <button
                     onClick={() => setPerformanceView('graph')}
                     className={`px-3 py-1.5 text-sm font-medium  transition-colors ${performanceView === 'graph'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                   >
                     Graph
@@ -353,8 +383,8 @@ const AdminDashboard = () => {
                   <button
                     onClick={() => setPerformanceView('list')}
                     className={`px-3 py-1.5 text-sm font-medium  transition-colors ${performanceView === 'list'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                   >
                     List
@@ -460,6 +490,259 @@ const AdminDashboard = () => {
             )}
           </div>
         </>
+      )}
+
+      {/* Comprehensive Stats Tab */}
+      {activeTab === 'stats' && stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Businesses Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-blue-100 text-blue-600 p-3">
+                <FaBuilding className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Businesses</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.businesses.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-green-50">
+                <span className="text-sm text-green-700 flex items-center gap-1">
+                  <FaCheckCircle className="text-xs" /> Active
+                </span>
+                <span className="text-sm font-bold text-green-800">{stats.businesses.active}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50">
+                <span className="text-sm text-red-700 flex items-center gap-1">
+                  <FaTimesCircle className="text-xs" /> Inactive
+                </span>
+                <span className="text-sm font-bold text-red-800">{stats.businesses.inactive}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Managers Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-purple-100 text-purple-600 p-3">
+                <FaUserTie className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Managers</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.managers.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-green-50">
+                <span className="text-sm text-green-700 flex items-center gap-1">
+                  <FaCheckCircle className="text-xs" /> Active
+                </span>
+                <span className="text-sm font-bold text-green-800">{stats.managers.active}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50">
+                <span className="text-sm text-red-700 flex items-center gap-1">
+                  <FaTimesCircle className="text-xs" /> Inactive
+                </span>
+                <span className="text-sm font-bold text-red-800">{stats.managers.inactive}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Staff Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-green-100 text-green-600 p-3">
+                <FaUsers className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Staff</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.staff.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-green-50">
+                <span className="text-sm text-green-700 flex items-center gap-1">
+                  <FaCheckCircle className="text-xs" /> Active
+                </span>
+                <span className="text-sm font-bold text-green-800">{stats.staff.active}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50">
+                <span className="text-sm text-red-700 flex items-center gap-1">
+                  <FaTimesCircle className="text-xs" /> Inactive
+                </span>
+                <span className="text-sm font-bold text-red-800">{stats.staff.inactive}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Customers Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-orange-100 text-orange-600 p-3">
+                <FaChartLine className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Customers</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.customers.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-green-50">
+                <span className="text-sm text-green-700 flex items-center gap-1">
+                  <FaCheckCircle className="text-xs" /> Active
+                </span>
+                <span className="text-sm font-bold text-green-800">{stats.customers.active}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50">
+                <span className="text-sm text-red-700 flex items-center gap-1">
+                  <FaTimesCircle className="text-xs" /> Inactive
+                </span>
+                <span className="text-sm font-bold text-red-800">{stats.customers.inactive}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Services Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-teal-100 text-teal-600 p-3">
+                <FaClipboardList className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Services</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.services.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-green-50">
+                <span className="text-sm text-green-700 flex items-center gap-1">
+                  <FaCheckCircle className="text-xs" /> Active
+                </span>
+                <span className="text-sm font-bold text-green-800">{stats.services.active}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50">
+                <span className="text-sm text-red-700 flex items-center gap-1">
+                  <FaTimesCircle className="text-xs" /> Inactive
+                </span>
+                <span className="text-sm font-bold text-red-800">{stats.services.inactive}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Appointments Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-indigo-100 text-indigo-600 p-3">
+                <FaCalendarAlt className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Appointments</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.appointments.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-green-50">
+                <span className="text-sm text-green-700">Completed</span>
+                <span className="text-sm font-bold text-green-800">{stats.appointments.completed}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-yellow-50">
+                <span className="text-sm text-yellow-700">Pending</span>
+                <span className="text-sm font-bold text-yellow-800">{stats.appointments.pending}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50">
+                <span className="text-sm text-red-700">Cancelled</span>
+                <span className="text-sm font-bold text-red-800">{stats.appointments.cancelled}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Transactions Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-pink-100 text-pink-600 p-3">
+                <FaExchangeAlt className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Transactions</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.transactions.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-emerald-50 border-l-4 border-emerald-500">
+                <span className="text-sm text-emerald-700 font-medium">Revenue</span>
+                <span className="text-base font-bold text-emerald-800">{stats.transactions.totalRevenue}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Invoices Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-yellow-100 text-yellow-600 p-3">
+                <FaFileInvoiceDollar className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Invoices</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.invoices.total}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-green-50">
+                <span className="text-sm text-green-700">Paid</span>
+                <span className="text-sm font-bold text-green-800">{stats.invoices.paid}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50">
+                <span className="text-sm text-red-700">Unpaid</span>
+                <span className="text-sm font-bold text-red-800">{stats.invoices.unpaid}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Campaigns Stats */}
+          <div className="bg-white border border-gray-200 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 text-red-600 p-3">
+                <FaBullhorn className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Campaigns</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50">
+                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm font-bold text-gray-900">{stats.campaigns.total}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Grand Totals */}
+          <div className="bg-gradient-to-br from-primary-500 to-primary-700 border border-primary-800 p-5 md:col-span-2 lg:col-span-3">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-white/20 text-white p-3">
+                <FaChartPie className="text-xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Grand Totals</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex justify-between items-center p-3 bg-white/10 backdrop-blur-sm">
+                <span className="text-sm text-white/90">All Entities (Total)</span>
+                <span className="text-xl font-bold text-white">{stats.grandTotals.allEntities.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-white/10 backdrop-blur-sm">
+                <span className="text-sm text-white/90">Active Entities</span>
+                <span className="text-xl font-bold text-white">{stats.grandTotals.allActiveEntities.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Daily Business Tab */}
