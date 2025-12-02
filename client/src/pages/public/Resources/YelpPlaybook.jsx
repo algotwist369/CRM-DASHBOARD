@@ -86,14 +86,14 @@ const YelpPlaybook = () => {
           <div className="flex flex-wrap justify-center gap-3">
             <Link
               to="/book-demo"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3  bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
             >
               <FaRegLightbulb className="w-4 h-4" />
               Request a Strategy Session
             </Link>
             <Link
               to="/pricing"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white text-white font-semibold hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3  border border-white text-white font-semibold hover:bg-white/10 transition-colors"
             >
               <FaFileDownload className="w-4 h-4" />
               Download Pricing Guide
@@ -112,7 +112,7 @@ const YelpPlaybook = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {pillars.map((pillar) => (
-              <div key={pillar.title} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div key={pillar.title} className="bg-white border border-gray-200  p-6  hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{pillar.title}</h3>
                 <p className="text-sm text-gray-600 mb-4">{pillar.description}</p>
                 <ul className="space-y-2">
@@ -136,7 +136,7 @@ const YelpPlaybook = () => {
             Operationalize your Yelp strategy with this actionable list. Share it with managers and front-line staff to keep everyone
             aligned.
           </p>
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 sm:p-10">
+          <div className="bg-white/5 border border-white/10  p-8 sm:p-10">
             <ul className="space-y-4">
               {checklist.map((item) => (
                 <li key={item} className="flex items-start gap-3 text-sm sm:text-base">
@@ -163,7 +163,7 @@ const YelpPlaybook = () => {
               { label: 'Monthly Yelp Leads', value: '2.4x', description: 'increase in appointment requests' },
               { label: 'Response Time', value: '< 4 hrs', description: 'with automated alerts & routing' }
             ].map((stat) => (
-              <div key={stat.label} className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center shadow-sm">
+              <div key={stat.label} className="bg-gray-50 border border-gray-200  p-6 text-center ">
                 <div className="text-3xl font-bold text-primary-600 mb-2">{stat.value}</div>
                 <div className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-1">{stat.label}</div>
                 <p className="text-sm text-gray-600">{stat.description}</p>
@@ -188,9 +188,9 @@ const YelpPlaybook = () => {
                 <Link
                   key={resource.title}
                   to={resource.href}
-                  className="group bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:border-primary-200 hover:shadow-lg transition-all"
+                  className="group bg-white border border-gray-200  p-6  hover:border-primary-200 hover:shadow-lg transition-all"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center mb-4 group-hover:bg-primary-100">
+                  <div className="w-12 h-12  bg-primary-50 text-primary-600 flex items-center justify-center mb-4 group-hover:bg-primary-100">
                     <Icon className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-primary-600">{resource.title}</h3>
@@ -212,14 +212,14 @@ const YelpPlaybook = () => {
           <div className="flex flex-wrap justify-center gap-3">
             <Link
               to="/book-demo"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3  bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
             >
               <FaChartLine className="w-4 h-4" />
               Book a Personalized Demo
             </Link>
             <Link
               to="/free-listing"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white text-white font-semibold hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3  border border-white text-white font-semibold hover:bg-white/10 transition-colors"
             >
               <FaComments className="w-4 h-4" />
               Start Free Listing

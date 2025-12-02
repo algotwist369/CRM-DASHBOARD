@@ -134,7 +134,7 @@ const Services = () => {
           {services.map((service, index) => (
             <div
               key={index}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-sm transition-colors"
+              className="bg-white  border border-gray-200 p-6 hover:border-gray-300 hover: transition-colors"
             >
               <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-900 mb-4">
                 {service.icon}
@@ -186,7 +186,7 @@ const Services = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Benefits for Your Business</h2>
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-gray-800">
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
                     <FaChartBar className="text-xl" />
                   </div>
                   <div>
@@ -195,7 +195,7 @@ const Services = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-gray-800">
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
                     <FaUsers className="text-xl" />
                   </div>
                   <div>
@@ -204,7 +204,7 @@ const Services = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-gray-800">
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
                     <FaClock className="text-xl" />
                   </div>
                   <div>
@@ -213,7 +213,7 @@ const Services = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-gray-800">
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
                     <FaBell className="text-xl" />
                   </div>
                   <div>
@@ -223,7 +223,7 @@ const Services = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white   border border-gray-200 p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-6">Get Started Today</h3>
               <p className="text-gray-600 mb-6">
                 Join thousands of businesses using our platform to manage appointments, customers, and grow their revenue.
@@ -238,7 +238,7 @@ const Services = () => {
               </ul>
               <a
                 href="/auth/login"
-                className="inline-block w-full text-center px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                className="inline-block w-full text-center px-6 py-3 bg-gray-900 text-white  hover:bg-gray-800 transition-colors font-medium"
               >
                 Get Started
               </a>

@@ -50,7 +50,7 @@ const Table = ({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white  shadow overflow-hidden">
         <div className="animate-pulse">
           <div className="h-12 bg-gray-200"></div>
           {[...Array(5)].map((_, i) => (
@@ -62,7 +62,7 @@ const Table = ({
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow overflow-hidden ${className}`}>
+    <div className={`bg-white  shadow overflow-hidden ${className}`}>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">

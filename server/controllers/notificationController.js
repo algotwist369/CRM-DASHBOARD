@@ -22,26 +22,26 @@ const createNotification = async (req, res, next) => {
             delivery,
             campaign
         } = req.body;
-        
+
         // Get manager's business
         const manager = await Manager.findById(managerId).populate('business');
         if (!manager || !manager.business) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Manager or business not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Manager or business not found"
             });
         }
-        
+
         // Get target customers
         const targetCustomers = await getTargetCustomers(manager.business._id, targetAudience);
-        
+
         if (targetCustomers.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: "No customers found matching the target criteria"
             });
         }
-        
+
         // Create notification
         const notification = await Notification.create({
             business: manager.business._id,
@@ -61,11 +61,11 @@ const createNotification = async (req, res, next) => {
                 totalRecipients: targetCustomers.length
             }
         });
-        
+
         // Invalidate cache
         await deleteCache(`manager:${managerId}:notifications`);
         await deleteCache(`business:${manager.business._id}:notifications`);
-        
+
         return res.status(201).json({
             success: true,
             message: "Notification created successfully",
@@ -85,46 +85,46 @@ const sendNotification = async (req, res, next) => {
     try {
         const { notificationId } = req.params;
         const managerId = req.user.id;
-        
+
         // Get notification
         const notification = await Notification.findById(notificationId)
             .populate('business')
             .populate('sender');
-        
+
         if (!notification) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Notification not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Notification not found"
             });
         }
-        
+
         // Check if manager has permission
         if (notification.sender._id.toString() !== managerId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Access denied" 
+            return res.status(403).json({
+                success: false,
+                message: "Access denied"
             });
         }
-        
+
         // Update status to sending
         notification.status = 'sending';
         await notification.save();
-        
+
         // Get target customers
         const customers = await Customer.find({
             _id: { $in: notification.targetAudience.individualCustomers }
         });
-        
+
         // Send notifications
         const results = await Promise.allSettled(
             customers.map(customer => sendNotificationToCustomer(notification, customer))
         );
-        
+
         // Prepare delivery records without saving yet
         const deliveryRecords = [];
         results.forEach((result, index) => {
             const customer = customers[index];
-            
+
             if (result.status === 'fulfilled') {
                 // Handle successful sends with channel-specific results
                 const channelResults = result.value || [];
@@ -150,20 +150,20 @@ const sendNotification = async (req, res, next) => {
                 });
             }
         });
-        
+
         // Add all delivery records at once
         notification.deliveries.push(...deliveryRecords);
-        
+
         // Update notification stats and status
         await notification.updateStats();
         notification.status = 'sent';
         notification.sentAt = new Date();
         await notification.save();
-        
+
         // Invalidate cache
         await deleteCache(`manager:${managerId}:notifications`);
         await deleteCache(`business:${notification.business._id}:notifications`);
-        
+
         return res.json({
             success: true,
             message: "Notification sent successfully",
@@ -181,33 +181,62 @@ const sendNotification = async (req, res, next) => {
 // ================== Get Notifications ==================
 const getNotifications = async (req, res, next) => {
     try {
-        const managerId = req.user.id;
-        const { 
-            page = 1, 
-            limit = 10, 
-            status, 
-            type, 
-            startDate, 
-            endDate 
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const {
+            page = 1,
+            limit = 10,
+            status,
+            type,
+            startDate,
+            endDate
         } = req.query;
-        
-        // Get manager's business
-        const manager = await Manager.findById(managerId).populate('business');
-        if (!manager || !manager.business) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Manager or business not found" 
+
+        let query = {};
+
+        // Role-based filtering
+        if (userRole === 'admin') {
+            // Admin sees notifications from ALL their businesses
+            const businesses = await Business.find({ admin: userId }).select('_id');
+            const businessIds = businesses.map(b => b._id);
+
+            if (businessIds.length === 0) {
+                return res.json({
+                    success: true,
+                    data: [],
+                    pagination: {
+                        total: 0,
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        pages: 0
+                    }
+                });
+            }
+
+            query.business = { $in: businessIds };
+        } else if (userRole === 'manager') {
+            // Manager sees notifications only from their business
+            const manager = await Manager.findById(userId).populate('business');
+            if (!manager || !manager.business) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager or business not found"
+                });
+            }
+            query.business = manager.business._id;
+        } else {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized access"
             });
         }
-        
-        const cacheKey = `manager:${managerId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
+
+        const cacheKey = `user:${userId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
-        
-        let query = { business: manager.business._id };
-        
+
         if (status) query.status = status;
         if (type) query.type = type;
         if (startDate && endDate) {
@@ -216,15 +245,16 @@ const getNotifications = async (req, res, next) => {
                 $lte: new Date(endDate)
             };
         }
-        
+
         const notifications = await Notification.find(query)
             .populate('sender', 'name username')
+            .populate('business', 'name')
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .sort({ createdAt: -1 });
-        
+
         const total = await Notification.countDocuments(query);
-        
+
         const response = {
             success: true,
             data: notifications.map(n => n.toObject()),
@@ -235,7 +265,7 @@ const getNotifications = async (req, res, next) => {
                 pages: Math.ceil(total / limit)
             }
         };
-        
+
         await setCache(cacheKey, response, 120);
         return res.json(response);
     } catch (err) {
@@ -248,26 +278,26 @@ const getNotificationAnalytics = async (req, res, next) => {
     try {
         const { notificationId } = req.params;
         const managerId = req.user.id;
-        
+
         const notification = await Notification.findById(notificationId)
             .populate('deliveries.customer', 'name email phone')
             .populate('sender', 'name username');
-        
+
         if (!notification) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Notification not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Notification not found"
             });
         }
-        
+
         // Check if manager has permission
         if (notification.sender._id.toString() !== managerId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Access denied" 
+            return res.status(403).json({
+                success: false,
+                message: "Access denied"
             });
         }
-        
+
         // Get detailed analytics
         const analytics = {
             overview: {
@@ -298,7 +328,7 @@ const getNotificationAnalytics = async (req, res, next) => {
                 failureReason: delivery.failureReason
             }))
         };
-        
+
         return res.json({
             success: true,
             data: analytics
@@ -321,30 +351,30 @@ const createCampaign = async (req, res, next) => {
             content,
             abTesting
         } = req.body;
-        
+
         // Get manager's business
         const manager = await Manager.findById(managerId).populate('business');
         if (!manager || !manager.business) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Manager or business not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Manager or business not found"
             });
         }
-        
+
         // Get target customer count
         let totalTargetCount = 0;
         for (const segment of targetAudience.segments) {
             const customers = await getTargetCustomers(manager.business._id, segment.criteria);
             totalTargetCount += customers.length;
         }
-        
+
         if (totalTargetCount === 0) {
             return res.status(400).json({
                 success: false,
                 message: "No customers found matching the target criteria"
             });
         }
-        
+
         // Create campaign
         const campaign = await Campaign.create({
             business: manager.business._id,
@@ -368,11 +398,11 @@ const createCampaign = async (req, res, next) => {
                 roi: 0
             }
         });
-        
+
         // Invalidate cache
         await deleteCache(`manager:${managerId}:campaigns`);
         await deleteCache(`business:${manager.business._id}:campaigns`);
-        
+
         return res.status(201).json({
             success: true,
             message: "Campaign created successfully",
@@ -391,32 +421,32 @@ const createCampaign = async (req, res, next) => {
 const getCampaigns = async (req, res, next) => {
     try {
         const managerId = req.user.id;
-        const { 
-            page = 1, 
-            limit = 10, 
-            status, 
-            type, 
-            startDate, 
-            endDate 
+        const {
+            page = 1,
+            limit = 10,
+            status,
+            type,
+            startDate,
+            endDate
         } = req.query;
-        
+
         // Get manager's business
         const manager = await Manager.findById(managerId).populate('business');
         if (!manager || !manager.business) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Manager or business not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Manager or business not found"
             });
         }
-        
+
         const cacheKey = `manager:${managerId}:campaigns:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
-        
+
         let query = { business: manager.business._id };
-        
+
         if (status) query.status = status;
         if (type) query.type = type;
         if (startDate && endDate) {
@@ -425,15 +455,15 @@ const getCampaigns = async (req, res, next) => {
                 $lte: new Date(endDate)
             };
         }
-        
+
         const campaigns = await Campaign.find(query)
             .populate('createdBy', 'name username')
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .sort({ createdAt: -1 });
-        
+
         const total = await Campaign.countDocuments(query);
-        
+
         const response = {
             success: true,
             data: campaigns.map(c => c.toObject()),
@@ -444,7 +474,7 @@ const getCampaigns = async (req, res, next) => {
                 pages: Math.ceil(total / limit)
             }
         };
-        
+
         await setCache(cacheKey, response, 120);
         return res.json(response);
     } catch (err) {
@@ -457,28 +487,28 @@ const getCustomerAnalyticsForNotifications = async (req, res, next) => {
     try {
         const managerId = req.user.id;
         const { startDate, endDate, groupBy } = req.query;
-        
+
         // Get manager's business
         const manager = await Manager.findById(managerId).populate('business');
         if (!manager || !manager.business) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Manager or business not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Manager or business not found"
             });
         }
-        
+
         const cacheKey = `manager:${managerId}:customer-analytics:${startDate}:${endDate}:${groupBy}`;
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
-        
+
         const analytics = await getCustomerAnalytics(manager.business._id, {
             startDate,
             endDate,
             groupBy
         });
-        
+
         await setCache(cacheKey, analytics, 300);
         return res.json({
             success: true,
@@ -500,7 +530,7 @@ const getCustomerAnalyticsForNotifications = async (req, res, next) => {
 const sendNotificationToCustomer = async (notification, customer) => {
     const { delivery, content, title, message } = notification;
     const results = [];
-    
+
     for (const channel of delivery.channels) {
         try {
             switch (channel) {
@@ -521,7 +551,7 @@ const sendNotificationToCustomer = async (notification, customer) => {
                         results.push({ channel, success: false, error: 'No email address' });
                     }
                     break;
-                    
+
                 case 'sms':
                     if (customer.phone) {
                         await sendSMS({
@@ -533,7 +563,7 @@ const sendNotificationToCustomer = async (notification, customer) => {
                         results.push({ channel, success: false, error: 'No phone number' });
                     }
                     break;
-                    
+
                 case 'whatsapp':
                     if (customer.phone) {
                         // WhatsApp integration would go here
@@ -543,7 +573,7 @@ const sendNotificationToCustomer = async (notification, customer) => {
                         results.push({ channel, success: false, error: 'No phone number' });
                     }
                     break;
-                    
+
                 case 'push':
                     // Push notification integration would go here
                     console.log(`Push notification to ${customer._id}: ${message}`);
@@ -555,13 +585,13 @@ const sendNotificationToCustomer = async (notification, customer) => {
             results.push({ channel, success: false, error: error.message });
         }
     }
-    
+
     // Return success if at least one channel succeeded
     const hasSuccess = results.some(r => r.success);
     if (!hasSuccess) {
         throw new Error(`All channels failed: ${results.map(r => r.error).join(', ')}`);
     }
-    
+
     return results;
 };
 
@@ -578,7 +608,7 @@ const calculateNotificationCost = (recipientCount, channels) => {
         whatsapp: 0.02, // $0.02 per WhatsApp message
         push: 0.001  // $0.001 per push notification
     };
-    
+
     return channels.reduce((total, channel) => {
         return total + (recipientCount * (costs[channel] || 0));
     }, 0);

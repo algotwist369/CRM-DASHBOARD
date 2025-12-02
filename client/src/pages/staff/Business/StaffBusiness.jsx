@@ -93,7 +93,7 @@ const StaffBusiness = () => {
             <button
               onClick={fetchBusiness}
               disabled={refreshing}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               title="Refresh"
             >
               <HiRefresh className={`text-lg ${refreshing ? 'animate-spin' : ''}`} />
@@ -106,7 +106,7 @@ const StaffBusiness = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Column - Business Overview */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="bg-white  border border-gray-200 p-5">
             <div className="text-center mb-5">
               <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <FaBuilding className="text-primary-600 text-3xl" />
@@ -174,9 +174,9 @@ const StaffBusiness = () => {
         {/* Right Column - Business Details */}
         <div className="lg:col-span-2 space-y-4 sm:gap-6">
           {/* Business Information */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+          <div className="bg-white  border border-gray-200 p-5 sm:p-6">
             <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                 <FaBuilding className="text-white text-sm" />
               </div>
               <h2 className="text-lg font-semibold text-gray-800">Business Information</h2>
@@ -289,9 +289,9 @@ const StaffBusiness = () => {
 
           {/* Additional Information */}
           {(business.description || business.services || business.workingHours) && (
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-5">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                   <FaIdCard className="text-white text-sm" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-800">Additional Information</h2>
@@ -301,7 +301,7 @@ const StaffBusiness = () => {
                 {business.description && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <p className="text-sm text-gray-800 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-800 bg-gray-50 p-4  border border-gray-200">
                       {business.description}
                     </p>
                   </div>
@@ -310,7 +310,7 @@ const StaffBusiness = () => {
                 {business.workingHours && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Working Hours</label>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="bg-gray-50 p-4  border border-gray-200">
                       <p className="text-sm font-medium text-gray-800 mb-2">
                         {business.workingHours.start || '09:00'} - {business.workingHours.end || '18:00'}
                       </p>
@@ -319,7 +319,7 @@ const StaffBusiness = () => {
                           {business.workingHours.days.map((day, index) => (
                             <span
                               key={index}
-                              className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg"
+                              className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 "
                             >
                               {day.charAt(0).toUpperCase() + day.slice(1)}
                             </span>
@@ -337,7 +337,7 @@ const StaffBusiness = () => {
                       {business.services.map((service, index) => (
                         <span
                           key={index}
-                          className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg"
+                          className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 "
                         >
                           {service}
                         </span>
@@ -351,9 +351,9 @@ const StaffBusiness = () => {
 
           {/* Business Statistics */}
           {(business.totalStaff || business.totalCustomers || business.totalRevenue) && (
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-5">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                   <FaChartLine className="text-white text-sm" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-800">Business Statistics</h2>
@@ -361,19 +361,19 @@ const StaffBusiness = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {business.totalStaff !== undefined && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-center p-4 bg-gray-50  border border-gray-200">
                     <p className="text-2xl sm:text-3xl font-bold text-gray-900">{business.totalStaff || 0}</p>
                     <p className="text-xs sm:text-sm text-gray-600 mt-2 font-medium">Total Staff</p>
                   </div>
                 )}
                 {business.totalCustomers !== undefined && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-center p-4 bg-gray-50  border border-gray-200">
                     <p className="text-2xl sm:text-3xl font-bold text-gray-900">{business.totalCustomers || 0}</p>
                     <p className="text-xs sm:text-sm text-gray-600 mt-2 font-medium">Total Customers</p>
                   </div>
                 )}
                 {business.totalRevenue !== undefined && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-center p-4 bg-gray-50  border border-gray-200">
                     <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                       ₹{business.totalRevenue?.toLocaleString('en-IN') || 0}
                     </p>

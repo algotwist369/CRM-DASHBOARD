@@ -174,7 +174,7 @@ const BusinessInfo = () => {
   const mapsEmbedUrl = business ? getGoogleMapsEmbedUrl() : null
 
   const renderBookingCard = () => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white   border border-gray-200 p-6">
       {business.appointmentSettings?.allowOnlineBooking ? (
         <>
           <div className="flex items-center gap-2 text-green-600 mb-4">
@@ -184,7 +184,7 @@ const BusinessInfo = () => {
           <button
             onClick={handleBookNow}
             disabled={!business.services || business.services.length === 0}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed mb-4"
           >
             <FaCalendarAlt />
             Book Appointment
@@ -205,7 +205,7 @@ const BusinessInfo = () => {
         {business.phone && (
           <a
             href={`tel:${business.phone}`}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl border border-blue-200 font-medium text-sm"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700  border border-blue-200 font-medium text-sm"
           >
             <FaPhone className="text-sm" />
             Call Now
@@ -216,7 +216,7 @@ const BusinessInfo = () => {
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 rounded-xl border border-green-200 font-medium text-sm"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-700  border border-green-200 font-medium text-sm"
           >
             <FaWhatsapp className="text-sm" />
             WhatsApp
@@ -236,14 +236,14 @@ const BusinessInfo = () => {
     ]
 
     return (
-      <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-4">
+      <div className="p-4 border border-gray-200  bg-gray-50 space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg font-bold text-gray-900">Our Team</h2>
           <p className="text-sm text-gray-500">Meet the experts ready to serve you</p>
         </div>
         <div className="space-y-3">
           {staffMembers.map((member, index) => (
-            <div key={index} className="p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
+            <div key={index} className="p-3 bg-white  border border-gray-100 ">
               <p className="text-sm font-semibold text-gray-900">{member.name}</p>
               <p className="text-[11px] text-primary-600 uppercase tracking-wide mt-1">{member.role}</p>
               <p className="text-xs text-gray-600 mt-1">
@@ -291,7 +291,7 @@ const BusinessInfo = () => {
     ]
 
     return (
-      <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-4">
+      <div className="p-4 border border-gray-200  bg-gray-50 space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg font-bold text-gray-900">Follow Us</h2>
           <p className="text-sm text-gray-500">Stay connected on social media</p>
@@ -306,7 +306,7 @@ const BusinessInfo = () => {
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`w-12 h-12 flex items-center justify-center ${bg} text-white rounded-lg shadow-sm hover:opacity-90 transition`}
+                className={`w-12 h-12 flex items-center justify-center ${bg} text-white   hover:opacity-90 transition`}
                 aria-label={label}
               >
                 {icon}
@@ -332,14 +332,14 @@ const BusinessInfo = () => {
     ].filter(Boolean)
 
     return (
-      <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-4">
+      <div className="p-4 border border-gray-200  bg-gray-50 space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg font-bold text-gray-900">Booking Info</h2>
           <p className="text-sm text-gray-500">Plan your appointments with ease</p>
         </div>
         <div className="space-y-3">
           {infoItems.map((item, index) => (
-            <div key={index} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-4 py-3 shadow-sm">
+            <div key={index} className="flex items-center justify-between bg-white border border-gray-100  px-4 py-3 ">
               <span className="text-sm text-gray-600">{item.label}</span>
               <span className="text-sm font-semibold text-gray-900">{item.value}</span>
             </div>
@@ -350,7 +350,7 @@ const BusinessInfo = () => {
   }
 
   const renderCombinedSidebarCard = () => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+    <div className="bg-white   border border-gray-200 p-6 space-y-6">
       {renderStaffCard()}
       {renderFollowUsCard()}
       {renderBookingInfoCard()}
@@ -442,13 +442,13 @@ const BusinessInfo = () => {
   if (error || !business) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 text-center max-w-md w-full">
+        <div className="bg-white  shadow-lg border border-gray-200 p-6 text-center max-w-md w-full">
           <FaExclamationCircle className="mx-auto text-red-500 text-4xl mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Business Not Found</h2>
           <p className="text-gray-600 mb-6 text-sm">{error || 'The business you are looking for could not be found.'}</p>
           <Link
             to="/"
-            className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg font-medium"
+            className="inline-block px-6 py-3 bg-primary-600 text-white  font-medium"
           >
             Go Home
           </Link>
@@ -470,11 +470,11 @@ const BusinessInfo = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Back Button - Mobile Optimized */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 ">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-gray-50 rounded-lg border border-gray-200 font-medium text-sm active:bg-gray-100"
+            className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-gray-50  border border-gray-200 font-medium text-sm active:bg-gray-100"
           >
             <FaArrowLeft className="text-sm" />
             <span>Back</span>
@@ -490,7 +490,7 @@ const BusinessInfo = () => {
             <div className="lg:hidden space-y-4 sm:space-y-6">
               {/* About Section */}
               {business.description && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">About</h2>
                   <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{business.description}</p>
                 </div>
@@ -498,11 +498,11 @@ const BusinessInfo = () => {
 
               {/* Services Section */}
               {business.services && business.services.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     {business.services.map((service, index) => (
-                      <div key={index} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div key={index} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50  border border-gray-100">
                         <FaCheckCircle className="text-green-600 mt-0.5 flex-shrink-0 text-sm" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs sm:text-sm font-medium text-gray-900">
@@ -524,13 +524,13 @@ const BusinessInfo = () => {
 
               {/* Features Section */}
               {business.features && business.features.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
                   <div className="flex flex-wrap gap-2">
                     {business.features.map((feature, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs sm:text-sm border border-purple-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700  text-xs sm:text-sm border border-purple-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {feature}
@@ -542,13 +542,13 @@ const BusinessInfo = () => {
 
               {/* Amenities Section */}
               {business.amenities && business.amenities.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
                   <div className="flex flex-wrap gap-2">
                     {business.amenities.map((amenity, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs sm:text-sm border border-indigo-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700  text-xs sm:text-sm border border-indigo-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {amenity}
@@ -559,7 +559,7 @@ const BusinessInfo = () => {
               )}
 
               {/* Contact Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Contact Information</h2>
                 <div className="space-y-3 sm:space-y-4">
                   {business.address && (
@@ -579,7 +579,7 @@ const BusinessInfo = () => {
                   {business.phone && (
                     <a
                       href={`tel:${business.phone}`}
-                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
                       <FaPhone className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
@@ -591,7 +591,7 @@ const BusinessInfo = () => {
                   {business.email && (
                     <a
                       href={`mailto:${business.email}`}
-                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
                       <FaEnvelope className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
@@ -605,7 +605,7 @@ const BusinessInfo = () => {
                       href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
                       <FaGlobe className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
@@ -619,7 +619,7 @@ const BusinessInfo = () => {
 
               {/* Working Hours */}
               {workingHoursList.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <FaClock className="text-primary-600 text-base sm:text-lg" />
                     <span>Working Hours</span>
@@ -637,11 +637,11 @@ const BusinessInfo = () => {
 
               {/* Category & Tags */}
               {(business.category || (business.tags && business.tags.length > 0)) && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Categories & Tags</h2>
                   <div className="flex flex-wrap gap-2">
                     {business.category && (
-                      <span className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm border border-blue-100">
+                      <span className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-700  text-xs sm:text-sm border border-blue-100">
                         <FaTag className="text-xs" />
                         {business.category}
                       </span>
@@ -649,7 +649,7 @@ const BusinessInfo = () => {
                     {business.tags && business.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs sm:text-sm border border-gray-200"
+                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gray-100 text-gray-700  text-xs sm:text-sm border border-gray-200"
                       >
                         {tag}
                       </span>
@@ -660,13 +660,13 @@ const BusinessInfo = () => {
 
               {/* Location - Mobile */}
               {(mapsEmbedUrl || business.googleMapsUrl) && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
                     <span>Location</span>
                   </h2>
                   {mapsEmbedUrl ? (
-                    <div className="rounded-lg overflow-hidden border border-gray-200">
+                    <div className=" overflow-hidden border border-gray-200">
                       <iframe
                         width="100%"
                         height="300"
@@ -680,7 +680,7 @@ const BusinessInfo = () => {
                       ></iframe>
                     </div>
                   ) : (
-                    <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-100 h-64 sm:h-96 flex items-center justify-center">
+                    <div className=" overflow-hidden border border-gray-200 bg-gray-100 h-64 sm:h-96 flex items-center justify-center">
                       <p className="text-gray-500 text-sm">Map unavailable</p>
                     </div>
                   )}
@@ -705,7 +705,7 @@ const BusinessInfo = () => {
             <div className="hidden lg:block space-y-4 sm:space-y-6">
               {/* About Section */}
               {business.description && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">About</h2>
                   <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{business.description}</p>
                 </div>
@@ -713,7 +713,7 @@ const BusinessInfo = () => {
 
               {/* Services Section */}
               {business.services && business.services.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                     {business.services.map((service, index) => {
@@ -728,7 +728,7 @@ const BusinessInfo = () => {
                       return (
                         <div
                           key={index}
-                          className="flex items-start gap-2 px-2.5 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs border border-green-100"
+                          className="flex items-start gap-2 px-2.5 py-1.5 bg-green-50 text-green-700  text-xs border border-green-100"
                         >
                           <FaCheckCircle className="text-[10px] mt-0.5" />
                           <div className="flex flex-col leading-tight">
@@ -744,13 +744,13 @@ const BusinessInfo = () => {
 
               {/* Features Section */}
               {business.features && business.features.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
                   <div className="flex flex-wrap gap-2">
                     {business.features.map((feature, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs sm:text-sm border border-purple-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700  text-xs sm:text-sm border border-purple-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {feature}
@@ -762,13 +762,13 @@ const BusinessInfo = () => {
 
               {/* Amenities Section */}
               {business.amenities && business.amenities.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
                   <div className="flex flex-wrap gap-2">
                     {business.amenities.map((amenity, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs sm:text-sm border border-indigo-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700  text-xs sm:text-sm border border-indigo-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {amenity}
@@ -779,7 +779,7 @@ const BusinessInfo = () => {
               )}
 
               {/* Contact Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Contact Information</h2>
                 <div className="space-y-3 sm:space-y-4">
                   {business.address && (
@@ -799,7 +799,7 @@ const BusinessInfo = () => {
                   {business.phone && (
                     <a
                       href={`tel:${business.phone}`}
-                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
                       <FaPhone className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
@@ -811,7 +811,7 @@ const BusinessInfo = () => {
                   {business.email && (
                     <a
                       href={`mailto:${business.email}`}
-                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
                       <FaEnvelope className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
@@ -825,7 +825,7 @@ const BusinessInfo = () => {
                       href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg active:bg-gray-100"
+                      className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
                       <FaGlobe className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
@@ -839,7 +839,7 @@ const BusinessInfo = () => {
 
               {/* Working Hours */}
               {workingHoursList.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <FaClock className="text-primary-600 text-base sm:text-lg" />
                     <span>Working Hours</span>
@@ -856,7 +856,7 @@ const BusinessInfo = () => {
               )}
 
               {/* Team Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold text-gray-900">Meet the Team</h2>
@@ -871,7 +871,7 @@ const BusinessInfo = () => {
                 </div>
                 <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {DEFAULT_STAFF_MEMBERS.map((member, index) => (
-                    <div key={index} className="p-3 sm:p-4 border border-gray-100 rounded-lg bg-gray-50 shadow-sm">
+                    <div key={index} className="p-3 sm:p-4 border border-gray-100  bg-gray-50 ">
                       <p className="text-sm sm:text-base font-semibold text-gray-900">{member.name}</p>
                       <p className="text-[11px] sm:text-xs uppercase tracking-wide text-primary-600 mt-1">{member.role}</p>
                       <p className="text-xs sm:text-sm text-gray-600 mt-1">
@@ -884,11 +884,11 @@ const BusinessInfo = () => {
 
               {/* Category & Tags */}
               {(business.category || (business.tags && business.tags.length > 0)) && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Categories & Tags</h2>
                   <div className="flex flex-wrap gap-2">
                     {business.category && (
-                      <span className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm border border-blue-100">
+                      <span className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-700  text-xs sm:text-sm border border-blue-100">
                         <FaTag className="text-xs" />
                         {business.category}
                       </span>
@@ -896,7 +896,7 @@ const BusinessInfo = () => {
                     {business.tags && business.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs sm:text-sm border border-gray-200"
+                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gray-100 text-gray-700  text-xs sm:text-sm border border-gray-200"
                       >
                         {tag}
                       </span>
@@ -920,13 +920,13 @@ const BusinessInfo = () => {
         {/* Location - Full Width */}
         {(mapsEmbedUrl || business.googleMapsUrl) && (
           <div className="hidden lg:block mt-6 sm:mt-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+            <div className="bg-white   border border-gray-200 p-4 sm:p-6">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
                 <span>Location</span>
               </h2>
               {mapsEmbedUrl ? (
-                <div className="rounded-lg overflow-hidden border border-gray-200">
+                <div className=" overflow-hidden border border-gray-200">
                   <iframe
                     width="100%"
                     height="300"
@@ -940,7 +940,7 @@ const BusinessInfo = () => {
                   ></iframe>
                 </div>
               ) : (
-                <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-100 h-64 sm:h-96 flex items-center justify-center">
+                <div className=" overflow-hidden border border-gray-200 bg-gray-100 h-64 sm:h-96 flex items-center justify-center">
                   <p className="text-gray-500 text-sm">Map unavailable</p>
                 </div>
               )}
@@ -965,7 +965,7 @@ const BusinessInfo = () => {
             {business.phone && (
               <a
                 href={`tel:${business.phone}`}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm active:bg-blue-700"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white  font-medium text-sm active:bg-blue-700"
               >
                 <FaPhone />
                 <span>Call</span>
@@ -976,7 +976,7 @@ const BusinessInfo = () => {
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl font-medium text-sm active:bg-green-700"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white  font-medium text-sm active:bg-green-700"
               >
                 <FaWhatsapp />
                 <span>WhatsApp</span>
@@ -985,7 +985,7 @@ const BusinessInfo = () => {
             {business.appointmentSettings?.allowOnlineBooking && business.services && business.services.length > 0 && (
               <button
                 onClick={handleBookNow}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white rounded-xl font-semibold text-sm active:bg-primary-700"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white  font-semibold text-sm active:bg-primary-700"
               >
                 <FaCalendarAlt />
                 <span>Book</span>

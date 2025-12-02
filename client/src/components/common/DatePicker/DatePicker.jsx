@@ -134,7 +134,7 @@ const DatePicker = ({
         readOnly
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 cursor-pointer ${
+        className={`w-full px-3 py-2 border border-gray-300   focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 cursor-pointer ${
           disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'hover:border-gray-400'
         }`}
         {...props}
@@ -142,7 +142,7 @@ const DatePicker = ({
 
       {/* Calendar Dropdown */}
       {isOpen && (
-        <div className="absolute z-10 mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4 min-w-[280px]">
+        <div className="absolute z-10 mt-1 bg-white border border-gray-300  shadow-lg p-4 min-w-[280px]">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -189,7 +189,7 @@ const DatePicker = ({
                 onChange(formatDate(today))
                 setIsOpen(false)
               }}
-              className="w-full px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-md"
+              className="w-full px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 "
             >
               Today
             </button>

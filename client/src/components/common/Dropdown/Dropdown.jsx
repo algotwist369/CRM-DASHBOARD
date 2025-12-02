@@ -79,7 +79,7 @@ const Dropdown = ({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`relative w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 ${
+        className={`relative w-full bg-white border border-gray-300   pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 ${
           disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'hover:border-gray-400'
         } ${buttonClassName || ''}`}
         {...props}
@@ -105,7 +105,7 @@ const Dropdown = ({
           {selectedOptions.map((option) => (
             <span
               key={option[optionValue]}
-              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-100 text-primary-800"
+              className="inline-flex items-center px-2 py-1  text-xs font-medium bg-primary-100 text-primary-800"
             >
               {option[optionLabel]}
               <button
@@ -124,7 +124,7 @@ const Dropdown = ({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60  py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
           {/* Search Input */}
           {searchable && (
             <div className="px-3 py-2 border-b border-gray-200">
@@ -133,7 +133,7 @@ const Dropdown = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search..."
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>

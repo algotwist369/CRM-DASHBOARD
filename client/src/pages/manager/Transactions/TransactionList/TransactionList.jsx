@@ -137,7 +137,7 @@ const TransactionList = () => {
           </div>
           <Link
             to="/manager/transactions/add"
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             <FaPlus />
             <span>Add Transaction</span>
@@ -146,7 +146,7 @@ const TransactionList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white   border border-gray-200 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="relative">
@@ -156,7 +156,7 @@ const TransactionList = () => {
               placeholder="Search transactions..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -170,7 +170,7 @@ const TransactionList = () => {
                 setStartDate(e.target.value)
                 handleFilterChange()
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -184,7 +184,7 @@ const TransactionList = () => {
                 setEndDate(e.target.value)
                 handleFilterChange()
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -197,7 +197,7 @@ const TransactionList = () => {
                 setFilterServiceType(e.target.value)
                 handleFilterChange()
               }}
-              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
+              className="w-full pl-10 pr-8 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
             >
               <option value="">All Service Types</option>
               <option value="hair">Hair</option>
@@ -219,17 +219,17 @@ const TransactionList = () => {
           <FaSpinner className="animate-spin text-4xl text-primary-600" />
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600">
+        <div className="bg-red-50 border border-red-200  p-4 text-red-600">
           {error}
         </div>
       ) : transactions.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white   border border-gray-200 p-12 text-center">
           <FaReceipt className="text-6xl text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No transactions found</h3>
           <p className="text-gray-500 mb-6">Get started by adding your first transaction</p>
           <Link
             to="/manager/transactions/add"
-            className="inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             <FaPlus />
             <span>Add Transaction</span>
@@ -238,7 +238,7 @@ const TransactionList = () => {
       ) : (
         <>
           {/* Transactions Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white   border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -356,17 +356,17 @@ const TransactionList = () => {
                   <button
                     onClick={() => handlePageChange(pagination.currentPage - 1)}
                     disabled={pagination.currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-sm border border-gray-300  hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
-                  <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white">
+                  <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300  bg-white">
                     {pagination.currentPage} / {pagination.totalPages}
                   </span>
                   <button
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
                     disabled={pagination.currentPage >= pagination.totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-sm border border-gray-300  hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>

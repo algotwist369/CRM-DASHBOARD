@@ -388,11 +388,11 @@ const ServiceSelection = () => {
   if (error || !business) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center max-w-md">
+        <div className="bg-white   border border-gray-200 p-8 text-center max-w-md">
           <p className="text-gray-600 mb-6">{error || 'Business not found'}</p>
           <button
             onClick={handleBack}
-            className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="px-6 py-2 bg-gray-900 text-white  hover:bg-gray-800 transition-colors"
           >
             Go Back
           </button>
@@ -422,7 +422,7 @@ const ServiceSelection = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Services List */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-600">
+            <div className="bg-white  border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-600">
               <div className="text-center sm:text-left space-y-1">
                 <p className="font-medium text-gray-900">{business.name}</p>
                 <p>{serviceCount} {serviceCount === 1 ? 'service' : 'services'}</p>
@@ -436,7 +436,7 @@ const ServiceSelection = () => {
             </div>
 
             {services.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+              <div className="bg-white  border border-gray-200 p-10 text-center">
                 <p className="text-gray-500">This business has not published any bookable services yet.</p>
               </div>
             ) : (
@@ -467,7 +467,7 @@ const ServiceSelection = () => {
                   return (
                     <div
                       key={serviceId}
-                      className={`bg-white rounded-xl border ${isSelected ? 'border-gray-900 shadow-sm' : 'border-gray-200'} p-4 sm:p-5 transition`}
+                      className={`bg-white  border ${isSelected ? 'border-gray-900 ' : 'border-gray-200'} p-4 sm:p-5 transition`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div className="flex items-center gap-3">
@@ -527,7 +527,7 @@ const ServiceSelection = () => {
                                   key={option.id}
                                   type="button"
                                   onClick={() => handleOptionChange(service, option.id, true)}
-                                  className={`w-full text-left px-4 py-3 rounded-lg border flex items-center justify-between ${
+                                  className={`w-full text-left px-4 py-3  border flex items-center justify-between ${
                                     optionSelected ? 'border-gray-900 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:border-gray-400'
                                   }`}
                                 >
@@ -561,7 +561,7 @@ const ServiceSelection = () => {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:sticky lg:top-6">
+            <div className="bg-white   border border-gray-200 p-6 lg:sticky lg:top-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
 
               <div className="space-y-3 mb-4">
@@ -657,7 +657,7 @@ const ServiceSelection = () => {
               <button
                 onClick={handleContinue}
                 disabled={selectedServices.length === 0}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white  hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Continue
                 <FaArrowRight />

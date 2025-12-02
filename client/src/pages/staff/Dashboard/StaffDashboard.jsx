@@ -15,13 +15,13 @@ import staffService from "../../../services/staff/staffService";
 
 // Simple Stat Card Component - matching admin dashboard
 const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
-  <div className="bg-white rounded-lg border border-gray-200 p-5">
+  <div className="bg-white  border border-gray-200 p-5">
     <div className="flex items-center justify-between">
       <div className="flex-1">
         <p className="text-xs sm:text-sm font-medium text-gray-500 mb-2">{title}</p>
         <p className="text-2xl sm:text-3xl font-bold text-gray-900">{value}</p>
       </div>
-      <div className={`${iconBg} ${iconColor} p-3 sm:p-4 rounded-lg`}>
+      <div className={`${iconBg} ${iconColor} p-3 sm:p-4 `}>
         <Icon className="text-xl sm:text-2xl" />
       </div>
     </div>
@@ -30,7 +30,7 @@ const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
 
 // Simple Performance Metric Row - matching admin dashboard
 const PerformanceRow = memo(({ label, value, isHighlight, showTrend }) => (
-  <div className={`flex justify-between items-center p-3 rounded-lg ${
+  <div className={`flex justify-between items-center p-3  ${
     isHighlight 
       ? 'bg-primary-50 border border-primary-200' 
       : 'bg-gray-50 border border-gray-200'
@@ -264,7 +264,7 @@ const StaffDashboard = () => {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               title="Refresh Dashboard"
             >
               <HiRefresh className={`text-lg ${refreshing ? 'animate-spin' : ''}`} />
@@ -284,9 +284,9 @@ const StaffDashboard = () => {
       {/* Business Info and Analytics Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Business Information */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+        <div className="bg-white  border border-gray-200 p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
               <FaBuilding className="text-white text-sm" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800">Business Information</h2>
@@ -300,9 +300,9 @@ const StaffDashboard = () => {
         </div>
 
         {/* Analytics Summary */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+        <div className="bg-white  border border-gray-200 p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
               <FaChartLine className="text-white text-sm" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800">Performance Summary</h2>
@@ -316,11 +316,11 @@ const StaffDashboard = () => {
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white  border border-gray-200 overflow-hidden">
         <div className="p-5 sm:p-6 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                 <FaExchangeAlt className="text-white text-sm" />
               </div>
               <h2 className="text-lg font-semibold text-gray-800">Recent Transactions</h2>
@@ -359,7 +359,7 @@ const StaffDashboard = () => {
             {/* Mobile Card View */}
             <div className="md:hidden p-4 space-y-4">
               {paginatedTransactions.map((t) => (
-                <div key={t.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div key={t.id} className="bg-gray-50  p-4 border border-gray-200">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-900">{t.customerName || '—'}</h3>
                     <span className="text-sm font-bold text-emerald-600">{formatCurrency(t.finalPrice)}</span>
@@ -392,17 +392,17 @@ const StaffDashboard = () => {
                   <button
                     onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300  hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all "
                   >
                     Previous
                   </button>
-                  <span className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm">
+                  <span className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300  ">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300  hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all "
                   >
                     Next
                   </button>

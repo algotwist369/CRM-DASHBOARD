@@ -71,7 +71,7 @@ export const AvatarSkeleton = ({ size = 'md', className = '' }) => {
 }
 
 export const CardSkeleton = ({ className = '' }) => (
-  <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
+  <div className={`bg-white  shadow p-6 ${className}`}>
     <div className="flex items-center mb-4">
       <AvatarSkeleton size="md" className="mr-3" />
       <div className="flex-1">
@@ -84,7 +84,7 @@ export const CardSkeleton = ({ className = '' }) => (
 )
 
 export const TableSkeleton = ({ rows = 5, columns = 4, className = '' }) => (
-  <div className={`bg-white rounded-lg shadow overflow-hidden ${className}`}>
+  <div className={`bg-white  shadow overflow-hidden ${className}`}>
     <div className="animate-pulse">
       {/* Header */}
       <div className="h-12 bg-gray-200"></div>

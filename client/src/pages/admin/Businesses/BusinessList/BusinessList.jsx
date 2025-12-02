@@ -73,7 +73,7 @@ const NewBadge = memo(() => (
 
 // Memoized Analytics Card Component
 const AnalyticsCard = memo(({ title, value, icon: Icon }) => (
-  <div className="bg-white border shadow-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+  <div className="bg-white border   sm: p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
     <div className="bg-gray-100 p-2 sm:p-3 rounded-full">
       <Icon className="text-gray-500 text-xl" />
     </div>
@@ -87,7 +87,7 @@ const AnalyticsCard = memo(({ title, value, icon: Icon }) => (
 // Memoized Form Field Component
 const FormField = memo(({ label, name, value, onChange, error, type = "text", placeholder, required = false, options, rows }) => {
   const baseLabelClass = "block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1";
-  const baseInputClass = `w-full border ${error ? "border-red-500" : "border-gray-300"} rounded-lg p-2 sm:p-2.5 text-sm focus:ring-2 focus:ring-primary-500`;
+  const baseInputClass = `w-full border ${error ? "border-red-500" : "border-gray-300"}  p-2 sm:p-2.5 text-sm focus:ring-2 focus:ring-primary-500`;
 
   if (type === "select") {
     return (
@@ -141,7 +141,7 @@ const FormField = memo(({ label, name, value, onChange, error, type = "text", pl
 const IconInputField = memo(({ label, name, value, onChange, error, type = "text", placeholder, icon: Icon, required = false }) => (
   <div>
     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">{label}{required && " *"}</label>
-    <div className="flex items-center border border-gray-300 rounded-lg p-1.5 sm:p-2">
+    <div className="flex items-center border border-gray-300  p-1.5 sm:p-2">
       <Icon className="text-gray-400 mr-2 text-sm" />
       <input
         type={type}
@@ -157,7 +157,7 @@ const IconInputField = memo(({ label, name, value, onChange, error, type = "text
 ));
 
 // Memoized Business Row Component for Desktop
-const BusinessRow = memo(({ business, onView, onEdit, onDelete }) => (
+const BusinessRow = memo(({ business, onView, onEdit, onDelete, onStatusChange }) => (
   <tr className="hover:bg-gray-50 transition-all text-gray-600">
     <td className="px-4 py-3 border-b">
       <div className="flex items-center gap-2">
@@ -185,13 +185,23 @@ const BusinessRow = memo(({ business, onView, onEdit, onDelete }) => (
     <td className="px-4 py-3 border-b">{business.managersCount ?? business.managers?.length ?? 0}</td>
     <td className="px-4 py-3 border-b">{business.staffCount ?? business.staff?.length ?? 0}</td>
     <td className="px-4 py-3 border-b">
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-        business.isActive 
-          ? 'bg-green-100 text-green-800' 
-          : 'bg-red-100 text-red-800'
-      }`}>
-        {business.isActive ? 'Active' : 'Inactive'}
-      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onStatusChange(business)}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${business.isActive ? 'bg-green-500' : 'bg-gray-200'
+            }`}
+          title={business.isActive ? "Deactivate Business" : "Activate Business"}
+        >
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${business.isActive ? 'translate-x-5' : 'translate-x-0'
+              }`}
+          />
+        </button>
+        <span className="text-xs font-medium text-gray-600">
+          {business.isActive ? 'On' : 'Off'}
+        </span>
+      </div>
     </td>
     <td className="px-4 py-3 border-b">
       <div className="flex gap-3">
@@ -210,8 +220,8 @@ const BusinessRow = memo(({ business, onView, onEdit, onDelete }) => (
 ));
 
 // Memoized Business Card Component for Mobile
-const BusinessCard = memo(({ business, onView, onEdit, onDelete }) => (
-  <div className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+const BusinessCard = memo(({ business, onView, onEdit, onDelete, onStatusChange }) => (
+  <div className="border border-gray-200  p-4 bg-white hover:shadow-md transition-shadow">
     <div className="flex justify-between items-start mb-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -219,6 +229,22 @@ const BusinessCard = memo(({ business, onView, onEdit, onDelete }) => (
           {isNewBusiness(business.createdAt) && <NewBadge />}
         </div>
         <p className="text-sm text-gray-500 capitalize">{business.type}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onStatusChange(business)}
+          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${business.isActive ? 'bg-green-500' : 'bg-gray-200'
+            }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${business.isActive ? 'translate-x-4' : 'translate-x-0'
+              }`}
+          />
+        </button>
+        <span className="text-xs font-medium text-gray-600">
+          {business.isActive ? 'On' : 'Off'}
+        </span>
       </div>
     </div>
     <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
@@ -250,13 +276,13 @@ const BusinessCard = memo(({ business, onView, onEdit, onDelete }) => (
       )}
     </div>
     <div className="flex gap-3 border-t border-gray-100 pt-3">
-      <button onClick={() => onView(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:bg-blue-50 py-2 rounded-lg transition-colors">
+      <button onClick={() => onView(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:bg-blue-50 py-2  transition-colors">
         <FaEye /> View
       </button>
-      <button onClick={() => onEdit(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-green-600 hover:bg-green-50 py-2 rounded-lg transition-colors">
+      <button onClick={() => onEdit(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-green-600 hover:bg-green-50 py-2  transition-colors">
         <FaEdit /> Edit
       </button>
-      <button onClick={() => onDelete(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors">
+      <button onClick={() => onDelete(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2  transition-colors">
         <FaTrash /> Delete
       </button>
     </div>
@@ -345,7 +371,7 @@ const BusinessList = () => {
 
   // Memoized handlers
   const handleAdd = useCallback(() => {
-     navigate('/admin/businesses/create');
+    navigate('/admin/businesses/create');
   }, [navigate]);
 
   const handleRefresh = useCallback(async () => {
@@ -416,6 +442,38 @@ const BusinessList = () => {
       }
     } catch (error) {
       toast.error('Delete failed');
+    }
+  }, []);
+
+  const handleStatusChange = useCallback(async (business) => {
+    try {
+      // Optimistic update
+      setBusinesses(prev => prev.map(b =>
+        (b.id || b._id) === (business.id || business._id) ? { ...b, isActive: !b.isActive } : b
+      ));
+
+      const res = await businessService.updateBusinessStatus(business.id || business._id, !business.isActive);
+
+      if (res.success) {
+        // Update with actual server response
+        const updatedStatus = res.data?.data?.isActive ?? res.data?.isActive;
+        setBusinesses(prev => prev.map(b =>
+          (b.id || b._id) === (business.id || business._id) ? { ...b, isActive: updatedStatus } : b
+        ));
+        toast.success(`Business ${updatedStatus ? 'activated' : 'deactivated'} successfully`);
+      } else {
+        // Revert on failure
+        setBusinesses(prev => prev.map(b =>
+          (b.id || b._id) === (business.id || business._id) ? { ...b, isActive: business.isActive } : b
+        ));
+        toast.error(res.error || "Failed to update status");
+      }
+    } catch (error) {
+      // Revert on error
+      setBusinesses(prev => prev.map(b =>
+        (b.id || b._id) === (business.id || business._id) ? { ...b, isActive: business.isActive } : b
+      ));
+      toast.error("Failed to update status");
     }
   }, []);
 
@@ -493,7 +551,7 @@ const BusinessList = () => {
         state: formData.state.trim(),
         country: formData.country || "India",
       };
-      
+
       // Add optional fields only if they have values
       if (formData.zipCode) payload.zipCode = formData.zipCode.trim();
       if (formData.phone) payload.phone = formData.phone.trim();
@@ -502,7 +560,7 @@ const BusinessList = () => {
       if (formData.website) payload.website = formData.website.trim();
       if (formData.description) payload.description = formData.description.trim();
       if (formData.googleMapsUrl) payload.googleMapsUrl = formData.googleMapsUrl.trim();
-      
+
       const res = await businessService.createBusiness(payload);
       if (res.success) {
         toast.success(`${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} created successfully`);
@@ -537,7 +595,7 @@ const BusinessList = () => {
         state: formData.state.trim(),
         country: formData.country || "India",
       };
-      
+
       // Add optional fields - send empty string to clear or value to update
       payload.zipCode = formData.zipCode || undefined;
       payload.phone = formData.phone || undefined;
@@ -546,12 +604,12 @@ const BusinessList = () => {
       payload.website = formData.website || undefined;
       payload.description = formData.description || undefined;
       payload.googleMapsUrl = formData.googleMapsUrl || undefined;
-      
+
       // Remove undefined fields
       Object.keys(payload).forEach(key => {
         if (payload[key] === undefined) delete payload[key];
       });
-      
+
       const businessId = editingBusiness._id || editingBusiness.id;
       const res = await businessService.updateBusiness(businessId, payload);
       if (res.success) {
@@ -613,7 +671,7 @@ const BusinessList = () => {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2  hover:bg-gray-200 transition-colors text-sm font-medium"
               title="Back to Dashboard"
             >
               <FiArrowLeft className="text-base sm:text-lg" />
@@ -622,7 +680,7 @@ const BusinessList = () => {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2  hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
               title="Refresh Data"
             >
               <FiRefreshCw className={`text-base sm:text-lg ${refreshing ? 'animate-spin' : ''}`} />
@@ -630,9 +688,9 @@ const BusinessList = () => {
             </button>
             <button
               onClick={toggleFilters}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm font-medium ${showFilters
-                  ? 'bg-primary-600 text-white hover:bg-primary-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2  transition-colors text-sm font-medium ${showFilters
+                ? 'bg-primary-600 text-white hover:bg-primary-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               title={showFilters ? "Hide Filters" : "Show Filters"}
             >
@@ -646,7 +704,7 @@ const BusinessList = () => {
 
       {/* Collapsible Search and Filter */}
       {showFilters && (
-        <div className="mb-4 bg-white border border-gray-200 rounded-xl shadow-sm p-4 animate-fadeIn">
+        <div className="mb-4 bg-white border border-gray-200   p-4 animate-fadeIn">
           <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <FaFilter className="text-primary-600" />
             Filter Businesses
@@ -659,7 +717,7 @@ const BusinessList = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name, branch, or location..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full border border-gray-300  px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div className="sm:w-48">
@@ -667,7 +725,7 @@ const BusinessList = () => {
               <select
                 value={filterType}
                 onChange={(e) => handleFilterChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full border border-gray-300  px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">All Types</option>
                 <option value="salon">Salon</option>
@@ -683,7 +741,7 @@ const BusinessList = () => {
                     setFilterType('');
                     setPagination(prev => ({ ...prev, currentPage: 1 }));
                   }}
-                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700  hover:bg-gray-200 transition-colors whitespace-nowrap"
                 >
                   Clear All
                 </button>
@@ -694,7 +752,7 @@ const BusinessList = () => {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="text-xs text-gray-500">Active filters:</span>
               {search && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs">
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700  text-xs">
                   Search: "{search}"
                   <button
                     onClick={() => setSearch('')}
@@ -705,7 +763,7 @@ const BusinessList = () => {
                 </span>
               )}
               {filterType && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs capitalize">
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700  text-xs capitalize">
                   Type: {filterType}
                   <button
                     onClick={() => setFilterType('')}
@@ -733,14 +791,14 @@ const BusinessList = () => {
       </section>
 
       {/* Business List Table */}
-      <section className="bg-white shadow-md rounded-xl sm:rounded-2xl p-4 sm:p-5">
+      <section className="bg-white shadow-md  sm: p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-5">
           <h2 className="text-base sm:text-lg font-semibold text-gray-700">
             Business List
           </h2>
           <button
             onClick={handleAdd}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base"
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base"
           >
             <FaPlus /> Add Business
           </button>
@@ -748,7 +806,7 @@ const BusinessList = () => {
 
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="min-w-full border border-gray-200 rounded-lg text-sm">
+          <table className="min-w-full border border-gray-200  text-sm">
             <thead className="bg-gray-100 text-gray-700">
               <tr>
                 {tableHeaders.map(column => (
@@ -764,6 +822,7 @@ const BusinessList = () => {
                   onView={handleView}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
                 />
               ))}
               {loading && (
@@ -778,88 +837,52 @@ const BusinessList = () => {
         {/* Mobile Card View */}
         <div className="md:hidden space-y-3">
           {businesses.map((b) => (
-            <div key={b.id || b._id} className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-gray-800 truncate">{b.name}</h3>
-                    {isNewBusiness(b.createdAt) && <NewBadge />}
-                  </div>
-                  <p className="text-sm text-gray-500 capitalize">{b.type}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-                <div>
-                  <span className="text-gray-500">Branch:</span>
-                  <p className="font-medium text-gray-700">{b.branch || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Managers:</span>
-                  <p className="font-medium text-gray-700">{b.managersCount ?? b.managers?.length ?? 0}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Staff:</span>
-                  <p className="font-medium text-gray-700">{b.staffCount ?? b.staff?.length ?? 0}</p>
-                </div>
-
-                <div>
-                  <span className="text-gray-500">Status:</span>
-                  <p className="font-medium text-gray-700">{b.isActive ? "Active" : "Inactive"}</p>
-                </div>
-
-                {b.businessLink && (
-                  <div className="col-span-2">
-                    <span className="text-gray-500">Business Link:</span>
-                    <a
-                      href={`/${b.businessLink}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      <FaLink className="text-xs" />
-                      {b.businessLink}
-                    </a>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-3 border-t border-gray-100 pt-3">
-                <button onClick={() => handleView(b.id || b._id)} className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:bg-blue-50 py-2 rounded-lg transition-colors">
-                  <FaEye /> View
-                </button>
-                <button onClick={() => handleEdit(b.id || b._id)} className="flex-1 flex items-center justify-center gap-2 text-green-600 hover:bg-green-50 py-2 rounded-lg transition-colors">
-                  <FaEdit /> Edit
-                </button>
-                <button onClick={() => handleDelete(b.id || b._id)} className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors">
-                  <FaTrash /> Delete
-                </button>
-              </div>
-            </div>
+            <BusinessCard
+              key={b.id || b._id}
+              business={b}
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onStatusChange={handleStatusChange}
+            />
           ))}
           {loading && <div className="p-4 text-sm text-gray-500 text-center">Loading businesses…</div>}
           {!loading && businesses.length === 0 && <div className="p-8 text-sm text-gray-500 text-center">No businesses found</div>}
         </div>
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 border-t border-gray-200 mt-4">
-            <div className="text-sm text-gray-600">
-              Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total} businesses
+        {/* Pagination */}
+        {pagination.totalPages > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-200 mt-4 gap-4">
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-600">
+                Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total} businesses
+              </div>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination(prev => ({ ...prev, limit: Number(e.target.value), currentPage: 1 }))}
+                className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              >
+                {[10, 20, 50, 100].map(limit => (
+                  <option key={limit} value={limit}>{limit} per page</option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => handlePageChange(pagination.currentPage - 1)}
                 disabled={pagination.currentPage === 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
-              <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg">
+              <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 ">
                 {pagination.currentPage} / {pagination.totalPages}
               </span>
               <button
                 onClick={() => handlePageChange(pagination.currentPage + 1)}
                 disabled={pagination.currentPage >= pagination.totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>
@@ -1007,7 +1030,7 @@ const BusinessList = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5 rounded-lg font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5  font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
           >
             {submitting ? "Adding..." : "Add Business"}
           </button>
@@ -1153,7 +1176,7 @@ const BusinessList = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5 rounded-lg font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5  font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
           >
             {submitting ? "Updating..." : "Update Business"}
           </button>

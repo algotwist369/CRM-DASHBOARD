@@ -90,7 +90,7 @@ const Dropdown = ({
     >
       <button
         type="button"
-        className="flex items-center gap-1 text-sm xl:text-base font-medium text-gray-700 hover:text-primary-600 px-2 py-1 rounded-md hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-1 text-sm xl:text-base font-medium text-gray-700 hover:text-primary-600 px-2 py-1  hover:bg-gray-50 transition-colors"
         onClick={handleToggle}
         onFocus={handleOpen}
         aria-haspopup="true"
@@ -107,7 +107,7 @@ const Dropdown = ({
         </svg>
       </button>
       {isOpen && (
-        <div className={`absolute ${position} top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-50`}>
+        <div className={`absolute ${position} top-full mt-2 w-56 bg-white border border-gray-200  shadow-xl py-2 z-50`}>
           {links.map((item) => {
             const showSubmenu = item.children && item.children.length > 0 && activeSubmenu === item.name
             return (
@@ -130,7 +130,7 @@ const Dropdown = ({
                 </button>
                 {showSubmenu && (
                   <div
-                    className="absolute left-full top-0 ml-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl py-2 z-50"
+                    className="absolute left-full top-0 ml-1 w-56 bg-white border border-gray-200  shadow-xl py-2 z-50"
                     onMouseEnter={() => setActiveSubmenu(item.name)}
                     onFocusCapture={() => setActiveSubmenu(item.name)}
                     onMouseLeave={() => setActiveSubmenu(null)}
@@ -274,7 +274,7 @@ const PublicHeader = () => {
   const renderMobileSection = (section) => {
     const isOpen = openMobileSection === section.title
     return (
-      <div key={section.title} className="border border-gray-200 rounded-lg overflow-hidden">
+      <div key={section.title} className="border border-gray-200  overflow-hidden">
         <button
           type="button"
           onClick={() => setOpenMobileSection(isOpen ? null : section.title)}
@@ -321,18 +321,18 @@ const PublicHeader = () => {
 
   return (
     <>
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      <header className="bg-white  border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center flex-shrink-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-600 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-600  flex items-center justify-center mr-2 sm:mr-3">
               <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div className="hidden min-[375px]:block">
-              <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 leading-tight">Booking App</h1>
+              <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 leading-tight">SpaAdvisor</h1>
               <p className="text-[10px] sm:text-xs text-gray-500 leading-tight hidden sm:block">Business Management System</p>
             </div>
           </Link>
@@ -364,7 +364,7 @@ const PublicHeader = () => {
             />
             <Link
               to="/advertise"
-              className={`relative flex items-center gap-1 text-sm xl:text-base font-medium transition-colors whitespace-nowrap px-2 py-1 rounded-md ${
+              className={`relative flex items-center gap-1 text-sm xl:text-base font-medium transition-colors whitespace-nowrap px-2 py-1  ${
                 location.pathname === '/advertise'
                   ? 'text-primary-600 bg-primary-50'
                   : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
@@ -445,7 +445,7 @@ const PublicHeader = () => {
           <div className="md:hidden flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => handleNavigate('/notifications')}
-              className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors rounded-lg hover:bg-gray-100"
+              className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors  hover:bg-gray-100"
               aria-label="Notifications"
             >
               <FaBell className="w-5 h-5" />
@@ -477,7 +477,7 @@ const PublicHeader = () => {
             </div>
             <button
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100  transition-colors"
               aria-label="Menu"
             >
               {mobileMenuOpen ? (
@@ -542,10 +542,10 @@ const PublicHeader = () => {
         size="xl"
       >
         <div className="space-y-6">
-          <details className="group rounded-xl bg-primary-50 border border-primary-100 p-4 sm:p-5">
+          <details className="group  bg-primary-50 border border-primary-100 p-4 sm:p-5">
             <summary className="flex items-center justify-between cursor-pointer list-none">
               <h3 className="text-lg font-semibold text-primary-900">
-                See how Booking App drives growth
+                See how SpaAdvisor drives growth
               </h3>
               <span className="text-primary-700 transition-transform group-open:rotate-180">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

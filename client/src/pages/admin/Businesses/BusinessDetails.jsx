@@ -123,11 +123,11 @@ const BusinessDetails = () => {
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6">
-        <div className="bg-white rounded-lg p-5 sm:p-6 border border-gray-200">
+        <div className="bg-white  p-5 sm:p-6 border border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary-600  flex items-center justify-center">
                   <FaBuilding className="text-white text-lg" />
                 </div>
                 <div>
@@ -152,7 +152,7 @@ const BusinessDetails = () => {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => navigate('/admin/businesses')}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300  hover:bg-gray-50 text-sm font-medium text-gray-700"
               >
                 <FaArrowLeft />
                 <span className="hidden sm:inline">Back</span>
@@ -160,21 +160,21 @@ const BusinessDetails = () => {
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm font-medium text-gray-700"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300  hover:bg-gray-50 disabled:opacity-50 text-sm font-medium text-gray-700"
               >
                 <HiRefresh className={`text-lg ${refreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
               <button
                 onClick={handleEdit}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white  hover:bg-blue-700 text-sm font-medium"
               >
                 <FaEdit />
                 <span className="hidden sm:inline">Edit</span>
               </button>
               <button
                 onClick={handleDelete}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-600 text-white  hover:bg-red-700 text-sm font-medium"
               >
                 <FaTrash />
                 <span className="hidden sm:inline">Delete</span>
@@ -186,19 +186,19 @@ const BusinessDetails = () => {
 
       {/* Business Link */}
       {businessLink && (
-        <div className="mb-6 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg p-5 border border-primary-200">
+        <div className="mb-6 bg-gradient-to-r from-primary-50 to-blue-50  p-5 border border-primary-200">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Public Business Link
               </label>
               <div className="flex items-center gap-2">
-                <code className="text-sm text-primary-700 font-mono bg-white px-3 py-2 rounded-lg border border-primary-200 flex-1">
+                <code className="text-sm text-primary-700 font-mono bg-white px-3 py-2  border border-primary-200 flex-1">
                   {businessLink}
                 </code>
                 <button
                   onClick={handleCopyLink}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 text-sm font-medium whitespace-nowrap"
                 >
                   {copiedLink ? (
                     <>
@@ -221,7 +221,7 @@ const BusinessDetails = () => {
       {/* Details Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Basic Information */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white  border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaBuilding className="text-primary-600" />
             Basic Information
@@ -243,7 +243,7 @@ const BusinessDetails = () => {
             )}
             <div>
               <label className="text-sm font-medium text-gray-600">Business Link</label>
-              <code className="block text-sm font-mono text-primary-600 bg-gray-100 px-3 py-2 rounded-lg mt-1">
+              <code className="block text-sm font-mono text-primary-600 bg-gray-100 px-3 py-2  mt-1">
                 {business.businessLink}
               </code>
             </div>
@@ -251,7 +251,7 @@ const BusinessDetails = () => {
         </div>
 
         {/* Contact Information */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white  border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaPhone className="text-primary-600" />
             Contact Information
@@ -276,7 +276,7 @@ const BusinessDetails = () => {
       </div>
 
       {/* Location Information */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <div className="bg-white  border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <FaMapMarkerAlt className="text-primary-600" />
           Location Information
@@ -319,7 +319,7 @@ const BusinessDetails = () => {
       </div>
 
       {/* Status */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white  border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Status</h2>
         <div className="flex items-center gap-3">
           {business.isActive ? (

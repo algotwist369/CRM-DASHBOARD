@@ -183,7 +183,7 @@ const TimeSelection = () => {
           {/* Date & Time Selection */}
           <div className="lg:col-span-2 space-y-6">
             {/* Date Picker */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <FaCalendarAlt className="text-primary-600" />
                 Select Date
@@ -194,13 +194,13 @@ const TimeSelection = () => {
                 min={getMinDate()}
                 max={getMaxDate()}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg"
+                className="w-full px-4 py-3 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg"
               />
             </div>
 
             {/* Time Slots */}
             {selectedDate && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <FaClock className="text-primary-600" />
                   Available Time Slots
@@ -229,7 +229,7 @@ const TimeSelection = () => {
                           key={index}
                           onClick={() => isAvailable && selectTime(slotTime)}
                           disabled={!isAvailable}
-                          className={`p-3 rounded-lg border-2 transition-all ${isSelected
+                          className={`p-3  border-2 transition-all ${isSelected
                               ? 'border-green-200 bg-green-200 text-green-700 shadow-md font-semibold' // Selected State (Solid Green)
                               : isAvailable
                                 ? 'border-green-200 bg-green-50 text-green-700 hover:border-green-400 hover:bg-green-100' // Available State (Light Green)
@@ -248,7 +248,7 @@ const TimeSelection = () => {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-[4.1rem]">
+            <div className="bg-white   border border-gray-200 p-6 sticky top-[4.1rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
 
               <div className="space-y-3 mb-4">
@@ -280,7 +280,7 @@ const TimeSelection = () => {
               <button
                 onClick={handleContinue}
                 disabled={!selectedDate || !selectedTime}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Continue
                 <FaArrowRight />

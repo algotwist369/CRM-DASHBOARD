@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   HiOutlineCube, HiOutlinePlus, HiOutlineSearch, HiOutlineRefresh,
   HiOutlineEye, HiOutlinePencil, HiOutlineTrash
 } from 'react-icons/hi';
+import { CiFilter } from 'react-icons/ci';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
 
 const StatsCard = memo(({ title, value, description }) => (
-  <div className="rounded-lg border border-gray-200 bg-white p-4">
+  <div className="border border-gray-200 bg-white p-4">
     <p className="text-xs uppercase tracking-wide text-gray-500">{title}</p>
     <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
     {description && <p className="text-xs text-gray-400 mt-1">{description}</p>}
@@ -24,9 +25,7 @@ const currencySymbols = {
 };
 
 const formatCurrency = (value, currency = 'INR') => {
-  if (value === undefined || value === null || Number.isNaN(Number(value))) {
-    return '--';
-  }
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return '--';
   const symbol = currencySymbols[currency] || '';
   const amount = Number(value).toLocaleString('en-IN');
   return symbol ? `${symbol}${amount}` : `${currency} ${amount}`;
@@ -40,10 +39,7 @@ const getPricingSummary = (service) => {
 
   if (service.pricingType === 'variable' && activeOptions.length > 0) {
     const prices = activeOptions.map((option) => Number(option.price)).filter((price) => !Number.isNaN(price));
-    const durations = activeOptions
-      .map((option) => Number(option.duration))
-      .filter((duration) => !Number.isNaN(duration));
-
+    const durations = activeOptions.map((option) => Number(option.duration)).filter((d) => !Number.isNaN(d));
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const minDuration = durations.length ? Math.min(...durations) : null;
@@ -163,6 +159,8 @@ const ServiceList = () => {
   const [categories, setCategories] = useState([]);
   const [businessesLoaded, setBusinessesLoaded] = useState(false);
 
+  const [filtersOpen, setFiltersOpen] = useState(false); // <-- New toggle state
+
   // Fetch businesses
   const fetchBusinesses = useCallback(async () => {
     try {
@@ -170,27 +168,19 @@ const ServiceList = () => {
       if (response.success) {
         const businessList = (response.data || []).map((business) => ({
           ...business,
-          _id: business?._id || business?.id || business?.businessId || business?._id
+          _id: business?._id || business?.id || business?.businessId
         }));
         setBusinesses(businessList);
         setBusinessesLoaded(true);
 
-        // Resolve businessId from localStorage (might be name or invalid)
         const storedValue = localStorage.getItem('selectedBusinessId');
         const resolvedBusinessId = resolveBusinessId(storedValue, businessList);
-        let nextBusinessId = resolvedBusinessId;
+        let nextBusinessId = resolvedBusinessId || (businessList[0]?._id || '');
 
-        // If no valid businessId found, use first business
-        if (!nextBusinessId && businessList.length > 0) {
-          nextBusinessId = businessList[0]._id;
-        }
-
-        // Only set if we have a valid ObjectId
         if (nextBusinessId && isValidObjectId(nextBusinessId)) {
           setSelectedBusinessId(nextBusinessId);
           localStorage.setItem('selectedBusinessId', nextBusinessId);
         } else {
-          // Clear invalid value from localStorage
           localStorage.removeItem('selectedBusinessId');
         }
       }
@@ -202,21 +192,16 @@ const ServiceList = () => {
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
-    if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) {
-      return;
-    }
+    if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) return;
     try {
       const response = await adminService.getServiceCategories({ businessId: selectedBusinessId });
-      if (response.success) {
-        setCategories(response.data || []);
-      }
+      if (response.success) setCategories(response.data || []);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
     }
   }, [selectedBusinessId]);
 
   const fetchServices = useCallback(async () => {
-    // Validate businessId before making API calls
     if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) {
       setLoading(false);
       return;
@@ -239,18 +224,11 @@ const ServiceList = () => {
       if (servicesRes.success) {
         setServices(servicesRes.data || []);
         setTotalPages(servicesRes.pagination?.pages || 1);
-        
-        // Calculate stats
+
         const total = servicesRes.pagination?.total || 0;
         const active = (servicesRes.data || []).filter(s => s.isActive !== false).length;
         const popular = popularRes.success ? (popularRes.data || []).length : 0;
-        
-        setStats({
-          total,
-          active,
-          categories: categories.length,
-          popular
-        });
+        setStats({ total, active, categories: categories.length, popular });
       } else {
         toast.error(servicesRes.error || 'Failed to fetch services');
         setServices([]);
@@ -264,17 +242,13 @@ const ServiceList = () => {
     }
   }, [searchTerm, currentPage, selectedBusinessId, categories.length]);
 
-  useEffect(() => {
-    fetchBusinesses();
-  }, [fetchBusinesses]);
+  useEffect(() => { fetchBusinesses(); }, [fetchBusinesses]);
 
   useEffect(() => {
-    // Only fetch services/categories after businesses are loaded and we have a valid businessId
     if (businessesLoaded && selectedBusinessId && isValidObjectId(selectedBusinessId)) {
       fetchCategories();
       fetchServices();
     } else if (businessesLoaded && !selectedBusinessId) {
-      // If businesses loaded but no valid businessId, stop loading
       setLoading(false);
     }
   }, [businessesLoaded, selectedBusinessId, fetchServices, fetchCategories]);
@@ -285,16 +259,13 @@ const ServiceList = () => {
       if (response.success) {
         toast.success('Service deleted successfully');
         fetchServices();
-      } else {
-        toast.error(response.error || 'Failed to delete service');
-      }
-    } catch (error) {
-      toast.error('Failed to delete service');
-    }
+      } else toast.error(response.error || 'Failed to delete service');
+    } catch (error) { toast.error('Failed to delete service'); }
   };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -305,13 +276,14 @@ const ServiceList = () => {
         </div>
         <button
           onClick={() => navigate('/admin/services/create')}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700"
         >
           <HiOutlinePlus className="w-5 h-5" />
           Add Service
         </button>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard title="Total Services" value={stats.total} description="All services under this business" />
         <StatsCard title="Active" value={stats.active} description="Currently visible to clients" />
@@ -319,62 +291,66 @@ const ServiceList = () => {
         <StatsCard title="Popular" value={stats.popular} description="Trending or most viewed" />
       </div>
 
-      {/* Business Selector */}
-      {businesses.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Business</label>
-          {businesses.filter(biz => biz?._id).length === 0 ? (
-            <p className="text-sm text-gray-500">No valid businesses found.</p>
-          ) : (
-            <select
-              value={selectedBusinessId}
-              onChange={(e) => {
-                setSelectedBusinessId(e.target.value);
-                localStorage.setItem('selectedBusinessId', e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 bg-white"
-            >
-              {businesses
-                .filter((business) => business && business._id)
-                .map((business) => (
-                  <option key={business._id} value={business._id}>
-                    {business.name}
-                  </option>
-                ))}
-            </select>
-          )}
-        </div>
-      )}
+      {/* Filter Toggle */}
+      <div className="flex items-center gap-2 cursor-pointer" onClick={() => setFiltersOpen(prev => !prev)}>
+        <CiFilter className="w-6 h-6 text-gray-400" />
+        <span className="text-gray-700 font-medium">Filters</span>
+      </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <div className="relative">
+      {/* Filters Section */}
+      {filtersOpen && (
+        <div className="bg-white border border-gray-200 shadow-sm p-6 space-y-4 ">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+
+            {/* Search */}
+            <div className="relative w-full">
               <HiOutlineSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search services..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setCurrentPage(1);
-                    fetchServices();
-                  }
-                }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                onKeyDown={(e) => { if (e.key === 'Enter') { setCurrentPage(1); fetchServices(); } }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-0 transition"
               />
             </div>
-          </div>
-          <button onClick={fetchServices} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-            <HiOutlineRefresh className="w-5 h-5" />
-            Refresh
-          </button>
-        </div>
-      </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {/* Business Selector */}
+            {businesses.length > 0 && (
+              <div className="w-full">
+                <select
+                  value={selectedBusinessId}
+                  onChange={(e) => {
+                    setSelectedBusinessId(e.target.value);
+                    localStorage.setItem('selectedBusinessId', e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300  bg-white focus:outline-none focus:ring-0 transition"
+                >
+                  {businesses.filter(b => b?._id).map(b => (
+                    <option key={b._id} value={b._id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Refresh */}
+            <div className="flex justify-start md:justify-end">
+              <button
+                onClick={fetchServices}
+                className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition"
+              >
+                <HiOutlineRefresh className="w-5 h-5" /> Refresh
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+
+      {/* Services Table */}
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -394,12 +370,12 @@ const ServiceList = () => {
                 <tr><td colSpan="6" className="px-6 py-12 text-center"><HiOutlineCube className="mx-auto h-12 w-12 text-gray-400" /><p className="mt-2 text-sm text-gray-500">No services found</p></td></tr>
               ) : (
                 services.map((service, index) => (
-                  <ServiceRow 
-                    key={service._id || service.id || `service-${index}`} 
-                    service={service} 
-                    onView={(id) => navigate(`/admin/services/${id}`)} 
-                    onEdit={(id) => navigate(`/admin/services/${id}/edit`)} 
-                    onDelete={handleDelete} 
+                  <ServiceRow
+                    key={service._id || service.id || `service-${index}`}
+                    service={service}
+                    onView={(id) => navigate(`/admin/services/${id}`)}
+                    onEdit={(id) => navigate(`/admin/services/${id}/edit`)}
+                    onDelete={handleDelete}
                   />
                 ))
               )}
@@ -410,45 +386,17 @@ const ServiceList = () => {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
-            <div className="flex-1 flex justify-between sm:hidden">
+            <div className="flex gap-2">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Previous
-              </button>
+                className="px-4 py-2 border border-gray-300 text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >Previous</button>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing page <span className="font-medium">{currentPage}</span> of{' '}
-                  <span className="font-medium">{totalPages}</span>
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
+                className="px-4 py-2 border border-gray-300 text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >Next</button>
             </div>
           </div>
         )}
@@ -458,4 +406,3 @@ const ServiceList = () => {
 };
 
 export default ServiceList;
-

@@ -102,7 +102,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 sm:p-8">
+    <div className="bg-white border border-gray-200  shadow-lg p-6 sm:p-8">
       <h2 className="text-2xl font-semibold text-gray-900 mb-2">Request your live walkthrough</h2>
       <p className="text-sm text-gray-600 mb-6">
         Share a few details and we’ll follow up within one business day.
@@ -120,7 +120,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="Alex Johnson"
               value={formValues.fullName}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
               required
             />
           </div>
@@ -135,7 +135,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="Glow & Co. Salon"
               value={formValues.businessName}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
               required
             />
           </div>
@@ -153,7 +153,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="you@business.com"
               value={formValues.email}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
               required
             />
           </div>
@@ -168,7 +168,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="+91 98xxxxxx90"
               value={formValues.phone}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
             />
           </div>
         </div>
@@ -185,7 +185,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="e.g. 10 staff across 2 branches"
               value={formValues.teamSize}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
             />
           </div>
           <div className="space-y-1">
@@ -197,7 +197,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               name="objective"
               value={formValues.objective}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
             >
               {objectives.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -219,15 +219,15 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
             rows={4}
             value={formValues.message}
             onChange={handleChange}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
           />
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+          <div className=" border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
         )}
         {status === 'success' && mode === 'modal' && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+          <div className=" border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
             Thank you! Our team will reach out shortly to confirm your demo.
           </div>
         )}
@@ -235,7 +235,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
         <button
           type="submit"
           disabled={isSubmitDisabled || status === 'loading'}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-2  bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 transition-colors"
         >
           {status === 'loading' ? 'Booking your demo…' : 'Schedule my demo'}
         </button>
@@ -293,7 +293,7 @@ const BookDemo = () => {
             {summaryPoints.map((point) => {
               const Icon = point.icon
               return (
-                <div key={point.title} className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col h-full">
+                <div key={point.title} className="bg-white/5 border border-white/10  p-6 flex flex-col h-full">
                   <div className="w-10 h-10 rounded-full bg-primary-500 text-white flex items-center justify-center mb-4">
                     <Icon className="w-5 h-5" />
                   </div>
@@ -330,7 +330,7 @@ const BookDemo = () => {
                 description: 'Receive a proposal with pricing, onboarding plan, and ROI milestones if you’re ready.'
               }
             ].map((item) => (
-              <div key={item.step} className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm">
+              <div key={item.step} className="bg-gray-50 border border-gray-200  p-6 ">
                 <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 text-primary-700 font-semibold mb-4">
                   {item.step}
                 </span>

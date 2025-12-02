@@ -99,7 +99,7 @@ const CreateCampaign = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/notifications/campaigns')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -115,7 +115,7 @@ const CreateCampaign = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Campaign Details</h2>
           
           <div className="space-y-4">
@@ -128,7 +128,7 @@ const CreateCampaign = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Summer Sale 2024"
                 required
               />
@@ -143,7 +143,7 @@ const CreateCampaign = () => {
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Campaign description..."
               />
             </div>
@@ -156,7 +156,7 @@ const CreateCampaign = () => {
                 name="type"
                 value={formData.type}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 required
               >
                 <option value="promotional">Promotional</option>
@@ -171,7 +171,7 @@ const CreateCampaign = () => {
         </div>
 
         {/* Settings */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaCalendarAlt />
             Campaign Settings
@@ -188,7 +188,7 @@ const CreateCampaign = () => {
                   name="settings.startDate"
                   value={formData.settings.startDate}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   required
                 />
               </div>
@@ -201,7 +201,7 @@ const CreateCampaign = () => {
                   name="settings.endDate"
                   value={formData.settings.endDate}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   required
                 />
               </div>
@@ -226,7 +226,7 @@ const CreateCampaign = () => {
                 name="settings.frequency"
                 value={formData.settings.frequency}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="once">Once</option>
                 <option value="daily">Daily</option>
@@ -238,7 +238,7 @@ const CreateCampaign = () => {
         </div>
 
         {/* Target Audience */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaUsers />
             Target Audience
@@ -265,7 +265,7 @@ const CreateCampaign = () => {
                     }]
                   }
                 }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="all">All Customers</option>
                 <option value="new">New Customers</option>
@@ -279,7 +279,7 @@ const CreateCampaign = () => {
         </div>
 
         {/* Content Template */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Message Template</h2>
           
           <div className="space-y-4">
@@ -300,7 +300,7 @@ const CreateCampaign = () => {
                     }]
                   }
                 }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Campaign Title"
               />
             </div>
@@ -322,7 +322,7 @@ const CreateCampaign = () => {
                   }
                 }))}
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Campaign message..."
                 required
               />
@@ -335,14 +335,14 @@ const CreateCampaign = () => {
           <button
             type="button"
             onClick={() => navigate('/manager/notifications/campaigns')}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? (
               <>

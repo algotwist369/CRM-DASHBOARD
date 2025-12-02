@@ -192,7 +192,7 @@ const AddTransaction = () => {
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Customer Information */}
           <div>
@@ -212,7 +212,7 @@ const AddTransaction = () => {
                     onChange={handleChange}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.customerName ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter customer name"
                   />
                 </div>
@@ -232,7 +232,7 @@ const AddTransaction = () => {
                     maxLength={10}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.customerPhone ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter phone number"
                   />
                 </div>
@@ -251,7 +251,7 @@ const AddTransaction = () => {
                     onChange={handleChange}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.customerEmail ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter email (optional)"
                   />
                 </div>
@@ -278,7 +278,7 @@ const AddTransaction = () => {
                     onChange={handleChange}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.serviceName ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="e.g., Haircut, Facial Treatment"
                   />
                 </div>
@@ -296,7 +296,7 @@ const AddTransaction = () => {
                     name="serviceType"
                     value={formData.serviceType}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
                   >
                     <option value="hair">Hair</option>
                     <option value="facial">Facial</option>
@@ -320,7 +320,7 @@ const AddTransaction = () => {
                     name="serviceCategory"
                     value={formData.serviceCategory}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="e.g., Hair Cut, Facial Treatment"
                   />
                 </div>
@@ -348,7 +348,7 @@ const AddTransaction = () => {
                     step="0.01"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.basePrice ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="0.00"
                   />
                 </div>
@@ -369,7 +369,7 @@ const AddTransaction = () => {
                     step="0.01"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.discount ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="0.00"
                   />
                 </div>
@@ -390,7 +390,7 @@ const AddTransaction = () => {
                     step="0.01"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.tax ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="0.00"
                   />
                 </div>
@@ -406,7 +406,7 @@ const AddTransaction = () => {
                     type="text"
                     value={calculatedPrice.toFixed(2)}
                     readOnly
-                    className="w-full pl-10 pr-4 py-2 border border-green-300 bg-green-50 rounded-lg font-semibold text-green-900"
+                    className="w-full pl-10 pr-4 py-2 border border-green-300 bg-green-50  font-semibold text-green-900"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Calculated automatically</p>
@@ -429,7 +429,7 @@ const AddTransaction = () => {
                     name="paymentMethod"
                     value={formData.paymentMethod}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
                   >
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
@@ -449,7 +449,7 @@ const AddTransaction = () => {
                     name="staff"
                     value={formData.staff}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
                   >
                     <option value="">Select staff (optional)</option>
                     {staffList.map((staff) => (
@@ -476,7 +476,7 @@ const AddTransaction = () => {
                     step="0.1"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.rating ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="1-5"
                   />
                 </div>
@@ -494,7 +494,7 @@ const AddTransaction = () => {
                   value={formData.notes}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Add any additional notes (optional)"
                 />
               </div>
@@ -506,14 +506,14 @@ const AddTransaction = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

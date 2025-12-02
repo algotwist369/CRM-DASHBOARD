@@ -145,7 +145,7 @@ const TransactionSummary = ({
             {topServices.length > 0 ? (
               <div className="space-y-3">
                 {topServices.slice(0, 5).map((service, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 ">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-semibold">
                         {index + 1}
@@ -178,7 +178,7 @@ const TransactionSummary = ({
           {topCustomers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {topCustomers.slice(0, 6).map((customer, index) => (
-                <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                <div key={index} className="p-4 border border-gray-200 ">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-semibold">
                       {index + 1}
@@ -265,7 +265,7 @@ const TransactionSummary = ({
             {paymentMethodBreakdown.length > 0 ? (
               <div className="space-y-3">
                 {paymentMethodBreakdown.map((method, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 ">
                     <div className="flex items-center gap-3">
                       <PaymentMethod method={method.name} showStatus={false} size="sm" />
                     </div>
@@ -288,15 +288,15 @@ const TransactionSummary = ({
           <div className="p-6">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Refund Summary</h4>
             <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-red-50 ">
                 <span className="text-red-700 font-medium">Total Refunds</span>
                 <span className="text-red-900 font-bold text-lg">{formatCurrency(totalRefunds)}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-orange-50 ">
                 <span className="text-orange-700 font-medium">Refund Rate</span>
                 <span className="text-orange-900 font-bold text-lg">{formatPercentage(refundRate)}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-green-50 ">
                 <span className="text-green-700 font-medium">Net Revenue</span>
                 <span className="text-green-900 font-bold text-lg">{formatCurrency((totalRevenue || 0) - (totalRefunds || 0))}</span>
               </div>

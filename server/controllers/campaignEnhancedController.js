@@ -54,7 +54,7 @@ const getTemplates = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const userRole = req.user.role;
-        const { businessId, category, page = 1, limit = 20 } = req.query;
+        const { businessId, category, type, search, page = 1, limit = 20 } = req.query;
 
         let business = null;
         if (businessId) {
@@ -62,20 +62,46 @@ const getTemplates = async (req, res, next) => {
                 business = await Business.findOne({ _id: businessId, admin: userId });
             } else if (userRole === 'manager') {
                 const manager = await Manager.findById(userId);
-                business = await Business.findById(manager.business);
+                if (manager && manager.business) {
+                    business = await Business.findById(manager.business);
+                }
             }
         }
 
-        const query = {
-            isActive: true,
-            $or: [
-                { business: business?._id || null },
-                { business: null, isPublic: true }
-            ]
-        };
+        // Build query - Fixed $or operator usage
+        const query = { isActive: true };
 
+        // Business filter with proper $or syntax
+        if (business) {
+            query.$or = [
+                { business: business._id },
+                { business: null, isPublic: true }
+            ];
+        } else {
+            query.$or = [
+                { business: null, isPublic: true }
+            ];
+        }
+
+        // Category filter
         if (category) {
             query.category = category;
+        }
+
+        // Type filter
+        if (type) {
+            query.campaignType = type;
+        }
+
+        // Search filter
+        if (search) {
+            query.$and = query.$and || [];
+            query.$and.push({
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } }
+                ]
+            });
         }
 
         const templates = await CampaignTemplate.find(query)
@@ -111,6 +137,55 @@ const getPopularTemplates = async (req, res, next) => {
         return res.json({
             success: true,
             data: templates
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Get Template by ID
+const getTemplateById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const template = await CampaignTemplate.findById(id);
+
+        if (!template) {
+            return res.status(404).json({
+                success: false,
+                message: "Template not found"
+            });
+        }
+
+        // Check access - user can access if:
+        // 1. Template is public
+        // 2. Template belongs to their business (for managers)
+        // 3. They are admin and template belongs to one of their businesses
+        if (!template.isPublic && template.business) {
+            if (userRole === 'manager') {
+                const manager = await Manager.findById(userId);
+                if (!manager || manager.business.toString() !== template.business.toString()) {
+                    return res.status(403).json({
+                        success: false,
+                        message: "Access denied to this template"
+                    });
+                }
+            } else if (userRole === 'admin') {
+                const business = await Business.findOne({ _id: template.business, admin: userId });
+                if (!business) {
+                    return res.status(403).json({
+                        success: false,
+                        message: "Access denied to this template"
+                    });
+                }
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: template
         });
     } catch (err) {
         next(err);
@@ -251,6 +326,148 @@ const triggerAutomatedCampaign = async (req, res, next) => {
     }
 };
 
+// Get Automated Campaign by ID
+const getAutomatedCampaignById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const campaign = await AutomatedCampaign.findById(id)
+            .populate('template')
+            .populate('business', 'name');
+
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: "Automated campaign not found"
+            });
+        }
+
+        // Check access
+        if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (!manager || manager.business.toString() !== campaign.business._id.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        } else if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: campaign.business._id, admin: userId });
+            if (!business) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: campaign
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Update Automated Campaign
+const updateAutomatedCampaign = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const updateData = req.body;
+
+        const campaign = await AutomatedCampaign.findById(id);
+
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: "Automated campaign not found"
+            });
+        }
+
+        // Check access
+        if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (!manager || manager.business.toString() !== campaign.business.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        } else if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: campaign.business, admin: userId });
+            if (!business) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        }
+
+        // Update campaign
+        Object.assign(campaign, updateData);
+        await campaign.save();
+
+        return res.json({
+            success: true,
+            message: "Automated campaign updated successfully",
+            data: campaign
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Delete Automated Campaign
+const deleteAutomatedCampaign = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const campaign = await AutomatedCampaign.findById(id);
+
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: "Automated campaign not found"
+            });
+        }
+
+        // Check access
+        if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (!manager || manager.business.toString() !== campaign.business.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        } else if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: campaign.business, admin: userId });
+            if (!business) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        }
+
+        await campaign.deleteOne();
+
+        return res.json({
+            success: true,
+            message: "Automated campaign deleted successfully"
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 // Helper function to execute automated campaign
 async function executeAutomatedCampaign(automatedCampaign) {
     try {
@@ -273,6 +490,14 @@ async function executeAutomatedCampaign(automatedCampaign) {
                 // We'll filter by month/day in code
                 break;
 
+            case 'customer_anniversary':
+                // Customer anniversary (account creation date)
+                customerQuery.createdAt = {
+                    $exists: true
+                };
+                // We'll filter by month/day in code (similar to birthday)
+                break;
+
             case 'days_since_last_visit':
                 const lastVisitDate = new Date(now.getTime() - (triggerConfig.days * 24 * 60 * 60 * 1000));
                 customerQuery.lastVisit = {
@@ -293,6 +518,120 @@ async function executeAutomatedCampaign(automatedCampaign) {
                 customerQuery.createdAt = {
                     $gte: signupDate
                 };
+                break;
+
+            case 'first_purchase':
+                // Customers who made their first purchase recently
+                customerQuery.totalPurchases = 1;
+                if (triggerConfig.days) {
+                    const firstPurchaseDate = new Date(now.getTime() - (triggerConfig.days * 24 * 60 * 60 * 1000));
+                    customerQuery.lastPurchaseDate = {
+                        $gte: firstPurchaseDate
+                    };
+                }
+                break;
+
+            case 'after_appointment':
+                // Customers who had an appointment X days ago
+                // We'll need to query appointments separately and get customer IDs
+                if (triggerConfig.days) {
+                    const appointmentDate = new Date(now.getTime() - (triggerConfig.days * 24 * 60 * 60 * 1000));
+                    const appointments = await Appointment.find({
+                        business: automatedCampaign.business._id,
+                        status: 'completed',
+                        appointmentDate: {
+                            $gte: new Date(appointmentDate.getTime() - 24 * 60 * 60 * 1000),
+                            $lte: new Date(appointmentDate.getTime() + 24 * 60 * 60 * 1000)
+                        }
+                    }).distinct('customer');
+                    customerQuery._id = { $in: appointments };
+                }
+                break;
+
+            case 'after_purchase':
+                // Customers who made a purchase X days ago
+                if (triggerConfig.days) {
+                    const purchaseDate = new Date(now.getTime() - (triggerConfig.days * 24 * 60 * 60 * 1000));
+                    const invoices = await Invoice.find({
+                        business: automatedCampaign.business._id,
+                        status: 'paid',
+                        paidAt: {
+                            $gte: new Date(purchaseDate.getTime() - 24 * 60 * 60 * 1000),
+                            $lte: new Date(purchaseDate.getTime() + 24 * 60 * 60 * 1000)
+                        }
+                    }).distinct('customer');
+                    customerQuery._id = { $in: invoices };
+                }
+                break;
+
+            case 'loyalty_tier_upgrade':
+                // Customers who recently upgraded their loyalty tier
+                if (triggerConfig.toTier) {
+                    customerQuery.membershipTier = triggerConfig.toTier;
+                    // Filter by customers who changed tier recently (if tierUpgradedAt exists)
+                    if (triggerConfig.days) {
+                        const upgradeDate = new Date(now.getTime() - (triggerConfig.days * 24 * 60 * 60 * 1000));
+                        customerQuery.tierUpgradedAt = {
+                            $gte: upgradeDate
+                        };
+                    }
+                }
+                break;
+
+            case 'points_expiring':
+                // Customers whose loyalty points are expiring soon
+                if (triggerConfig.daysBeforeExpiry) {
+                    const expiryDate = new Date(now.getTime() + (triggerConfig.daysBeforeExpiry * 24 * 60 * 60 * 1000));
+                    customerQuery['loyaltyPoints.expiryDate'] = {
+                        $exists: true,
+                        $lte: expiryDate,
+                        $gte: now
+                    };
+                    customerQuery['loyaltyPoints.balance'] = { $gt: 0 };
+                }
+                break;
+
+            case 'subscription_expiring':
+                // Customers whose subscription is expiring soon
+                if (triggerConfig.daysBeforeExpiration) {
+                    const expirationDate = new Date(now.getTime() + (triggerConfig.daysBeforeExpiration * 24 * 60 * 60 * 1000));
+                    customerQuery['subscription.endDate'] = {
+                        $exists: true,
+                        $lte: expirationDate,
+                        $gte: now
+                    };
+                    customerQuery['subscription.status'] = 'active';
+                }
+                break;
+
+            case 'abandoned_cart':
+                // Customers who have items in cart but haven't purchased
+                if (triggerConfig.days) {
+                    const abandonedDate = new Date(now.getTime() - (triggerConfig.days * 24 * 60 * 60 * 1000));
+                    customerQuery['cart.items'] = { $exists: true, $ne: [] };
+                    customerQuery['cart.updatedAt'] = {
+                        $gte: new Date(abandonedDate.getTime() - 24 * 60 * 60 * 1000),
+                        $lte: new Date(abandonedDate.getTime() + 24 * 60 * 60 * 1000)
+                    };
+                }
+                break;
+
+            case 'review_request':
+                // Request review after appointment/purchase
+                if (triggerConfig.days) {
+                    const targetDate = new Date(now.getTime() - (triggerConfig.days * 24 * 60 * 60 * 1000));
+                    // Get customers from recent appointments
+                    const recentAppointments = await Appointment.find({
+                        business: automatedCampaign.business._id,
+                        status: 'completed',
+                        appointmentDate: {
+                            $gte: new Date(targetDate.getTime() - 24 * 60 * 60 * 1000),
+                            $lte: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
+                        },
+                        reviewRequested: { $ne: true }
+                    }).distinct('customer');
+                    customerQuery._id = { $in: recentAppointments };
+                }
                 break;
         }
 
@@ -322,8 +661,17 @@ async function executeAutomatedCampaign(automatedCampaign) {
             });
         }
 
+        // Special handling for customer anniversary
+        if (triggerType === 'customer_anniversary') {
+            customers = customers.filter(c => {
+                if (!c.createdAt) return false;
+                const createdDate = new Date(c.createdAt);
+                return createdDate.getMonth() === now.getMonth() && createdDate.getDate() === now.getDate();
+            });
+        }
+
         // Filter out customers who already received this campaign (frequency control)
-        const eligibleCustomers = customers.filter(c => 
+        const eligibleCustomers = customers.filter(c =>
             !automatedCampaign.hasReceivedCampaign(c._id)
         );
 
@@ -712,7 +1060,7 @@ const getABTestResults = async (req, res, next) => {
         });
 
         // Find winner (highest conversion rate)
-        const winner = results.reduce((prev, current) => 
+        const winner = results.reduce((prev, current) =>
             (current.conversionRate > prev.conversionRate) ? current : prev
         );
 
@@ -770,26 +1118,29 @@ module.exports = {
     createTemplate,
     getTemplates,
     getPopularTemplates,
-    
+    getTemplateById,
+
     // Automated Campaigns
     createAutomatedCampaign,
     getAutomatedCampaigns,
+    getAutomatedCampaignById,
+    updateAutomatedCampaign,
+    deleteAutomatedCampaign,
     triggerAutomatedCampaign,
-    
+
     // Drip Campaigns
     createDripCampaign,
     getDripCampaigns,
     enrollInDrip,
     getDripEnrollments,
-    
+
     // Campaign Clone
     cloneCampaign,
-    
+
     // A/B Testing
     startABTest,
     getABTestResults,
-    
+
     // Link Tracking
     generateTrackingLink
 };
-

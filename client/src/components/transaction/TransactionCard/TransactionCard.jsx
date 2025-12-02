@@ -138,7 +138,7 @@ const TransactionCard = ({
       </div>
 
       {/* Customer Information */}
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+      <div className="mb-4 p-3 bg-gray-50 ">
         <h4 className="text-sm font-medium text-gray-700 mb-2">Customer Information</h4>
         <div className="space-y-1">
           <p className="text-sm text-gray-900">
@@ -192,7 +192,7 @@ const TransactionCard = ({
       )}
 
       {/* Payment Details */}
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+      <div className="mb-4 p-3 bg-blue-50 ">
         <h4 className="text-sm font-medium text-blue-900 mb-2">Payment Details</h4>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
@@ -240,7 +240,7 @@ const TransactionCard = ({
 
       {/* Refund Information */}
       {isRefunded && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 ">
           <h4 className="text-sm font-medium text-red-900 mb-1">Refund Information</h4>
           <div className="space-y-1">
             <p className="text-sm text-red-700">

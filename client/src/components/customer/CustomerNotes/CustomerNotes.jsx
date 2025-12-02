@@ -207,7 +207,7 @@ const CustomerNotes = ({
             value={newNote.content}
             onChange={(e) => setNewNote(prev => ({ ...prev, content: e.target.value }))}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             placeholder="Enter note content..."
           />
           {errors.content && (
@@ -221,7 +221,7 @@ const CustomerNotes = ({
             <select
               value={newNote.type}
               onChange={(e) => setNewNote(prev => ({ ...prev, type: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             >
               {noteTypes.map(type => (
                 <option key={type.value} value={type.value}>
@@ -236,7 +236,7 @@ const CustomerNotes = ({
             <select
               value={newNote.priority}
               onChange={(e) => setNewNote(prev => ({ ...prev, priority: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             >
               {priorityLevels.map(priority => (
                 <option key={priority.value} value={priority.value}>

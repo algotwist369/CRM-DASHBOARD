@@ -1,8 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { HiOutlineArrowLeft, HiOutlineCheck, HiOutlineX, HiOutlineClock, HiOutlineCalendar } from 'react-icons/hi';
+import {
+  HiOutlineArrowLeft,
+  HiOutlineCheck,
+  HiOutlineX,
+  HiOutlineClock,
+  HiOutlineCalendar,
+  HiOutlineOfficeBuilding,
+  HiOutlineUser,
+  HiOutlineCurrencyRupee,
+  HiOutlineTag,
+  HiOutlineInformationCircle,
+  HiOutlineMail,
+  HiOutlinePhone,
+  HiOutlineLocationMarker
+} from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
+import BackButton from '../../../components/common/Button/BackButton';
+
+const Section = ({ title, icon: Icon, children }) => (
+  <div className="bg-white border border-gray-200 p-6 h-full">
+    <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-2">
+      {Icon && <Icon className="w-5 h-5 text-gray-500" />}
+      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+    </div>
+    <dl className="space-y-3">
+      {children}
+    </dl>
+  </div>
+);
+
+const DetailItem = ({ label, value, className = "" }) => (
+  <div className={className}>
+    <dt className="text-sm text-gray-500">{label}</dt>
+    <dd className="text-sm font-medium text-gray-900 mt-1">{value || 'N/A'}</dd>
+  </div>
+);
 
 const AppointmentDetails = () => {
   const navigate = useNavigate();
@@ -38,11 +72,11 @@ const AppointmentDetails = () => {
 
   const handleAction = async (action, data = {}) => {
     if (!window.confirm(`Are you sure you want to ${action} this appointment?`)) return;
-    
+
     try {
       setActionLoading(action);
       let response;
-      
+
       switch (action) {
         case 'confirm':
           response = await adminService.confirmAppointment(id);
@@ -65,7 +99,6 @@ const AppointmentDetails = () => {
 
       if (response.success) {
         toast.success(`Appointment ${action}ed successfully`);
-        // Refresh appointment data
         const refreshResponse = await adminService.getAppointment(id);
         if (refreshResponse.success) {
           setAppointment(refreshResponse.data);
@@ -83,16 +116,6 @@ const AppointmentDetails = () => {
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div></div>;
   if (!appointment) return <div className="text-center py-12">Appointment not found</div>;
 
-  const customerName = appointment.customer
-    ? `${appointment.customer.firstName || ''} ${appointment.customer.lastName || ''}`.trim() || 'N/A'
-    : 'N/A';
-  const customerPhone = appointment.customer?.phone || 'N/A';
-  const customerEmail = appointment.customer?.email || 'N/A';
-  const serviceName = appointment.service?.name || 'N/A';
-  const servicePrice = appointment.servicePrice || 0;
-  const totalAmount = appointment.totalAmount || servicePrice;
-  const appointmentDate = appointment.appointmentDate ? new Date(appointment.appointmentDate) : null;
-  const status = appointment.status || 'pending';
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     confirmed: 'bg-blue-100 text-blue-800',
@@ -102,177 +125,184 @@ const AppointmentDetails = () => {
     'no-show': 'bg-gray-100 text-gray-800'
   };
 
-  const canConfirm = status === 'pending';
-  const canStart = status === 'confirmed';
-  const canComplete = status === 'in-progress';
-  const canCancel = ['pending', 'confirmed'].includes(status);
-  const canMarkNoShow = ['pending', 'confirmed'].includes(status);
+  const paymentStatusColors = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    paid: 'bg-green-100 text-green-800',
+    partial: 'bg-blue-100 text-blue-800',
+    refunded: 'bg-red-100 text-red-800',
+    failed: 'bg-red-100 text-red-800'
+  };
+
+  const canConfirm = appointment.status === 'pending';
+  const canStart = appointment.status === 'confirmed';
+  const canComplete = appointment.status === 'in-progress';
+  const canCancel = ['pending', 'confirmed'].includes(appointment.status);
+  const canMarkNoShow = ['pending', 'confirmed'].includes(appointment.status);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <button onClick={() => navigate('/admin/appointments')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2">
-          <HiOutlineArrowLeft className="w-5 h-5" />Back
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900">Appointment Details</h1>
-        <p className="text-gray-600 mt-1">Booking Number: {appointment.bookingNumber || appointment._id}</p>
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+           <BackButton />
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            Appointment Details
+            <span className={`px-3 py-1 text-sm rounded-full ${statusColors[appointment.status]}`}>
+              {appointment.status?.replace('-', ' ')}
+            </span>
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Booking #: <span className="font-mono font-medium">{appointment.formattedBookingNumber || appointment.bookingNumber}</span>
+          </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex flex-wrap gap-2">
+          {canConfirm && (
+            <button
+              onClick={() => handleAction('confirm')}
+              disabled={actionLoading === 'confirm'}
+              className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-md flex items-center gap-2 disabled:opacity-50"
+            >
+              <HiOutlineCheck className="w-4 h-4" /> Confirm
+            </button>
+          )}
+          {canStart && (
+            <button
+              onClick={() => handleAction('start')}
+              disabled={actionLoading === 'start'}
+              className="px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-md flex items-center gap-2 disabled:opacity-50"
+            >
+              <HiOutlineClock className="w-4 h-4" /> Start
+            </button>
+          )}
+          {canComplete && (
+            <button
+              onClick={() => handleAction('complete')}
+              disabled={actionLoading === 'complete'}
+              className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md flex items-center gap-2 disabled:opacity-50"
+            >
+              <HiOutlineCheck className="w-4 h-4" /> Complete
+            </button>
+          )}
+          {canCancel && (
+            <button
+              onClick={() => {
+                const reason = window.prompt('Cancellation reason:');
+                if (reason) handleAction('cancel', { reason });
+              }}
+              disabled={actionLoading === 'cancel'}
+              className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-md flex items-center gap-2 disabled:opacity-50"
+            >
+              <HiOutlineX className="w-4 h-4" /> Cancel
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Appointment Information */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Appointment Information</h3>
-          <dl className="space-y-3">
-            <div>
-              <dt className="text-sm text-gray-600">Customer</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1">{customerName}</dd>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {/* Business Info */}
+        <Section title="Business Information" icon={HiOutlineOfficeBuilding}>
+          <DetailItem label="Name" value={appointment.business?.name} />
+          <DetailItem label="Branch" value={appointment.business?.branch} />
+          <DetailItem label="Type" value={appointment.business?.type} className="capitalize" />
+          <div className="flex gap-4">
+            <DetailItem label="Phone" value={appointment.business?.phone} />
+            <DetailItem label="Email" value={appointment.business?.email} />
+          </div>
+        </Section>
+
+        {/* Customer Info */}
+        <Section title="Customer Information" icon={HiOutlineUser}>
+          <DetailItem label="Full Name" value={appointment.customer?.fullName} />
+          <div className="flex gap-4">
+            <DetailItem label="Phone" value={appointment.customer?.phone} />
+            <DetailItem label="Email" value={appointment.customer?.email} />
+          </div>
+          <DetailItem label="Address" value={appointment.customer?.address?.country} />
+          <div className="flex gap-4">
+            <DetailItem label="Age" value={appointment.customer?.age} />
+            <DetailItem label="Last Visit" value={appointment.customer?.daysSinceLastVisit ? `${appointment.customer.daysSinceLastVisit} days ago` : 'Never'} />
+          </div>
+        </Section>
+
+        {/* Service Info */}
+        <Section title="Service Details" icon={HiOutlineTag}>
+          <DetailItem label="Service Name" value={appointment.service?.name} />
+          <DetailItem label="Category" value={appointment.service?.category} className="capitalize" />
+          <div className="flex gap-4">
+            <DetailItem label="Duration" value={`${appointment.service?.duration || 0} mins`} />
+            <DetailItem label="Price" value={`₹${(appointment.servicePrice || 0).toLocaleString()}`} />
+          </div>
+        </Section>
+
+        {/* Appointment Details */}
+        <Section title="Appointment Details" icon={HiOutlineCalendar}>
+          <div className="flex gap-4">
+            <DetailItem label="Date" value={appointment.appointmentDate ? new Date(appointment.appointmentDate).toLocaleDateString() : 'N/A'} />
+            <DetailItem label="Day" value={appointment.appointmentDay} />
+          </div>
+          <div className="flex gap-4">
+            <DetailItem label="Time" value={`${appointment.startTime} - ${appointment.endTime}`} />
+            <DetailItem label="Duration" value={`${appointment.duration} mins`} />
+          </div>
+          <div className="flex gap-4">
+            <DetailItem label="Type" value={appointment.bookingType} className="capitalize" />
+            <DetailItem label="Source" value={appointment.bookingSource} className="capitalize" />
+          </div>
+          <DetailItem label="Staff" value={appointment.staff?.name} />
+          <DetailItem label="Staff Role" value={appointment.staff?.role} className="capitalize" />
+        </Section>
+
+        {/* Financials */}
+        <Section title="Financials" icon={HiOutlineCurrencyRupee}>
+          <div className="grid grid-cols-2 gap-4">
+            <DetailItem label="Service Price" value={`₹${(appointment.servicePrice || 0).toLocaleString()}`} />
+            <DetailItem label="Additional" value={`₹${(appointment.additionalCharges || 0).toLocaleString()}`} />
+            <DetailItem label="Discount" value={`₹${(appointment.discount || 0).toLocaleString()}`} />
+            <DetailItem label="Tax" value={`₹${(appointment.tax || 0).toLocaleString()}`} />
+          </div>
+          <div className="border-t border-gray-100 pt-2 mt-2">
+            <div className="flex justify-between items-center">
+              <dt className="text-sm font-bold text-gray-900">Total Amount</dt>
+              <dd className="text-lg font-bold text-primary-600">₹{(appointment.totalAmount || 0).toLocaleString()}</dd>
             </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
-              <dt className="text-sm text-gray-600">Phone</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1">{customerPhone}</dd>
-            </div>
-            {customerEmail && (
-              <div>
-                <dt className="text-sm text-gray-600">Email</dt>
-                <dd className="text-sm font-medium text-gray-900 mt-1">{customerEmail}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="text-sm text-gray-600">Service</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1">{serviceName}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600">Date</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-2">
-                <HiOutlineCalendar className="w-4 h-4" />
-                {appointmentDate ? appointmentDate.toLocaleDateString() : 'N/A'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600">Time</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-2">
-                <HiOutlineClock className="w-4 h-4" />
-                {appointment.startTime || 'N/A'} - {appointment.endTime || 'N/A'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600">Duration</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1">{appointment.duration || appointment.service?.duration || 0} minutes</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600">Status</dt>
+              <dt className="text-sm text-gray-500">Payment Status</dt>
               <dd className="mt-1">
-                <span className={`px-2 py-1 text-xs rounded-full ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
-                  {status}
+                <span className={`px-2 py-1 text-xs rounded-full ${paymentStatusColors[appointment.paymentStatus] || 'bg-gray-100'}`}>
+                  {appointment.paymentStatus}
                 </span>
               </dd>
             </div>
-            <div>
-              <dt className="text-sm text-gray-600">Service Price</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1">₹{servicePrice.toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600">Tax</dt>
-              <dd className="text-sm font-medium text-gray-900 mt-1">₹{(appointment.tax || 0).toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-600">Total Amount</dt>
-              <dd className="text-sm font-bold text-gray-900 mt-1">₹{totalAmount.toLocaleString()}</dd>
-            </div>
-            {appointment.customerNotes && (
-              <div>
-                <dt className="text-sm text-gray-600">Customer Notes</dt>
-                <dd className="text-sm font-medium text-gray-900 mt-1">{appointment.customerNotes}</dd>
-              </div>
-            )}
-            {appointment.specialRequests && (
-              <div>
-                <dt className="text-sm text-gray-600">Special Requests</dt>
-                <dd className="text-sm font-medium text-gray-900 mt-1">{appointment.specialRequests}</dd>
-              </div>
-            )}
-          </dl>
-        </div>
-
-        {/* Actions */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
-          <div className="space-y-3">
-            {canConfirm && (
-              <button
-                onClick={() => handleAction('confirm')}
-                disabled={actionLoading === 'confirm'}
-                className="w-full px-4 py-2 border border-green-300 rounded-lg text-green-600 hover:bg-green-50 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <HiOutlineCheck className="w-5 h-5" />
-                {actionLoading === 'confirm' ? 'Confirming...' : 'Confirm Appointment'}
-              </button>
-            )}
-            {canStart && (
-              <button
-                onClick={() => handleAction('start')}
-                disabled={actionLoading === 'start'}
-                className="w-full px-4 py-2 border border-purple-300 rounded-lg text-purple-600 hover:bg-purple-50 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <HiOutlineClock className="w-5 h-5" />
-                {actionLoading === 'start' ? 'Starting...' : 'Start Appointment'}
-              </button>
-            )}
-            {canComplete && (
-              <button
-                onClick={() => handleAction('complete')}
-                disabled={actionLoading === 'complete'}
-                className="w-full px-4 py-2 border border-green-300 rounded-lg text-green-600 hover:bg-green-50 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <HiOutlineCheck className="w-5 h-5" />
-                {actionLoading === 'complete' ? 'Completing...' : 'Complete Appointment'}
-              </button>
-            )}
-            {canCancel && (
-              <button
-                onClick={() => {
-                  const reason = window.prompt('Cancellation reason:');
-                  if (reason) {
-                    handleAction('cancel', { reason });
-                  }
-                }}
-                disabled={actionLoading === 'cancel'}
-                className="w-full px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <HiOutlineX className="w-5 h-5" />
-                {actionLoading === 'cancel' ? 'Cancelling...' : 'Cancel Appointment'}
-              </button>
-            )}
-            {canMarkNoShow && (
-              <button
-                onClick={() => handleAction('no-show')}
-                disabled={actionLoading === 'no-show'}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <HiOutlineX className="w-5 h-5" />
-                {actionLoading === 'no-show' ? 'Marking...' : 'Mark as No-Show'}
-              </button>
-            )}
-            {status === 'completed' && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-800">This appointment has been completed.</p>
-                {appointment.completedAt && (
-                  <p className="text-xs text-green-600 mt-1">
-                    Completed at: {new Date(appointment.completedAt).toLocaleString()}
-                  </p>
-                )}
-              </div>
-            )}
-            {status === 'cancelled' && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">This appointment has been cancelled.</p>
-                {appointment.cancellationReason && (
-                  <p className="text-xs text-red-600 mt-1">Reason: {appointment.cancellationReason}</p>
-                )}
-              </div>
-            )}
+            <DetailItem label="Method" value={appointment.paymentMethod} className="capitalize" />
           </div>
-        </div>
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <DetailItem label="Paid" value={`₹${(appointment.paidAmount || 0).toLocaleString()}`} />
+            <DetailItem label="Remaining" value={`₹${(appointment.remainingAmount || 0).toLocaleString()}`} />
+          </div>
+        </Section>
+
+        {/* Meta & Notes */}
+        <Section title="Additional Information" icon={HiOutlineInformationCircle}>
+          <DetailItem label="Customer Notes" value={appointment.customerNotes} />
+          <DetailItem label="Special Requests" value={appointment.specialRequests} />
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <DetailItem label="Reminder Sent" value={appointment.reminderSent ? 'Yes' : 'No'} />
+            <DetailItem label="Confirmation Sent" value={appointment.confirmationSent ? 'Yes' : 'No'} />
+            <DetailItem label="Loyalty Earned" value={appointment.loyaltyPointsEarned} />
+            <DetailItem label="Created At" value={new Date(appointment.createdAt).toLocaleString()} />
+          </div>
+          {appointment.status === 'cancelled' && (
+            <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">
+              Cancellation Fee: ₹{appointment.cancellationFee}
+            </div>
+          )}
+        </Section>
+
       </div>
     </div>
   );

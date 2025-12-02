@@ -126,7 +126,7 @@ const AppointmentCard = ({
 
       {/* Notes */}
       {notes && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-md">
+        <div className="mb-4 p-3 bg-gray-50 ">
           <p className="text-sm text-gray-700">
             <span className="font-medium">Notes:</span> {notes}
           </p>

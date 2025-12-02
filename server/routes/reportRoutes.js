@@ -9,6 +9,8 @@ router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
 
 router.get("/", reportController.getReports);
 router.get("/analytics", reportController.getAnalytics);
+router.get("/summary", reportController.getSummary);
+router.get("/trends", reportController.getTrends);
 router.get("/export", reportController.exportReports);
 
 module.exports = router;
