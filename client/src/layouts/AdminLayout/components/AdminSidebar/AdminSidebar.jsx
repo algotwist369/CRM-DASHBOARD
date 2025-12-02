@@ -15,12 +15,10 @@ import {
   HiOutlineCube,
   HiOutlineCalendar,
   HiOutlineDocumentText,
-  HiOutlineStar,
-  HiOutlineGift,
   HiOutlineClipboardList,
 } from 'react-icons/hi'
 import { GrAnnounce } from "react-icons/gr";
-import { FaUserCircle } from 'react-icons/fa';
+import { FaUserCircle, FaLock } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 
 
@@ -70,13 +68,13 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
     fetchUnreadCount();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 🔥 REAL-TIME: Listen for new notifications via Socket.IO
+  // REAL-TIME: Listen for new notifications via Socket.IO
   useEffect(() => {
     if (!socket || !connected) return;
 
     const handleNewNotification = (data) => {
       console.log('🔔 [Sidebar] Real-time notification received:', data);
-      
+
       // Update unread count immediately
       if (data.unreadCount !== undefined) {
         setUnreadNotificationCount(data.unreadCount);
@@ -191,7 +189,8 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
     {
       name: 'Campaigns',
       href: '/admin/campaigns',
-      icon: <GrAnnounce  className="w-8 h-8 text-green-500" />,
+      icon: <FaLock className="w-5 h-5 text-gray-500" />,
+      disabled: true,
       submenu: [
         { name: 'All Campaigns', href: '/admin/campaigns' },
         { name: 'Templates', href: '/admin/campaigns/templates' },
@@ -208,11 +207,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
     //     { name: 'Subscriptions', href: '/admin/loyalty/subscriptions' },
     //   ],
     // },
-    {
-      name: 'Analytics',
-      href: '/admin/analytics',
-      icon: <HiOutlineChartBar className="w-5 h-5" />,
-    },
+    // {
+    //   name: 'Analytics',
+    //   href: '/admin/analytics',
+    //   icon: <HiOutlineChartBar className="w-5 h-5" />,
+    // },
     {
       name: 'Notifications',
       href: '/admin/notifications',
@@ -284,6 +283,10 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
             <NavLink
               to={item.href}
               onClick={(e) => {
+                if (item.disabled) {
+                  e.preventDefault()
+                  return
+                }
                 if (item.submenu) {
                   e.preventDefault()
                   // If sidebar is collapsed and item has submenu, expand the sidebar first
@@ -300,6 +303,7 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
                 const isParentActive = isActive || isActiveRoute(item.href)
                 const hasActiveChild = item.submenu && isSubmenuActive(item.submenu)
                 const base = `relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-3 py-2.5  text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30 group`
+                if (item.disabled) return `${base} text-gray-500 cursor-not-allowed opacity-60`
                 if (isParentActive) return `${base} bg-primary-600 text-white shadow-lg active:bg-primary-700`
                 if (hasActiveChild) return `${base} bg-primary-600/80 text-white hover:bg-primary-600 shadow-md`
                 return `${base} text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700`
