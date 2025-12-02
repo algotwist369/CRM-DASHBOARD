@@ -209,7 +209,7 @@ const AppointmentCalendar = ({
     return (
       <div className="space-y-4">
         {/* Day Header */}
-        <div className={`p-4 rounded-lg ${
+        <div className={`p-4  ${
           isCurrentDay ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'
         }`}>
           <h3 className="text-lg font-semibold text-gray-900">
@@ -240,7 +240,7 @@ const AppointmentCalendar = ({
               .map((appointment) => (
                 <div
                   key={appointment.id}
-                  className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                  className="p-4 bg-white border border-gray-200  hover:shadow-md transition-shadow cursor-pointer"
                   onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                 >
                   <div className="flex items-start justify-between">

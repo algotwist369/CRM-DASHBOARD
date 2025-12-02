@@ -8,9 +8,9 @@ class BusinessService {
       const response = await apiClient.get(endpoints.admin.businesses, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch businesses' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch businesses'
       }
     }
   }
@@ -21,9 +21,9 @@ class BusinessService {
       const response = await apiClient.get(endpoints.admin.business(businessId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business'
       }
     }
   }
@@ -34,9 +34,9 @@ class BusinessService {
       const response = await apiClient.get(endpoints.admin.businessLink(businessId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business link' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business link'
       }
     }
   }
@@ -47,9 +47,9 @@ class BusinessService {
       const response = await apiClient.post(endpoints.admin.createBusiness, businessData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to create business' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create business'
       }
     }
   }
@@ -60,9 +60,9 @@ class BusinessService {
       const response = await apiClient.put(endpoints.admin.updateBusiness(businessId), businessData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update business' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update business'
       }
     }
   }
@@ -73,9 +73,9 @@ class BusinessService {
       const response = await apiClient.delete(endpoints.admin.deleteBusiness(businessId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to delete business' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete business'
       }
     }
   }
@@ -86,9 +86,9 @@ class BusinessService {
       const response = await apiClient.get(API_ENDPOINTS.BUSINESS.STATS(businessId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business statistics' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business statistics'
       }
     }
   }
@@ -99,9 +99,9 @@ class BusinessService {
       const response = await apiClient.get(endpoints.business.getStaff(businessId), { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business staff' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business staff'
       }
     }
   }
@@ -112,9 +112,9 @@ class BusinessService {
       const response = await apiClient.get(endpoints.business.getDailyRecords(businessId), { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch daily records' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily records'
       }
     }
   }
@@ -126,9 +126,9 @@ class BusinessService {
       const response = await apiClient.get(endpoint)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business customers' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business customers'
       }
     }
   }
@@ -140,9 +140,9 @@ class BusinessService {
       const response = await apiClient.get(endpoint)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business appointments' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business appointments'
       }
     }
   }
@@ -154,9 +154,9 @@ class BusinessService {
       const response = await apiClient.get(endpoint)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business transactions' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business transactions'
       }
     }
   }
@@ -167,9 +167,9 @@ class BusinessService {
       const response = await apiClient.get(endpoints.business.getAnalytics(businessId), { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business analytics' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business analytics'
       }
     }
   }
@@ -182,9 +182,9 @@ class BusinessService {
       const response = await apiClient.get(endpoint, { responseType: 'blob' })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to export business data' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to export business data'
       }
     }
   }
@@ -192,12 +192,12 @@ class BusinessService {
   // Update business status
   async updateBusinessStatus(businessId, status) {
     try {
-      const response = await apiClient.patch(`/businesses/${businessId}/status`, { status })
+      const response = await apiClient.put(endpoints.admin.updateBusinessStatus(businessId), { isActive: status })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update business status' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update business status'
       }
     }
   }
@@ -208,9 +208,9 @@ class BusinessService {
       const response = await apiClient.patch(`/businesses/${businessId}/settings`, settings)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update business settings' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update business settings'
       }
     }
   }
@@ -221,9 +221,9 @@ class BusinessService {
       const response = await apiClient.get(`/businesses/${businessId}/services`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business services' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business services'
       }
     }
   }
@@ -234,9 +234,9 @@ class BusinessService {
       const response = await apiClient.get(`/businesses/${businessId}/hours`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business hours' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business hours'
       }
     }
   }
@@ -247,9 +247,9 @@ class BusinessService {
       const response = await apiClient.patch(`/businesses/${businessId}/hours`, hours)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update business hours' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update business hours'
       }
     }
   }
@@ -261,9 +261,9 @@ class BusinessService {
       const response = await apiClient.get(endpoint)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business reviews' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business reviews'
       }
     }
   }
@@ -274,9 +274,9 @@ class BusinessService {
       const response = await apiClient.get(`/businesses/${businessId}/performance?period=${period}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business performance' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business performance'
       }
     }
   }
@@ -290,9 +290,9 @@ class BusinessService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to bulk update businesses' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to bulk update businesses'
       }
     }
   }
@@ -305,9 +305,9 @@ class BusinessService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to bulk delete businesses' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to bulk delete businesses'
       }
     }
   }

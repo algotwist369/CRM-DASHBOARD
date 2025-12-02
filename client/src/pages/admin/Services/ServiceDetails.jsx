@@ -164,10 +164,10 @@ const ServiceDetails = () => {
           <p className="text-gray-600 mt-1">{service.category}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(`/admin/services/${id}/edit`)} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <button onClick={() => navigate(`/admin/services/${id}/edit`)} className="flex items-center gap-2 px-4 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50">
             <HiOutlinePencil className="w-5 h-5" />Edit
           </button>
-          <button onClick={handleDelete} className="flex items-center gap-2 px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50">
+          <button onClick={handleDelete} className="flex items-center gap-2 px-4 py-2 border border-red-300  text-red-600 hover:bg-red-50">
             <HiOutlineTrash className="w-5 h-5" />Delete
           </button>
         </div>
@@ -175,7 +175,7 @@ const ServiceDetails = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {summaryStats.map((stat) => (
-          <div key={stat.label} className="rounded-lg border border-gray-200 bg-white p-4">
+          <div key={stat.label} className=" border border-gray-200 bg-white p-4">
             <p className="text-xs uppercase tracking-wide text-gray-500">{stat.label}</p>
             <p className="text-2xl font-semibold text-gray-900 mt-1">{stat.value}</p>
             <p className="text-xs text-gray-400 mt-1">{stat.hint}</p>
@@ -184,7 +184,7 @@ const ServiceDetails = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Service Overview</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -222,7 +222,7 @@ const ServiceDetails = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Pricing</h2>
           <p className="text-sm text-gray-600 mb-4">
             {pricingInfo.isVariable ? 'Multiple pricing options available' : 'Fixed pricing'}
@@ -230,7 +230,7 @@ const ServiceDetails = () => {
           {pricingInfo.isVariable ? (
             <div className="space-y-3">
               {pricingInfo.options.map((option) => (
-                <div key={option.key} className="p-3 rounded-lg border border-gray-100">
+                <div key={option.key} className="p-3  border border-gray-100">
                   <div className="flex items-center justify-between text-sm">
                     <p className="font-medium text-gray-900">
                       {option.name || `${option.duration} min`}
@@ -251,7 +251,7 @@ const ServiceDetails = () => {
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-gray-100 p-4 text-sm text-gray-700">
+            <div className=" border border-gray-100 p-4 text-sm text-gray-700">
               <p className="font-medium text-gray-900 mb-1">{pricingInfo.priceRange}</p>
               <p>{pricingInfo.durationRange}</p>
             </div>
@@ -260,7 +260,7 @@ const ServiceDetails = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking & Staff</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
@@ -311,12 +311,12 @@ const ServiceDetails = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Bookings</h2>
           <div className="space-y-3">
             {service.recentBookings && service.recentBookings.length > 0 ? (
               service.recentBookings.map((booking, index) => (
-                <div key={booking.id || booking._id || `booking-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={booking.id || booking._id || `booking-${index}`} className="flex items-center justify-between p-3 bg-gray-50 ">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{booking.customer?.name || booking.customerName || booking.customer || 'N/A'}</p>
                     <p className="text-xs text-gray-500">{booking.date ? new Date(booking.date).toLocaleDateString() : booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A'}</p>

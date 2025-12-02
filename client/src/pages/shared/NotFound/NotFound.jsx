@@ -39,7 +39,7 @@ const NotFound = () => {
             </div>
 
             {/* Current Path Info */}
-            <div className="mb-8 p-4 bg-gray-100 rounded-lg">
+            <div className="mb-8 p-4 bg-gray-100 ">
               <p className="text-sm text-gray-600 mb-2">You were looking for:</p>
               <code className="text-sm font-mono text-gray-800 bg-white px-2 py-1 rounded border">
                 {location.pathname}
@@ -91,7 +91,7 @@ const NotFound = () => {
             </div>
 
             {/* Search Suggestion */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <div className="mt-6 p-4 bg-blue-50 ">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Looking for something specific?</h4>
               <p className="text-sm text-blue-700">
                 Try searching for what you need or browse our main sections above.

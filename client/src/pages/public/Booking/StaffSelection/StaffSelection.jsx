@@ -172,11 +172,11 @@ const StaffSelection = () => {
   if (!business) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="  rounded-xl shadow-sm border border-gray-200 p-8 text-center max-w-md">
+        <div className="    border border-gray-200 p-8 text-center max-w-md">
           <p className="text-gray-600 mb-6">Business not found</p>
           <button
             onClick={handleBack}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             Go Back
           </button>
@@ -213,8 +213,8 @@ const StaffSelection = () => {
             <button
               type="button"
               onClick={handleAnyAvailable}
-              className={`w-full rounded-2xl border p-5 text-left transition ${
-                !selectedStaff ? 'border-gray-900 bg-gray-50 shadow-sm' : '  border-gray-200 hover:border-gray-300'
+              className={`w-full  border p-5 text-left transition ${
+                !selectedStaff ? 'border-gray-900 bg-gray-50 ' : '  border-gray-200 hover:border-gray-300'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -234,7 +234,7 @@ const StaffSelection = () => {
 
             {/* Staff Members */}
             {staffList.length === 0 ? (
-              <div className="  rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <div className="    border border-gray-200 p-12 text-center">
                 <FaUserTie className="mx-auto text-gray-400 text-4xl mb-4" />
                 <p className="text-gray-600">No staff members available</p>
               </div>
@@ -248,8 +248,8 @@ const StaffSelection = () => {
                     type="button"
                     key={staffId || index}
                     onClick={() => selectStaff(staff)}
-                    className={`w-full rounded-2xl border p-5 text-left transition ${
-                      isSelected ? 'border-gray-900 bg-gray-50 shadow-sm' : '  border-gray-200 hover:border-gray-300'
+                    className={`w-full  border p-5 text-left transition ${
+                      isSelected ? 'border-gray-900 bg-gray-50 ' : '  border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -289,7 +289,7 @@ const StaffSelection = () => {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="  rounded-2xl border border-gray-200 p-6 lg:sticky lg:top-[4rem]">
+            <div className="   border border-gray-200 p-6 lg:sticky lg:top-[4rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
               
               <div className="space-y-4 mb-4 text-sm text-gray-700">
@@ -363,7 +363,7 @@ const StaffSelection = () => {
 
               <button
                 onClick={handleContinue}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 transition-colors font-medium"
               >
                 Continue
                 <FaArrowRight />

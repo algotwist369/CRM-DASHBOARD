@@ -80,7 +80,7 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8">
+      <div className="w-full max-w-md bg-white shadow-lg  p-8">
         <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">
           Reset Password 🔒
         </h2>
@@ -96,7 +96,7 @@ const ResetPassword = () => {
               <AiOutlineLock className="absolute left-3 top-3.5 text-gray-400 text-lg" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                className={`w-full border rounded-lg pl-10 pr-10 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400 text-gray-700 ${errors.password ? 'border-red-500' : 'border-gray-300'
+                className={`w-full border  pl-10 pr-10 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400 text-gray-700 ${errors.password ? 'border-red-500' : 'border-gray-300'
                   }`}
                 placeholder="Enter new password"
                 value={formData.password}
@@ -133,7 +133,7 @@ const ResetPassword = () => {
               <AiOutlineLock className="absolute left-3 top-3.5 text-gray-400 text-lg" />
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
-                className={`w-full border rounded-lg pl-10 pr-10 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400 text-gray-700 ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                className={`w-full border  pl-10 pr-10 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400 text-gray-700 ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                   }`}
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
@@ -155,7 +155,7 @@ const ResetPassword = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gray-800 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition duration-200"
+            className="w-full bg-gray-800 text-white py-2  font-medium hover:bg-gray-700 transition duration-200"
           >
             {isLoading ? 'Resetting...' : 'Reset Password'}
           </button>

@@ -74,7 +74,7 @@ const CustomerInsights = () => {
   if (!insights) {
     return (
       <div className="p-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <p className="text-gray-600 text-center">No insights data available</p>
         </div>
       </div>
@@ -90,7 +90,7 @@ const CustomerInsights = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/customers')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -104,7 +104,7 @@ const CustomerInsights = () => {
         </div>
         <button
           onClick={fetchInsights}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
         >
           <FaChartLine />
           Refresh Insights
@@ -112,7 +112,7 @@ const CustomerInsights = () => {
       </div>
 
       {/* Key Insights */}
-      <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl shadow-sm border border-yellow-200 p-6">
+      <div className="bg-gradient-to-br from-yellow-50 to-orange-50   border border-yellow-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <FaExclamationTriangle className="text-yellow-600" />
           Key Insights
@@ -122,7 +122,7 @@ const CustomerInsights = () => {
         ) : (
           <div className="space-y-3">
             {insightList.map((insight, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-yellow-200">
+              <div key={index} className="flex items-start gap-3 p-3 bg-white  border border-yellow-200">
                 <FaExclamationTriangle className="text-yellow-600 mt-1 flex-shrink-0" />
                 <p className="text-gray-800 flex-1">{insight}</p>
               </div>
@@ -132,7 +132,7 @@ const CustomerInsights = () => {
       </div>
 
       {/* Recommendations */}
-      <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl shadow-sm border border-green-200 p-6">
+      <div className="bg-gradient-to-br from-green-50 to-blue-50   border border-green-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <FaCheckCircle className="text-green-600" />
           Recommended Actions
@@ -142,12 +142,12 @@ const CustomerInsights = () => {
         ) : (
           <div className="space-y-3">
             {recommendations.map((recommendation, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-green-200">
+              <div key={index} className="flex items-start gap-3 p-3 bg-white  border border-green-200">
                 <FaBullseye className="text-green-600 mt-1 flex-shrink-0" />
                 <p className="text-gray-800 flex-1">{recommendation}</p>
                 <button
                   onClick={() => navigate('/manager/campaigns/create', { state: { campaignType: recommendation.toLowerCase().includes('campaign') ? 'win_back' : 'loyalty' } })}
-                  className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                  className="px-3 py-1 text-xs bg-green-100 text-green-700  hover:bg-green-200 transition-colors"
                 >
                   Take Action
                 </button>
@@ -161,7 +161,7 @@ const CustomerInsights = () => {
       {analytics && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Customer Segments */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-gray-700">Customer Segments</h3>
               <FaUsers className="text-blue-500" />
@@ -188,7 +188,7 @@ const CustomerInsights = () => {
 
           {/* Customer Value */}
           {analytics.value && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-gray-700">Customer Value</h3>
                 <FaDollarSign className="text-green-500" />
@@ -212,7 +212,7 @@ const CustomerInsights = () => {
 
           {/* Retention Metrics */}
           {analytics.retention && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-gray-700">Retention</h3>
                 <FaCalendarAlt className="text-purple-500" />
@@ -236,7 +236,7 @@ const CustomerInsights = () => {
 
           {/* Growth Trend */}
           {analytics.growth && analytics.growth.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-gray-700">Growth Trend</h3>
                 <FaChartLine className="text-orange-500" />
@@ -265,12 +265,12 @@ const CustomerInsights = () => {
       )}
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => navigate('/manager/customers/targeting')}
-            className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left"
+            className="flex items-center gap-3 p-4 border border-gray-300  hover:bg-gray-50 transition-colors text-left"
           >
             <FaBullseye className="text-primary-600 text-xl" />
             <div>
@@ -280,7 +280,7 @@ const CustomerInsights = () => {
           </button>
           <button
             onClick={() => navigate('/manager/campaigns/create')}
-            className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left"
+            className="flex items-center gap-3 p-4 border border-gray-300  hover:bg-gray-50 transition-colors text-left"
           >
             <FaChartLine className="text-primary-600 text-xl" />
             <div>
@@ -290,7 +290,7 @@ const CustomerInsights = () => {
           </button>
           <button
             onClick={() => navigate('/manager/customers/analytics')}
-            className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left"
+            className="flex items-center gap-3 p-4 border border-gray-300  hover:bg-gray-50 transition-colors text-left"
           >
             <FaUsers className="text-primary-600 text-xl" />
             <div>

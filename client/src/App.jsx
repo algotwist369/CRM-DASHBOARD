@@ -23,7 +23,7 @@ import { ServiceList, ServiceForm, ServiceDetails } from './pages/admin/Services
 import { AppointmentList as AdminAppointmentList, AppointmentForm, AppointmentDetails as AdminAppointmentDetails } from './pages/admin/Appointments'
 import { InvoiceList, InvoiceForm } from './pages/admin/Invoices'
 import { ReviewList, ReviewDetails } from './pages/admin/Reviews'
-import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns } from './pages/admin/Campaigns'
+import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns, AutomatedCampaignForm } from './pages/admin/Campaigns'
 import { LoyaltyRewards, LoyaltyRewardForm, LoyaltyPlans, LoyaltySubscriptions } from './pages/admin/Loyalty'
 import { AdminAnalytics } from './pages/admin/Analytics'
 import AdminReports from './pages/admin/Reports/AdminReports'
@@ -101,7 +101,9 @@ function App() {
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="dashboard" element={<AdminDashboard />} />
+                {/* notifications */}
                 <Route path="notifications" element={<NotificationsList />} />
+                {/* business routes */}
                 <Route path="businesses" element={<BusinessList />} />
                 <Route path="businesses/create" element={<CreateBusiness />} />
                 <Route path="businesses/:id/analytics" element={<BusinessAnalytics />} />
@@ -110,10 +112,12 @@ function App() {
                 <Route path="businesses/:id/edit" element={<EditBusiness />} />
                 <Route path="businesses/:id/settings" element={<BusinessSettings />} />
                 <Route path="businesses/:id" element={<BusinessDetails />} />
+                  {/* manager routes */}
                 <Route path="managers" element={<ManagerList />} />
                 <Route path="managers/create" element={<CreateManager />} />
                 <Route path="managers/:id/edit" element={<EditManager />} />
                 <Route path="managers/:id" element={<ManagerDetails />} />
+                {/* daily business routes */}
                 <Route path="daily-business" element={<AdminDailyBusinessList />} />
                 <Route path="daily-business/analytics" element={<AdminDailyBusinessAnalytics />} />
                 <Route path="daily-business/:id" element={<AdminDailyBusinessDetails />} />
@@ -132,21 +136,28 @@ function App() {
                 <Route path="invoices/create" element={<InvoiceForm />} />
                 <Route path="reviews" element={<ReviewList />} />
                 <Route path="reviews/:id" element={<ReviewDetails />} />
+                {/* campaign routes */}
                 <Route path="campaigns" element={<AdminCampaignList />} />
+                <Route path="campaigns/create" element={<CampaignForm mode="create" />} />
+                <Route path="campaigns/:id/edit" element={<CampaignForm mode="edit" />} />
+                <Route path="campaigns/:id" element={<AdminCampaignDetails />} />
                 <Route path="campaigns/templates" element={<CampaignTemplates />} />
                 <Route path="campaigns/templates/create" element={<CampaignTemplateForm mode="create" />} />
                 <Route path="campaigns/templates/:id/edit" element={<CampaignTemplateForm mode="edit" />} />
                 <Route path="campaigns/automated" element={<AutomatedCampaigns />} />
-                <Route path="campaigns/create" element={<CampaignForm mode="create" />} />
-                <Route path="campaigns/:id" element={<AdminCampaignDetails />} />
-                <Route path="campaigns/:id/edit" element={<CampaignForm mode="edit" />} />
+                <Route path="campaigns/automated/create" element={<AutomatedCampaignForm mode="create" />} />
+                <Route path="campaigns/automated/:id/edit" element={<AutomatedCampaignForm mode="edit" />} />
+                {/* loyalty routes */}
                 <Route path="loyalty/rewards" element={<LoyaltyRewards />} />
                 <Route path="loyalty/rewards/create" element={<LoyaltyRewardForm mode="create" />} />
                 <Route path="loyalty/rewards/:id/edit" element={<LoyaltyRewardForm mode="edit" />} />
                 <Route path="loyalty/plans" element={<LoyaltyPlans />} />
                 <Route path="loyalty/subscriptions" element={<LoyaltySubscriptions />} />
+                {/* analytics routes */}
                 <Route path="analytics" element={<AdminAnalytics />} />
+                {/* reports routes */}
                 <Route path="reports" element={<AdminReports />} />
+                {/* settings routes */}
                 <Route path="settings" element={<AdminSettings />} />
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
               </Route>

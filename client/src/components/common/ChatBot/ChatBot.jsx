@@ -317,7 +317,7 @@ const ChatBot = () => {
       {/* Auto Notification */}
       {showNotification && !isOpen && (
         <div className="fixed bottom-24 right-6 z-50 animate-slide-up">
-          <div className="bg-white rounded-xl shadow-2xl border-2 border-primary-200 p-4 max-w-sm">
+          <div className="bg-white  shadow-2xl border-2 border-primary-200 p-4 max-w-sm">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-primary-700 rounded-full flex items-center justify-center flex-shrink-0">
                 <FaRobot className="text-white" />
@@ -337,7 +337,7 @@ const ChatBot = () => {
                 </p>
                 <button
                   onClick={handleNotificationClick}
-                  className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white text-xs font-semibold py-2 px-4 rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white text-xs font-semibold py-2 px-4  hover:from-primary-700 hover:to-primary-800 transition-all flex items-center justify-center gap-2"
                 >
                   <FaComments />
                   <span>Chat with Rama AI</span>
@@ -362,7 +362,7 @@ const ChatBot = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col h-[600px] max-h-[calc(100vh-8rem)]">
+        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white  shadow-2xl flex flex-col h-[600px] max-h-[calc(100vh-8rem)]">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -404,10 +404,10 @@ const ChatBot = () => {
                     )}
                   </div>
                   <div className="flex flex-col">
-                    <div className={`rounded-2xl px-4 py-2 ${
+                    <div className={` px-4 py-2 ${
                       message.sender === 'user'
                         ? 'bg-primary-600 text-white rounded-tr-sm'
-                        : 'bg-white text-gray-900 rounded-tl-sm shadow-sm'
+                        : 'bg-white text-gray-900 rounded-tl-sm '
                     }`}>
                       <p className="text-sm whitespace-pre-line">{message.text}</p>
                     </div>
@@ -436,7 +436,7 @@ const ChatBot = () => {
                   <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
                     <FaRobot className="text-gray-600 text-sm" />
                   </div>
-                  <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                  <div className="bg-white  rounded-tl-sm px-4 py-3 ">
                     <div className="flex gap-1">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -461,14 +461,14 @@ const ChatBot = () => {
                   onKeyPress={handleKeyPress}
                   placeholder="Type your message..."
                   rows={1}
-                  className="w-full px-4 py-2.5 pr-12 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none max-h-32"
+                  className="w-full px-4 py-2.5 pr-12 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none max-h-32"
                   style={{ minHeight: '44px' }}
                 />
               </div>
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputValue.trim() || isTyping}
-                className="w-11 h-11 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center flex-shrink-0"
+                className="w-11 h-11 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center flex-shrink-0"
                 aria-label="Send message"
               >
                 {isTyping ? (

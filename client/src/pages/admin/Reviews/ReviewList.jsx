@@ -5,7 +5,7 @@ import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
 
 const StatsCard = memo(({ title, value, icon, color }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+  <div className="bg-white   border border-gray-200 p-6">
     <div className="flex items-center justify-between">
       <div><p className="text-sm font-medium text-gray-600">{title}</p><p className={`text-2xl font-bold mt-2 ${color}`}>{value}</p></div>
       <div className={`p-3 rounded-full ${color.replace('text', 'bg').replace('600', '100')}`}>{icon}</div>
@@ -218,7 +218,7 @@ const ReviewList = () => {
 
       {/* Business Selector */}
       {businesses.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200  p-4">
           <div className="flex items-center gap-3">
             <HiOutlineStar className="w-5 h-5 text-blue-600" />
             <div className="flex-1">
@@ -230,7 +230,7 @@ const ReviewList = () => {
                   localStorage.setItem('selectedBusinessId', e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
               >
                 {businesses.map((business) => (
                   <option key={business._id} value={business._id}>
@@ -244,7 +244,7 @@ const ReviewList = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white   border border-gray-200 p-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
@@ -260,7 +260,7 @@ const ReviewList = () => {
                     fetchReviews();
                   }
                 }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ const ReviewList = () => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Status</option>
               <option value="approved">Approved</option>
@@ -287,7 +287,7 @@ const ReviewList = () => {
                 setRatingFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Ratings</option>
               <option value="5">5 Stars</option>
@@ -297,14 +297,14 @@ const ReviewList = () => {
               <option value="1">1 Star</option>
             </select>
           </div>
-          <button onClick={fetchReviews} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+          <button onClick={fetchReviews} className="px-4 py-2 border border-gray-300  hover:bg-gray-50 flex items-center gap-2">
             <HiOutlineRefresh className="w-5 h-5" />
             Refresh
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white   border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -343,14 +343,14 @@ const ReviewList = () => {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
                 Next
               </button>
@@ -366,14 +366,14 @@ const ReviewList = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Next
                 </button>

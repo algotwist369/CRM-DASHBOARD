@@ -84,7 +84,7 @@ const ForBusinesses = () => {
             </p>
             <Link
               to="/register"
-              className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+              className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
             >
               Get Started Free
             </Link>
@@ -109,9 +109,9 @@ const ForBusinesses = () => {
             return (
               <div
                 key={index}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8"
+                className="bg-white   border border-gray-200 p-6 sm:p-8"
               >
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-100  flex items-center justify-center mb-4">
                   <Icon className="text-primary-600 text-xl sm:text-2xl" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{benefit.title}</h3>
@@ -142,14 +142,14 @@ const ForBusinesses = () => {
                 ))}
               </div>
             </div>
-            <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-8 sm:p-12">
+            <div className="bg-gradient-to-br from-primary-50 to-primary-100  p-8 sm:p-12">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Get Started Today</h3>
               <p className="text-gray-700 mb-6">
                 Start your free trial and see how easy it is to manage your business with our platform.
               </p>
               <Link
                 to="/register"
-                className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+                className="inline-block px-6 py-3 bg-primary-600 text-white  font-semibold hover:bg-primary-700 transition-colors"
               >
                 Start Free Trial
               </Link>
@@ -167,7 +167,7 @@ const ForBusinesses = () => {
           </p>
           <Link
             to="/register"
-            className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
           >
             Get Started Free
           </Link>

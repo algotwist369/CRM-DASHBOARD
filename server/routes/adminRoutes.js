@@ -30,6 +30,7 @@ router.post("/business", adminController.createBusiness);
 router.get("/businesses", adminController.getBusinesses);
 router.get("/business/:businessId/link", adminController.getBusinessLink);
 router.put("/business/:id", adminController.updateBusiness);
+router.put("/business/:id/status", adminController.updateBusinessStatus);
 router.delete("/business/:id", adminController.deleteBusiness);
 
 // ================== Manager Management ==================
@@ -37,6 +38,7 @@ router.post("/manager", adminController.createManager);
 router.get("/managers", adminController.getManagers);
 router.get("/manager/:id", adminController.getManagerById);
 router.put("/manager/:id", adminController.updateManager);
+router.put("/manager/:id/status", adminController.updateManagerStatus);
 router.delete("/manager/:id", adminController.deleteManager);
 
 // ================== Get Business by ID (must be last to avoid conflicts) ==================

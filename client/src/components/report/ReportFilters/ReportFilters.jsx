@@ -159,7 +159,7 @@ const ReportFilters = ({
 
         {/* Active Filters */}
         {getActiveFiltersCount() > 0 && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="mb-6 p-4 bg-gray-50 ">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Active Filters</h4>
             <div className="flex flex-wrap gap-2">
               {renderActiveFilters().map((filter) => (

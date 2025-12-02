@@ -140,7 +140,7 @@ const CustomerInfo = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form */}
          <div className="lg:col-span-2">
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+  <div className="bg-white   border border-gray-200 p-6 space-y-6">
     
     {/* Required Fields */}
     <div>
@@ -160,7 +160,7 @@ const CustomerInfo = () => {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+            className={`w-full px-4 py-2 border  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
               errors.name ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="Full name"
@@ -179,7 +179,7 @@ const CustomerInfo = () => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+            className={`w-full px-4 py-2 border  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
               errors.email ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="your.email@example.com"
@@ -198,7 +198,7 @@ const CustomerInfo = () => {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+            className={`w-full px-4 py-2 border  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
               errors.phone ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="10-digit phone number"
@@ -227,7 +227,7 @@ const CustomerInfo = () => {
               name="dateOfBirth"
               value={formData.dateOfBirth}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               max={new Date().toISOString().split('T')[0]}
             />
           </div>
@@ -239,7 +239,7 @@ const CustomerInfo = () => {
               name="gender"
               value={formData.gender}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select gender</option>
               <option value="male">Male</option>
@@ -261,7 +261,7 @@ const CustomerInfo = () => {
             value={formData.address}
             onChange={handleChange}
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter your address (optional)"
           />
         </div> */}
@@ -274,7 +274,7 @@ const CustomerInfo = () => {
             value={formData.notes}
             onChange={handleChange}
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Any additional information..."
           />
         </div>
@@ -287,7 +287,7 @@ const CustomerInfo = () => {
             value={formData.specialRequests}
             onChange={handleChange}
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Any special requests or preferences..."
           />
         </div>
@@ -298,7 +298,7 @@ const CustomerInfo = () => {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-[4.1rem]">
+            <div className="bg-white   border border-gray-200 p-6 sticky top-[4.1rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
 
               <div className="space-y-3 mb-4 text-sm">
@@ -354,7 +354,7 @@ const CustomerInfo = () => {
 
               <button
                 onClick={handleContinue}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 transition-colors font-medium"
               >
                 Continue
                 <FaArrowRight />

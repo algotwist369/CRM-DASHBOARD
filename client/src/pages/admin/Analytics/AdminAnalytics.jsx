@@ -4,7 +4,7 @@ import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
 
 const StatsCard = ({ title, value, icon, color, trend, trendValue }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+  <div className="bg-white   border border-gray-200 p-6">
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium text-gray-600">{title}</p>
@@ -177,7 +177,7 @@ const AdminAnalytics = () => {
         </div>
         <button 
           onClick={fetchAnalytics}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300  hover:bg-gray-50"
         >
           <HiOutlineRefresh className="w-5 h-5" />
           Refresh
@@ -186,7 +186,7 @@ const AdminAnalytics = () => {
 
       {/* Business Selector */}
       {businesses.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200  p-4">
           <div className="flex items-center gap-3">
             <HiOutlineChartBar className="w-5 h-5 text-blue-600" />
             <div className="flex-1">
@@ -197,7 +197,7 @@ const AdminAnalytics = () => {
                   setSelectedBusinessId(e.target.value);
                   localStorage.setItem('selectedBusinessId', e.target.value);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
               >
                 {businesses.map((business) => (
                   <option key={business._id} value={business._id}>
@@ -252,7 +252,7 @@ const AdminAnalytics = () => {
 
       {/* Revenue Analytics */}
       {revenueAnalytics && revenueAnalytics.summary && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue Analytics</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
@@ -296,7 +296,7 @@ const AdminAnalytics = () => {
 
       {/* Customer Analytics */}
       {customerAnalytics && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Analytics</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {customerAnalytics.totalCustomers !== undefined && (
@@ -329,7 +329,7 @@ const AdminAnalytics = () => {
 
       {/* Appointment Analytics */}
       {appointmentAnalytics && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment Analytics</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {overview?.appointments && (
@@ -362,7 +362,7 @@ const AdminAnalytics = () => {
 
       {/* Service Performance */}
       {servicePerformance && servicePerformance.topServices && servicePerformance.topServices.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Performing Services</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -399,7 +399,7 @@ const AdminAnalytics = () => {
 
       {/* Performance Overview */}
       {overview && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>

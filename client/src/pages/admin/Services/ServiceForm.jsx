@@ -488,7 +488,7 @@ const ServiceForm = ({ mode = 'create' }) => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <form onSubmit={handleSubmit} className="bg-white   border border-gray-200">
         {/* Tabs */}
         <div className="border-b border-gray-200">
           <nav className="flex overflow-x-auto">
@@ -512,7 +512,7 @@ const ServiceForm = ({ mode = 'create' }) => {
         <div className="p-6">
           {/* Business Selector */}
           {businessesLoaded && (
-            <div className="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
+            <div className="mb-6 p-4 bg-white border border-gray-200 ">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Business <span className="text-red-500">*</span>
               </label>
@@ -527,7 +527,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     localStorage.setItem('selectedBusinessId', value);
                   }}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 bg-white"
+                  className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900 bg-white"
                 >
                   <option value="">Select a business</option>
                   {businesses
@@ -556,7 +556,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
                       formErrors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Enter service name"
@@ -571,7 +571,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     name="serviceType"
                     value={formData.serviceType}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   >
                     <option value="service">Service</option>
                     <option value="product">Product</option>
@@ -589,7 +589,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                       value={formData.category}
                       onChange={handleChange}
                       required
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 ${
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
                         formErrors.category ? 'border-red-500' : 'border-gray-300'
                       }`}
                     >
@@ -607,7 +607,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                       value={formData.category}
                       onChange={handleChange}
                       required
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 ${
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
                         formErrors.category ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="e.g., Hair, Skin, Nails"
@@ -623,7 +623,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                   value={formData.description}
                   onChange={handleChange}
                   rows="5"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   placeholder="Detailed service description"
                 />
               </div>
@@ -664,7 +664,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     name="pricingType"
                     value={formData.pricingType}
                     onChange={handlePricingTypeChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   >
                     <option value="fixed">Fixed Price</option>
                     <option value="variable">Variable Price</option>
@@ -676,7 +676,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     name="currency"
                     value={formData.currency}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   >
                     <option value="INR">INR (₹)</option>
                     <option value="USD">USD ($)</option>
@@ -691,7 +691,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     value={formData.bufferTime}
                     onChange={handleChange}
                     min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                     placeholder="0"
                   />
                 </div>
@@ -711,7 +711,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                       required
                       min="0"
                       step="0.01"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 ${
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
                         formErrors.price ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="0.00"
@@ -729,7 +729,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                       onChange={handleChange}
                       required
                       min="1"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 ${
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
                         formErrors.duration ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="30"
@@ -748,7 +748,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     <button
                       type="button"
                       onClick={addPricingOption}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800"
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-900 text-white  hover:bg-gray-800"
                     >
                       <HiOutlinePlus className="w-4 h-4" /> Add Option
                     </button>
@@ -758,14 +758,14 @@ const ServiceForm = ({ mode = 'create' }) => {
                   )}
                   <div className="space-y-3">
                     {formData.pricingOptions.map((option, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div key={index} className="grid grid-cols-12 gap-3 p-4 bg-gray-50  border border-gray-200">
                         <div className="col-span-12 md:col-span-3">
                           <label className="block text-xs font-medium text-gray-700 mb-1">Option Name</label>
                           <input
                             type="text"
                             value={option.name}
                             onChange={(e) => handlePricingOptionChange(index, 'name', e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                            className="w-full px-3 py-2 text-sm border border-gray-300  focus:ring-2 focus:ring-gray-900"
                             placeholder="e.g., Standard"
                           />
                         </div>
@@ -779,7 +779,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                             onChange={(e) => handlePricingOptionChange(index, 'duration', e.target.value)}
                             required
                             min="1"
-                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-gray-900 ${
+                            className={`w-full px-3 py-2 text-sm border  focus:ring-2 focus:ring-gray-900 ${
                               formErrors[`pricingOptions.${index}.duration`] ? 'border-red-500' : 'border-gray-300'
                             }`}
                             placeholder="30"
@@ -799,7 +799,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                             required
                             min="0"
                             step="0.01"
-                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-gray-900 ${
+                            className={`w-full px-3 py-2 text-sm border  focus:ring-2 focus:ring-gray-900 ${
                               formErrors[`pricingOptions.${index}.price`] ? 'border-red-500' : 'border-gray-300'
                             }`}
                             placeholder="500.00"
@@ -818,7 +818,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                             onChange={(e) => handlePricingOptionChange(index, 'originalPrice', e.target.value)}
                             min="0"
                             step="0.01"
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                            className="w-full px-3 py-2 text-sm border border-gray-300  focus:ring-2 focus:ring-gray-900"
                             placeholder="Optional"
                           />
                         </div>
@@ -836,7 +836,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                             <button
                               type="button"
                               onClick={() => removePricingOption(index)}
-                              className="w-full px-3 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 flex items-center justify-center"
+                              className="w-full px-3 py-2 text-sm text-red-600 border border-red-300  hover:bg-red-50 flex items-center justify-center"
                               title="Remove option"
                             >
                               <HiOutlineTrash className="w-4 h-4" />
@@ -873,7 +873,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-3">Available Days</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {daysOfWeek.map(day => (
-                    <label key={day} className="flex items-center gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <label key={day} className="flex items-center gap-2 p-3 border border-gray-300  cursor-pointer hover:bg-gray-50">
                       <input
                         type="checkbox"
                         checked={formData.availableDays.includes(day)}
@@ -912,7 +912,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     value={formData.minStaffRequired}
                     onChange={handleChange}
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   />
                 </div>
               )}
@@ -923,7 +923,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     name="staffCommission.type"
                     value={formData.staffCommission.type}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   >
                     <option value="percentage">Percentage</option>
                     <option value="fixed">Fixed Amount</option>
@@ -938,7 +938,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                     onChange={handleChange}
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                     placeholder="0"
                   />
                 </div>
@@ -956,7 +956,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                   name="thumbnail"
                   value={formData.thumbnail}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   placeholder="https://example.com/image.jpg"
                 />
               </div>
@@ -973,13 +973,13 @@ const ServiceForm = ({ mode = 'create' }) => {
                         addImage();
                       }
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                    className="flex-1 px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                     placeholder="Add image URL and press Enter"
                   />
                   <button
                     type="button"
                     onClick={addImage}
-                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"
+                    className="px-4 py-2 bg-gray-900 text-white  hover:bg-gray-800"
                   >
                     Add
                   </button>
@@ -1025,7 +1025,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                   value={formData.advanceBookingDays}
                   onChange={handleChange}
                   min="0"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                   placeholder="30"
                 />
               </div>
@@ -1051,7 +1051,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                         value={formData.cancellationPolicy.hoursBeforeService}
                         onChange={(e) => handleChange({ target: { name: 'cancellationPolicy.hoursBeforeService', value: e.target.value } })}
                         min="0"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                        className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                         placeholder="24"
                       />
                     </div>
@@ -1063,7 +1063,7 @@ const ServiceForm = ({ mode = 'create' }) => {
                         onChange={(e) => handleChange({ target: { name: 'cancellationPolicy.cancellationFee', value: e.target.value } })}
                         min="0"
                         step="0.01"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
+                        className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900"
                         placeholder="0.00"
                       />
                     </div>
@@ -1078,14 +1078,14 @@ const ServiceForm = ({ mode = 'create' }) => {
           <button
             type="button"
             onClick={() => navigate('/admin/services')}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-2 bg-gray-900 text-white  hover:bg-gray-800 flex items-center gap-2 disabled:opacity-50"
           >
             <HiOutlineSave className="w-5 h-5" />
             {loading ? 'Saving...' : mode === 'create' ? 'Create Service' : 'Update Service'}

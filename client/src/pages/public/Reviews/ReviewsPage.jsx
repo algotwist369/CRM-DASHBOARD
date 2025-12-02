@@ -422,25 +422,25 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
             <div className="flex flex-wrap gap-3">
               <Link
                 to={config.primaryCta.href}
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
+                className="inline-flex items-center justify-center px-6 py-3  bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
               >
                 {config.primaryCta.label}
               </Link>
               <Link
                 to={config.secondaryCta.href}
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white text-white font-semibold hover:bg-white/10 transition-colors"
+                className="inline-flex items-center justify-center px-6 py-3  border border-white text-white font-semibold hover:bg-white/10 transition-colors"
               >
                 {config.secondaryCta.label}
               </Link>
               <a
                 href="#business-details"
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors"
+                className="inline-flex items-center justify-center px-6 py-3  bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors"
               >
                 Share Your Business Details
               </a>
             </div>
           </div>
-          <div className="bg-white/10 border border-white/20 rounded-2xl p-6 sm:p-8 backdrop-blur">
+          <div className="bg-white/10 border border-white/20  p-6 sm:p-8 backdrop-blur">
             <h2 className="text-lg font-semibold mb-4">Why it matters</h2>
             <div className="space-y-4">
               {config.stats.map((stat) => (
@@ -466,7 +466,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                 Booking App helps your business collect verified, authentic, and long-lasting reviews. We focus on elevating your brand
                 credibility so you rank higher across search, social, and marketplace platforms.
               </p>
-              <div className="bg-primary-50 border border-primary-100 rounded-2xl p-6 sm:p-8 mb-6">
+              <div className="bg-primary-50 border border-primary-100  p-6 sm:p-8 mb-6">
                 <h3 className="text-xl font-semibold text-primary-900 mb-3">Plan highlights</h3>
                 <ul className="space-y-3 text-sm sm:text-base text-primary-900">
                   <li className="flex items-start gap-3">
@@ -498,7 +498,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                 Whether you want more Google leads, stronger social proof, or higher Yelp/TripAdvisor rankings, we deliver end-to-end
                 support.
               </p>
-              <div className="bg-gray-900 text-white rounded-2xl p-6 sm:p-8">
+              <div className="bg-gray-900 text-white  p-6 sm:p-8">
                 <h3 className="text-xl font-semibold mb-3">Payment Security & Transparency</h3>
                 <ul className="space-y-3 text-sm sm:text-base">
                   <li className="flex items-start gap-3">
@@ -517,7 +517,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
               </div>
             </div>
             <div id="business-details">
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 sm:p-8">
+              <div className="bg-white border border-gray-200  shadow-lg p-6 sm:p-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Share Your Business Details</h3>
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div className="space-y-1">
@@ -532,7 +532,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       value={formValues.businessName}
                       onChange={handleInputChange}
                       placeholder="e.g. Urban Glow Salon"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -548,7 +548,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                         value={formValues.contactPerson}
                         onChange={handleInputChange}
                         placeholder="Your full name"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                        className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                       />
                     </div>
                     <div className="space-y-1">
@@ -563,7 +563,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                         value={formValues.phone}
                         onChange={handleInputChange}
                         placeholder="+91 98xxxxxx90"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                        className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                       />
                     </div>
                   </div>
@@ -579,7 +579,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       value={formValues.email}
                       onChange={handleInputChange}
                       placeholder="you@business.com"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                     />
                   </div>
                   <div className="space-y-1">
@@ -593,7 +593,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       value={formValues.website}
                       onChange={handleInputChange}
                       placeholder="https://g.page/yourbusiness"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -606,7 +606,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                         name="platform"
                         value={formValues.platform}
                         onChange={handleInputChange}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                        className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                       >
                         <option value="Google">Google</option>
                         <option value="Facebook">Facebook</option>
@@ -627,7 +627,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                         step="50"
                         value={formValues.reviewTarget}
                         onChange={handleInputChange}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                        className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                       />
                     </div>
                   </div>
@@ -642,7 +642,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       value={formValues.notes}
                       onChange={handleInputChange}
                       placeholder="Share your current rating, target locations, or any specific instructions."
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                     />
                   </div>
                   <div className="flex items-start gap-3">
@@ -661,7 +661,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                   </div>
                   {submissionState.message && (
                     <div
-                      className={`rounded-lg px-4 py-3 text-sm font-medium ${
+                      className={` px-4 py-3 text-sm font-medium ${
                         submissionState.status === 'success'
                           ? 'bg-green-50 text-green-700 border border-green-200'
                           : 'bg-red-50 text-red-700 border border-red-200'
@@ -673,7 +673,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                   <button
                     type="submit"
                     disabled={submissionState.status === 'success'}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed transition-colors"
+                    className="w-full inline-flex items-center justify-center gap-2  bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed transition-colors"
                   >
                     {submissionState.status === 'success' ? 'Request submitted' : 'Schedule a free consultation'}
                   </button>
@@ -699,8 +699,8 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
             {config.featureCards.map((feature) => {
               const Icon = feature.icon
               return (
-                <div key={feature.title} className="group bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="w-12 h-12 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center mb-4 group-hover:bg-primary-100">
+                <div key={feature.title} className="group bg-white border border-gray-200  p-6  hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12  bg-primary-50 text-primary-600 flex items-center justify-center mb-4 group-hover:bg-primary-100">
                     <Icon className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
@@ -722,7 +722,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {config.steps.map((step, index) => (
-              <div key={step.title} className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col h-full">
+              <div key={step.title} className="bg-white/5 border border-white/10  p-6 flex flex-col h-full">
                 <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-500 text-white font-semibold mb-4">
                   {index + 1}
                 </span>
@@ -747,7 +747,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
               <Link
                 key={resource.label}
                 to={resource.href}
-                className="group block bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:border-primary-200 hover:shadow-lg transition-all"
+                className="group block bg-white border border-gray-200  p-6  hover:border-primary-200 hover:shadow-lg transition-all"
               >
                 <div className="mb-3 inline-flex items-center px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded-full bg-primary-50 text-primary-600">
                   Guide
@@ -766,7 +766,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 text-center mb-10">Frequently asked questions</h2>
           <div className="space-y-4">
             {config.faqs.map((faq) => (
-              <details key={faq.question} className="group border border-gray-200 bg-white rounded-xl shadow-sm">
+              <details key={faq.question} className="group border border-gray-200 bg-white  ">
                 <summary className="cursor-pointer list-none px-6 py-4 flex items-center justify-between gap-4">
                   <span className="text-base sm:text-lg font-semibold text-gray-900">{faq.question}</span>
                   <span className="text-primary-600 transition-transform group-open:rotate-180">
@@ -791,13 +791,13 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
           <div className="flex flex-wrap justify-center gap-3">
             <Link
               to={config.primaryCta.href}
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3  bg-white text-primary-700 font-semibold hover:bg-primary-50 transition-colors"
             >
               {config.primaryCta.label}
             </Link>
             <Link
               to="/contact"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white text-white font-semibold hover:bg-white/10 transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3  border border-white text-white font-semibold hover:bg-white/10 transition-colors"
             >
               Talk to our team
             </Link>

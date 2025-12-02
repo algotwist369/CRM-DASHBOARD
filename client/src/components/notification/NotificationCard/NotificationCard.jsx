@@ -220,7 +220,7 @@ const NotificationCard = ({
 
       {/* Additional Metadata */}
       {metadata && Object.keys(metadata).length > 0 && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+        <div className="mb-4 p-3 bg-gray-50 ">
           <h4 className="text-sm font-medium text-gray-700 mb-2">Additional Information</h4>
           <div className="space-y-1">
             {Object.entries(metadata).map(([key, value]) => (

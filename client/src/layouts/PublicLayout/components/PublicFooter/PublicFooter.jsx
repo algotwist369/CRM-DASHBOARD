@@ -94,7 +94,7 @@ const PublicFooter = () => {
           {/* Company Info */}
           <div className="lg:col-span-2">
             <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center mr-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary-600 to-primary-700  flex items-center justify-center mr-3">
                 <FaRocket className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -118,7 +118,7 @@ const PublicFooter = () => {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary-600 transition-all"
+                    className="w-10 h-10 bg-gray-800  flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary-600 transition-all"
                     aria-label={social.name}
                   >
                     <Icon className="w-5 h-5" />
@@ -152,7 +152,7 @@ const PublicFooter = () => {
         <div className="mt-12 pt-8 border-t border-gray-800">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-primary-600/20  flex items-center justify-center flex-shrink-0">
                 <FaMapMarkerAlt className="text-primary-400" />
               </div>
               <div>
@@ -161,7 +161,7 @@ const PublicFooter = () => {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-primary-600/20  flex items-center justify-center flex-shrink-0">
                 <FaPhone className="text-primary-400" />
               </div>
               <div>
@@ -171,7 +171,7 @@ const PublicFooter = () => {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-primary-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-primary-600/20  flex items-center justify-center flex-shrink-0">
                 <FaEnvelope className="text-primary-400" />
               </div>
               <div>

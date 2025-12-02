@@ -88,7 +88,7 @@ const EditBusiness = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-10 px-4">
-      <div className="max-w-2xl w-full bg-white shadow-md rounded-2xl p-8 overflow-y-auto max-h-[90vh]">
+      <div className="max-w-2xl w-full bg-white shadow-md  p-8 overflow-y-auto max-h-[90vh]">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
           Edit Business
         </h2>
@@ -101,7 +101,7 @@ const EditBusiness = () => {
               name="type"
               value={formData.type}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Select Type</option>
               <option value="salon">Salon</option>
@@ -119,7 +119,7 @@ const EditBusiness = () => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
             />
             {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
           </div>
@@ -132,7 +132,7 @@ const EditBusiness = () => {
               name="branch"
               value={formData.branch}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -144,7 +144,7 @@ const EditBusiness = () => {
               name="address"
               value={formData.address}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -157,7 +157,7 @@ const EditBusiness = () => {
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -168,7 +168,7 @@ const EditBusiness = () => {
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -183,7 +183,7 @@ const EditBusiness = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 maxLength={10}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
               />
               {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
             </div>
@@ -195,7 +195,7 @@ const EditBusiness = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
               />
               {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
             </div>
@@ -209,7 +209,7 @@ const EditBusiness = () => {
               name="website"
               value={formData.website}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -221,7 +221,7 @@ const EditBusiness = () => {
               value={formData.description}
               onChange={handleChange}
               rows="3"
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="w-full border border-gray-300  p-2.5 focus:ring-2 focus:ring-indigo-500 resize-none"
             />
           </div>
 
@@ -229,7 +229,7 @@ const EditBusiness = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-all duration-200"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5  transition-all duration-200"
           >
             {loading ? "Updating..." : "Update Business"}
           </button>

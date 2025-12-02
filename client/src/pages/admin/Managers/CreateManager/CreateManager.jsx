@@ -114,7 +114,7 @@ const CreateManager = () => {
 
   return (
     <div className="">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+      <div className="max-w-4xl mx-auto bg-white  shadow-lg p-8 border border-gray-200">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
           Create Manager
         </h2>
@@ -132,7 +132,7 @@ const CreateManager = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                className="w-full pl-10 pr-3 py-2 border  focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 placeholder="Enter manager name"
               />
             </div>
@@ -153,7 +153,7 @@ const CreateManager = () => {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                className="w-full pl-10 pr-3 py-2 border  focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 placeholder="Unique username"
               />
             </div>
@@ -175,7 +175,7 @@ const CreateManager = () => {
                 value={formData.pin}
                 onChange={handleChange}
                 maxLength={4}
-                className="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                className="w-full pl-10 pr-3 py-2 border  focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 placeholder="Enter 4-digit PIN"
               />
             </div>
@@ -196,7 +196,7 @@ const CreateManager = () => {
                 name="businessId"
                 value={formData.businessId}
                 onChange={handleChange}
-                className="w-full pl-10 pr-8 py-2 border rounded-lg appearance-none focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
+                className="w-full pl-10 pr-8 py-2 border  appearance-none focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
               >
                 <option value="">Select Business</option>
                 {businesses.map((biz) => (
@@ -223,7 +223,7 @@ const CreateManager = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                className="w-full pl-10 pr-3 py-2 border  focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 placeholder="manager@example.com"
               />
             </div>
@@ -244,7 +244,7 @@ const CreateManager = () => {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                className="w-full pl-10 pr-3 py-2 border  focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 placeholder="Enter 10-digit number"
               />
             </div>
@@ -257,7 +257,7 @@ const CreateManager = () => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 text-white font-semibold rounded-lg transition-colors ${
+            className={`w-full py-2 px-4 text-white font-semibold  transition-colors ${
               loading
                 ? "bg-primary-300 cursor-not-allowed"
                 : "bg-primary-600 hover:bg-primary-700"

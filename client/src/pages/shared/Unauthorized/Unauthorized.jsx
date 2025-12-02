@@ -58,7 +58,7 @@ const Unauthorized = () => {
             </div>
 
             {/* Current Path Info */}
-            <div className="mb-8 p-4 bg-gray-100 rounded-lg">
+            <div className="mb-8 p-4 bg-gray-100 ">
               <p className="text-sm text-gray-600 mb-2">Attempted to access:</p>
               <code className="text-sm font-mono text-gray-800 bg-white px-2 py-1 rounded border">
                 {location.pathname}
@@ -82,15 +82,15 @@ const Unauthorized = () => {
             <div className="mt-8 pt-6 border-t border-gray-200">
               <h3 className="text-sm font-medium text-gray-900 mb-4">Available Roles</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="p-3 bg-blue-50 ">
                   <h4 className="font-medium text-blue-900">Administrator</h4>
                   <p className="text-blue-700">Full system access and management</p>
                 </div>
-                <div className="p-3 bg-green-50 rounded-lg">
+                <div className="p-3 bg-green-50 ">
                   <h4 className="font-medium text-green-900">Manager</h4>
                   <p className="text-green-700">Business and staff management</p>
                 </div>
-                <div className="p-3 bg-purple-50 rounded-lg">
+                <div className="p-3 bg-purple-50 ">
                   <h4 className="font-medium text-purple-900">Staff</h4>
                   <p className="text-purple-700">Appointment and customer management</p>
                 </div>
@@ -98,7 +98,7 @@ const Unauthorized = () => {
             </div>
 
             {/* Help Section */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <div className="mt-6 p-4 bg-gray-50 ">
               <h4 className="text-sm font-medium text-gray-900 mb-2">Need Help?</h4>
               <p className="text-sm text-gray-600 mb-3">
                 If you believe you should have access to this page, please contact your administrator or support team.

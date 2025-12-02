@@ -159,7 +159,7 @@ const ReviewDetails = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Review Information */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Review Information</h3>
           <dl className="space-y-3">
             <div>
@@ -243,14 +243,14 @@ const ReviewDetails = () => {
         {/* Actions and Response */}
         <div className="space-y-6">
           {/* Actions */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
             <div className="space-y-3">
               {canApprove && (
                 <button
                   onClick={handleApprove}
                   disabled={actionLoading === 'approve'}
-                  className="w-full px-4 py-2 border border-green-300 rounded-lg text-green-600 hover:bg-green-50 flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full px-4 py-2 border border-green-300  text-green-600 hover:bg-green-50 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <HiOutlineCheck className="w-5 h-5" />
                   {actionLoading === 'approve' ? 'Approving...' : 'Approve Review'}
@@ -260,19 +260,19 @@ const ReviewDetails = () => {
                 <button
                   onClick={handleReject}
                   disabled={actionLoading === 'reject'}
-                  className="w-full px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full px-4 py-2 border border-red-300  text-red-600 hover:bg-red-50 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <HiOutlineX className="w-5 h-5" />
                   {actionLoading === 'reject' ? 'Rejecting...' : 'Reject Review'}
                 </button>
               )}
               {status === 'approved' && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="p-4 bg-green-50 border border-green-200 ">
                   <p className="text-sm text-green-800">This review has been approved and is published.</p>
                 </div>
               )}
               {status === 'rejected' && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="p-4 bg-red-50 border border-red-200 ">
                   <p className="text-sm text-red-800">This review has been rejected.</p>
                   {review.rejectionReason && (
                     <p className="text-xs text-red-600 mt-1">Reason: {review.rejectionReason}</p>
@@ -280,7 +280,7 @@ const ReviewDetails = () => {
                 </div>
               )}
               {status === 'flagged' && (
-                <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="p-4 bg-orange-50 border border-orange-200 ">
                   <p className="text-sm text-orange-800">This review has been flagged for moderation.</p>
                   {review.flagReason && (
                     <p className="text-xs text-orange-600 mt-1">Reason: {review.flagReason}</p>
@@ -292,13 +292,13 @@ const ReviewDetails = () => {
 
           {/* Response */}
           {canRespond && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Business Response</h3>
                 {!showResponseForm && !review.response && (
                   <button
                     onClick={() => setShowResponseForm(true)}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 text-sm"
+                    className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 flex items-center gap-2 text-sm"
                   >
                     <HiOutlineReply className="w-4 h-4" />
                     Add Response
@@ -307,7 +307,7 @@ const ReviewDetails = () => {
               </div>
               
               {review.response ? (
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-900">{review.response.response}</p>
                   {review.response.respondedAt && (
                     <p className="text-xs text-gray-500 mt-2">
@@ -327,13 +327,13 @@ const ReviewDetails = () => {
                     onChange={(e) => setResponseText(e.target.value)}
                     rows="4"
                     placeholder="Write a response to this review..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={handleAddResponse}
                       disabled={actionLoading === 'response' || !responseText.trim()}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 text-sm disabled:opacity-50"
+                      className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 flex items-center gap-2 text-sm disabled:opacity-50"
                     >
                       <HiOutlineReply className="w-4 h-4" />
                       {actionLoading === 'response' ? 'Saving...' : 'Submit Response'}
@@ -343,7 +343,7 @@ const ReviewDetails = () => {
                         setShowResponseForm(false);
                         setResponseText('');
                       }}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+                      className="px-4 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50 text-sm"
                     >
                       Cancel
                     </button>

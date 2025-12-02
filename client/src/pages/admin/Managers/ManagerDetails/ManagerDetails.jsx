@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, memo, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
@@ -8,21 +8,139 @@ import {
   FaBuilding,
   FaIdCard,
   FaCalendarAlt,
-  FaShieldAlt,
+  FaSpinner,
 } from "react-icons/fa";
 import adminService from "../../../../services/admin/adminService";
 import { toast } from "react-hot-toast";
+import BackButton from "../../../../components/common/Button/BackButton";
+
+// --- Sub-Components ---
+
+const ManagerHeader = memo(({ manager }) => (
+  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+    <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center border border-primary-100">
+      <FaUser className="w-8 h-8 text-primary-600" />
+    </div>
+    <div>
+      <h2 className="text-xl font-bold text-gray-900">{manager.name}</h2>
+      <p className="text-sm text-gray-500">@{manager.username}</p>
+    </div>
+  </div>
+));
+
+const InfoSection = memo(({ title, items }) => (
+  <div className="space-y-3">
+    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">{title}</h3>
+    {items.map((item, index) => (
+      <div key={index} className="flex items-center gap-3">
+        <div className="w-8 h-8  bg-gray-50 flex items-center justify-center text-gray-400">
+          <item.icon className="text-sm" />
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">{item.label}</p>
+          <p className={`text-sm font-medium text-gray-900 ${item.className || ''}`}>
+            {item.value}
+          </p>
+          {item.subValue && (
+            <p className="text-xs text-gray-500">{item.subValue}</p>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+));
+
+const AccountDetails = memo(({ createdAt, updatedAt, isActive }) => {
+  const items = useMemo(() => [
+    {
+      icon: FaCalendarAlt,
+      label: 'Created',
+      value: new Date(createdAt).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      })
+    },
+    ...(updatedAt ? [{
+      icon: FaCalendarAlt,
+      label: 'Updated',
+      value: new Date(updatedAt).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      })
+    }] : [])
+  ], [createdAt, updatedAt]);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Account</h3>
+
+      {items.map((item, index) => (
+        <div key={index} className="flex items-center gap-3">
+          <div className="w-8 h-8  bg-gray-50 flex items-center justify-center text-gray-400">
+            <item.icon className="text-sm" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">{item.label}</p>
+            <p className="text-sm font-medium text-gray-900">{item.value}</p>
+          </div>
+        </div>
+      ))}
+
+      <div className="pt-2">
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${isActive
+          ? "bg-green-50 text-green-700 border border-green-100"
+          : "bg-red-50 text-red-700 border border-red-100"
+          }`}>
+          {isActive ? "Active Account" : "Inactive Account"}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+const Permissions = memo(({ permissions }) => {
+  if (!permissions) return null;
+
+  const permissionList = useMemo(() => [
+    { key: 'canManageStaff', label: 'Manage Staff' },
+    { key: 'canViewReports', label: 'View Reports' },
+    { key: 'canManageDailyBusiness', label: 'Manage Daily Business' },
+    { key: 'canManageTransactions', label: 'Manage Transactions' },
+  ], []);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Permissions</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {permissionList.map(({ key, label }) => (
+          <div key={key} className="flex items-center justify-between p-2.5 bg-gray-50  border border-gray-100">
+            <span className="text-sm text-gray-700">{label}</span>
+            <div className={`w-2 h-2 rounded-full ${permissions[key] ? 'bg-green-500' : 'bg-gray-300'}`} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
 
 const ManagerDetails = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [manager, setManager] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Ref to prevent duplicate API calls
+  const fetchingRef = useRef(false);
+
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchManager = async () => {
+      if (fetchingRef.current) return;
+
       try {
+        fetchingRef.current = true;
         setLoading(true);
         const res = await adminService.getManager(id);
         if (res.success) {
@@ -37,6 +155,7 @@ const ManagerDetails = () => {
         toast.error("Failed to fetch manager details");
       } finally {
         setLoading(false);
+        fetchingRef.current = false;
       }
     };
 
@@ -45,13 +164,41 @@ const ManagerDetails = () => {
     }
   }, [id]);
 
+  const contactItems = useMemo(() => {
+    if (!manager) return [];
+    return [
+      { icon: FaEnvelope, label: 'Email', value: manager.email || "—" },
+      { icon: FaPhone, label: 'Phone', value: manager.phone || "—" }
+    ];
+  }, [manager]);
+
+  const businessItems = useMemo(() => {
+    if (!manager) return [];
+    return [
+      {
+        icon: FaBuilding,
+        label: 'Business',
+        value: manager.business?.name || "—",
+        subValue: manager.business?.branch
+      },
+      {
+        icon: FaIdCard,
+        label: 'Type',
+        value: manager.business?.type || "—",
+        className: 'capitalize'
+      },
+      ...(manager.staffCount !== undefined ? [{
+        icon: FaUser,
+        label: 'Staff',
+        value: manager.staffCount
+      }] : [])
+    ];
+  }, [manager]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading manager details...</p>
-        </div>
+        <FaSpinner className="animate-spin text-3xl text-primary-600" />
       </div>
     );
   }
@@ -59,10 +206,8 @@ const ManagerDetails = () => {
   if (error || !manager) {
     return (
       <div className="p-6">
-        <button onClick={() => navigate(-1)} className="mb-4 text-gray-600 hover:text-gray-800">
-          <FaArrowLeft /> Back
-        </button>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <BackButton />
+        <div className="bg-red-50 border border-red-200  p-4 text-red-700 text-sm">
           {error || "Manager not found"}
         </div>
       </div>
@@ -70,187 +215,37 @@ const ManagerDetails = () => {
   }
 
   return (
-    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-3 text-gray-600 hover:text-gray-800 flex items-center gap-2"
-        >
-          <FaArrowLeft /> Back
-        </button>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">Manager Details</h1>
-            <p className="text-sm text-gray-600">View complete manager information</p>
-          </div>
-        </div>
+        <BackButton />
+        <h1 className="text-2xl font-bold text-gray-900">Manager Details</h1>
       </div>
 
-      {/* Manager Info Card */}
-      <div className="bg-white border shadow-sm rounded-xl p-6 mb-6">
-        <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
-          <div className="w-20 h-20 rounded-full bg-primary-100 flex items-center justify-center">
-            <FaUser className="w-10 h-10 text-primary-600" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Info Card */}
+        <div className="lg:col-span-2 bg-white  border border-gray-200 p-6 ">
+          <ManagerHeader manager={manager} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <InfoSection title="Contact" items={contactItems} />
+            <InfoSection title="Business" items={businessItems} />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">{manager.name}</h2>
-            <p className="text-gray-600">@{manager.username}</p>
+
+          <div className="mt-8 pt-6 border-t border-gray-100">
+            <Permissions permissions={manager.permissions} />
           </div>
         </div>
 
-        <div className="space-y-6">
-          {/* Main Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Contact Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Contact Information</h3>
-              
-              <div className="flex items-start gap-3">
-                <FaEnvelope className="text-gray-400 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-600">Email</p>
-                  <p className="text-gray-800 font-medium">{manager.email || "—"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <FaPhone className="text-gray-400 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-600">Phone</p>
-                  <p className="text-gray-800 font-medium">{manager.phone || "—"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Business Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Business Information</h3>
-              
-              <div className="flex items-start gap-3">
-                <FaBuilding className="text-gray-400 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-600">Business</p>
-                  <p className="text-gray-800 font-medium">{manager.business?.name || "—"}</p>
-                  {manager.business?.branch && (
-                    <p className="text-xs text-gray-500 mt-1">{manager.business.branch}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <FaIdCard className="text-gray-400 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-600">Business Type</p>
-                  <p className="text-gray-800 font-medium capitalize">{manager.business?.type || "—"}</p>
-                </div>
-              </div>
-
-              {manager.staffCount !== undefined && (
-                <div className="flex items-start gap-3">
-                  <FaUser className="text-gray-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-600">Staff Members</p>
-                    <p className="text-gray-800 font-medium">{manager.staffCount || 0}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Status & Dates */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Account Details</h3>
-              
-              <div className="flex items-start gap-3">
-                <FaCalendarAlt className="text-gray-400 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-600">Created On</p>
-                  <p className="text-gray-800 font-medium">
-                    {new Date(manager.createdAt).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              {manager.updatedAt && (
-                <div className="flex items-start gap-3">
-                  <FaCalendarAlt className="text-gray-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-600">Last Updated</p>
-                    <p className="text-gray-800 font-medium">
-                      {new Date(manager.updatedAt).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  manager.isActive
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}>
-                  {manager.isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
-            </div>
+        {/* Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="bg-white  border border-gray-200 p-6 ">
+            <AccountDetails
+              createdAt={manager.createdAt}
+              updatedAt={manager.updatedAt}
+              isActive={manager.isActive}
+            />
           </div>
-
-          {/* Permissions */}
-          {manager.permissions && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Permissions</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-700">Manage Staff</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    manager.permissions.canManageStaff
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}>
-                    {manager.permissions.canManageStaff ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-700">View Reports</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    manager.permissions.canViewReports
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}>
-                    {manager.permissions.canViewReports ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-700">Manage Daily Business</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    manager.permissions.canManageDailyBusiness
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}>
-                    {manager.permissions.canManageDailyBusiness ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-700">Manage Transactions</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    manager.permissions.canManageTransactions
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}>
-                    {manager.permissions.canManageTransactions ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -258,4 +253,3 @@ const ManagerDetails = () => {
 };
 
 export default ManagerDetails;
-

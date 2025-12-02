@@ -197,7 +197,7 @@ const CustomerList = ({
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 border border-gray-300 rounded-md">
+            <div className="flex items-center gap-1 border border-gray-300 ">
               <Button
                 variant={viewMode === 'grid' ? 'primary' : 'outline'}
                 size="sm"

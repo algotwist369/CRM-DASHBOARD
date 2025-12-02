@@ -62,7 +62,7 @@ const StaffSelector = ({
   const getStaffClasses = (staffMember) => {
     const isSelected = getStaffId(selectedStaff) === getStaffId(staffMember)
     const availability = getAvailabilityStatus(staffMember)
-    const baseClasses = 'w-full p-4 text-left border rounded-xl transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
+    const baseClasses = 'w-full p-4 text-left border  transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
     
     if (disabled || availability.status === 'unavailable') {
       return `${baseClasses} bg-gray-50 border-gray-200 cursor-not-allowed opacity-60`
@@ -266,7 +266,7 @@ const StaffSelector = ({
 
       {/* Selected Staff Summary */}
       {selectedStaff && (
-        <div className="mt-6 p-4 bg-primary-50 border border-primary-200 rounded-md">
+        <div className="mt-6 p-4 bg-primary-50 border border-primary-200 ">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
               {selectedStaff.avatar ? (

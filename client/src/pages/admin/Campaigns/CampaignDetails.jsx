@@ -152,7 +152,7 @@ const CampaignDetails = () => {
           {campaign.status === 'active' && (
             <button
               onClick={handlePause}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300  hover:bg-gray-50"
             >
               <HiOutlinePause className="w-5 h-5" />
               Pause
@@ -161,7 +161,7 @@ const CampaignDetails = () => {
           {campaign.status === 'paused' && (
             <button
               onClick={handleResume}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white  hover:bg-green-700"
             >
               <HiOutlinePlay className="w-5 h-5" />
               Resume
@@ -169,21 +169,21 @@ const CampaignDetails = () => {
           )}
           <button
             onClick={handleClone}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300  hover:bg-gray-50"
           >
             <HiOutlineDuplicate className="w-5 h-5" />
             Clone
           </button>
           <button
             onClick={() => navigate(`/admin/campaigns/${id}/edit`)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300  hover:bg-gray-50"
           >
             <HiOutlinePencil className="w-5 h-5" />
             Edit
           </button>
           <button
             onClick={handleDelete}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white  hover:bg-red-700"
           >
             <HiOutlineTrash className="w-5 h-5" />
             Delete
@@ -216,7 +216,7 @@ const CampaignDetails = () => {
           <>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Recipients</p>
@@ -225,7 +225,7 @@ const CampaignDetails = () => {
                   <HiOutlineUsers className="w-8 h-8 text-blue-600" />
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Sent</p>
@@ -234,7 +234,7 @@ const CampaignDetails = () => {
                   <HiOutlineMail className="w-8 h-8 text-green-600" />
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Opened</p>
@@ -243,7 +243,7 @@ const CampaignDetails = () => {
                   <HiOutlineEye className="w-8 h-8 text-purple-600" />
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Open Rate</p>
@@ -255,7 +255,7 @@ const CampaignDetails = () => {
             </div>
 
             {/* Campaign Details */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h3 className="text-lg font-semibold mb-4">Campaign Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -286,14 +286,14 @@ const CampaignDetails = () => {
         )}
 
         {activeTab === 'analytics' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold mb-4">Campaign Analytics</h3>
             <p className="text-gray-600">Analytics data will be available here.</p>
           </div>
         )}
 
         {activeTab === 'audience' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-lg font-semibold mb-4">Target Audience</h3>
             <p className="text-gray-600">Audience details will be available here.</p>
           </div>

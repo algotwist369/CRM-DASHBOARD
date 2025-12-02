@@ -10,7 +10,7 @@ const CampaignAnalyticsOverview = () => {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/manager/campaigns')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-gray-100  transition-colors"
         >
           <FaArrowLeft className="text-gray-600" />
         </button>
@@ -23,7 +23,7 @@ const CampaignAnalyticsOverview = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <p className="text-gray-600">Campaign analytics overview - Coming soon</p>
       </div>
     </div>

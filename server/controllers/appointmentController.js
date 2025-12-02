@@ -165,29 +165,39 @@ const getAppointments = async (req, res, next) => {
             search
         } = req.query;
 
-        // Determine business
-        let business;
+        // Determine business scope
+        let query = {};
+
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                const business = await Business.findOne({ _id: businessId, admin: userId });
+                if (!business) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Business not found or access denied"
+                    });
+                }
+                query.business = business._id;
+            } else {
+                // If no businessId provided, fetch for all businesses owned by admin
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                const businessIds = businesses.map(b => b._id);
+                query.business = { $in: businessIds };
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            if (!manager) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found"
+                });
+            }
+            query.business = manager.business;
         }
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found or access denied"
-            });
-        }
-
-        const cacheKey = `business:${business._id}:appointments:${page}:${limit}:${status}:${startDate}:${endDate}:${customerId}:${staffId}:${serviceId}`;
+        // Cache key needs to handle multiple businesses or specific business
+        const businessKey = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
+        const cacheKey = `${businessKey}:appointments:${page}:${limit}:${status}:${startDate}:${endDate}:${customerId}:${staffId}:${serviceId}:${search}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -195,8 +205,6 @@ const getAppointments = async (req, res, next) => {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
 
-        // Build query
-        let query = { business: business._id };
 
         if (status) {
             query.status = status;
@@ -230,13 +238,24 @@ const getAppointments = async (req, res, next) => {
         }
 
         const appointments = await Appointment.find(query)
+            .populate('business', 'name  branch ')
             .populate('customer', 'firstName lastName phone email')
             .populate('service', 'name price duration')
             .populate('staff', 'name role phone')
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
-            .sort({ appointmentDate: -1, startTime: -1 })
+            .sort({ createdAt: -1 })
             .lean();
+
+        // Mark new bookings (created within last 24h)
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        appointments.forEach(appointment => {
+            if (new Date(appointment.createdAt) > twentyFourHoursAgo) {
+                appointment.new = true;
+            } else {
+                appointment.new = false;
+            }
+        });
 
         const total = await Appointment.countDocuments(query);
 
@@ -427,7 +446,7 @@ const completeAppointment = async (req, res, next) => {
         // Update customer stats
         if (appointment.customer) {
             await appointment.customer.updateAfterVisit(appointment.totalAmount);
-            
+
             // Add loyalty points if provided
             if (loyaltyPoints > 0) {
                 await appointment.customer.addLoyaltyPoints(loyaltyPoints);
@@ -635,29 +654,38 @@ const getAppointmentStats = async (req, res, next) => {
         const userRole = req.user.role;
         const { businessId, startDate, endDate } = req.query;
 
-        // Determine business
-        let business;
+        // Determine business scope
+        let dateFilter = {};
+
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                const business = await Business.findOne({ _id: businessId, admin: userId });
+                if (!business) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Business not found or access denied"
+                    });
+                }
+                dateFilter.business = business._id;
+            } else {
+                // If no businessId provided, fetch for all businesses owned by admin
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                const businessIds = businesses.map(b => b._id);
+                dateFilter.business = { $in: businessIds };
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            if (!manager) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Manager not found"
+                });
+            }
+            dateFilter.business = manager.business;
         }
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found or access denied"
-            });
-        }
-
-        const cacheKey = `business:${business._id}:appointment:stats:${startDate}:${endDate}`;
+        const businessKey = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
+        const cacheKey = `${businessKey}:appointment:stats:${startDate}:${endDate}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -665,8 +693,6 @@ const getAppointmentStats = async (req, res, next) => {
             return res.json({ success: true, source: "cache", data: cachedData });
         }
 
-        // Build date filter
-        const dateFilter = { business: business._id };
         if (startDate && endDate) {
             dateFilter.appointmentDate = {
                 $gte: new Date(startDate),
@@ -733,19 +759,19 @@ const getAppointmentStats = async (req, res, next) => {
 const getBusinessInfoForBooking = async (req, res, next) => {
     try {
         const { businessLink } = req.params;
-        
+
         const business = await Business.findOne({ businessLink, isActive: true })
             .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags _id')
             .populate('staff', 'name role specialization isActive')
             .lean();
-        
+
         if (!business) {
             return res.status(404).json({
                 success: false,
                 message: "Business not found"
             });
         }
-        
+
         // Check if online booking is allowed
         if (!business.settings?.appointmentSettings?.allowOnlineBooking) {
             return res.status(403).json({
@@ -753,17 +779,17 @@ const getBusinessInfoForBooking = async (req, res, next) => {
                 message: "Online booking is not available for this business"
             });
         }
-        
+
         // Fetch services separately
-        const services = await Service.find({ 
-            business: business._id, 
+        const services = await Service.find({
+            business: business._id,
             isActive: true,
-            isAvailableOnline: true 
+            isAvailableOnline: true
         })
             .select('name price duration category serviceType description images')
             .sort({ displayOrder: 1, name: 1 })
             .lean();
-        
+
         return res.json({
             success: true,
             data: {
@@ -784,53 +810,53 @@ const getAvailableSlotsForBooking = async (req, res, next) => {
     try {
         const { businessLink } = req.params;
         const { date, staffId } = req.query;
-        
+
         if (!date) {
             return res.status(400).json({
                 success: false,
                 message: "Date is required"
             });
         }
-        
+
         const business = await Business.findOne({ businessLink, isActive: true })
             .select('settings businessLink')
             .lean();
-        
+
         if (!business) {
             return res.status(404).json({
                 success: false,
                 message: "Business not found"
             });
         }
-        
+
         if (!business.settings?.appointmentSettings?.allowOnlineBooking) {
             return res.status(403).json({
                 success: false,
                 message: "Online booking is not available"
             });
         }
-        
+
         const appointmentDate = new Date(date);
         const startOfDay = new Date(appointmentDate);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(appointmentDate);
         endOfDay.setHours(23, 59, 59, 999);
-        
+
         // Get existing appointments for the date
         const query = {
             business: business._id,
             appointmentDate: { $gte: startOfDay, $lte: endOfDay },
             status: { $nin: ['cancelled', 'no_show'] }
         };
-        
+
         if (staffId) {
             query.staff = staffId;
         }
-        
+
         const existingAppointments = await Appointment.find(query)
             .select('startTime endTime staff')
             .lean();
-        
+
         // Generate available slots
         const { generateAvailableSlots } = require("../utils/appointmentUtils");
         const slots = generateAvailableSlots(
@@ -839,7 +865,7 @@ const getAvailableSlotsForBooking = async (req, res, next) => {
             existingAppointments,
             staffId || null
         );
-        
+
         return res.json({
             success: true,
             data: {
@@ -868,7 +894,7 @@ const bookAppointmentPublic = async (req, res, next) => {
             specialRequests,
             paymentMethod
         } = req.body;
-        
+
         // Validate required fields
         if (!customerInfo || !customerInfo.name || !customerInfo.email || !customerInfo.phone) {
             return res.status(400).json({
@@ -876,21 +902,21 @@ const bookAppointmentPublic = async (req, res, next) => {
                 message: "Customer information (name, email, phone) is required"
             });
         }
-        
+
         if (!appointmentDate || !startTime || !endTime) {
             return res.status(400).json({
                 success: false,
                 message: "Appointment date, start time, and end time are required"
             });
         }
-        
+
         if (!services || services.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: "At least one service is required"
             });
         }
-        
+
         // Validate payment method if provided
         const validPaymentMethods = ['cash', 'card', 'upi', 'netbanking', 'wallet', 'online'];
         if (paymentMethod && !validPaymentMethods.includes(paymentMethod)) {
@@ -899,24 +925,24 @@ const bookAppointmentPublic = async (req, res, next) => {
                 message: `Invalid payment method. Must be one of: ${validPaymentMethods.join(', ')}`
             });
         }
-        
+
         // Get business
         const business = await Business.findOne({ businessLink, isActive: true });
-        
+
         if (!business) {
             return res.status(404).json({
                 success: false,
                 message: "Business not found"
             });
         }
-        
+
         if (!business.settings?.appointmentSettings?.allowOnlineBooking) {
             return res.status(403).json({
                 success: false,
                 message: "Online booking is not available for this business"
             });
         }
-        
+
         // Find or create customer
         let customer = await Customer.findOne({
             business: business._id,
@@ -925,26 +951,26 @@ const bookAppointmentPublic = async (req, res, next) => {
                 { phone: customerInfo.phone }
             ]
         });
-        
+
         // Helper function to parse address string into object
         const parseAddress = (addressString) => {
             if (!addressString) return undefined;
-            
+
             // If already an object, return as is
             if (typeof addressString === 'object' && addressString !== null) {
                 return addressString;
             }
-            
+
             // If it's a string, try to parse it
             if (typeof addressString === 'string') {
                 // Try to extract zip code (6 digits at the end)
                 const zipMatch = addressString.match(/\b(\d{6})\b/);
                 const zipCode = zipMatch ? zipMatch[1] : undefined;
-                
+
                 // Try to extract state (common Indian states)
-                const states = ['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Gujarat', 'Rajasthan', 
-                               'West Bengal', 'Uttar Pradesh', 'Punjab', 'Haryana', 'Andhra Pradesh', 
-                               'Telangana', 'Kerala', 'Madhya Pradesh', 'Bihar', 'Odisha', 'Assam'];
+                const states = ['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Gujarat', 'Rajasthan',
+                    'West Bengal', 'Uttar Pradesh', 'Punjab', 'Haryana', 'Andhra Pradesh',
+                    'Telangana', 'Kerala', 'Madhya Pradesh', 'Bihar', 'Odisha', 'Assam'];
                 let state = undefined;
                 for (const s of states) {
                     if (addressString.includes(s)) {
@@ -952,7 +978,7 @@ const bookAppointmentPublic = async (req, res, next) => {
                         break;
                     }
                 }
-                
+
                 // Try to extract city (common pattern: city name before state)
                 let city = undefined;
                 if (state) {
@@ -964,7 +990,7 @@ const bookAppointmentPublic = async (req, res, next) => {
                         city = parts[parts.length - 1];
                     }
                 }
-                
+
                 return {
                     street: addressString,
                     city: city,
@@ -973,10 +999,10 @@ const bookAppointmentPublic = async (req, res, next) => {
                     zipCode: zipCode
                 };
             }
-            
+
             return undefined;
         };
-        
+
         if (!customer) {
             // Create new customer
             const [firstName, ...lastNameParts] = customerInfo.name.split(' ');
@@ -1006,11 +1032,11 @@ const bookAppointmentPublic = async (req, res, next) => {
             if (customerInfo.gender) customer.gender = customerInfo.gender;
             await customer.save();
         }
-        
+
         // Get or create service (use first service for appointment model which supports single service)
         const serviceData = services[0];
         let service = null;
-        
+
         // Try to find service by ID first
         if (serviceData.serviceId || serviceData._id || serviceData.id) {
             const serviceId = serviceData.serviceId || serviceData._id || serviceData.id;
@@ -1020,7 +1046,7 @@ const bookAppointmentPublic = async (req, res, next) => {
                 isActive: true
             });
         }
-        
+
         // If not found by ID, try to find by name
         if (!service && serviceData.serviceName) {
             service = await Service.findOne({
@@ -1029,7 +1055,7 @@ const bookAppointmentPublic = async (req, res, next) => {
                 isActive: true
             });
         }
-        
+
         // If still not found, create service on the fly
         if (!service && serviceData.serviceName) {
             const servicePayload = {
@@ -1039,7 +1065,7 @@ const bookAppointmentPublic = async (req, res, next) => {
                 serviceType: serviceData.serviceType || 'service',
                 isActive: true
             };
-            
+
             // If pricingOptions provided, use them; otherwise use single price/duration
             if (serviceData.pricingOptions && Array.isArray(serviceData.pricingOptions) && serviceData.pricingOptions.length > 0) {
                 servicePayload.pricingOptions = serviceData.pricingOptions;
@@ -1049,17 +1075,17 @@ const bookAppointmentPublic = async (req, res, next) => {
                 servicePayload.duration = serviceData.duration || 60;
                 servicePayload.pricingType = 'fixed';
             }
-            
+
             service = await Service.create(servicePayload);
         }
-        
+
         if (!service) {
             return res.status(400).json({
                 success: false,
                 message: "Service not found or could not be created"
             });
         }
-        
+
         // Calculate pricing from all services (for display purposes)
         const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
         const totalPrice = services.reduce((sum, s) => {
@@ -1070,7 +1096,7 @@ const bookAppointmentPublic = async (req, res, next) => {
             const { duration } = getServicePriceAndDuration(s);
             return sum + duration;
         }, 0);
-        
+
         // Validate booking
         const { validateAppointmentBooking } = require("../utils/appointmentUtils");
         const appointmentDateObj = new Date(appointmentDate);
@@ -1078,27 +1104,27 @@ const bookAppointmentPublic = async (req, res, next) => {
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(appointmentDateObj);
         endOfDay.setHours(23, 59, 59, 999);
-        
+
         const existingAppointments = await Appointment.find({
             business: business._id,
             appointmentDate: { $gte: startOfDay, $lte: endOfDay },
             status: { $nin: ['cancelled', 'no_show'] }
         });
-        
+
         const validation = validateAppointmentBooking({
             appointmentDate,
             startTime,
             endTime,
             staff: staffId
         }, business, existingAppointments);
-        
+
         if (!validation.isValid) {
             return res.status(400).json({
                 success: false,
                 message: validation.errors.join(', ')
             });
         }
-        
+
         // Create appointment
         const appointment = await Appointment.create({
             business: business._id,
@@ -1120,12 +1146,12 @@ const bookAppointmentPublic = async (req, res, next) => {
             createdBy: customer._id,
             createdByModel: 'Customer'
         });
-        
+
         // Generate confirmation code
         const confirmationCode = appointment.bookingNumber || `CONF${Date.now()}${Math.floor(Math.random() * 1000)}`;
         appointment.bookingNumber = confirmationCode;
         await appointment.save();
-        
+
         // Populate appointment for response
         await appointment.populate('business', 'name branch address phone');
         await appointment.populate('service', 'name price duration');
@@ -1133,7 +1159,7 @@ const bookAppointmentPublic = async (req, res, next) => {
             await appointment.populate('staff', 'name role');
         }
         await appointment.populate('customer', 'firstName lastName email phone');
-        
+
         return res.status(201).json({
             success: true,
             message: "Appointment booked successfully",
@@ -1151,21 +1177,21 @@ const bookAppointmentPublic = async (req, res, next) => {
 const getAppointmentByConfirmationCode = async (req, res, next) => {
     try {
         const { confirmationCode } = req.params;
-        
+
         const appointment = await Appointment.findOne({ bookingNumber: confirmationCode })
             .populate('business', 'name branch address city state country phone email website')
             .populate('service', 'name price duration category serviceType description')
             .populate('staff', 'name role specialization phone email')
             .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
             .lean();
-        
+
         if (!appointment) {
             return res.status(404).json({
                 success: false,
                 message: "Appointment not found"
             });
         }
-        
+
         return res.json({
             success: true,
             data: {
@@ -1183,42 +1209,42 @@ const cancelAppointmentByCode = async (req, res, next) => {
     try {
         const { confirmationCode } = req.params;
         const { reason } = req.body;
-        
+
         const appointment = await Appointment.findOne({ bookingNumber: confirmationCode })
             .populate('business');
-        
+
         if (!appointment) {
             return res.status(404).json({
                 success: false,
                 message: "Appointment not found"
             });
         }
-        
+
         if (appointment.status === 'cancelled') {
             return res.status(400).json({
                 success: false,
                 message: "Appointment is already cancelled"
             });
         }
-        
+
         if (appointment.status === 'completed') {
             return res.status(400).json({
                 success: false,
                 message: "Cannot cancel a completed appointment"
             });
         }
-        
+
         // Check cancellation policy
         const { canCancelAppointment } = require("../utils/appointmentUtils");
         const cancellationCheck = canCancelAppointment(appointment, appointment.business);
-        
+
         if (!cancellationCheck.canCancel) {
             return res.status(400).json({
                 success: false,
                 message: cancellationCheck.reason
             });
         }
-        
+
         // Cancel appointment
         appointment.status = 'cancelled';
         appointment.cancellationReason = reason || 'Cancelled by customer';
@@ -1226,10 +1252,10 @@ const cancelAppointmentByCode = async (req, res, next) => {
         appointment.cancelledBy = appointment.customer;
         appointment.cancelledByModel = 'Customer';
         await appointment.save();
-        
+
         // Invalidate cache
         await deleteCache(`business:${appointment.business}:appointments`);
-        
+
         return res.json({
             success: true,
             message: "Appointment cancelled successfully",

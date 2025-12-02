@@ -367,19 +367,19 @@ const FreeListing = () => {
 
           {/* Statistics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
               <div className="text-3xl sm:text-4xl font-bold mb-2">50K+</div>
               <div className="text-sm sm:text-base text-primary-100">Active Businesses</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
               <div className="text-3xl sm:text-4xl font-bold mb-2">2M+</div>
               <div className="text-sm sm:text-base text-primary-100">Monthly Bookings</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
               <div className="text-3xl sm:text-4xl font-bold mb-2">4.8★</div>
               <div className="text-sm sm:text-base text-primary-100">Customer Rating</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
               <div className="text-3xl sm:text-4xl font-bold mb-2">24/7</div>
               <div className="text-sm sm:text-base text-primary-100">Support Available</div>
             </div>
@@ -393,7 +393,7 @@ const FreeListing = () => {
           {/* Left Column - Form */}
           <div className="lg:col-span-2">
             {/* Progress Steps */}
-            <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+            <div className="mb-6 bg-white   p-4">
               <div className="flex items-center justify-center gap-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
@@ -425,7 +425,7 @@ const FreeListing = () => {
 
             {/* Registration Form */}
             {step === 1 && (
-              <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+              <div className="bg-white  shadow-xl border border-gray-200 overflow-hidden">
                 {/* <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
                   <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                     <FaBuilding className="text-2xl" />
@@ -448,7 +448,7 @@ const FreeListing = () => {
                         onChange={(e) => setRegistrationData(prev => ({ ...prev, companyName: e.target.value }))}
                         placeholder="e.g., ABC Services Pvt Ltd"
                         required
-                        className="w-full px-4 py-3.5 pl-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base transition-all"
+                        className="w-full px-4 py-3.5 pl-12 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base transition-all"
                         autoFocus
                       />
                       <FaBuilding className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -468,7 +468,7 @@ const FreeListing = () => {
                         onChange={(e) => setRegistrationData(prev => ({ ...prev, mobileNumber: e.target.value }))}
                         placeholder="Enter 10-digit mobile number"
                         required
-                        className="w-full px-4 py-3.5 pl-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base transition-all"
+                        className="w-full px-4 py-3.5 pl-12 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base transition-all"
                       />
                       <FaMobileAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
@@ -482,7 +482,7 @@ const FreeListing = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full px-6 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg font-bold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+                      className="w-full px-6 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-bold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
                     >
                       {isSubmitting ? (
                         <>
@@ -506,7 +506,7 @@ const FreeListing = () => {
 
             {/* OTP Verification Form */}
             {step === 2 && (
-              <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+              <div className="bg-white  shadow-xl border border-gray-200 overflow-hidden">
                 {/* <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
                   <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                     <FaShieldAlt className="text-2xl" />
@@ -544,7 +544,7 @@ const FreeListing = () => {
                           value={digit}
                           onChange={(e) => handleOTPChange(index, e.target.value)}
                           onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                          className="w-14 h-14 sm:w-16 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all shadow-sm"
+                          className="w-14 h-14 sm:w-16 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all "
                         />
                       ))}
                     </div>
@@ -553,7 +553,7 @@ const FreeListing = () => {
                       <button
                         type="submit"
                         disabled={isVerifying || otp.join('').length !== 6}
-                        className="w-full px-6 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg font-bold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+                        className="w-full px-6 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-bold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
                       >
                         {isVerifying ? (
                           <>
@@ -610,14 +610,14 @@ const FreeListing = () => {
           <div className="lg:col-span-1 space-y-6">
 
             {/* Why Choose Us */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div className="bg-white  shadow-lg border border-gray-200 p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <FaStar className="text-yellow-500" />
                 Why Choose Us?
               </h3>
               <div className="space-y-4">
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaCheckCircle className="text-primary-600 text-lg" />
                   </div>
                   <div>
@@ -625,8 +625,8 @@ const FreeListing = () => {
                     <p className="text-sm text-gray-600">No hidden charges, no credit card required</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaClock className="text-primary-600 text-lg" />
                   </div>
                   <div>
@@ -634,8 +634,8 @@ const FreeListing = () => {
                     <p className="text-sm text-gray-600">Get started in under 5 minutes</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaChartLine className="text-primary-600 text-lg" />
                   </div>
                   <div>
@@ -643,8 +643,8 @@ const FreeListing = () => {
                     <p className="text-sm text-gray-600">Accept unlimited appointments</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaHeadset className="text-primary-600 text-lg" />
                   </div>
                   <div>
@@ -656,7 +656,7 @@ const FreeListing = () => {
             </div>
 
             {/* Trust Badges */}
-            <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl shadow-lg border border-primary-200 p-6">
+            <div className="bg-gradient-to-br from-primary-50 to-primary-100  shadow-lg border border-primary-200 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <FaLock className="text-primary-600" />
                 Secure & Trusted
@@ -678,7 +678,7 @@ const FreeListing = () => {
             </div>
 
             {/* Testimonial */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div className="bg-white  shadow-lg border border-gray-200 p-6">
               <div className="flex items-center gap-1 mb-3">
                 {[...Array(5)].map((_, i) => (
                   <FaStar key={i} className="text-yellow-400 text-sm" />
@@ -702,7 +702,7 @@ const FreeListing = () => {
 
         {/* Bottom CTA Section */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl shadow-xl p-8 sm:p-12 text-center text-white">
+          <div className="bg-gradient-to-r from-primary-600 to-primary-700  shadow-xl p-8 sm:p-12 text-center text-white">
             <h3 className="text-2xl sm:text-3xl font-bold mb-4">
               Ready to Grow Your Business?
             </h3>
@@ -710,15 +710,15 @@ const FreeListing = () => {
               Join thousands of successful businesses already using our platform
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm">
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 ">
                 <FaCheckCircle />
                 <span>No Setup Fees</span>
               </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 ">
                 <FaCheckCircle />
                 <span>No Monthly Charges</span>
               </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 ">
                 <FaCheckCircle />
                 <span>Cancel Anytime</span>
               </div>
@@ -789,7 +789,7 @@ const FreeListing = () => {
                     name="type"
                     value={listingFormData.type}
                     onChange={handleFormChange}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                       formErrors.type ? 'border-red-500' : 'border-gray-300'
                     }`}
                     required
@@ -813,7 +813,7 @@ const FreeListing = () => {
                       value={listingFormData.name}
                       onChange={handleFormChange}
                       placeholder="Enter your business name"
-                      className={`w-full px-4 py-3 pl-12 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                         formErrors.name ? 'border-red-500' : 'border-gray-300'
                       }`}
                       required
@@ -833,7 +833,7 @@ const FreeListing = () => {
                     value={listingFormData.branch}
                     onChange={handleFormChange}
                     placeholder="e.g., Main Branch, Downtown Branch"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -847,7 +847,7 @@ const FreeListing = () => {
                     onChange={handleFormChange}
                     placeholder="Describe your business..."
                     rows={4}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -872,7 +872,7 @@ const FreeListing = () => {
                       value={listingFormData.email}
                       onChange={handleFormChange}
                       placeholder="business@example.com"
-                      className={`w-full px-4 py-3 pl-12 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                         formErrors.email ? 'border-red-500' : 'border-gray-300'
                       }`}
                       required
@@ -893,7 +893,7 @@ const FreeListing = () => {
                       value={listingFormData.website}
                       onChange={handleFormChange}
                       placeholder="https://www.example.com"
-                      className="w-full px-4 py-3 pl-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-3 pl-12 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                     <FaGlobe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                   </div>
@@ -910,7 +910,7 @@ const FreeListing = () => {
                       onChange={handleFormChange}
                       placeholder="Enter complete address"
                       rows={3}
-                      className={`w-full px-4 py-3 pl-12 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                         formErrors.address ? 'border-red-500' : 'border-gray-300'
                       }`}
                       required
@@ -931,7 +931,7 @@ const FreeListing = () => {
                       value={listingFormData.city}
                       onChange={handleFormChange}
                       placeholder="City"
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                         formErrors.city ? 'border-red-500' : 'border-gray-300'
                       }`}
                       required
@@ -949,7 +949,7 @@ const FreeListing = () => {
                       value={listingFormData.state}
                       onChange={handleFormChange}
                       placeholder="State"
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                         formErrors.state ? 'border-red-500' : 'border-gray-300'
                       }`}
                       required
@@ -968,7 +968,7 @@ const FreeListing = () => {
                     value={listingFormData.zipCode}
                     onChange={handleFormChange}
                     placeholder="Zip Code"
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                       formErrors.zipCode ? 'border-red-500' : 'border-gray-300'
                     }`}
                     required
@@ -994,7 +994,7 @@ const FreeListing = () => {
                     name="category"
                     value={listingFormData.category}
                     onChange={handleFormChange}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                       formErrors.category ? 'border-red-500' : 'border-gray-300'
                     }`}
                     required
@@ -1017,7 +1017,7 @@ const FreeListing = () => {
                     value={listingFormData.tags}
                     onChange={handleFormChange}
                     placeholder="e.g., premium, affordable, eco-friendly (comma separated)"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Separate tags with commas</p>
                 </div>
@@ -1032,7 +1032,7 @@ const FreeListing = () => {
                     onChange={handleFormChange}
                     placeholder="List your main services (one per line)"
                     rows={4}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Enter one service per line</p>
                 </div>
@@ -1041,7 +1041,7 @@ const FreeListing = () => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Documents (Optional)
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+                  <div className="border-2 border-dashed border-gray-300  p-6 text-center hover:border-primary-500 transition-colors">
                     <input
                       type="file"
                       id="document-upload"
@@ -1074,7 +1074,7 @@ const FreeListing = () => {
                         {uploadedDocuments.map((doc) => (
                           <div
                             key={doc.id}
-                            className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3"
+                            className="flex items-center justify-between bg-gray-50 border border-gray-200  p-3"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <FaFile className="text-primary-600 flex-shrink-0" />
@@ -1112,7 +1112,7 @@ const FreeListing = () => {
                   Review Your Information
                 </h3>
 
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div className="bg-gray-50  p-4 space-y-3">
                   <div>
                     <span className="text-sm font-semibold text-gray-600">Business Type:</span>
                     <p className="text-gray-900 capitalize">{listingFormData.type || 'Not provided'}</p>
@@ -1161,7 +1161,7 @@ const FreeListing = () => {
                   )}
                 </div>
 
-                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                <div className="bg-primary-50 border border-primary-200  p-4">
                   <p className="text-sm text-gray-700">
                     <FaCheckCircle className="inline text-primary-600 mr-2" />
                     By submitting, you agree to our Terms & Conditions and Privacy Policy
@@ -1186,7 +1186,7 @@ const FreeListing = () => {
                 {formStep < 4 ? (
                   <button
                     type="submit"
-                    className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+                    className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white  font-semibold hover:bg-primary-700 transition-colors"
                   >
                     <span>Next</span>
                     <FaArrowRight />
@@ -1195,7 +1195,7 @@ const FreeListing = () => {
                   <button
                     type="submit"
                     disabled={isSubmittingForm}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg font-semibold hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-semibold hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
                   >
                     {isSubmittingForm ? (
                       <>
@@ -1249,7 +1249,7 @@ const FreeListing = () => {
           </p>
 
           {/* Professional Note */}
-          <div className="bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl p-6 mb-6">
+          <div className="bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200  p-6 mb-6">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center">
@@ -1282,7 +1282,7 @@ const FreeListing = () => {
           </div>
 
           {/* Contact Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <div className="bg-gray-50  p-4 mb-6">
             <p className="text-sm text-gray-600 mb-2">
               Need immediate assistance?
             </p>
@@ -1310,7 +1310,7 @@ const FreeListing = () => {
                 } 
               })
             }}
-            className="w-full px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg font-semibold hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-semibold hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
           >
             <span>Continue to Dashboard</span>
             <FaArrowRight />

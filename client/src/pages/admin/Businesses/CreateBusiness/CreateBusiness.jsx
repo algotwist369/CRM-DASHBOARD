@@ -327,7 +327,7 @@ const CreateBusiness = () => {
               onChange={handleChange}
                 className={`w-full border ${
                   errors.type ? "border-red-500" : "border-gray-300"
-                } rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500`}
+                }  p-2.5 focus:ring-primary-500 focus:border-primary-500`}
             >
               <option value="">Select Type</option>
               <option value="salon">Salon</option>
@@ -350,7 +350,7 @@ const CreateBusiness = () => {
               <label className="block text-gray-700 font-medium mb-1">
                 Business Name <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center border border-gray-300 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
               <FaBuilding className="text-gray-400 mr-2" />
               <input
                 type="text"
@@ -374,7 +374,7 @@ const CreateBusiness = () => {
               value={formData.branch}
               onChange={handleChange}
               placeholder="e.g., Main Branch"
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
 
@@ -386,7 +386,7 @@ const CreateBusiness = () => {
                 onChange={handleChange}
                 placeholder="Write something about your business"
                 rows={4}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
               ></textarea>
             </div>
           </div>
@@ -407,7 +407,7 @@ const CreateBusiness = () => {
               onChange={handleChange}
                 placeholder="Enter full address"
               rows={2}
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
             ></textarea>
           </div>
 
@@ -424,7 +424,7 @@ const CreateBusiness = () => {
                 value={formData[field]}
                 onChange={handleChange}
                 placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
               />
                 </div>
             ))}
@@ -438,7 +438,7 @@ const CreateBusiness = () => {
                 value={formData.zipCode}
                 onChange={handleChange}
                 placeholder="Enter zip code"
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
 
@@ -446,7 +446,7 @@ const CreateBusiness = () => {
               <label className="block text-gray-700 font-medium mb-1">
                 Phone <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center border border-gray-300 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
               <FaPhone className="text-gray-400 mr-2" />
               <input
                 type="text"
@@ -468,13 +468,13 @@ const CreateBusiness = () => {
                 value={formData.alternatePhone}
                 onChange={handleChange}
                 placeholder="Alternate phone number"
-                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
 
           <div>
             <label className="block text-gray-700 font-medium mb-1">Email</label>
-              <div className="flex items-center border border-gray-300 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
               <FaEnvelope className="text-gray-400 mr-2" />
               <input
                 type="email"
@@ -490,7 +490,7 @@ const CreateBusiness = () => {
 
           <div>
             <label className="block text-gray-700 font-medium mb-1">Website</label>
-              <div className="flex items-center border border-gray-300 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
               <FaGlobe className="text-gray-400 mr-2" />
               <input
                 type="text"
@@ -506,7 +506,7 @@ const CreateBusiness = () => {
 
           <div>
               <label className="block text-gray-700 font-medium mb-1">Google Maps URL</label>
-              <div className="flex items-center border border-gray-300 rounded-lg p-2 focus-within:ring-2 focus-within:ring-primary-500">
+              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
                 <FaMapMarkerAlt className="text-gray-400 mr-2" />
                 <input
                   type="text"
@@ -536,7 +536,7 @@ const CreateBusiness = () => {
                   value={formData.category}
                   onChange={handleChange}
                   placeholder="e.g., Beauty & Wellness"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -547,7 +547,7 @@ const CreateBusiness = () => {
                   value={formData.subCategory}
                   onChange={handleChange}
                   placeholder="e.g., Hair Salon"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
             </div>
@@ -566,12 +566,12 @@ const CreateBusiness = () => {
                     }
                   }}
                   placeholder="Add tag and press Enter"
-                  className="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
                 <button
                   type="button"
                   onClick={() => handleArrayAdd("tags", tagInput, setTagInput)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
                 >
                   Add
                 </button>
@@ -609,12 +609,12 @@ const CreateBusiness = () => {
                     }
                   }}
                   placeholder="Add specialty and press Enter"
-                  className="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
                 <button
                   type="button"
                   onClick={() => handleArrayAdd("specialties", specialtyInput, setSpecialtyInput)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
                 >
                   Add
                 </button>
@@ -652,12 +652,12 @@ const CreateBusiness = () => {
                     }
                   }}
                   placeholder="Add language and press Enter"
-                  className="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
                 <button
                   type="button"
                   onClick={() => handleArrayAdd("languages", languageInput, setLanguageInput)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
                 >
                   Add
                 </button>
@@ -697,7 +697,7 @@ const CreateBusiness = () => {
                   value={formData.images.logo}
                   onChange={handleChange}
                   placeholder="https://example.com/logo.png"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -708,7 +708,7 @@ const CreateBusiness = () => {
                   value={formData.images.banner}
                   onChange={handleChange}
                   placeholder="https://example.com/banner.png"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -719,7 +719,7 @@ const CreateBusiness = () => {
                   value={formData.images.thumbnail}
                   onChange={handleChange}
                   placeholder="https://example.com/thumbnail.png"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
             </div>
@@ -746,7 +746,7 @@ const CreateBusiness = () => {
                       value={formData.socialMedia[platform]}
                       onChange={handleChange}
                       placeholder={`${platform} URL`}
-                      className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
                 ))}
@@ -769,7 +769,7 @@ const CreateBusiness = () => {
                   value={formData.registration.gstNumber}
                   onChange={handleChange}
                   placeholder="GST Number"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -780,7 +780,7 @@ const CreateBusiness = () => {
                   value={formData.registration.panNumber}
                   onChange={handleChange}
                   placeholder="PAN Number"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -791,7 +791,7 @@ const CreateBusiness = () => {
                   value={formData.registration.registrationNumber}
                   onChange={handleChange}
                   placeholder="Registration Number"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -802,7 +802,7 @@ const CreateBusiness = () => {
                   value={formData.registration.licenseNumber}
                   onChange={handleChange}
                   placeholder="License Number"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -813,7 +813,7 @@ const CreateBusiness = () => {
                   value={formData.registration.taxId}
                   onChange={handleChange}
                   placeholder="Tax ID"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -823,7 +823,7 @@ const CreateBusiness = () => {
                   name="registration.registrationDate"
                   value={formData.registration.registrationDate}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               <div>
@@ -833,7 +833,7 @@ const CreateBusiness = () => {
                   name="registration.expiryDate"
                   value={formData.registration.expiryDate}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
             </div>
@@ -874,7 +874,7 @@ const CreateBusiness = () => {
                     value={formData.bankDetails.accountName}
                     onChange={handleChange}
                     placeholder="Account Holder Name"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -885,7 +885,7 @@ const CreateBusiness = () => {
                     value={formData.bankDetails.accountNumber}
                     onChange={handleChange}
                     placeholder="Account Number"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -896,7 +896,7 @@ const CreateBusiness = () => {
                     value={formData.bankDetails.bankName}
                     onChange={handleChange}
                     placeholder="Bank Name"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -907,7 +907,7 @@ const CreateBusiness = () => {
                     value={formData.bankDetails.ifscCode}
                     onChange={handleChange}
                     placeholder="IFSC Code"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -918,7 +918,7 @@ const CreateBusiness = () => {
                     value={formData.bankDetails.branch}
                     onChange={handleChange}
                     placeholder="Branch Name"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -929,7 +929,7 @@ const CreateBusiness = () => {
                     value={formData.bankDetails.upiId}
                     onChange={handleChange}
                     placeholder="example@upi"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -940,7 +940,7 @@ const CreateBusiness = () => {
                     value={formData.bankDetails.qrCode}
                     onChange={handleChange}
                     placeholder="QR Code Image URL"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
@@ -964,7 +964,7 @@ const CreateBusiness = () => {
                     value={formData.capacity.seatingCapacity}
                     onChange={handleChange}
                     placeholder="Number of seats"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -975,7 +975,7 @@ const CreateBusiness = () => {
                     value={formData.capacity.parkingSpaces}
                     onChange={handleChange}
                     placeholder="Number of parking spaces"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -986,7 +986,7 @@ const CreateBusiness = () => {
                     value={formData.capacity.numberOfRooms}
                     onChange={handleChange}
                     placeholder="Number of rooms"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -997,7 +997,7 @@ const CreateBusiness = () => {
                     value={formData.capacity.numberOfFloors}
                     onChange={handleChange}
                     placeholder="Number of floors"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -1008,7 +1008,7 @@ const CreateBusiness = () => {
                     value={formData.capacity.totalArea}
                     onChange={handleChange}
                     placeholder="e.g., 1000 sq ft"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
@@ -1028,12 +1028,12 @@ const CreateBusiness = () => {
                     }
                   }}
                   placeholder="Add feature and press Enter"
-                  className="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
                 <button
                   type="button"
                   onClick={() => handleArrayAdd("features", featureInput, setFeatureInput)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
                 >
                   Add
                 </button>
@@ -1071,12 +1071,12 @@ const CreateBusiness = () => {
                     }
                   }}
                   placeholder="Add amenity and press Enter"
-                  className="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
                 <button
                   type="button"
                   onClick={() => handleArrayAdd("amenities", amenityInput, setAmenityInput)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
                 >
                   Add
                 </button>
@@ -1128,7 +1128,7 @@ const CreateBusiness = () => {
                         },
                       }));
                     }}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -1149,7 +1149,7 @@ const CreateBusiness = () => {
                         },
                       }));
                     }}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -1207,7 +1207,7 @@ const CreateBusiness = () => {
                       },
                     }));
                   }}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="INR">INR - Indian Rupee</option>
                   <option value="USD">USD - US Dollar</option>
@@ -1230,7 +1230,7 @@ const CreateBusiness = () => {
                     }));
                   }}
                   placeholder="Asia/Kolkata"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
             </div>
@@ -1253,7 +1253,7 @@ const CreateBusiness = () => {
                     value={formData.seo.metaTitle}
                     onChange={handleChange}
                     placeholder="SEO Meta Title"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -1264,7 +1264,7 @@ const CreateBusiness = () => {
               onChange={handleChange}
                     placeholder="SEO Meta Description"
               rows={3}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
             ></textarea>
                 </div>
                 <div>
@@ -1290,7 +1290,7 @@ const CreateBusiness = () => {
                         }
                       }}
                       placeholder="Add keyword and press Enter"
-                      className="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                      className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                     />
                     <button
                       type="button"
@@ -1306,7 +1306,7 @@ const CreateBusiness = () => {
                           setKeywordInput("");
                         }
                       }}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                      className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
                     >
                       Add
                     </button>
@@ -1345,7 +1345,7 @@ const CreateBusiness = () => {
                     value={formData.seo.ogImage}
                     onChange={handleChange}
                     placeholder="Open Graph Image URL"
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
@@ -1385,7 +1385,7 @@ const CreateBusiness = () => {
                     name="subscription.plan"
                     value={formData.subscription.plan}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="free">Free</option>
                     <option value="basic">Basic</option>
@@ -1400,7 +1400,7 @@ const CreateBusiness = () => {
                     name="subscription.startDate"
                     value={formData.subscription.startDate}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -1410,7 +1410,7 @@ const CreateBusiness = () => {
                     name="subscription.endDate"
                     value={formData.subscription.endDate}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
@@ -1426,7 +1426,7 @@ const CreateBusiness = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-5xl mx-auto px-4">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white  shadow-lg border border-gray-200 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-6">
             <h2 className="text-2xl font-semibold flex items-center gap-2">
@@ -1501,7 +1501,7 @@ const CreateBusiness = () => {
                 type="button"
                 onClick={handlePrevious}
                 disabled={currentStep === 1}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all ${
+                className={`flex items-center gap-2 px-6 py-2.5  font-medium transition-all ${
                   currentStep === 1
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -1514,7 +1514,7 @@ const CreateBusiness = () => {
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-all"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white  font-medium transition-all"
                 >
                   Next <FaChevronRight />
                 </button>
@@ -1522,7 +1522,7 @@ const CreateBusiness = () => {
           <button
             type="submit"
             disabled={loading}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all disabled:opacity-60"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white  font-medium transition-all disabled:opacity-60"
           >
                   {loading ? "Creating..." : "Create Business"}
           </button>

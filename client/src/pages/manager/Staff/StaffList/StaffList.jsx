@@ -139,7 +139,7 @@ const StaffList = () => {
           </div>
           <Link
             to="/manager/staff/add"
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             <FaPlus />
             <span>Add Staff</span>
@@ -148,7 +148,7 @@ const StaffList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white   border border-gray-200 p-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
@@ -158,7 +158,7 @@ const StaffList = () => {
               placeholder="Search by name or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -168,7 +168,7 @@ const StaffList = () => {
             <select
               value={filterRole}
               onChange={(e) => handleFilterChange(e.target.value)}
-              className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
+              className="pl-10 pr-8 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
             >
               <option value="">All Roles</option>
               <option value="stylist">Stylist</option>
@@ -188,17 +188,17 @@ const StaffList = () => {
           <FaSpinner className="animate-spin text-4xl text-primary-600" />
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600">
+        <div className="bg-red-50 border border-red-200  p-4 text-red-600">
           {error}
         </div>
       ) : staff.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white   border border-gray-200 p-12 text-center">
           <FaUser className="text-6xl text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No staff members found</h3>
           <p className="text-gray-500 mb-6">Get started by adding your first staff member</p>
           <Link
             to="/manager/staff/add"
-            className="inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             <FaPlus />
             <span>Add Staff</span>
@@ -211,7 +211,7 @@ const StaffList = () => {
             {staff.map((member) => (
               <div
                 key={member._id || member.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+                className="bg-white   border border-gray-200 p-5 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -230,14 +230,14 @@ const StaffList = () => {
                   <div className="flex gap-2">
                     <Link
                       to={`/manager/staff/${member._id || member.id}`}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-blue-600 hover:bg-blue-50  transition-colors"
                       title="View Details"
                     >
                       <FaEye />
                     </Link>
                     <Link
                       to={`/manager/staff/${member._id || member.id}/edit`}
-                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-600 hover:bg-gray-50  transition-colors"
                       title="Edit"
                     >
                       <FaEdit />
@@ -245,7 +245,7 @@ const StaffList = () => {
                     <button
                       onClick={() => handleDelete(member._id || member.id)}
                       disabled={deleting === (member._id || member.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      className="p-2 text-red-600 hover:bg-red-50  transition-colors disabled:opacity-50"
                       title="Delete"
                     >
                       {deleting === (member._id || member.id) ? (
@@ -308,7 +308,7 @@ const StaffList = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-xl">
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white ">
               <div className="text-sm text-gray-600">
                 Showing {(pagination.currentPage - 1) * pagination.limit + 1} to{' '}
                 {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of{' '}
@@ -318,17 +318,17 @@ const StaffList = () => {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={pagination.currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
-                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg">
+                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 ">
                   {pagination.currentPage} / {pagination.totalPages}
                 </span>
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={pagination.currentPage >= pagination.totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>

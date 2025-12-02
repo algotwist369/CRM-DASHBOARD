@@ -214,7 +214,7 @@ const AppointmentList = () => {
         </div>
         <button
           onClick={() => navigate('/manager/appointments/calendar')}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
         >
           <FaCalendarAlt />
           Calendar View
@@ -222,7 +222,7 @@ const AppointmentList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white   border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -231,13 +231,13 @@ const AppointmentList = () => {
               placeholder="Search appointments..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Status</option>
             <option value="pending">Pending</option>
@@ -251,12 +251,12 @@ const AppointmentList = () => {
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300  hover:bg-gray-50 transition-colors"
             >
               {sortOrder === 'asc' ? <FaArrowUp /> : <FaArrowDown />}
               Sort
@@ -277,7 +277,7 @@ const AppointmentList = () => {
       </div>
 
       {/* Appointments Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white   border border-gray-200">
         {loading ? (
           <div className="p-12 text-center">
             <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
@@ -356,7 +356,7 @@ const AppointmentList = () => {
                             value={appointment.status || 'pending'}
                             onChange={(e) => quickStatusUpdate(appointment, e.target.value)}
                             disabled={updatingStatus[appointment._id]}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-primary-500 ${getStatusBadge(appointment.status)} ${
+                            className={`px-3 py-1.5  text-xs font-medium capitalize cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-primary-500 ${getStatusBadge(appointment.status)} ${
                               updatingStatus[appointment._id] ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
                             }`}
                             title="Quick status update"
@@ -377,7 +377,7 @@ const AppointmentList = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => navigate(`/manager/appointments/${appointment._id}`)}
-                            className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                            className="p-2 text-primary-600 hover:bg-primary-50  transition-colors"
                             title="View Details"
                           >
                             <FaEye />
@@ -391,7 +391,7 @@ const AppointmentList = () => {
                     notes: ''
                   })
                 }}
-                className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:bg-gray-50  transition-colors"
                 title="Update Status with Notes"
               >
                 <FaEdit />
@@ -416,7 +416,7 @@ const AppointmentList = () => {
                   <button
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page === 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
@@ -426,7 +426,7 @@ const AppointmentList = () => {
                   <button
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page >= pagination.pages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
@@ -440,7 +440,7 @@ const AppointmentList = () => {
       {/* Status Update Modal */}
       {statusUpdateModal.show && statusUpdateModal.appointment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+          <div className="bg-white  shadow-lg p-6 max-w-md w-full">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Appointment Status</h2>
             
             <div className="space-y-4">
@@ -449,7 +449,7 @@ const AppointmentList = () => {
                 <select
                   value={statusUpdateModal.newStatus || statusUpdateModal.appointment.status}
                   onChange={(e) => setStatusUpdateModal(prev => ({ ...prev, newStatus: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
@@ -464,7 +464,7 @@ const AppointmentList = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
                 <textarea
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Add notes about this status update..."
                   onChange={(e) => setStatusUpdateModal(prev => ({ ...prev, notes: e.target.value }))}
                 />
@@ -475,7 +475,7 @@ const AppointmentList = () => {
               <button
                 onClick={confirmStatusUpdate}
                 disabled={updatingStatus[statusUpdateModal.appointment?._id]}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {updatingStatus[statusUpdateModal.appointment?._id] ? (
                   <>
@@ -488,7 +488,7 @@ const AppointmentList = () => {
               </button>
               <button
                 onClick={() => setStatusUpdateModal({ show: false, appointment: null, newStatus: '', notes: '' })}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
