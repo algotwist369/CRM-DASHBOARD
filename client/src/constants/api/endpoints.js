@@ -14,6 +14,7 @@ export const endpoints = {
   // Admin endpoints
   admin: {
     dashboard: `${API_BASE_URL}/admin/dashboard`,
+    stats: `${API_BASE_URL}/admin/stats`,
     // Notifications
     notifications: `${API_BASE_URL}/admin/notifications`,
     unreadCount: `${API_BASE_URL}/admin/notifications/unread-count`,

@@ -10,6 +10,7 @@ router.use(authMiddleware, roleMiddleware(["admin"]));
 
 // ================== Admin Dashboard ==================
 router.get("/dashboard", adminController.getAdminDashboard);
+router.get("/stats", adminController.getAdminStats);
 
 // ================== Admin Profile & Settings ==================
 router.get("/profile", adminController.getAdminProfile);
