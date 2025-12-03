@@ -4,11 +4,20 @@ import { HiOutlineArrowLeft, HiOutlineSave, HiOutlinePlus, HiOutlineTrash } from
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
 
+// Helper to validate ObjectId
+const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
+
 const InvoiceForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [businesses, setBusinesses] = useState([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState(localStorage.getItem('selectedBusinessId') || '');
+
+  // Initialize with validation to prevent CastError from invalid localStorage data
+  const [selectedBusinessId, setSelectedBusinessId] = useState(() => {
+    const stored = localStorage.getItem('selectedBusinessId');
+    return stored && isValidObjectId(stored) ? stored : '';
+  });
+
   const [customers, setCustomers] = useState([]);
   const [services, setServices] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -31,11 +40,26 @@ const InvoiceForm = () => {
       try {
         const response = await adminService.getBusinesses();
         if (response.success) {
-          setBusinesses(response.data || []);
-          if (!selectedBusinessId && response.data && response.data.length > 0) {
-            const firstBusinessId = response.data[0]._id;
-            setSelectedBusinessId(firstBusinessId);
-            localStorage.setItem('selectedBusinessId', firstBusinessId);
+          const businessesData = response.data || [];
+          // Deduplicate businesses to prevent key warnings
+          const uniqueBusinesses = Array.from(new Map(businessesData.map(item => [item._id, item])).values());
+          setBusinesses(uniqueBusinesses);
+
+          // Validate current selectedBusinessId
+          let currentId = selectedBusinessId;
+          const isValidFormat = currentId && isValidObjectId(currentId);
+          const existsInList = uniqueBusinesses.some(b => b._id === currentId);
+
+          if (!isValidFormat || !existsInList) {
+            // If invalid or not in list, default to first business if available
+            if (uniqueBusinesses.length > 0) {
+              currentId = uniqueBusinesses[0]._id;
+              setSelectedBusinessId(currentId);
+              localStorage.setItem('selectedBusinessId', currentId);
+            } else {
+              setSelectedBusinessId('');
+              localStorage.removeItem('selectedBusinessId');
+            }
           }
         }
       } catch (error) {
@@ -47,7 +71,8 @@ const InvoiceForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null') {
+      // Strict validation before making API calls
+      if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) {
         return;
       }
 
@@ -58,26 +83,28 @@ const InvoiceForm = () => {
         ]);
 
         if (customersRes.success) {
-          setCustomers(customersRes.data || []);
+          // Deduplicate customers
+          const uniqueCustomers = Array.from(new Map((customersRes.data || []).map(item => [item._id, item])).values());
+          setCustomers(uniqueCustomers);
         }
         if (servicesRes.success) {
-          setServices(servicesRes.data || []);
+          // Deduplicate services
+          const uniqueServices = Array.from(new Map((servicesRes.data || []).map(item => [item._id, item])).values());
+          setServices(uniqueServices);
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
       }
     };
 
-    if (selectedBusinessId) {
-      fetchData();
-    }
+    fetchData();
   }, [selectedBusinessId]);
 
   // Fetch appointments when customer is selected
   useEffect(() => {
     const fetchAppointments = async () => {
-      if (!formData.customerId || !selectedBusinessId) return;
-      
+      if (!formData.customerId || !selectedBusinessId || !isValidObjectId(selectedBusinessId)) return;
+
       try {
         const response = await adminService.getAppointments({
           businessId: selectedBusinessId,
@@ -113,7 +140,7 @@ const InvoiceForm = () => {
   const updateItem = (index, field, value) => {
     const items = [...formData.items];
     items[index] = { ...items[index], [field]: value };
-    
+
     // If service is selected, update price
     if (field === 'serviceId' && value) {
       const selectedService = services.find(s => s._id === value);
@@ -122,7 +149,7 @@ const InvoiceForm = () => {
         items[index].service = selectedService.name || '';
       }
     }
-    
+
     setFormData({ ...formData, items });
   };
 
@@ -131,11 +158,11 @@ const InvoiceForm = () => {
     const itemDiscount = item.discount || 0;
     return sum + itemSubtotal - itemDiscount;
   }, 0);
-  
+
   const discountAmount = formData.discountType === 'percentage'
     ? (subtotal * (formData.discountValue || 0)) / 100
     : (formData.discountValue || 0);
-  
+
   const taxAmount = ((subtotal - discountAmount) * (formData.taxRate || 18)) / 100;
   const total = subtotal - discountAmount + taxAmount;
 
@@ -163,7 +190,7 @@ const InvoiceForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast.error('Please fix the form errors');
       return;
@@ -175,7 +202,7 @@ const InvoiceForm = () => {
     }
 
     setLoading(true);
-    
+
     try {
       const payload = {
         businessId: selectedBusinessId,
@@ -185,7 +212,8 @@ const InvoiceForm = () => {
           name: item.service,
           quantity: Number(item.quantity),
           price: Number(item.price),
-          discount: Number(item.discount) || 0
+          discount: Number(item.discount) || 0,
+          itemType: 'service'
         })),
         dueDate: formData.dueDate || undefined,
         notes: formData.notes.trim() || undefined,
@@ -233,11 +261,11 @@ const InvoiceForm = () => {
         <p className="text-gray-600 mt-1">Create a new invoice for a customer</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <form onSubmit={handleSubmit} className="bg-white   border border-gray-200">
         <div className="p-6 space-y-6">
           {/* Business Selector */}
           {businesses.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200  p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Business <span className="text-red-500">*</span>
               </label>
@@ -245,7 +273,7 @@ const InvoiceForm = () => {
                 value={selectedBusinessId}
                 onChange={(e) => setSelectedBusinessId(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               >
                 <option value="">Select a business</option>
                 {businesses.map((business) => (
@@ -265,7 +293,7 @@ const InvoiceForm = () => {
                 value={formData.customerId}
                 onChange={(e) => setFormData({ ...formData, customerId: e.target.value, appointmentId: '' })}
                 required
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors.customerId ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors.customerId ? 'border-red-500' : 'border-gray-300'}`}
               >
                 <option value="">Select customer</option>
                 {customers.map((customer) => (
@@ -283,7 +311,7 @@ const InvoiceForm = () => {
                 name="appointmentId"
                 value={formData.appointmentId}
                 onChange={(e) => setFormData({ ...formData, appointmentId: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
                 disabled={!formData.customerId}
               >
                 <option value="">Select appointment</option>
@@ -303,7 +331,7 @@ const InvoiceForm = () => {
                 value={formData.dueDate}
                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -315,7 +343,7 @@ const InvoiceForm = () => {
               <button
                 type="button"
                 onClick={addItem}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg flex items-center gap-2 text-sm hover:bg-primary-700"
+                className="px-4 py-2 bg-primary-600 text-white  flex items-center gap-2 text-sm hover:bg-primary-700"
               >
                 <HiOutlinePlus className="w-4 h-4" />Add Item
               </button>
@@ -323,12 +351,12 @@ const InvoiceForm = () => {
             {formErrors.items && <p className="text-sm text-red-600 mb-2">{formErrors.items}</p>}
             <div className="space-y-3">
               {formData.items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div key={index} className="grid grid-cols-12 gap-4 p-4 bg-gray-50 ">
                   <div className="col-span-5">
                     <select
                       value={item.serviceId}
                       onChange={(e) => updateItem(index, 'serviceId', e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors[`item-${index}-service`] ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors[`item-${index}-service`] ? 'border-red-500' : 'border-gray-300'}`}
                     >
                       <option value="">Select service</option>
                       {services.map((service) => (
@@ -346,7 +374,7 @@ const InvoiceForm = () => {
                       value={item.quantity}
                       onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                       min="1"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors[`item-${index}-quantity`] ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors[`item-${index}-quantity`] ? 'border-red-500' : 'border-gray-300'}`}
                     />
                     {formErrors[`item-${index}-quantity`] && <p className="mt-1 text-xs text-red-600">{formErrors[`item-${index}-quantity`]}</p>}
                   </div>
@@ -358,7 +386,7 @@ const InvoiceForm = () => {
                       onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)}
                       min="0"
                       step="0.01"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors[`item-${index}-price`] ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors[`item-${index}-price`] ? 'border-red-500' : 'border-gray-300'}`}
                     />
                     {formErrors[`item-${index}-price`] && <p className="mt-1 text-xs text-red-600">{formErrors[`item-${index}-price`]}</p>}
                   </div>
@@ -370,14 +398,14 @@ const InvoiceForm = () => {
                       onChange={(e) => updateItem(index, 'discount', parseFloat(e.target.value) || 0)}
                       min="0"
                       step="0.01"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div className="col-span-1">
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="w-full px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+                      className="w-full px-4 py-2 border border-red-300 text-red-600  hover:bg-red-50"
                     >
                       <HiOutlineTrash className="w-4 h-4 mx-auto" />
                     </button>
@@ -395,7 +423,7 @@ const InvoiceForm = () => {
                 name="discountType"
                 value={formData.discountType}
                 onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               >
                 <option value="percentage">Percentage (%)</option>
                 <option value="fixed">Fixed Amount (₹)</option>
@@ -410,7 +438,7 @@ const InvoiceForm = () => {
                 onChange={(e) => setFormData({ ...formData, discountValue: parseFloat(e.target.value) || 0 })}
                 min="0"
                 step="0.01"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
@@ -422,7 +450,7 @@ const InvoiceForm = () => {
                 onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 18 })}
                 min="0"
                 step="0.01"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
@@ -432,7 +460,7 @@ const InvoiceForm = () => {
                 name="discountCode"
                 value={formData.discountCode}
                 onChange={(e) => setFormData({ ...formData, discountCode: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -444,7 +472,7 @@ const InvoiceForm = () => {
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               placeholder="Additional notes for the invoice..."
             />
           </div>
@@ -456,7 +484,7 @@ const InvoiceForm = () => {
               value={formData.termsAndConditions}
               onChange={(e) => setFormData({ ...formData, termsAndConditions: e.target.value })}
               rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               placeholder="Terms and conditions..."
             />
           </div>
@@ -488,14 +516,14 @@ const InvoiceForm = () => {
           <button
             type="button"
             onClick={() => navigate('/admin/invoices')}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 flex items-center gap-2 disabled:opacity-50"
           >
             <HiOutlineSave className="w-5 h-5" />
             {loading ? 'Creating...' : 'Create Invoice'}

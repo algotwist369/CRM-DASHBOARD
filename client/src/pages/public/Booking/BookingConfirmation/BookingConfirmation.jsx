@@ -16,7 +16,8 @@ import {
   FaCreditCard,
   FaMobileAlt,
   FaWallet,
-  FaMoneyBillWave
+  FaMoneyBillWave,
+  FaUserTie // Added for Staff
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
@@ -31,7 +32,7 @@ const BookingConfirmation = () => {
   const [paymentMethod, setPaymentMethod] = useState('cash')
   
   // Online payment discount configuration
-  const ONLINE_PAYMENT_DISCOUNT = 10 // 10% discount
+  const ONLINE_PAYMENT_DISCOUNT = 10 
   const onlinePaymentMethods = ['upi', 'card', 'netbanking', 'wallet', 'online']
   const isOnlinePayment = onlinePaymentMethods.includes(paymentMethod)
 
@@ -51,7 +52,6 @@ const BookingConfirmation = () => {
     const selectedTime = sessionStorage.getItem('selectedTime')
     const customerInfo = JSON.parse(sessionStorage.getItem('customerInfo') || '{}')
 
-    // Debug: Log what's missing
     const missingSteps = []
     if (!businessData) missingSteps.push('Business information')
     if (selectedServices.length === 0) missingSteps.push('Service selection')
@@ -60,14 +60,6 @@ const BookingConfirmation = () => {
     if (!customerInfo || !customerInfo.name) missingSteps.push('Customer information')
 
     if (missingSteps.length > 0) {
-      console.error('Missing booking steps:', missingSteps)
-      console.error('SessionStorage data:', {
-        businessData: !!businessData,
-        selectedServices: selectedServices.length,
-        selectedDate,
-        selectedTime,
-        customerInfo
-      })
       toast.error(`Please complete: ${missingSteps.join(', ')}`)
       navigate(`/${businessLink}`)
       return
@@ -91,6 +83,8 @@ const BookingConfirmation = () => {
     }
   }
 
+  // --- Helpers ---
+
   const formatTime = (time) => {
     if (!time) return ''
     if (time.includes('AM') || time.includes('PM')) return time
@@ -103,11 +97,10 @@ const BookingConfirmation = () => {
 
   const calculateTotalPrice = () => {
     if (!bookingData?.services) return 0
-    const basePrice = bookingData.services.reduce((total, service) => {
+    return bookingData.services.reduce((total, service) => {
       const price = typeof service === 'object' ? (service.price || service.cost || 0) : 0
       return total + price
     }, 0)
-    return basePrice
   }
   
   const calculateDiscountedPrice = () => {
@@ -147,135 +140,77 @@ const BookingConfirmation = () => {
     return 0
   }
 
+  // --- Actions ---
+
   const handleConfirmBooking = async () => {
     if (!bookingData || !business) return
 
     try {
       setSubmitting(true)
 
-      // Helper function to determine serviceType from service name or business type
+      // Service Type Logic
       const getServiceType = (service, businessType) => {
-        if (service.serviceType) {
-          return service.serviceType
-        }
+        if (service.serviceType) return service.serviceType
         
-        // Try to infer from service name
         const serviceName = (typeof service === 'object' 
           ? (service.name || service.serviceName || service.title || '') 
           : service).toLowerCase()
         
-        if (serviceName.includes('hair') || serviceName.includes('cut') || serviceName.includes('color') || serviceName.includes('highlight')) {
-          return 'hair'
-        }
-        if (serviceName.includes('facial') || serviceName.includes('skin')) {
-          return 'facial'
-        }
-        if (serviceName.includes('massage')) {
-          return 'massage'
-        }
-        if (serviceName.includes('nail') || serviceName.includes('manicure') || serviceName.includes('pedicure')) {
-          return 'nail'
-        }
-        if (serviceName.includes('spa')) {
-          return 'spa'
-        }
-        if (serviceName.includes('room')) {
-          return 'room'
-        }
-        if (serviceName.includes('food') || serviceName.includes('meal')) {
-          return 'food'
-        }
+        if (serviceName.match(/hair|cut|color|highlight/)) return 'hair'
+        if (serviceName.match(/facial|skin/)) return 'facial'
+        if (serviceName.match(/massage/)) return 'massage'
+        if (serviceName.match(/nail|manicure|pedicure/)) return 'nail'
+        if (serviceName.match(/spa/)) return 'spa'
+        if (serviceName.match(/room/)) return 'room'
+        if (serviceName.match(/food|meal/)) return 'food'
         
-        // Try to infer from business type
         if (businessType) {
-          const businessTypeLower = businessType.toLowerCase()
-          if (businessTypeLower.includes('salon') || businessTypeLower.includes('hair')) {
-            return 'hair'
-          }
-          if (businessTypeLower.includes('spa')) {
-            return 'spa'
-          }
-          if (businessTypeLower.includes('hotel') || businessTypeLower.includes('room')) {
-            return 'room'
-          }
-          if (businessTypeLower.includes('restaurant') || businessTypeLower.includes('food')) {
-            return 'food'
-          }
+          const bt = businessType.toLowerCase()
+          if (bt.includes('salon') || bt.includes('hair')) return 'hair'
+          if (bt.includes('spa')) return 'spa'
+          if (bt.includes('hotel') || bt.includes('room')) return 'room'
+          if (bt.includes('restaurant') || bt.includes('food')) return 'food'
         }
-        
-        // Default to 'other'
         return 'other'
       }
 
-      // Prepare services array for API
+      // Prepare payload
       const servicesArray = bookingData.services.map(service => {
-        if (typeof service === 'object') {
-          return {
-            serviceId: service._id || service.id || undefined,
-            _id: service._id || service.id || undefined,
-            id: service._id || service.id || undefined,
-            serviceName: service.name || service.serviceName || service.title || 'Service',
-            serviceType: getServiceType(service, business?.type),
-            serviceCategory: service.category || service.serviceCategory || undefined,
-            price: service.price || service.cost || 0,
-            duration: service.duration || service.time || 60
-          }
-        }
-        return { 
-          serviceName: service, 
+        const isObj = typeof service === 'object'
+        return {
+          serviceId: isObj ? (service._id || service.id) : undefined,
+          serviceName: isObj ? (service.name || service.serviceName || service.title) : service,
           serviceType: getServiceType(service, business?.type),
-          price: 0, 
-          duration: 60 
+          price: isObj ? (service.price || service.cost || 0) : 0,
+          duration: isObj ? (service.duration || service.time || 60) : 60
         }
       })
 
-      // Calculate end time
-      // Handle time format (could be "14:30" or "2:30 PM")
+      // Calculate End Time
       let timeStr = bookingData.time.trim()
-      let isPM = false
+      let isPM = /PM|pm/.test(timeStr)
+      timeStr = timeStr.replace(/AM|PM|am|pm/gi, '').trim()
       
-      // Check for AM/PM
-      if (timeStr.includes('PM') || timeStr.includes('pm')) {
-        isPM = true
-        timeStr = timeStr.replace(/PM|pm/gi, '').trim()
-      } else if (timeStr.includes('AM') || timeStr.includes('am')) {
-        timeStr = timeStr.replace(/AM|am/gi, '').trim()
-      }
-      
-      // Extract hours and minutes
       const [hourStr, minuteStr] = timeStr.split(':')
       let hours = parseInt(hourStr, 10) || 0
       const minutes = parseInt(minuteStr, 10) || 0
       
-      // Convert to 24-hour format
-      if (isPM && hours !== 12) {
-        hours += 12
-      } else if (!isPM && hours === 12) {
-        hours = 0
-      }
+      if (isPM && hours !== 12) hours += 12
+      else if (!isPM && hours === 12) hours = 0
       
-      // Calculate end time
-      const startMinutes = hours * 60 + minutes
       const totalMinutes = calculateTotalDuration()
-      const endMinutes = startMinutes + totalMinutes
-      const endHour = Math.floor(endMinutes / 60)
-      const endMinute = endMinutes % 60
-      
-      // Handle hours that go past 24 (next day)
-      const finalHour = endHour % 24
-      const endTime = `${String(finalHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
+      const endMinutes = (hours * 60 + minutes) + totalMinutes
+      const finalHour = Math.floor(endMinutes / 60) % 24
+      const finalMinute = endMinutes % 60
+      const endTime = `${String(finalHour).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`
 
       const bookingPayload = {
         customerInfo: {
           name: bookingData.customer.name,
           email: bookingData.customer.email,
           phone: bookingData.customer.phone,
-          dateOfBirth: bookingData.customer.dateOfBirth || undefined,
-          gender: bookingData.customer.gender || undefined,
-          address: bookingData.customer.address || undefined,
-          preferences: {
-            notes: bookingData.customer.notes || undefined
-          }
+          address: bookingData.customer.address,
+          preferences: { notes: bookingData.customer.notes }
         },
         appointmentDate: bookingData.date,
         startTime: bookingData.time,
@@ -283,7 +218,6 @@ const BookingConfirmation = () => {
         services: servicesArray,
         staffId: bookingData.staff?._id || bookingData.staff?.id || null,
         customerNotes: bookingData.customer.notes || '',
-        specialRequests: bookingData.customer.specialRequests || '',
         paymentMethod: paymentMethod
       }
 
@@ -293,12 +227,9 @@ const BookingConfirmation = () => {
         const appointmentData = result.data.data?.appointment
         const confirmationCode = result.data.data?.confirmationCode || appointmentData?.confirmationCode
 
-        setAppointment({
-          ...appointmentData,
-          confirmationCode
-        })
-
-        // Clear booking data from session
+        setAppointment({ ...appointmentData, confirmationCode })
+        
+        // Clear session
         sessionStorage.removeItem('selectedServices')
         sessionStorage.removeItem('selectedStaff')
         sessionStorage.removeItem('selectedDate')
@@ -320,7 +251,7 @@ const BookingConfirmation = () => {
   const handleCopyConfirmationCode = () => {
     if (appointment?.confirmationCode) {
       navigator.clipboard.writeText(appointment.confirmationCode)
-      toast.success('Confirmation code copied to clipboard!')
+      toast.success('Code copied!')
     }
   }
 
@@ -330,17 +261,27 @@ const BookingConfirmation = () => {
     }
   }
 
-  const handlePrint = () => {
-    window.print()
-  }
+  const handlePrint = () => window.print()
 
+  // --- Render Helpers ---
+
+  // Reusable UI Component
+  const Card = ({ children, className = "" }) => (
+    <div className={`bg-white  border border-gray-100  p-6 ${className}`}>
+      {children}
+    </div>
+  );
+
+  const SectionHeader = ({ title }) => (
+    <h2 className="text-sm uppercase tracking-wide text-gray-500 font-semibold mb-4">{title}</h2>
+  );
+
+  // Loading State
   if (!business || !bookingData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="text-center">
-          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
-          <p className="text-gray-600">Loading booking details...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+        <FaSpinner className="animate-spin text-primary-600 text-4xl mb-4" />
+        <p className="text-gray-600 font-medium animate-pulse">Preparing your booking...</p>
       </div>
     )
   }
@@ -351,87 +292,117 @@ const BookingConfirmation = () => {
   const totalDuration = calculateTotalDuration()
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50/50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-6xl mx-auto">
         {!appointment ? (
           <>
-            {/* Booking Summary Before Confirmation */}
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Confirm Your Booking</h1>
-              <p className="text-gray-600 mt-2">Please review your booking details and confirm</p>
+            {/* Page Header */}
+            <div className="mb-8 max-w-5xl mx-auto">
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Review & Confirm</h1>
+              <p className="text-gray-500 mt-2 text-lg">Please check your details before finalizing.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Booking Details */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Appointment Details */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment Details</h2>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <FaCalendarAlt className="text-primary-600" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-5xl mx-auto">
+              
+              {/* LEFT COLUMN: Details */}
+              <div className="lg:col-span-7 space-y-6">
+                
+                {/* 1. Date & Time */}
+                <Card>
+                  <SectionHeader title="Appointment Time" />
+                  <div className="flex flex-col sm:flex-row gap-6">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="p-3 bg-primary-50  text-primary-600">
+                        <FaCalendarAlt size={20} />
+                      </div>
                       <div>
-                        <p className="text-sm text-gray-600">Date</p>
-                        <p className="text-gray-900 font-medium">
+                        <p className="text-gray-900 font-semibold text-lg">
                           {new Date(bookingData.date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
+                            weekday: 'long', month: 'short', day: 'numeric'
                           })}
                         </p>
+                        <p className="text-gray-500 text-sm">{new Date(bookingData.date).getFullYear()}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <FaClock className="text-primary-600" />
+                    <div className="w-px bg-gray-100 hidden sm:block"></div>
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="p-3 bg-primary-50  text-primary-600">
+                        <FaClock size={20} />
+                      </div>
                       <div>
-                        <p className="text-sm text-gray-600">Time</p>
-                        <p className="text-gray-900 font-medium">{formatTime(bookingData.time)}</p>
-                        <p className="text-xs text-gray-500">Duration: {totalDuration} minutes</p>
+                        <p className="text-gray-900 font-semibold text-lg">{formatTime(bookingData.time)}</p>
+                        <p className="text-gray-500 text-sm">{totalDuration} Minutes</p>
                       </div>
                     </div>
                   </div>
-                </div>
+                </Card>
 
-                {/* Services */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Services</h2>
-                  <div className="space-y-2">
+                {/* 2. Staff Member (NEW SECTION) */}
+                {bookingData.staff && (
+                  <Card>
+                    <SectionHeader title="Selected Professional" />
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600">
+                            <FaUserTie size={20} />
+                        </div>
+                        <div>
+                            <p className="text-gray-900 font-semibold text-lg leading-tight">
+                                {bookingData.staff.name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs font-medium uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full">
+                                    {bookingData.staff.role || 'Staff'}
+                                </span>
+                                {bookingData.staff.specialization && (
+                                    <span className="text-sm text-gray-500">
+                                        • {bookingData.staff.specialization}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                  </Card>
+                )}
+
+                {/* 3. Services */}
+                <Card>
+                  <SectionHeader title="Selected Services" />
+                  <div className="divide-y divide-gray-50">
                     {bookingData.services.map((service, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-900">{getServiceName(service)}</span>
+                      <div key={index} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                        <span className="text-gray-900 font-medium">{getServiceName(service)}</span>
                         {getServicePrice(service) > 0 && (
-                          <span className="text-gray-600 font-medium">₹{getServicePrice(service).toLocaleString()}</span>
+                          <span className="text-gray-600">₹{getServicePrice(service).toLocaleString()}</span>
                         )}
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
 
-                {/* Customer Information */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Information</h2>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
+                {/* 4. Customer Info */}
+                <Card>
+                  <SectionHeader title="Your Details" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
+                    <div className="flex items-center gap-3">
                       <FaUser className="text-gray-400" />
-                      <span className="text-gray-900">{bookingData.customer.name}</span>
+                      <span className="text-gray-900 font-medium">{bookingData.customer.name}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <FaEnvelope className="text-gray-400" />
-                      <span className="text-gray-900">{bookingData.customer.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <FaPhone className="text-gray-400" />
                       <span className="text-gray-900">{bookingData.customer.phone}</span>
                     </div>
+                    <div className="flex items-center gap-3 md:col-span-2">
+                      <FaEnvelope className="text-gray-400" />
+                      <span className="text-gray-900">{bookingData.customer.email}</span>
+                    </div>
                   </div>
-                </div>
+                </Card>
               </div>
 
-              {/* Summary & Confirm */}
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
+              {/* RIGHT COLUMN: Payment & Actions */}
+              <div className="lg:col-span-5 space-y-6">
+                <Card className="sticky top-6 border-primary-100 ring-4 ring-gray-50/50">
+                  <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Summary</h2>
                   
                   <div className="space-y-3 mb-4">
                     {isOnlinePayment && (
@@ -484,195 +455,176 @@ const BookingConfirmation = () => {
                         ₹{basePrice.toLocaleString()}
                       </span>
                     </div>
+                    
                     {isOnlinePayment && (
-                      <>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-green-600 font-medium">Discount ({ONLINE_PAYMENT_DISCOUNT}%)</span>
-                          <span className="text-green-600 font-semibold">-₹{discount.toLocaleString()}</span>
-                        </div>
-                        <div className="border-t border-gray-200 pt-2 mt-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-700 font-semibold">Final Price</span>
-                            <span className="text-xl font-bold text-green-600">₹{finalPrice.toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    {!isOnlinePayment && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-700 font-semibold">Total Price</span>
-                        <span className="text-xl font-bold text-green-600">₹{basePrice.toLocaleString()}</span>
+                      <div className="flex justify-between text-green-600 font-medium">
+                        <span className="flex items-center gap-2">
+                          Discount <span className="text-[10px] bg-green-100 px-1.5 py-0.5  font-bold uppercase">{ONLINE_PAYMENT_DISCOUNT}% OFF</span>
+                        </span>
+                        <span>-₹{discount.toLocaleString()}</span>
                       </div>
                     )}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Duration</span>
-                      <span className="text-gray-900">{totalDuration} minutes</span>
+
+                    <div className="pt-3 mt-1 border-t border-gray-200 flex justify-between items-end">
+                      <span className="text-gray-900 font-semibold">Total to Pay</span>
+                      <span className="text-2xl font-bold text-gray-900">
+                        ₹{isOnlinePayment ? finalPrice.toLocaleString() : basePrice.toLocaleString()}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Payment Method Selection */}
-                  <div className="border-t border-gray-200 pt-4 mb-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Method</h3>
-                    <div className="grid grid-cols-2 gap-2">
+                  {/* Payment Methods */}
+                  <div className="mb-6">
+                    <label className="block text-xs font-bold uppercase text-gray-500 mb-3 tracking-wide">Select Payment Method</label>
+                    <div className="grid grid-cols-2 gap-3">
                       {[
                         { value: 'cash', label: 'Cash', icon: FaMoneyBillWave, isOnline: false },
-                        { value: 'upi', label: 'UPI', icon: FaMobileAlt, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
-                        { value: 'card', label: 'Card', icon: FaCreditCard, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
-                        { value: 'wallet', label: 'Wallet', icon: FaWallet, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
-                        { value: 'netbanking', label: 'Net Banking', icon: FaCreditCard, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` },
-                        { value: 'online', label: 'Online', icon: FaMobileAlt, isOnline: true, badge: `${ONLINE_PAYMENT_DISCOUNT}% OFF` }
+                        { value: 'upi', label: 'UPI', icon: FaMobileAlt, isOnline: true },
+                        { value: 'card', label: 'Card', icon: FaCreditCard, isOnline: true },
+                        { value: 'wallet', label: 'Wallet', icon: FaWallet, isOnline: true },
+                        { value: 'netbanking', label: 'Net Bank', icon: FaCreditCard, isOnline: true },
+                        { value: 'online', label: 'Other', icon: FaMobileAlt, isOnline: true }
                       ].map((method) => {
                         const Icon = method.icon
                         const isSelected = paymentMethod === method.value
-                        const isOnlineMethod = method.isOnline
                         return (
                           <button
                             key={method.value}
                             type="button"
                             onClick={() => setPaymentMethod(method.value)}
-                            className={`relative flex items-center gap-2 p-2.5 rounded-lg border-2 transition-all text-sm ${
-                              isSelected
-                                ? isOnlineMethod
-                                  ? 'border-green-500 bg-green-50 text-green-700 font-semibold'
-                                  : 'border-primary-600 bg-primary-50 text-primary-700 font-semibold'
-                                : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50 text-gray-700'
-                            }`}
+                            className={`
+                              relative flex flex-col items-center justify-center gap-2 p-3  border transition-all duration-200 h-20
+                              ${isSelected 
+                                ? 'border-primary-600 bg-primary-50 text-primary-700 ring-1 ring-primary-600' 
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600'
+                              }
+                            `}
                           >
-                            <Icon className={`${isSelected ? (isOnlineMethod ? 'text-green-600' : 'text-primary-600') : 'text-gray-500'}`} />
-                            <span className="flex-1 text-left">{method.label}</span>
-                            {method.badge && (
-                              <span className="absolute -top-1.5 -right-1.5 bg-green-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
-                                {method.badge}
-                              </span>
+                            <Icon className={isSelected ? 'text-primary-600' : 'text-gray-400'} size={20} />
+                            <span className="text-xs font-semibold">{method.label}</span>
+                            {method.isOnline && (
+                               <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                             )}
                           </button>
                         )
                       })}
                     </div>
-                    {isOnlinePayment && (
-                      <div className="mt-3 p-2.5 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-xs text-gray-700">
-                          Discount of ₹{discount.toLocaleString()} applied to your booking
-                        </p>
-                      </div>
-                    )}
-                    {!isOnlinePayment && paymentMethod === 'cash' && (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-xs font-medium text-gray-900 mb-2">
-                          Online Payment Discount Available
-                        </p>
-                        <div className="bg-white rounded p-2 border border-gray-200 mb-2">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-gray-600">Cash:</span>
-                            <span className="font-medium text-gray-900">₹{basePrice.toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-600">Online:</span>
-                            <span className="font-semibold text-green-600">₹{finalPrice.toLocaleString()}</span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-600">
-                          Get {ONLINE_PAYMENT_DISCOUNT}% off with UPI, Card, Wallet, Net Banking, or Online payment
-                        </p>
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-500 mt-2">
-                      Payment will be collected at the time of service
-                    </p>
                   </div>
 
+                  {/* Discount Nudge */}
+                  {!isOnlinePayment && paymentMethod === 'cash' && (
+                    <div className="bg-blue-50 border border-blue-100  p-3 mb-6 flex gap-3 items-start">
+                      <div className="bg-blue-100 p-1.5 rounded-full text-blue-600 shrink-0 mt-0.5">
+                        <FaDollarSign size={12} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-blue-900">Save ₹{discount.toLocaleString()}</p>
+                        <p className="text-xs text-blue-700 mt-0.5">Pay online now to save {ONLINE_PAYMENT_DISCOUNT}% on your booking.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
                   <button
                     onClick={handleConfirmBooking}
                     disabled={submitting}
-                    className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="w-full py-4 bg-gray-900 text-white  hover:bg-black disabled:opacity-70 disabled:cursor-not-allowed transition-all font-semibold text-lg  hover: flex items-center justify-center gap-3 transform active:scale-[0.99]"
                   >
                     {submitting ? (
-                      <>
-                        <FaSpinner className="animate-spin" />
-                        Booking...
-                      </>
+                      <><FaSpinner className="animate-spin" /> Processing...</>
                     ) : (
-                      <>
-                        Confirm Booking
-                        <FaCheckCircle />
-                      </>
+                      <>Confirm Booking <FaArrowRight size={16} /></>
                     )}
                   </button>
-                </div>
+                  <p className="text-center text-xs text-gray-400 mt-4">
+                    Payment collected at venue or via online link.
+                  </p>
+                </Card>
               </div>
             </div>
           </>
         ) : (
-          <>
-            {/* Success Confirmation */}
-            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-8 text-center">
-              <FaCheckCircle className="mx-auto text-green-600 text-5xl mb-4" />
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
-              <p className="text-gray-600 mb-6">Your appointment has been successfully booked</p>
-              
-              <div className="bg-gray-50 rounded-lg p-4 mb-6 inline-block">
-                <p className="text-sm text-gray-600 mb-1">Confirmation Code</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-mono font-bold text-primary-600">
-                    {appointment.confirmationCode}
-                  </p>
+          /* --- SUCCESS STATE --- */
+          <div className="max-w-xl mx-auto pt-10">
+            <div className="bg-white   overflow-hidden border border-gray-100">
+              {/* Success Header */}
+              <div className="bg-green-50 p-10 text-center border-b border-green-100">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 ">
+                  <FaCheckCircle className="text-green-600 text-4xl" />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
+                <p className="text-gray-600">Your appointment is successfully scheduled.</p>
+              </div>
+
+              {/* Details Body */}
+              <div className="p-8 space-y-6">
+                
+                {/* Code Box */}
+                <div className="border-2 border-dashed border-gray-200  p-4 flex flex-col items-center bg-gray-50/50">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Confirmation Code</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl font-mono font-bold text-gray-900 tracking-wider">
+                      {appointment.confirmationCode}
+                    </span>
+                    <button 
+                      onClick={handleCopyConfirmationCode}
+                      className="text-gray-400 hover:text-primary-600 transition-colors p-2 hover:bg-white "
+                      title="Copy Code"
+                    >
+                      <FaCopy size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Info */}
+                <div className="space-y-4 text-sm">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                    <span className="text-gray-500">Date</span>
+                    <span className="text-gray-900 font-medium text-right">
+                      {new Date(appointment.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'long', day: 'numeric', year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                    <span className="text-gray-500">Time</span>
+                    <span className="text-gray-900 font-medium">{formatTime(appointment.startTime)}</span>
+                  </div>
+                  
+                  {/* Staff in Success View */}
+                  {bookingData.staff && (
+                      <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span className="text-gray-500">Professional</span>
+                        <span className="text-gray-900 font-medium">{bookingData.staff.name}</span>
+                      </div>
+                  )}
+
+                  {appointment.business && (
+                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                      <span className="text-gray-500">Venue</span>
+                      <span className="text-gray-900 font-medium">{appointment.business.name}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Success Actions */}
+                <div className="grid grid-cols-2 gap-4 pt-4">
                   <button
-                    onClick={handleCopyConfirmationCode}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors"
-                    title="Copy confirmation code"
+                    onClick={handlePrint}
+                    className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700  hover:bg-gray-50 font-medium transition-colors"
                   >
-                    <FaCopy />
+                    <FaPrint /> Print
+                  </button>
+                  <button
+                    onClick={handleViewAppointment}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white  hover:bg-primary-700 font-medium transition-colors"
+                  >
+                    Details <FaArrowRight size={12} />
                   </button>
                 </div>
               </div>
-
-              <div className="flex items-center justify-center gap-4">
-                <button
-                  onClick={handleViewAppointment}
-                  className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
-                >
-                  View Appointment
-                  <FaArrowRight />
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  <FaPrint />
-                  Print
-                </button>
-              </div>
             </div>
-
-            {/* Appointment Details */}
-            <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Date & Time</p>
-                  <p className="text-gray-900 font-medium">
-                    {new Date(appointment.appointmentDate).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })} at {formatTime(appointment.startTime)}
-                  </p>
-                </div>
-                {appointment.business && (
-                  <div>
-                    <p className="text-sm text-gray-600">Business</p>
-                    <p className="text-gray-900 font-medium">{appointment.business.name}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                    {appointment.status || 'Pending'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </div>

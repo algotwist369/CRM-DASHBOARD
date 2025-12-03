@@ -148,7 +148,7 @@ const CustomerSegments = () => {
       </div>
 
       {/* Summary */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Segment Overview</h2>
           <div className="text-right">
@@ -188,7 +188,7 @@ const CustomerSegments = () => {
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-lg">
+                  <div className="p-2 bg-white ">
                     {getSegmentIcon(segment.key)}
                   </div>
                   <div>
@@ -211,7 +211,7 @@ const CustomerSegments = () => {
                 </div>
               </div>
 
-              <button className="w-full flex items-center justify-center gap-2 py-2 bg-white/80 hover:bg-white rounded-lg transition-colors text-sm font-medium">
+              <button className="w-full flex items-center justify-center gap-2 py-2 bg-white/80 hover:bg-white  transition-colors text-sm font-medium">
                 <FaEye />
                 {selectedSegmentKey === segment.key ? 'Collapse Details' : 'View Customers'}
               </button>
@@ -278,7 +278,7 @@ const CustomerSegments = () => {
       )}
 
       {/* Segment Insights */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Segment Insights</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>

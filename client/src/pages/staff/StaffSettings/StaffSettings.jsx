@@ -178,7 +178,7 @@ const StaffSettings = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={fetchProfile}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 text-sm font-medium"
               title="Refresh"
             >
               <HiRefresh className="text-white" />
@@ -219,7 +219,7 @@ const StaffSettings = () => {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+      <div className="bg-white  border border-gray-200 p-5 sm:p-6">
         {/* Credentials Tab */}
         {activeTab === 'credentials' && (
           <form onSubmit={handleCredentialsSubmit} className="space-y-6">
@@ -241,7 +241,7 @@ const StaffSettings = () => {
                   onChange={(e) => handleCredentialsChange('username', e.target.value)}
                   className={`w-full pl-10 pr-4 py-2 text-base border ${
                     errors.username ? 'border-red-500' : 'border-gray-300'
-                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                  }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                   placeholder="Enter username"
                 />
               </div>
@@ -267,7 +267,7 @@ const StaffSettings = () => {
                       maxLength={4}
                       className={`w-full pl-10 pr-12 py-2 text-base border ${
                         errors.currentPin ? 'border-red-500' : 'border-gray-300'
-                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                       placeholder="Enter current PIN"
                     />
                     <button
@@ -294,7 +294,7 @@ const StaffSettings = () => {
                       maxLength={4}
                       className={`w-full pl-10 pr-12 py-2 text-base border ${
                         errors.newPin ? 'border-red-500' : 'border-gray-300'
-                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                       placeholder="Enter new 4-digit PIN"
                     />
                     <button
@@ -322,7 +322,7 @@ const StaffSettings = () => {
                       maxLength={4}
                       className={`w-full pl-10 pr-12 py-2 text-base border ${
                         errors.confirmPin ? 'border-red-500' : 'border-gray-300'
-                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                       placeholder="Confirm new PIN"
                     />
                     <button
@@ -355,7 +355,7 @@ const StaffSettings = () => {
                       onChange={(e) => handleCredentialsChange('currentPassword', e.target.value)}
                       className={`w-full pl-10 pr-12 py-2 text-base border ${
                         errors.currentPassword ? 'border-red-500' : 'border-gray-300'
-                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                       placeholder="Enter current password"
                     />
                     <button
@@ -381,7 +381,7 @@ const StaffSettings = () => {
                       onChange={(e) => handleCredentialsChange('newPassword', e.target.value)}
                       className={`w-full pl-10 pr-12 py-2 text-base border ${
                         errors.newPassword ? 'border-red-500' : 'border-gray-300'
-                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                       placeholder="Enter new password"
                     />
                     <button
@@ -408,7 +408,7 @@ const StaffSettings = () => {
                       onChange={(e) => handleCredentialsChange('confirmPassword', e.target.value)}
                       className={`w-full pl-10 pr-12 py-2 text-base border ${
                         errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                       placeholder="Confirm new password"
                     />
                     <button
@@ -429,7 +429,7 @@ const StaffSettings = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                className="px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -445,7 +445,7 @@ const StaffSettings = () => {
               <p className="text-sm text-gray-600">Manage your account security preferences</p>
             </div>
 
-            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <div className="bg-primary-50 border border-primary-200  p-4">
               <div className="flex items-start gap-3">
                 <FaShieldAlt className="text-primary-600 text-lg mt-0.5" />
                 <div>
@@ -459,7 +459,7 @@ const StaffSettings = () => {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between p-4 bg-gray-50  border border-gray-200">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Two-Factor Authentication</p>
                   <p className="text-xs text-gray-600 mt-1">Add an extra layer of security to your account</p>
@@ -467,7 +467,7 @@ const StaffSettings = () => {
                 <span className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">Coming soon</span>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between p-4 bg-gray-50  border border-gray-200">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Login History</p>
                   <p className="text-xs text-gray-600 mt-1">View your recent login activity</p>
@@ -475,7 +475,7 @@ const StaffSettings = () => {
                 <span className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">Coming soon</span>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between p-4 bg-gray-50  border border-gray-200">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Active Sessions</p>
                   <p className="text-xs text-gray-600 mt-1">Manage your active login sessions</p>

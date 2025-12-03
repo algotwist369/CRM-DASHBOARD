@@ -162,7 +162,7 @@ const ExportOptions = ({
           <button
             key={format.value}
             onClick={() => handleOptionChange('format', format.value)}
-            className={`p-4 text-left border rounded-lg transition-all duration-200 ${
+            className={`p-4 text-left border  transition-all duration-200 ${
               exportOptions.format === format.value
                 ? 'bg-primary-50 border-primary-300 ring-2 ring-primary-200'
                 : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50'
@@ -249,7 +249,7 @@ const ExportOptions = ({
       </div>
 
       {exportOptions.emailOptions.enabled && (
-        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 p-4 bg-gray-50 ">
           <Input
             label="Email Recipients"
             name="emailRecipients"
@@ -273,7 +273,7 @@ const ExportOptions = ({
               Email Message
             </label>
             <textarea
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+              className="block w-full  border-gray-300  focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
               rows={3}
               value={exportOptions.emailOptions.message}
               onChange={(e) => handleNestedOptionChange('emailOptions', 'message', e.target.value)}
@@ -301,7 +301,7 @@ const ExportOptions = ({
       </div>
 
       {exportOptions.scheduleOptions.enabled && (
-        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 p-4 bg-gray-50 ">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Frequency
@@ -331,7 +331,7 @@ const ExportOptions = ({
   )
 
   const renderExportSummary = () => (
-    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div className="p-4 bg-blue-50 border border-blue-200 ">
       <h4 className="text-sm font-medium text-blue-900 mb-2">Export Summary</h4>
       <div className="space-y-1 text-sm text-blue-700">
         <p><span className="font-medium">Format:</span> {exportOptions.format.toUpperCase()}</p>

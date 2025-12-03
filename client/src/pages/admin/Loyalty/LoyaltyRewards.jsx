@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { HiOutlineGift, HiOutlinePlus, HiOutlineSearch, HiOutlineRefresh, HiOutlineEye, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 
 const StatsCard = memo(({ title, value, icon, color }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+  <div className="bg-white   border border-gray-200 p-6">
     <div className="flex items-center justify-between">
       <div><p className="text-sm font-medium text-gray-600">{title}</p><p className={`text-2xl font-bold mt-2 ${color}`}>{value}</p></div>
       <div className={`p-3 rounded-full ${color.replace('text', 'bg').replace('600', '100')}`}>{icon}</div>
@@ -52,7 +52,7 @@ const LoyaltyRewards = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><HiOutlineGift className="text-primary-600" />Loyalty Rewards</h1><p className="text-gray-600 mt-1">Manage your loyalty rewards catalog</p></div>
-        <button onClick={() => navigate('/admin/loyalty/rewards/create')} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"><HiOutlinePlus className="w-5 h-5" />Add Reward</button>
+        <button onClick={() => navigate('/admin/loyalty/rewards/create')} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"><HiOutlinePlus className="w-5 h-5" />Add Reward</button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -62,7 +62,7 @@ const LoyaltyRewards = () => {
         <StatsCard title="Total Value" value={`₹${(stats.totalValue/1000).toFixed(1)}K`} icon={<HiOutlineGift className="w-6 h-6 text-yellow-600" />} color="text-yellow-600" />
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white   border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

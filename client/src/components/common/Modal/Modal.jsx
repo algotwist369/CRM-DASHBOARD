@@ -104,7 +104,7 @@ const Modal = ({
     >
       <div 
         ref={modalRef}
-        className={`bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} ${className} transition-shadow ${isDragging ? 'shadow-2xl' : ''}`}
+        className={`bg-white  shadow-xl w-full ${sizeClasses[size]} ${className} transition-shadow ${isDragging ? 'shadow-2xl' : ''}`}
         style={{
           transform: `translate(${position.x}px, ${position.y}px)`,
           cursor: isDragging ? 'grabbing' : 'auto'

@@ -53,7 +53,7 @@ const CheckAppointment = () => {
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8">
+        <div className="bg-white  shadow-lg border border-gray-200 p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Confirmation Code Input */}
             <div>
@@ -70,7 +70,7 @@ const CheckAppointment = () => {
                   value={confirmationCode}
                   onChange={(e) => setConfirmationCode(e.target.value.toUpperCase())}
                   placeholder="Enter your confirmation code (e.g., CONF123456)"
-                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg font-mono uppercase"
+                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg font-mono uppercase"
                   maxLength={50}
                   autoFocus
                 />
@@ -85,7 +85,7 @@ const CheckAppointment = () => {
             <button
               type="submit"
               disabled={loading || !confirmationCode.trim()}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg font-semibold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-semibold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
             >
               {loading ? (
                 <>

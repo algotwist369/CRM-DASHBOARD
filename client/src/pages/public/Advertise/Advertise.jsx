@@ -78,9 +78,9 @@ const Advertise = () => {
               ))}
             </div>
 
-            <div className="bg-primary-50 rounded-xl p-6 border border-primary-200">
+            <div className="bg-primary-50  p-6 border border-primary-200">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-primary-600  flex items-center justify-center">
                   <FaChartLine className="text-white text-xl" />
                 </div>
                 <div>
@@ -89,7 +89,7 @@ const Advertise = () => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-primary-600  flex items-center justify-center">
                   <FaUsers className="text-white text-xl" />
                 </div>
                 <div>
@@ -101,7 +101,7 @@ const Advertise = () => {
           </div>
 
           {/* Contact Form */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-white   border border-gray-200 p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Get Started</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -114,7 +114,7 @@ const Advertise = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -128,7 +128,7 @@ const Advertise = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -141,7 +141,7 @@ const Advertise = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -154,7 +154,7 @@ const Advertise = () => {
                   name="businessName"
                   value={formData.businessName}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -167,7 +167,7 @@ const Advertise = () => {
                   name="website"
                   value={formData.website}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -179,7 +179,7 @@ const Advertise = () => {
                   name="budget"
                   value={formData.budget}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Select budget range</option>
                   <option value="under-500">Under $500</option>
@@ -198,14 +198,14 @@ const Advertise = () => {
                   value={formData.message}
                   onChange={handleChange}
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Tell us about your advertising needs..."
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+                className="w-full px-6 py-3 bg-primary-600 text-white  font-semibold hover:bg-primary-700 transition-colors"
               >
                 Submit Inquiry
               </button>

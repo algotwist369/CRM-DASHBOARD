@@ -108,7 +108,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4 bg-gray-50">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8">
+      <div className="w-full max-w-md bg-white shadow-lg  p-8">
         <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">
           Create Your Account ✨
         </h2>
@@ -117,7 +117,7 @@ const Register = () => {
         </p>
 
         {errors.general && (
-          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md mb-3 border border-red-200">
+          <div className="bg-red-50 text-red-600 text-sm p-3  mb-3 border border-red-200">
             {errors.general}
           </div>
         )}
@@ -130,7 +130,7 @@ const Register = () => {
               <AiOutlineUser className="absolute left-3 top-3.5 text-gray-400 text-lg" />
               <input
                 type="text"
-                className={`w-full border rounded-lg pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
+                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
                   errors.companyName ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
                 }`}
                 placeholder="Enter your company name"
@@ -148,7 +148,7 @@ const Register = () => {
               <AiOutlineUser className="absolute left-3 top-3.5 text-gray-400 text-lg" />
               <input
                 type="text"
-                className={`w-full border rounded-lg pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
+                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
                   errors.name ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
                 }`}
                 placeholder="Enter your full name"
@@ -166,7 +166,7 @@ const Register = () => {
               <AiOutlineMail className="absolute left-3 top-3.5 text-gray-400 text-lg" />
               <input
                 type="email"
-                className={`w-full border rounded-lg pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
+                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
                   errors.email ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
                 }`}
                 placeholder="you@example.com"
@@ -185,7 +185,7 @@ const Register = () => {
               <input
                 type="tel"
                 maxLength={10}
-                className={`w-full border rounded-lg pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
+                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
                   errors.phone ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
                 }`}
                 placeholder="Enter your phone number"
@@ -203,7 +203,7 @@ const Register = () => {
               <AiOutlineLock className="absolute left-3 top-3.5 text-gray-400 text-lg" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                className={`w-full border rounded-lg pl-10 pr-10 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
+                className={`w-full border  pl-10 pr-10 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
                   errors.password ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
                 }`}
                 placeholder="Enter your password"
@@ -224,7 +224,7 @@ const Register = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gray-800 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition duration-200"
+            className="w-full bg-gray-800 text-white py-2  font-medium hover:bg-gray-700 transition duration-200"
           >
             {isLoading ? 'Registering...' : 'Create Account'}
           </button>

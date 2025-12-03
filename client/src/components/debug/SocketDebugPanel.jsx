@@ -70,7 +70,7 @@ const SocketDebugPanel = () => {
     return (
       <button
         onClick={() => setShowPanel(true)}
-        className="fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-gray-800 z-50 text-sm font-medium"
+        className="fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-2  shadow-lg hover:bg-gray-800 z-50 text-sm font-medium"
       >
         🐛 Debug Socket.IO
       </button>
@@ -78,7 +78,7 @@ const SocketDebugPanel = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-2xl border border-gray-200 w-96 max-h-[600px] flex flex-col z-50">
+    <div className="fixed bottom-4 right-4 bg-white  shadow-2xl border border-gray-200 w-96 max-h-[600px] flex flex-col z-50">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">Socket.IO Debug Panel</h3>
@@ -93,7 +93,7 @@ const SocketDebugPanel = () => {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
         {/* Connection Status */}
-        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <div className="bg-gray-50  p-3 space-y-2">
           <div className="font-semibold text-gray-900">Connection Status</div>
           <div className="space-y-1 text-xs">
             <div className="flex items-center justify-between">
@@ -126,7 +126,7 @@ const SocketDebugPanel = () => {
         </div>
 
         {/* Notification Count */}
-        <div className="bg-blue-50 rounded-lg p-3 space-y-2">
+        <div className="bg-blue-50  p-3 space-y-2">
           <div className="font-semibold text-gray-900">Notification Count</div>
           <div className="flex items-center justify-between">
             <span className="text-gray-600 text-xs">Unread Count:</span>
@@ -141,7 +141,7 @@ const SocketDebugPanel = () => {
         </div>
 
         {/* Recent Events */}
-        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <div className="bg-gray-50  p-3 space-y-2">
           <div className="font-semibold text-gray-900">Recent Events ({events.length})</div>
           {events.length === 0 ? (
             <div className="text-xs text-gray-500 text-center py-4">
@@ -165,7 +165,7 @@ const SocketDebugPanel = () => {
         </div>
 
         {/* Actions */}
-        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <div className="bg-gray-50  p-3 space-y-2">
           <div className="font-semibold text-gray-900">Actions</div>
           <div className="space-y-2">
             <button

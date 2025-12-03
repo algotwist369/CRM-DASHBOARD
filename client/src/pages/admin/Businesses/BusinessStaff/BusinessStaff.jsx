@@ -14,6 +14,7 @@ import {
   FaCopy,
 } from "react-icons/fa";
 import businessService from "../../../../services/admin/businessService";
+import BackButton from "../../../../components/common/Button/BackButton";
 
 const ROLE_COLORS = {
   stylist: "bg-blue-100 text-blue-700",
@@ -26,7 +27,6 @@ const ROLE_COLORS = {
 
 const BusinessStaff = () => {
   const { id: businessId } = useParams();
-  const navigate = useNavigate();
   const [staff, setStaff] = useState([]);
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -132,12 +132,7 @@ const BusinessStaff = () => {
     <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-4 sm:mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-3 text-gray-600 hover:text-gray-800 flex items-center gap-2"
-        >
-          <FaChevronLeft /> Back
-        </button>
+        <BackButton />
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
             Business Staff
@@ -159,13 +154,13 @@ const BusinessStaff = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search staff by name or phone..."
-            className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full border border-gray-300  pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         <select
           value={filterRole}
           onChange={(e) => handleFilterChange(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+          className="border border-gray-300  px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
         >
           <option value="">All Roles</option>
           {roleOptions.map((role) => (
@@ -183,7 +178,7 @@ const BusinessStaff = () => {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+        <div className="bg-red-50 border border-red-200  p-4 text-red-700 text-sm">
           {error}
         </div>
       )}
@@ -195,7 +190,7 @@ const BusinessStaff = () => {
             {staff.map((member) => (
               <div
                 key={member._id || member.id}
-                className="bg-white border shadow-sm rounded-xl p-4 sm:p-5 hover:shadow-md transition-shadow"
+                className="bg-white border   p-4 sm:p-5 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -207,9 +202,8 @@ const BusinessStaff = () => {
                         {member.name}
                       </h3>
                       <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          ROLE_COLORS[member.role] || ROLE_COLORS.other
-                        }`}
+                        className={`px-2 py-1 text-xs rounded-full ${ROLE_COLORS[member.role] || ROLE_COLORS.other
+                          }`}
                       >
                         {member.role}
                       </span>
@@ -332,7 +326,7 @@ const BusinessStaff = () => {
           </div>
 
           {staff.length === 0 && (
-            <div className="bg-white border shadow-sm rounded-xl p-12 text-center">
+            <div className="bg-white border   p-12 text-center">
               <FaUser className="text-gray-400 text-5xl mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-700 mb-2">
                 No Staff Found
@@ -347,7 +341,7 @@ const BusinessStaff = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-xl">
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white ">
               <div className="text-sm text-gray-600">
                 Showing{" "}
                 {(pagination.currentPage - 1) * pagination.limit + 1} to{" "}
@@ -361,17 +355,17 @@ const BusinessStaff = () => {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={pagination.currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
-                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg">
+                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 ">
                   {pagination.currentPage} / {pagination.totalPages}
                 </span>
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={pagination.currentPage >= pagination.totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>

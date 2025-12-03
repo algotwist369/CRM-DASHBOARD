@@ -23,11 +23,12 @@ import { ServiceList, ServiceForm, ServiceDetails } from './pages/admin/Services
 import { AppointmentList as AdminAppointmentList, AppointmentForm, AppointmentDetails as AdminAppointmentDetails } from './pages/admin/Appointments'
 import { InvoiceList, InvoiceForm } from './pages/admin/Invoices'
 import { ReviewList, ReviewDetails } from './pages/admin/Reviews'
-import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns } from './pages/admin/Campaigns'
+import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns, AutomatedCampaignForm } from './pages/admin/Campaigns'
 import { LoyaltyRewards, LoyaltyRewardForm, LoyaltyPlans, LoyaltySubscriptions } from './pages/admin/Loyalty'
 import { AdminAnalytics } from './pages/admin/Analytics'
 import AdminReports from './pages/admin/Reports/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings/AdminSettings'
+import AdminProfile from './pages/admin/Profile/AdminProfile'
 
 // Manager Pages
 import ManagerDashboard from './pages/manager/Dashboard/ManagerDashboard'
@@ -217,13 +218,6 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="contact" element={<Contact />} />
                 <Route path="free-listing" element={<FreeListing />} />
-              <Route path="book-demo" element={<BookDemo />} />
-              <Route path="google-my-business-reviews" element={<GoogleMyBusinessReviews />} />
-              <Route path="facebook-reviews" element={<FacebookReviews />} />
-              <Route path="yelp-reviews" element={<YelpReviews />} />
-              <Route path="tripadvisor-reviews" element={<TripAdvisorReviews />} />
-              <Route path="reviews-management" element={<ReviewsManagement />} />
-              <Route path="resources/yelp-playbook" element={<YelpPlaybook />} />
                 <Route path="check-appointment" element={<CheckAppointment />} />
                 <Route path="appointment/:confirmationCode" element={<AppointmentStatus />} />
                 <Route path="book/:businessLink/services" element={<ServiceSelection />} />

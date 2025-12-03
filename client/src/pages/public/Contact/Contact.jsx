@@ -78,12 +78,12 @@ const Contact = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Contact Information */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h2>
               
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaEnvelope className="text-primary-600 text-xl" />
                   </div>
                   <div>
@@ -99,7 +99,7 @@ const Contact = () => {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaPhone className="text-primary-600 text-xl" />
                   </div>
                   <div>
@@ -115,7 +115,7 @@ const Contact = () => {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaMapMarkerAlt className="text-primary-600 text-xl" />
                   </div>
                   <div>
@@ -129,7 +129,7 @@ const Contact = () => {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-primary-100  flex items-center justify-center flex-shrink-0">
                     <FaClock className="text-primary-600 text-xl" />
                   </div>
                   <div>
@@ -145,14 +145,14 @@ const Contact = () => {
             </div>
 
             {/* Support Section */}
-            <div className="bg-primary-50 rounded-xl p-6 border border-primary-200">
+            <div className="bg-primary-50  p-6 border border-primary-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Need Immediate Help?</h3>
               <p className="text-gray-600 text-sm mb-4">
                 Our support team is available 24/7 to assist you with any questions or issues.
               </p>
               <a
                 href="mailto:support@crmdashboard.com"
-                className="inline-block w-full text-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                className="inline-block w-full text-center px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors text-sm font-medium"
               >
                 Contact Support
               </a>
@@ -161,7 +161,7 @@ const Contact = () => {
 
           {/* Contact Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white   border border-gray-200 p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
 
               {submitted ? (
@@ -185,7 +185,7 @@ const Contact = () => {
                         value={formData.name}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="Your full name"
                       />
                     </div>
@@ -200,7 +200,7 @@ const Contact = () => {
                         value={formData.email}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="your.email@example.com"
                       />
                     </div>
@@ -216,7 +216,7 @@ const Contact = () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="+91 123 456 7890"
                       />
                     </div>
@@ -230,7 +230,7 @@ const Contact = () => {
                         name="subject"
                         value={formData.subject}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="What is this regarding?"
                       />
                     </div>
@@ -246,7 +246,7 @@ const Contact = () => {
                       onChange={handleChange}
                       required
                       rows={6}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="Tell us how we can help you..."
                     />
                   </div>
@@ -254,7 +254,7 @@ const Contact = () => {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                   >
                     {submitting ? (
                       <>
@@ -275,7 +275,7 @@ const Contact = () => {
         </div>
 
         {/* FAQ Section */}
-        <div className="mt-16 bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="mt-16 bg-white   border border-gray-200 p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

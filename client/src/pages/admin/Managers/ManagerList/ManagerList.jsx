@@ -87,7 +87,7 @@ const SkeletonRow = memo(() => (
 ));
 
 // Memoized Manager Row Component
-const ManagerRow = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEditing }) => (
+const ManagerRow = memo(({ manager, onView, onEdit, onDelete, onStatusChange, isDeleting, isEditing }) => (
   <tr className="hover:bg-gray-50 transition-colors">
     <td className="px-4 py-3 text-gray-700 font-medium">{manager.name}</td>
     <td className="px-4 py-3">
@@ -115,19 +115,24 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEdit
       </div>
     </td>
     <td className="px-4 py-3">
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-        manager.isActive 
-          ? 'bg-green-100 text-green-800' 
-          : 'bg-red-100 text-red-800'
-      }`}>
-        {manager.isActive ? 'Active' : 'Inactive'}
-      </span>
+      <button
+        onClick={() => onStatusChange(manager)}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${manager.isActive ? 'bg-green-500' : 'bg-gray-200'
+          }`}
+        title={manager.isActive ? "Deactivate Manager" : "Activate Manager"}
+      >
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${manager.isActive ? 'translate-x-5' : 'translate-x-0'
+            }`}
+        />
+      </button>
     </td>
     <td className="px-4 py-3">
       <div className="flex justify-center gap-2">
         <button
           onClick={() => onView(manager)}
-          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+          className="p-2 bg-blue-100 text-blue-600  hover:bg-blue-200 transition-colors"
           title="View Details"
         >
           <FiEye />
@@ -135,7 +140,7 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEdit
         <button
           onClick={() => onEdit(manager)}
           disabled={isEditing}
-          className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 disabled:opacity-50 transition-colors"
+          className="p-2 bg-yellow-100 text-yellow-600  hover:bg-yellow-200 disabled:opacity-50 transition-colors"
           title="Edit Manager"
         >
           <FiEdit />
@@ -143,7 +148,7 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEdit
         <button
           onClick={() => onDelete(manager.id)}
           disabled={isDeleting}
-          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
+          className="p-2 bg-red-100 text-red-600  hover:bg-red-200 disabled:opacity-50 transition-colors"
           title="Delete Manager"
         >
           {isDeleting ? <FaSpinner className="animate-spin" /> : <FiTrash2 />}
@@ -153,20 +158,24 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEdit
   </tr>
 ));
 
-// Mobile Card Component for Responsive Design
-const ManagerCard = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEditing }) => (
-  <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3 shadow-sm">
+// Memoized Mobile Card Component for Responsive Design
+const ManagerCard = memo(({ manager, onView, onEdit, onDelete, onStatusChange, isDeleting, isEditing }) => (
+  <div className="bg-white border border-gray-200  p-4 mb-3 ">
     <div className="flex justify-between items-start mb-3">
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="font-semibold text-gray-800">{manager.name}</h3>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-            manager.isActive 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
-          }`}>
-            {manager.isActive ? 'Active' : 'Inactive'}
-          </span>
+          <button
+            onClick={() => onStatusChange(manager)}
+            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${manager.isActive ? 'bg-green-500' : 'bg-gray-200'
+              }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${manager.isActive ? 'translate-x-4' : 'translate-x-0'
+                }`}
+            />
+          </button>
         </div>
         <div className="flex items-center gap-1 mb-1">
           <p className="text-sm text-gray-500">@{manager.username}</p>
@@ -182,7 +191,7 @@ const ManagerCard = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEdi
       <div className="flex gap-2 ml-2">
         <button
           onClick={() => onView(manager)}
-          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+          className="p-2 bg-blue-100 text-blue-600  hover:bg-blue-200 transition-colors"
           title="View"
         >
           <FiEye className="text-sm" />
@@ -190,7 +199,7 @@ const ManagerCard = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEdi
         <button
           onClick={() => onEdit(manager)}
           disabled={isEditing}
-          className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 disabled:opacity-50 transition-colors"
+          className="p-2 bg-yellow-100 text-yellow-600  hover:bg-yellow-200 disabled:opacity-50 transition-colors"
           title="Edit"
         >
           <FiEdit className="text-sm" />
@@ -198,7 +207,7 @@ const ManagerCard = memo(({ manager, onView, onEdit, onDelete, isDeleting, isEdi
         <button
           onClick={() => onDelete(manager.id)}
           disabled={isDeleting}
-          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 disabled:opacity-50 transition-colors"
+          className="p-2 bg-red-100 text-red-600  hover:bg-red-200 disabled:opacity-50 transition-colors"
           title="Delete"
         >
           {isDeleting ? <FaSpinner className="animate-spin text-sm" /> : <FiTrash2 className="text-sm" />}
@@ -237,7 +246,7 @@ const IconInputField = memo(({ label, name, value, onChange, error, type = "text
     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">
       {label}{required && " *"}
     </label>
-    <div className="flex items-center border border-gray-300 rounded-lg p-1.5 sm:p-2">
+    <div className="flex items-center border border-gray-300  p-1.5 sm:p-2">
       <Icon className="text-gray-400 mr-2 text-sm" />
       <input
         type={type}
@@ -266,7 +275,7 @@ const SelectField = memo(({ label, name, value, onChange, error, options, requir
         name={name}
         value={value}
         onChange={onChange}
-        className={`w-full border ${error ? "border-red-500" : "border-gray-300"} rounded-lg p-1.5 sm:p-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none appearance-none ${Icon ? "pl-10 pr-8" : "px-3"}`}
+        className={`w-full border ${error ? "border-red-500" : "border-gray-300"}  p-1.5 sm:p-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none appearance-none ${Icon ? "pl-10 pr-8" : "px-3"}`}
       >
         <option value="">Select {label}</option>
         {options.map((option) => (
@@ -311,14 +320,15 @@ const ManagerList = () => {
   const [deleting, setDeleting] = useState(null);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  
+
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingManager, setEditingManager] = useState(null);
-  
+
   // Form states
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [formErrors, setFormErrors] = useState({});
@@ -331,7 +341,7 @@ const ManagerList = () => {
   const fetchBusinesses = useCallback(async () => {
     // Skip if already loaded
     if (businesses.length > 0) return;
-    
+
     try {
       const res = await businessService.getBusinesses({ page: 1, limit: 100 });
       if (res.success) {
@@ -347,9 +357,9 @@ const ManagerList = () => {
     try {
       setLoading(true);
       setError(null);
-      const params = { page, limit: 20 };
+      const params = { page, limit };
       if (debouncedSearch) params.search = debouncedSearch;
-      
+
       const res = await adminService.getManagers(params);
       if (res.success) {
         // Response structure: { success, data: [...], pagination: {...} }
@@ -365,7 +375,7 @@ const ManagerList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, limit, debouncedSearch]);
 
   // Only fetch managers on mount
   useEffect(() => {
@@ -381,9 +391,9 @@ const ManagerList = () => {
 
   // Memoize business options for dropdown
   const businessOptions = useMemo(() => {
-    return businesses.map(biz => ({ 
-      value: biz._id || biz.id, 
-      label: biz.name 
+    return businesses.map(biz => ({
+      value: biz._id || biz.id,
+      label: biz.name
     }));
   }, [businesses]);
 
@@ -391,7 +401,7 @@ const ManagerList = () => {
     if (!window.confirm("Are you sure you want to delete this manager?")) {
       return;
     }
-    
+
     try {
       setDeleting(id);
       const res = await adminService.deleteManager(id);
@@ -407,6 +417,37 @@ const ManagerList = () => {
       setDeleting(null);
     }
   };
+
+  const handleStatusChange = useCallback(async (manager) => {
+    try {
+      // Optimistic update
+      setManagers(prev => prev.map(m =>
+        m.id === manager.id ? { ...m, isActive: !m.isActive } : m
+      ));
+
+      const res = await adminService.updateManagerStatus(manager.id, !manager.isActive);
+
+      if (res.success) {
+        // Update with actual server response to ensure sync
+        setManagers(prev => prev.map(m =>
+          m.id === manager.id ? { ...m, isActive: res.data.isActive } : m
+        ));
+        toast.success(`Manager ${res.data.isActive ? 'activated' : 'deactivated'} successfully`);
+      } else {
+        // Revert on failure
+        setManagers(prev => prev.map(m =>
+          m.id === manager.id ? { ...m, isActive: manager.isActive } : m
+        ));
+        toast.error(res.error || "Failed to update status");
+      }
+    } catch (error) {
+      // Revert on error
+      setManagers(prev => prev.map(m =>
+        m.id === manager.id ? { ...m, isActive: manager.isActive } : m
+      ));
+      toast.error("Failed to update status");
+    }
+  }, []);
 
   const handleView = (manager) => {
     navigate(`/admin/managers/${manager.id}`);
@@ -426,7 +467,7 @@ const ManagerList = () => {
     try {
       // Fetch businesses for dropdown
       fetchBusinesses();
-      
+
       const res = await adminService.getManager(manager.id);
       const data = res?.data?.data || res?.data;
       if (data) {
@@ -474,7 +515,7 @@ const ManagerList = () => {
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    
+
     // Handle permissions checkboxes
     if (name.startsWith('permission_')) {
       const permissionName = name.replace('permission_', '');
@@ -488,7 +529,7 @@ const ManagerList = () => {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-    
+
     // Clear error for this field
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: "" }));
@@ -499,12 +540,12 @@ const ManagerList = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = "Name is required";
     if (!formData.username.trim()) errors.username = "Username is required";
-    
+
     const needsPinValidation = isCreateModalOpen || (isEditModalOpen && showPinSection && formData.pin);
     if (needsPinValidation && !/^\d{4}$/.test(formData.pin)) {
       errors.pin = "PIN must be exactly 4 digits";
     }
-    
+
     if (formData.phone && !/^[6-9]\d{9}$/.test(formData.phone)) {
       errors.phone = "Enter a valid 10-digit Indian phone number";
     }
@@ -514,7 +555,7 @@ const ManagerList = () => {
     if (isCreateModalOpen && !formData.businessId.trim()) {
       errors.businessId = "Please select a business";
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [formData, isCreateModalOpen, isEditModalOpen, showPinSection]);
@@ -526,15 +567,15 @@ const ManagerList = () => {
     try {
       setSubmitting(true);
       const submitData = { ...formData };
-      
+
       if (isEdit && (!showPinSection || !submitData.pin)) {
         delete submitData.pin;
       }
-      
-      const res = isEdit 
+
+      const res = isEdit
         ? await adminService.updateManager(editingManager.id || editingManager._id, submitData)
         : await adminService.createManager(submitData);
-        
+
       if (res.success) {
         toast.success(`Manager ${isEdit ? 'updated' : 'created'} successfully!`);
         isEdit ? setIsEditModalOpen(false) : setIsCreateModalOpen(false);
@@ -560,26 +601,26 @@ const ManagerList = () => {
           <p className="text-sm text-gray-600">Manage all business managers</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <button 
-            onClick={handleBack} 
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2  hover:bg-gray-200 transition-colors text-sm font-medium"
             title="Back to Dashboard"
           >
             <FiArrowLeft className="text-base sm:text-lg" />
             <span className="hidden sm:inline">Back</span>
           </button>
-          <button 
-            onClick={handleRefresh} 
+          <button
+            onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2  hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
             title="Refresh List"
           >
             <FiRefreshCw className={`text-base sm:text-lg ${refreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button 
-            onClick={handleAdd} 
-            className="flex items-center gap-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 bg-primary-600 text-white px-3 sm:px-4 py-2  hover:bg-primary-700 transition-colors text-sm font-medium"
           >
             <AiOutlineUserAdd className="text-base sm:text-lg" />
             <span className="hidden sm:inline">Add Manager</span>
@@ -587,26 +628,26 @@ const ManagerList = () => {
         </div>
       </div>
 
-      {error && <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">{error}</div>}
+      {error && <div className="mb-4 bg-red-50 border border-red-200  p-3 text-red-700 text-sm">{error}</div>}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border shadow-sm rounded-xl p-4">
+        <div className="bg-white border   p-4">
           <p className="text-sm text-gray-600 mb-1">Total Managers</p>
           <p className="text-2xl font-bold text-gray-800">{total}</p>
         </div>
-        <div className="bg-white border shadow-sm rounded-xl p-4">
+        <div className="bg-white border   p-4">
           <p className="text-sm text-gray-600 mb-1">Active</p>
           <p className="text-2xl font-bold text-green-600">{total}</p>
         </div>
-        <div className="bg-white border shadow-sm rounded-xl p-4">
+        <div className="bg-white border   p-4">
           <p className="text-sm text-gray-600 mb-1">Per Page</p>
           <p className="text-2xl font-bold text-primary-600">{managers.length}</p>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white border shadow-sm rounded-xl overflow-hidden mb-6">
+      <div className="bg-white border   overflow-hidden mb-6">
         <div className="flex items-center px-4 py-3">
           <FiSearch className="text-gray-400 text-lg sm:text-xl mr-2 sm:mr-3 flex-shrink-0" />
           <input
@@ -628,7 +669,7 @@ const ManagerList = () => {
       </div>
 
       {/* Desktop Table View (hidden on mobile) */}
-      <div className="hidden md:block bg-white border shadow-sm rounded-xl overflow-hidden">
+      <div className="hidden md:block bg-white border   overflow-hidden">
         {loading ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -652,6 +693,7 @@ const ManagerList = () => {
                     onView={handleView}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onStatusChange={handleStatusChange}
                     isDeleting={deleting === manager.id}
                     isEditing={submitting}
                   />
@@ -669,7 +711,7 @@ const ManagerList = () => {
             <FaSpinner className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : managers.length === 0 ? (
-          <div className="bg-white border rounded-xl p-8">
+          <div className="bg-white border  p-8">
             <EmptyState search={search} />
           </div>
         ) : (
@@ -680,6 +722,7 @@ const ManagerList = () => {
               onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onStatusChange={handleStatusChange}
               isDeleting={deleting === manager.id}
               isEditing={submitting}
             />
@@ -688,16 +731,32 @@ const ManagerList = () => {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl p-4 border">
-          <div className="text-sm text-gray-600">
-            Showing {(page - 1) * 20 + 1} to {Math.min(page * 20, total)} of {total} managers
+      {total > 0 && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white  p-4 border">
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600">
+              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} managers
+            </div>
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value));
+                setPage(1); // Reset to first page when changing limit
+              }}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="10">10 per page</option>
+              <option value="20">20 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+            </select>
           </div>
+
           <div className="flex items-center gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
-              className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-gray-100  hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
             >
               Previous
             </button>
@@ -707,7 +766,7 @@ const ManagerList = () => {
             <button
               disabled={page >= totalPages}
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-gray-100  hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
             >
               Next
             </button>
@@ -737,7 +796,7 @@ const ManagerList = () => {
             icon={FiUser}
             required
           />
-          
+
           <IconInputField
             label="Username"
             name="username"
@@ -748,7 +807,7 @@ const ManagerList = () => {
             icon={FiUser}
             required
           />
-          
+
           <IconInputField
             label="4-Digit PIN"
             name="pin"
@@ -760,7 +819,7 @@ const ManagerList = () => {
             icon={FiLock}
             required
           />
-          
+
           <SelectField
             label="Business"
             name="businessId"
@@ -771,7 +830,7 @@ const ManagerList = () => {
             icon={FiBriefcase}
             required
           />
-          
+
           <IconInputField
             label="Email (optional)"
             name="email"
@@ -782,7 +841,7 @@ const ManagerList = () => {
             placeholder="manager@example.com"
             icon={FiMail}
           />
-          
+
           <IconInputField
             label="Phone Number"
             name="phone"
@@ -792,11 +851,11 @@ const ManagerList = () => {
             placeholder="Enter 10-digit number"
             icon={FiPhone}
           />
-          
+
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5 rounded-lg font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5  font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
           >
             {submitting ? "Creating..." : "Create Manager"}
           </button>
@@ -827,7 +886,7 @@ const ManagerList = () => {
             icon={FiUser}
             required
           />
-          
+
           <IconInputField
             label="Username"
             name="username"
@@ -838,7 +897,7 @@ const ManagerList = () => {
             icon={FiUser}
             required
           />
-          
+
           <IconInputField
             label="Email"
             name="email"
@@ -849,7 +908,7 @@ const ManagerList = () => {
             placeholder="manager@example.com"
             icon={FiMail}
           />
-          
+
           <IconInputField
             label="Phone Number"
             name="phone"
@@ -859,7 +918,7 @@ const ManagerList = () => {
             placeholder="Enter 10-digit number"
             icon={FiPhone}
           />
-          
+
           {/* Change PIN Section */}
           <div className="border-t border-gray-200 pt-3">
             <div className="flex items-center justify-between mb-3">
@@ -874,12 +933,12 @@ const ManagerList = () => {
                   setFormData(prev => ({ ...prev, pin: "" }));
                   setFormErrors(prev => ({ ...prev, pin: "" }));
                 }}
-                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700  transition-colors"
               >
                 {showPinSection ? "Cancel" : "Change PIN"}
               </button>
             </div>
-            
+
             {showPinSection && (
               <IconInputField
                 label="New PIN (4 digits)"
@@ -908,7 +967,7 @@ const ManagerList = () => {
                 />
                 <span className="text-sm text-gray-700">Manage Staff</span>
               </label>
-              
+
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -919,7 +978,7 @@ const ManagerList = () => {
                 />
                 <span className="text-sm text-gray-700">View Reports</span>
               </label>
-              
+
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -930,7 +989,7 @@ const ManagerList = () => {
                 />
                 <span className="text-sm text-gray-700">Manage Daily Business</span>
               </label>
-              
+
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -943,11 +1002,11 @@ const ManagerList = () => {
               </label>
             </div>
           </div>
-          
+
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5 rounded-lg font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5  font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
           >
             {submitting ? "Updating..." : "Update Manager"}
           </button>

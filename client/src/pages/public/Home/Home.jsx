@@ -456,7 +456,7 @@ const Home = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-10 sm:py-16 lg:py-24">
@@ -478,12 +478,12 @@ const Home = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={searchTerm ? '' : animatedPlaceholder || PLACEHOLDERS[0]}
-                    className="w-full pl-12 pr-4 py-3.5 rounded-lg text-gray-900 bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base placeholder:text-gray-400"
+                    className="w-full pl-12 pr-4 py-3.5 border text-gray-900 bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base placeholder:text-gray-400"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-6 py-3.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center gap-2 text-base whitespace-nowrap transition-colors"
+                  className="px-6 py-3.5 bg-primary-600 text-white border font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center gap-2 text-base whitespace-nowrap transition-colors"
                 >
                   <FaSearch className="text-sm" />
                   <span>Search</span>
@@ -514,12 +514,12 @@ const Home = () => {
 
             {/* View Mode Buttons */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-1 sm:gap-2 bg-gray-100 rounded-lg p-0.5 sm:p-1">
+              <div className="flex items-center gap-1 sm:gap-2 bg-gray-100 border p-0.5 sm:p-1">
                 <button
                   onClick={() => handleViewModeChange('all')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${viewMode === 'all'
-                      ? 'bg-white text-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 border text-xs sm:text-sm font-medium transition-colors ${viewMode === 'all'
+                    ? 'bg-white text-primary-600 border'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   All
@@ -527,9 +527,9 @@ const Home = () => {
                 <button
                   onClick={() => handleViewModeChange('nearby')}
                   disabled={locationLoading}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${viewMode === 'nearby'
-                      ? 'bg-white text-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 border text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${viewMode === 'nearby'
+                    ? 'bg-white text-primary-600 border'
+                    : 'text-gray-600 hover:text-gray-900'
                     } ${locationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <FaMapMarkerAlt className="text-xs sm:text-sm" />
@@ -547,7 +547,7 @@ const Home = () => {
                     setMaxDistance(Number(e.target.value))
                     fetchNearbyBusinesses(userLocation, Number(e.target.value))
                   }}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-xs sm:text-sm"
+                  className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-xs sm:text-sm"
                 >
                   <option value={2000}>2 km</option>
                   <option value={5000}>5 km</option>
@@ -561,7 +561,7 @@ const Home = () => {
               {viewMode === 'nearby' && userLocation && (
                 <button
                   onClick={handleRefreshLocation}
-                  className="p-1.5 sm:p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="p-1.5 sm:p-2 border border-gray-300 hover:bg-gray-50 transition-colors"
                   title="Refresh location"
                 >
                   <FaSync className="text-gray-600 text-sm sm:text-base" />
@@ -574,7 +574,7 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex-1 w-full sm:w-auto">
               {locationError && viewMode === 'nearby' && (
-                <div className="mb-3 p-2 sm:p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs sm:text-sm text-yellow-800">
+                <div className="mb-3 p-2 sm:p-3 bg-yellow-50   border-yellow-200 border text-xs sm:text-sm text-yellow-800">
                   <FaMapMarkerAlt className="inline mr-2" />
                   {locationError}
                 </div>
@@ -583,7 +583,7 @@ const Home = () => {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2   border-gray-300 border focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
             >
               <option value="">All Types</option>
               <option value="salon">Salon</option>
@@ -614,7 +614,7 @@ const Home = () => {
             </div>
           </div>
         ) : filteredBusinesses.length === 0 ? (
-          <div className="text-center py-8 sm:py-12 bg-white rounded-xl shadow-sm border border-gray-200 px-4">
+          <div className="text-center py-8 sm:py-12 bg-white   border border-gray-200 px-4">
             <FaSearch className="mx-auto text-gray-400 text-3xl sm:text-4xl mb-3 sm:mb-4" />
             <p className="text-gray-600 text-base sm:text-lg mb-2">No businesses found</p>
             <p className="text-gray-500 text-xs sm:text-sm">
@@ -632,7 +632,7 @@ const Home = () => {
                       setSearchTerm('')
                       setFilterType('')
                     }}
-                    className="w-full sm:w-auto px-4 py-2 text-primary-600 hover:text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 py-2 text-primary-600 hover:text-primary-700 border-primary-200 border hover:bg-primary-50 text-sm sm:text-base"
                   >
                     Clear Search
                   </button>
@@ -640,7 +640,7 @@ const Home = () => {
                 {viewMode === 'nearby' && businesses.length === 0 && (
                   <button
                     onClick={() => handleViewModeChange('all')}
-                    className="w-full sm:w-auto px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 py-2 bg-primary-600 text-white border hover:bg-primary-700 text-sm sm:text-base"
                   >
                     View All Businesses
                   </button>
@@ -701,7 +701,7 @@ const Home = () => {
                 return (
                   <div
                     key={business.id || business._id}
-                    className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 overflow-hidden cursor-pointer"
+                    className="bg-white border sm:border border-gray-100 overflow-hidden cursor-pointer"
                     style={{ minHeight: 'auto', maxHeight: 'none' }}
                     onClick={() => navigate(`/${business.businessLink}`)}
                   >
@@ -737,7 +737,7 @@ const Home = () => {
 
                         {business.type && (
                           <div className="absolute top-1.5 left-1.5">
-                            <span className="inline-block px-1.5 py-0.5 bg-primary-600/95 text-white rounded text-[10px] font-semibold capitalize shadow-md">
+                            <span className="inline-block px-1.5 py-0.5 bg-primary-600/95 text-white rounded text-[10px] font-semibold capitalize border">
                               {business.type}
                             </span>
                           </div>
@@ -745,7 +745,7 @@ const Home = () => {
 
                         {viewMode === 'nearby' && business.distanceKm && (
                           <div className="absolute bottom-1.5 right-1.5">
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/95 text-gray-900 rounded text-[10px] font-semibold shadow-md border border-gray-200">
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/95 text-gray-900 rounded text-[10px] font-semibold   border border-gray-200">
                               <FaLocationArrow className="text-primary-600 text-[10px]" />
                               {business.distanceKm} km
                             </span>
@@ -866,7 +866,7 @@ const Home = () => {
                                 e.stopPropagation()
                                 handleBookAppointment(business.businessLink)
                               }}
-                              className="flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-xs transition-colors duration-200 hover:bg-primary-700"
+                              className="flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-2 bg-primary-600 text-white   font-semibold border text-xs transition-colors duration-200 hover:bg-primary-700"
                             >
                               <FaCalendarAlt className="text-xs flex-shrink-0" />
                               <span className="truncate">Book</span>
@@ -876,7 +876,7 @@ const Home = () => {
                               <a
                                 href={`tel:${business.phone}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-[10px] transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
+                                className="flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-blue-50 text-blue-700   border border-blue-200 font-medium text-[10px] transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
                                 title="Call"
                               >
                                 <IoMdCall className="text-[10px] flex-shrink-0" />
@@ -890,7 +890,7 @@ const Home = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-[10px] transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
+                                className="flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-green-50 text-green-700   border border-green-200 font-medium text-[10px] transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
                               >
                                 <FaWhatsapp className="text-[10px] flex-shrink-0" />
                                 <span className="truncate">WA</span>
@@ -902,7 +902,7 @@ const Home = () => {
                     </div>
 
                     {/* Desktop & Tablet Layout */}
-                    <div className="hidden sm:flex sm:flex-col h-full">
+                    <div className="hidden sm:flex sm:flex-col h-full border">
                       <div className="relative h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
                         {desktopImage ? (
                           <img
@@ -934,7 +934,7 @@ const Home = () => {
 
                         {business.type && (
                           <div className="absolute top-2 left-2">
-                            <span className="inline-block px-2 py-1 bg-primary-600/95 text-white rounded text-xs font-semibold capitalize shadow-lg">
+                            <span className="inline-block px-2 py-1 bg-primary-600/95 text-white rounded text-xs font-semibold capitalize border">
                               {business.type}
                             </span>
                           </div>
@@ -942,7 +942,7 @@ const Home = () => {
 
                         {viewMode === 'nearby' && business.distanceKm && (
                           <div className="absolute bottom-2 right-2">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 text-gray-900 rounded text-xs font-semibold shadow-lg border border-gray-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 text-gray-900 rounded text-xs font-semibold   border border-gray-200">
                               <FaLocationArrow className="text-primary-600 text-xs" />
                               {business.distanceKm} km
                             </span>
@@ -1042,7 +1042,7 @@ const Home = () => {
                               e.stopPropagation()
                               handleBookAppointment(business.businessLink)
                             }}
-                            className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold shadow-md text-sm transition-colors duration-200 hover:bg-primary-700"
+                            className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 text-white   font-semibold border text-sm transition-colors duration-200 hover:bg-primary-700"
                           >
                             <FaCalendarAlt className="text-sm" />
                             <span>Book Appointment</span>
@@ -1053,7 +1053,7 @@ const Home = () => {
                               <a
                                 href={`tel:${business.phone}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 font-medium text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
+                                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700   border border-blue-200 font-medium text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300"
                               >
                                 <IoMdCall className="text-xs" />
                                 <span>Call</span>
@@ -1066,7 +1066,7 @@ const Home = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 font-medium text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
+                                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-green-50 text-green-700   border border-green-200 font-medium text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300"
                               >
                                 <FaWhatsapp className="text-xs" />
                                 <span>WhatsApp</span>

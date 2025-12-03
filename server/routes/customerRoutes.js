@@ -24,6 +24,9 @@ router.post("/analytics/target", customerController.getTargetCustomers);
 // Get customer statistics
 router.get("/stats", customerController.getCustomerStats);
 
+// Lookup customer by phone
+router.get("/lookup", customerController.lookupCustomer);
+
 // Get customer by ID
 router.get("/:id", customerController.getCustomerById);
 
@@ -42,4 +45,3 @@ router.post("/:id/loyalty/add", customerController.addLoyaltyPoints);
 router.post("/:id/loyalty/redeem", customerController.redeemLoyaltyPoints);
 
 module.exports = router;
-    

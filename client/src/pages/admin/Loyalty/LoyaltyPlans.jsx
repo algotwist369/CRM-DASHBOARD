@@ -107,7 +107,7 @@ const LoyaltyPlans = () => {
         </div>
         <button
           onClick={() => navigate('/admin/loyalty/plans/create')}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
         >
           <HiOutlinePlus className="w-5 h-5" />
           Create Plan
@@ -123,12 +123,12 @@ const LoyaltyPlans = () => {
             placeholder="Search plans..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
         </div>
         <button
           onClick={fetchPlans}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300  hover:bg-gray-50"
         >
           <HiOutlineRefresh className="w-5 h-5" />
           Refresh
@@ -141,13 +141,13 @@ const LoyaltyPlans = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       ) : plans.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white   border border-gray-200 p-12 text-center">
           <HiOutlineStar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Membership Plans</h3>
           <p className="text-gray-600 mb-6">Create your first membership plan to get started</p>
           <button
             onClick={() => navigate('/admin/loyalty/plans/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
           >
             <HiOutlinePlus className="w-5 h-5" />
             Create Plan
@@ -158,7 +158,7 @@ const LoyaltyPlans = () => {
           {plans.map((plan) => (
             <div 
               key={plan._id} 
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+              className="bg-white   border border-gray-200 p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -198,14 +198,14 @@ const LoyaltyPlans = () => {
               <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
                 <button
                   onClick={() => navigate(`/admin/loyalty/plans/${plan._id}/edit`)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300  hover:bg-gray-50"
                 >
                   <HiOutlinePencil className="w-4 h-4" />
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(plan._id)}
-                  className="px-3 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+                  className="px-3 py-2 border border-red-300 text-red-600  hover:bg-red-50"
                 >
                   <HiOutlineTrash className="w-5 h-5" />
                 </button>

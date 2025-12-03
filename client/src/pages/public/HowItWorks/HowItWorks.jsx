@@ -56,7 +56,7 @@ const HowItWorks = () => {
             const Icon = step.icon
             return (
               <div key={index} className="relative">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 text-center">
+                <div className="bg-white   border border-gray-200 p-6 sm:p-8 text-center">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Icon className="text-primary-600 text-2xl sm:text-3xl" />
                   </div>
@@ -129,7 +129,7 @@ const HowItWorks = () => {
           </p>
           <Link
             to="/register"
-            className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
           >
             Start Free Trial
           </Link>
