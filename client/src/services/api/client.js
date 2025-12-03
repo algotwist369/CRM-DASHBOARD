@@ -27,7 +27,7 @@ const processQueue = (error, token = null) => {
       prom.resolve(token)
     }
   })
-  
+
   failedQueue = []
 }
 
@@ -97,6 +97,11 @@ apiClient.interceptors.response.use(
         case 401:
           // Unauthorized - try to refresh token
           const originalRequest = error.config
+
+          // Don't retry logout requests
+          if (originalRequest.url.includes('/auth/logout')) {
+            return Promise.reject(error)
+          }
 
           // If we're already refreshing, queue this request
           if (isRefreshing) {

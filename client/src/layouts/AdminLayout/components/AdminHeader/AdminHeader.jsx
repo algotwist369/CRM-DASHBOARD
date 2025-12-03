@@ -1,24 +1,57 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../../../../components'
 import { HiMenu, HiX } from 'react-icons/hi'
 import AdminNotificationBell from '../../../../components/notifications/AdminNotificationBell'
+import adminService from '../../../../services/admin/adminService'
+import authService from '../../../../services/auth/authService'
 
 const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [adminProfile, setAdminProfile] = useState({
+    name: 'Admin User',
+    role: 'Administrator',
+    email: ''
+  })
 
-  const handleLogout = () => {
-    // In a real app, this would clear auth tokens and redirect
-    console.log('Logging out...')
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await adminService.getProfile()
+        if (res.success && res.data) {
+          setAdminProfile({
+            name: res.data.data.name || 'Admin User',
+            role: 'Administrator',
+            email: res.data.data.email || ''
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin profile:', error)
+      }
+    }
+
+    fetchProfile()
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout()
+      navigate('/auth/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Force logout even if API fails
+      localStorage.clear()
+      navigate('/auth/login')
+    }
   }
 
   // Function to generate breadcrumb items from current route
   const getBreadcrumbs = () => {
     const pathname = location.pathname
     const pathSegments = pathname.split('/').filter(Boolean)
-    
+
     // Route name mappings
     const routeNames = {
       'admin': 'Admin',
@@ -49,21 +82,21 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
     }
 
     const breadcrumbs = []
-    
+
     // Always start with Admin
     if (pathSegments.length > 0 && pathSegments[0] === 'admin') {
       breadcrumbs.push({ name: 'Admin', path: '/admin' })
-      
+
       // Build breadcrumb for remaining segments
       let currentPath = '/admin'
       for (let i = 1; i < pathSegments.length; i++) {
         const segment = pathSegments[i]
         const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) || /^\d+$/.test(segment)
-        
+
         if (isId) {
           // This is an ID segment - always update path
           currentPath += `/${segment}`
-          
+
           // Check if there's a next segment (like "edit", "analytics", etc.)
           const nextSegment = pathSegments[i + 1]
           if (nextSegment && !(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nextSegment) || /^\d+$/.test(nextSegment))) {
@@ -74,9 +107,9 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
             // This is the last segment or followed by another ID, add "Details"
             const prevSegment = pathSegments[i - 1]
             const prevName = routeNames[prevSegment] || prevSegment.charAt(0).toUpperCase() + prevSegment.slice(1)
-            breadcrumbs.push({ 
-              name: `${prevName} Details`, 
-              path: currentPath 
+            breadcrumbs.push({
+              name: `${prevName} Details`,
+              path: currentPath
             })
           }
         } else {
@@ -86,7 +119,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
           breadcrumbs.push({ name, path: currentPath })
         }
       }
-      
+
       // If on dashboard or just /admin, ensure Dashboard is shown
       if (breadcrumbs.length === 1) {
         if (pathname === '/admin/dashboard' || pathname === '/admin') {
@@ -94,7 +127,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
         }
       }
     }
-    
+
     return breadcrumbs
   }
 
@@ -127,7 +160,7 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
                   <span className="text-gray-900 font-medium">{crumb.name}</span>
                 ) : (
                   <>
-                    <span 
+                    <span
                       className="hover:text-gray-900 cursor-pointer"
                       onClick={() => navigate(crumb.path)}
                     >
@@ -174,13 +207,13 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
             >
               <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <span className="text-white font-medium text-sm">
+                  {adminProfile.name.charAt(0).toUpperCase()}
+                </span>
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium">Admin User</p>
-                <p className="text-xs text-gray-500">Administrator</p>
+                <p className="text-sm font-medium">{adminProfile.name}</p>
+                <p className="text-xs text-gray-500">{adminProfile.role}</p>
               </div>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
