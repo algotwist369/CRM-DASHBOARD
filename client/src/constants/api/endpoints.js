@@ -14,6 +14,7 @@ export const endpoints = {
   // Admin endpoints
   admin: {
     dashboard: `${API_BASE_URL}/admin/dashboard`,
+    stats: `${API_BASE_URL}/admin/stats`,
     // Notifications
     notifications: `${API_BASE_URL}/admin/notifications`,
     unreadCount: `${API_BASE_URL}/admin/notifications/unread-count`,
@@ -31,6 +32,7 @@ export const endpoints = {
     business: (id) => `${API_BASE_URL}/admin/${id}`,
     createBusiness: `${API_BASE_URL}/admin/business`,
     updateBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
+    updateBusinessStatus: (id) => `${API_BASE_URL}/admin/business/${id}/status`,
     deleteBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     businessLink: (id) => `${API_BASE_URL}/admin/business/${id}/link`,
     // Manager Management
@@ -38,6 +40,7 @@ export const endpoints = {
     manager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
     createManager: `${API_BASE_URL}/admin/manager`,
     updateManager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
+    updateManagerStatus: (id) => `${API_BASE_URL}/admin/manager/${id}/status`,
     deleteManager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
   },
 
@@ -99,8 +102,12 @@ export const endpoints = {
     infoByLink: (link) => `${API_BASE_URL}/business/info/${link}`,
     getById: (id) => `${API_BASE_URL}/business/${id}`,
     getStaff: (id) => `${API_BASE_URL}/business/${id}/staff`,
-    getDailyRecords: (id) => `${API_BASE_URL}/business/${id}/daily-business`,
     getAnalytics: (id) => `${API_BASE_URL}/business/${id}/analytics`,
+    // Daily Business Management
+    getDailyRecords: (id) => `${API_BASE_URL}/business/${id}/daily-business`,
+    getDailySummary: (id) => `${API_BASE_URL}/business/${id}/daily-business/summary`,
+    getDailyAnalytics: (id) => `${API_BASE_URL}/business/${id}/daily-business/analytics`,
+
   },
 
   // Customer endpoints
@@ -135,6 +142,8 @@ export const endpoints = {
     list: `${API_BASE_URL}/reports`,
     analytics: `${API_BASE_URL}/reports/analytics`,
     getAnalytics: `${API_BASE_URL}/reports/analytics`,
+    summary: `${API_BASE_URL}/reports/summary`,
+    trends: `${API_BASE_URL}/reports/trends`,
     export: `${API_BASE_URL}/reports/export`,
   },
 
@@ -149,6 +158,7 @@ export const endpoints = {
     featured: `${API_BASE_URL}/services/featured`,
     categories: `${API_BASE_URL}/services/categories`,
     updateInventory: (id) => `${API_BASE_URL}/services/${id}/inventory`,
+    publicByBusiness: (identifier) => `${API_BASE_URL}/services/public/business/${identifier}`,
   },
 
   // Daily Business endpoints
@@ -171,12 +181,12 @@ export const endpoints = {
     delete: (id) => `${API_BASE_URL}/campaigns/${id}`,
     stats: `${API_BASE_URL}/campaigns/stats`,
     audienceCount: `${API_BASE_URL}/campaigns/audience-count`,
-    
+
     // Campaign Actions
     launch: (id) => `${API_BASE_URL}/campaigns/${id}/launch`,
     cancel: (id) => `${API_BASE_URL}/campaigns/${id}/cancel`,
     clone: (id) => `${API_BASE_URL}/campaigns/${id}/clone`,
-    
+
     // Templates
     templates: `${API_BASE_URL}/campaigns/templates`,
     createTemplate: `${API_BASE_URL}/campaigns/templates`,
@@ -184,22 +194,22 @@ export const endpoints = {
     getTemplate: (id) => `${API_BASE_URL}/campaigns/templates/${id}`,
     updateTemplate: (id) => `${API_BASE_URL}/campaigns/templates/${id}`,
     deleteTemplate: (id) => `${API_BASE_URL}/campaigns/templates/${id}`,
-    
+
     // Automated Campaigns
     automated: `${API_BASE_URL}/campaigns/automated`,
     createAutomated: `${API_BASE_URL}/campaigns/automated`,
     triggerAutomated: (id) => `${API_BASE_URL}/campaigns/automated/${id}/trigger`,
-    
+
     // Drip Campaigns
     drip: `${API_BASE_URL}/campaigns/drip`,
     createDrip: `${API_BASE_URL}/campaigns/drip`,
     enrollDrip: (id) => `${API_BASE_URL}/campaigns/drip/${id}/enroll`,
     dripEnrollments: (id) => `${API_BASE_URL}/campaigns/drip/${id}/enrollments`,
-    
+
     // A/B Testing
     startABTest: (id) => `${API_BASE_URL}/campaigns/${id}/ab-test/start`,
     getABTestResults: (id) => `${API_BASE_URL}/campaigns/${id}/ab-test/results`,
-    
+
     // Tracking & Analytics
     generateTrackingLink: `${API_BASE_URL}/campaigns/tracking/generate-link`,
     bestTimeToSend: `${API_BASE_URL}/campaigns/analytics/best-time`,

@@ -135,7 +135,7 @@ Please describe what you were doing when this error occurred:
             </div>
 
             {/* Current Path Info */}
-            <div className="mb-8 p-4 bg-gray-100 rounded-lg">
+            <div className="mb-8 p-4 bg-gray-100 ">
               <p className="text-sm text-gray-600 mb-2">Error occurred on:</p>
               <code className="text-sm font-mono text-gray-800 bg-white px-2 py-1 rounded border">
                 {errorDetails?.path}
@@ -171,7 +171,7 @@ Please describe what you were doing when this error occurred:
               
               {showDetails && (
                 <div className="text-left">
-                  <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto max-h-64">
+                  <div className="bg-gray-900 text-gray-100 p-4  overflow-auto max-h-64">
                     <pre className="text-xs whitespace-pre-wrap">
                       {JSON.stringify(errorDetails, null, 2)}
                     </pre>
@@ -188,7 +188,7 @@ Please describe what you were doing when this error occurred:
             </div>
 
             {/* Help Section */}
-            <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+            <div className="mt-8 p-4 bg-blue-50 ">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Need Immediate Help?</h4>
               <p className="text-sm text-blue-700 mb-3">
                 If this error is preventing you from completing an important task, please contact our support team.
@@ -203,19 +203,19 @@ Please describe what you were doing when this error occurred:
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h3 className="text-sm font-medium text-gray-900 mb-4">Common Solutions</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-left">
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 ">
                   <h4 className="font-medium text-gray-900 mb-1">Refresh the Page</h4>
                   <p className="text-gray-600">Try refreshing your browser to reload the application.</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 ">
                   <h4 className="font-medium text-gray-900 mb-1">Clear Browser Cache</h4>
                   <p className="text-gray-600">Clear your browser's cache and cookies, then try again.</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 ">
                   <h4 className="font-medium text-gray-900 mb-1">Check Internet Connection</h4>
                   <p className="text-gray-600">Ensure you have a stable internet connection.</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 ">
                   <h4 className="font-medium text-gray-900 mb-1">Try Different Browser</h4>
                   <p className="text-gray-600">Switch to a different browser or update your current one.</p>
                 </div>

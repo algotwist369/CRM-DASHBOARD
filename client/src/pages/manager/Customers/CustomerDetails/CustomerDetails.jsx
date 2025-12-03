@@ -238,7 +238,7 @@ const CustomerDetails = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/customers')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -259,7 +259,7 @@ const CustomerDetails = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
           >
             <FaEdit />
             {isEditing ? 'Cancel Edit' : 'Edit'}
@@ -267,7 +267,7 @@ const CustomerDetails = () => {
           {isEditing && (
             <button
               onClick={handleUpdateCustomer}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
             >
               Save Changes
             </button>
@@ -299,7 +299,7 @@ const CustomerDetails = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Customer Info */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h2>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -310,7 +310,7 @@ const CustomerDetails = () => {
                         type="text"
                         value={editForm.name}
                         onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
                       <p className="text-gray-900 flex items-center gap-2">
@@ -326,7 +326,7 @@ const CustomerDetails = () => {
                         type="email"
                         value={editForm.email}
                         onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
                       <p className="text-gray-900 flex items-center gap-2">
@@ -342,7 +342,7 @@ const CustomerDetails = () => {
                         type="tel"
                         value={editForm.phone}
                         onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
                       <p className="text-gray-900 flex items-center gap-2">
@@ -358,7 +358,7 @@ const CustomerDetails = () => {
                         type="date"
                         value={editForm.dateOfBirth}
                         onChange={(e) => setEditForm(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
                       <p className="text-gray-900 flex items-center gap-2">
@@ -373,7 +373,7 @@ const CustomerDetails = () => {
                       <select
                         value={editForm.gender}
                         onChange={(e) => setEditForm(prev => ({ ...prev, gender: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         <option value="">Select</option>
                         <option value="male">Male</option>
@@ -399,7 +399,7 @@ const CustomerDetails = () => {
                             ...prev,
                             address: { ...prev.address, street: e.target.value }
                           }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                         <input
                           type="text"
@@ -409,7 +409,7 @@ const CustomerDetails = () => {
                             ...prev,
                             address: { ...prev.address, city: e.target.value }
                           }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                         <input
                           type="text"
@@ -419,7 +419,7 @@ const CustomerDetails = () => {
                             ...prev,
                             address: { ...prev.address, state: e.target.value }
                           }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                         <input
                           type="text"
@@ -429,7 +429,7 @@ const CustomerDetails = () => {
                             ...prev,
                             address: { ...prev.address, pincode: e.target.value }
                           }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                     ) : (
@@ -445,7 +445,7 @@ const CustomerDetails = () => {
 
             {/* Preferences */}
             {customer.preferences && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Preferences</h2>
                 <div className="space-y-2">
                   {customer.preferences.preferredServices?.length > 0 && (
@@ -472,7 +472,7 @@ const CustomerDetails = () => {
           {/* Stats Sidebar */}
           <div className="space-y-6">
             {/* Quick Stats */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Statistics</h2>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -516,7 +516,7 @@ const CustomerDetails = () => {
 
             {/* Analytics */}
             {analytics && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <FaChartLine />
                   Analytics
@@ -549,7 +549,7 @@ const CustomerDetails = () => {
 
       {/* Timeline Tab */}
       {activeTab === 'timeline' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
             <FaHistory />
             Customer Timeline
@@ -585,7 +585,7 @@ const CustomerDetails = () => {
 
       {/* Appointments Tab */}
       {activeTab === 'appointments' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <FaCalendarAlt className="text-primary-600" />
@@ -593,7 +593,7 @@ const CustomerDetails = () => {
             </h2>
             <button
               onClick={() => navigate(`/manager/appointments?customer=${customerId}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors text-sm"
             >
               <FaPlus />
               New Appointment
@@ -619,7 +619,7 @@ const CustomerDetails = () => {
                 const totalPrice = appointment.finalPrice || appointment.totalPrice || 0
                 
                 return (
-                  <div key={appointment._id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
+                  <div key={appointment._id} className="border border-gray-200  p-5 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
@@ -693,7 +693,7 @@ const CustomerDetails = () => {
 
       {/* Transactions Tab */}
       {activeTab === 'transactions' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <FaDollarSign className="text-green-600" />
@@ -701,7 +701,7 @@ const CustomerDetails = () => {
             </h2>
             <button
               onClick={() => navigate(`/manager/transactions/add?customer=${customerId}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors text-sm"
             >
               <FaPlus />
               New Transaction
@@ -810,7 +810,7 @@ const CustomerDetails = () => {
 
       {/* Notes Tab */}
       {activeTab === 'notes' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
             <FaStickyNote className="text-yellow-600" />
             Customer Notes
@@ -826,7 +826,7 @@ const CustomerDetails = () => {
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="Add a note about this customer (e.g., preferences, special requests, feedback)..."
               rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 mb-3 resize-none"
+              className="w-full px-4 py-3 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 mb-3 resize-none"
             />
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-500">
@@ -835,7 +835,7 @@ const CustomerDetails = () => {
               <button
                 onClick={handleAddNote}
                 disabled={addingNote || !noteText.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {addingNote ? (
                   <>
@@ -858,7 +858,7 @@ const CustomerDetails = () => {
             {customer.preferences?.notes ? (
               <div className="space-y-3">
                 {customer.preferences.notes.split('\n').filter(n => n.trim()).map((note, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div key={index} className="p-4 bg-gray-50  border border-gray-200">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <FaStickyNote className="text-yellow-500 text-sm" />
@@ -884,7 +884,7 @@ const CustomerDetails = () => {
               <h3 className="text-sm font-medium text-gray-700 mb-4">Activity Timeline</h3>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {timeline.slice(0, 10).map((event, index) => (
-                  <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex gap-3 p-3 bg-gray-50 ">
                     <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                       event.type === 'appointment' ? 'bg-blue-100' : 'bg-green-100'
                     }`}>

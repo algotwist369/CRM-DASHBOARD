@@ -99,7 +99,7 @@ const DailyBusinessAnalytics = () => {
   if (error && !analytics) {
     return (
       <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600">
+        <div className="bg-red-50 border border-red-200  p-4 text-red-600">
           {error}
         </div>
       </div>
@@ -127,7 +127,7 @@ const DailyBusinessAnalytics = () => {
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="daily">Last 24 Hours</option>
             <option value="weekly">Last 7 Days</option>
@@ -142,7 +142,7 @@ const DailyBusinessAnalytics = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {analytics.totalRevenue !== undefined && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-2">
                   <FaDollarSign className="text-green-600 text-2xl" />
                   {analytics.revenueGrowth !== undefined && (
@@ -167,7 +167,7 @@ const DailyBusinessAnalytics = () => {
             )}
 
             {analytics.totalCustomers !== undefined && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-2">
                   <FaUsers className="text-blue-600 text-2xl" />
                   {analytics.customerGrowth !== undefined && (
@@ -192,7 +192,7 @@ const DailyBusinessAnalytics = () => {
             )}
 
             {analytics.totalExpenses !== undefined && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <FaDollarSign className="text-red-600 text-2xl mb-2" />
                 <p className="text-sm text-gray-500 mb-1">Total Expenses</p>
                 <p className="text-2xl font-bold text-red-600">
@@ -207,7 +207,7 @@ const DailyBusinessAnalytics = () => {
             )}
 
             {analytics.netProfit !== undefined && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white   border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-2">
                   <FaChartLine className="text-purple-600 text-2xl" />
                   {analytics.profitMargin !== undefined && (
@@ -228,14 +228,14 @@ const DailyBusinessAnalytics = () => {
 
           {/* Peak Performance */}
           {analytics.peakPerformance && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white   border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <FaTrophy className="text-yellow-500" />
                 Peak Performance
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {analytics.peakPerformance.bestDay && (
-                  <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-green-100  border border-green-200">
                     <div className="flex items-center gap-2 mb-2">
                       <FaCalendarAlt className="text-green-600" />
                       <span className="font-semibold text-gray-900">Best Day</span>
@@ -250,7 +250,7 @@ const DailyBusinessAnalytics = () => {
                   </div>
                 )}
                 {analytics.peakPerformance.bestService && (
-                  <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100  border border-blue-200">
                     <div className="flex items-center gap-2 mb-2">
                       <FaChartBar className="text-blue-600" />
                       <span className="font-semibold text-gray-900">Top Service</span>
@@ -265,7 +265,7 @@ const DailyBusinessAnalytics = () => {
                   </div>
                 )}
                 {analytics.peakPerformance.bestStaff && (
-                  <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100  border border-purple-200">
                     <div className="flex items-center gap-2 mb-2">
                       <FaUserTie className="text-purple-600" />
                       <span className="font-semibold text-gray-900">Top Staff</span>
@@ -290,28 +290,28 @@ const DailyBusinessAnalytics = () => {
 
           {/* Customer Metrics */}
           {analytics.customerMetrics && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white   border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Insights</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">Avg. Revenue/Customer</p>
                   <p className="text-xl font-bold text-gray-900">
                     {formatCurrency(analytics.customerMetrics.averageRevenuePerCustomer)}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">Repeat Customer Rate</p>
                   <p className="text-xl font-bold text-blue-600">
                     {formatPercent(analytics.customerMetrics.repeatCustomerRate)}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">New Customer Rate</p>
                   <p className="text-xl font-bold text-green-600">
                     {formatPercent(analytics.customerMetrics.newCustomerRate)}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">Avg. Transaction Value</p>
                   <p className="text-xl font-bold text-gray-900">
                     {formatCurrency(analytics.customerMetrics.averageTransactionValue)}
@@ -323,22 +323,22 @@ const DailyBusinessAnalytics = () => {
 
           {/* Efficiency Metrics */}
           {analytics.efficiencyMetrics && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white   border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Operational Efficiency</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">Revenue per Staff</p>
                   <p className="text-xl font-bold text-gray-900">
                     {formatCurrency(analytics.efficiencyMetrics.revenuePerStaff)}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">Customers per Staff</p>
                   <p className="text-xl font-bold text-gray-900">
                     {analytics.efficiencyMetrics.customersPerStaff.toFixed(1)}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">Expense Ratio</p>
                   <p className={`text-xl font-bold ${
                     analytics.efficiencyMetrics.expenseRatio > 70 ? 'text-red-600' : 'text-gray-900'
@@ -352,7 +352,7 @@ const DailyBusinessAnalytics = () => {
 
           {/* Insights */}
           {analytics.insights && analytics.insights.length > 0 && (
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-6 mb-6">
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200  p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <FaLightbulb className="text-yellow-600" />
                 Business Insights & Recommendations
@@ -370,11 +370,11 @@ const DailyBusinessAnalytics = () => {
 
           {/* Top Services */}
           {analytics.topServices && analytics.topServices.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white   border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Services Performance</h2>
               <div className="space-y-3">
                 {analytics.topServices.map((service, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 ">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold">
                         {index + 1}
@@ -404,11 +404,11 @@ const DailyBusinessAnalytics = () => {
 
           {/* Service Breakdown */}
           {analytics.serviceBreakdown && Object.keys(analytics.serviceBreakdown).length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white   border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Service Breakdown</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.entries(analytics.serviceBreakdown).map(([service, data]) => (
-                  <div key={service} className="p-4 border border-gray-200 rounded-lg">
+                  <div key={service} className="p-4 border border-gray-200 ">
                     <div className="flex items-center justify-between mb-2">
                       <p className="font-medium text-gray-900 capitalize">{service}</p>
                       <span className="text-sm font-semibold text-primary-600">
@@ -435,14 +435,14 @@ const DailyBusinessAnalytics = () => {
 
           {/* Staff Performance */}
           {analytics.staffPerformance && analytics.staffPerformance.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white   border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <FaMedal className="text-yellow-500" />
                 Top Performing Staff
               </h2>
               <div className="space-y-3">
                 {analytics.staffPerformance.map((perf, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 ">
                     <div className="flex items-center gap-3 flex-1">
                       <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
                         index === 0 ? 'bg-yellow-100 text-yellow-700' :
@@ -479,11 +479,11 @@ const DailyBusinessAnalytics = () => {
 
           {/* Trends */}
           {analytics.trends && analytics.trends.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white   border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Daily Trends</h2>
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {analytics.trends.map((trend, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div key={index} className="flex items-center justify-between p-3 border border-gray-200  hover:bg-gray-50">
                     <div className="flex items-center gap-3">
                       <FaCalendarAlt className="text-gray-400" />
                       <div>

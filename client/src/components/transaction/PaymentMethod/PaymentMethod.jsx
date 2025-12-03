@@ -158,7 +158,7 @@ export const PaymentMethodSelector = ({
           <button
             key={method.value}
             onClick={() => onMethodSelect(method.value)}
-            className={`p-3 text-left border rounded-lg transition-all duration-200 ${
+            className={`p-3 text-left border  transition-all duration-200 ${
               selectedMethod === method.value
                 ? 'bg-primary-50 border-primary-300 ring-2 ring-primary-200'
                 : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50'

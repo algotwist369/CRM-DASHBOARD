@@ -27,7 +27,7 @@ const About = () => {
 
       {/* Mission Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:p-12">
+        <div className="bg-white   border border-gray-200 p-8 md:p-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
           <p className="text-lg text-gray-700 leading-relaxed mb-4">
             Our mission is to revolutionize the way businesses manage appointments and how customers book services. 
@@ -126,7 +126,7 @@ const About = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">For Businesses</h3>
               <ul className="space-y-2 text-gray-600">
                 <li className="flex items-start gap-2">
@@ -152,7 +152,7 @@ const About = () => {
               </ul>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">For Customers</h3>
               <ul className="space-y-2 text-gray-600">
                 <li className="flex items-start gap-2">

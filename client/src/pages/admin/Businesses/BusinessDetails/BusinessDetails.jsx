@@ -23,12 +23,12 @@ import businessService from "../../../../services/admin/businessService";
 
 // Stat Card Component
 const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
-  <div className="bg-white rounded-lg border border-gray-200 p-4">
+  <div className="bg-white  border border-gray-200 p-4">
     <div className="flex items-center gap-3">
-      <div className={`${iconBg} p-2 rounded-lg flex-shrink-0`}>
+      <div className={`${iconBg} p-2  flex-shrink-0`}>
         <Icon className={`${iconColor} text-lg`} />
       </div>
-      <div>
+      <div className="overflow-hidden">
         <p className="text-xs text-gray-600 mb-0.5">{title}</p>
         <p className="text-xl font-semibold text-gray-800">{value}</p>
       </div>
@@ -60,7 +60,7 @@ const InfoRow = memo(({ icon: Icon, label, value, isLink, href }) => (
 
 // Manager Card Component
 const ManagerCard = memo(({ manager }) => (
-  <div className="border border-gray-200 rounded-lg p-4 bg-white">
+  <div className="border border-gray-200  p-4 bg-white">
     <div className="flex items-center gap-3 mb-3">
       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
         <FaUserTie className="text-blue-600" />
@@ -69,11 +69,10 @@ const ManagerCard = memo(({ manager }) => (
         <p className="font-semibold text-gray-800 truncate">{manager.name}</p>
         <p className="text-xs text-gray-500 truncate">@{manager.username}</p>
       </div>
-      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-        manager.isActive
+      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${manager.isActive
           ? 'bg-green-100 text-green-700'
           : 'bg-red-100 text-red-700'
-      }`}>
+        }`}>
         {manager.isActive ? 'Active' : 'Inactive'}
       </span>
     </div>
@@ -107,7 +106,7 @@ const BusinessDetails = () => {
       setLoading(true);
       const res = await businessService.getBusiness(id);
       const data = res?.data?.data || res?.data;
-      
+
       // If business doesn't have link, fetch it separately
       if (data && !data.businessLink) {
         const linkRes = await businessService.getBusinessLink(id);
@@ -115,7 +114,7 @@ const BusinessDetails = () => {
           data.businessLink = linkRes.data.businessLink || linkRes.data.link;
         }
       }
-      
+
       setBusiness(data || null);
     } catch (error) {
       console.error('Failed to fetch business:', error);
@@ -187,7 +186,7 @@ const BusinessDetails = () => {
           <p className="text-xl font-semibold text-gray-800">Business Not Found</p>
           <button
             onClick={handleBack}
-            className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="mt-4 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
           >
             Go Back
           </button>
@@ -200,18 +199,18 @@ const BusinessDetails = () => {
     <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6 mb-6">
+        <div className="bg-white  border border-gray-200 p-5 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
             <div className="flex items-center gap-3">
               <button
                 onClick={handleBack}
-                className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
+                className="p-2  bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
                 title="Go Back"
               >
                 <FaArrowLeft className="text-gray-700" />
               </button>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 ${businessTypeBadge.bg} rounded-lg flex items-center justify-center`}>
+                <div className={`w-10 h-10 ${businessTypeBadge.bg}  flex items-center justify-center`}>
                   <FaBuilding className={`${businessTypeBadge.text} text-lg`} />
                 </div>
                 <div>
@@ -226,7 +225,7 @@ const BusinessDetails = () => {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm font-medium"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200  hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm font-medium"
             >
               <HiRefresh className={`text-gray-700 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
@@ -234,14 +233,13 @@ const BusinessDetails = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${businessTypeBadge.bg} ${businessTypeBadge.text} ${businessTypeBadge.border}`}>
+            <span className={`px-3 py-1.5 text-xs font-medium  border ${businessTypeBadge.bg} ${businessTypeBadge.text} ${businessTypeBadge.border}`}>
               {business.type?.toUpperCase()}
             </span>
-            <span className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${
-              business.isActive
+            <span className={`px-3 py-1.5 text-xs font-medium  border ${business.isActive
                 ? "bg-green-50 text-green-700 border-green-200"
                 : "bg-red-50 text-red-700 border-red-200"
-            }`}>
+              }`}>
               {business.isActive ? "Active" : "Inactive"}
             </span>
           </div>
@@ -249,30 +247,30 @@ const BusinessDetails = () => {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => navigate(`/admin/businesses/${id}/staff`)}
-              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-green-600 text-white  hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
             >
-              <FaUsers className="text-sm" /> 
+              <FaUsers className="text-sm" />
               <span>Staff ({business.staff?.length ?? 0})</span>
             </button>
             <button
               onClick={() => navigate(`/admin/businesses/${id}/daily-records`)}
-              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-orange-600 text-white  hover:bg-orange-700 transition-colors text-xs sm:text-sm font-medium"
             >
-              <FaCalendarAlt className="text-sm" /> 
+              <FaCalendarAlt className="text-sm" />
               <span>Records</span>
             </button>
             <button
               onClick={() => navigate(`/admin/businesses/${id}/analytics`)}
-              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-blue-600 text-white  hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
             >
-              <FaChartBar className="text-sm" /> 
+              <FaChartBar className="text-sm" />
               <span>Analytics</span>
             </button>
             <button
               onClick={() => navigate(`/admin/businesses/${id}/settings`)}
-              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-purple-600 text-white  hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium"
             >
-              <FaCog className="text-sm" /> 
+              <FaCog className="text-sm" />
               <span>Settings</span>
             </button>
           </div>
@@ -282,9 +280,9 @@ const BusinessDetails = () => {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Quick Stats */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                   <FaInfoCircle className="text-white text-sm" />
                 </div>
                 <h2 className="text-base sm:text-lg font-semibold text-gray-800">Quick Overview</h2>
@@ -297,9 +295,9 @@ const BusinessDetails = () => {
             </div>
 
             {/* Contact Information */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                   <FaPhone className="text-white text-sm" />
                 </div>
                 <h2 className="text-base sm:text-lg font-semibold text-gray-800">Contact Information</h2>
@@ -336,21 +334,21 @@ const BusinessDetails = () => {
 
             {/* Description */}
             {business.description && (
-              <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <div className="bg-white  border border-gray-200 p-5 sm:p-6">
                 <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">About</h2>
                 <p className="text-sm text-gray-700 leading-relaxed">{business.description}</p>
               </div>
             )}
 
             {/* Working Hours */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                   <FaClock className="text-white text-sm" />
                 </div>
                 <h2 className="text-base sm:text-lg font-semibold text-gray-800">Working Hours</h2>
               </div>
-              <div className="border border-gray-200 rounded-lg p-4">
+              <div className="border border-gray-200  p-4">
                 <div className="flex items-center justify-around mb-4 pb-4 border-b border-gray-200">
                   <div className="text-center">
                     <p className="text-xs font-medium text-gray-500 mb-1">Opening</p>
@@ -373,7 +371,7 @@ const BusinessDetails = () => {
                       (business.settings.workingHours.days).map((day) => (
                         <span
                           key={day}
-                          className="px-2 py-1 bg-primary-50 text-primary-700 border border-primary-200 rounded-lg text-xs font-medium"
+                          className="px-2 py-1 bg-primary-50 text-primary-700 border border-primary-200  text-xs font-medium"
                         >
                           {day.charAt(0).toUpperCase() + day.slice(1)}
                         </span>
@@ -387,34 +385,34 @@ const BusinessDetails = () => {
             </div>
 
             {/* Appointment Settings */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                   <FaCalendarAlt className="text-white text-sm" />
                 </div>
                 <h2 className="text-base sm:text-lg font-semibold text-gray-800">Appointment Settings</h2>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="p-3 border border-gray-200 rounded-lg">
+                <div className="p-3 border border-gray-200 ">
                   <p className="text-xs font-medium text-gray-500 mb-1">Booking Window</p>
                   <p className="text-sm font-semibold text-gray-800">
                     {business.settings?.appointmentSettings?.advanceBookingDays ?? "—"} days
                   </p>
                 </div>
-                <div className="p-3 border border-gray-200 rounded-lg">
+                <div className="p-3 border border-gray-200 ">
                   <p className="text-xs font-medium text-gray-500 mb-1">Slot Duration</p>
                   <p className="text-sm font-semibold text-gray-800">
                     {business.settings?.appointmentSettings?.slotDuration ?? "—"} min
                   </p>
                 </div>
-                <div className="p-3 border border-gray-200 rounded-lg">
+                <div className="p-3 border border-gray-200 ">
                   <p className="text-xs font-medium text-gray-500 mb-1">Buffer Time</p>
                   <p className="text-sm font-semibold text-gray-800">
                     {business.settings?.appointmentSettings?.bufferTime ?? "—"} min
                   </p>
                 </div>
-                <div className="p-3 border border-gray-200 rounded-lg">
+                <div className="p-3 border border-gray-200 ">
                   <p className="text-xs font-medium text-gray-500 mb-1">Online Booking</p>
                   <p className="text-sm font-semibold text-gray-800">
                     {business.settings?.appointmentSettings?.allowOnlineBooking ? "Enabled" : "Disabled"}
@@ -423,14 +421,13 @@ const BusinessDetails = () => {
               </div>
 
               {/* Cancellation Policy */}
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg mb-3">
+              <div className="p-3 bg-gray-50 border border-gray-200  mb-3">
                 <p className="text-xs font-medium text-gray-700 mb-2">Cancellation Policy</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className={`px-2 py-1 rounded-lg font-medium ${
-                    business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation
+                  <span className={`px-2 py-1  font-medium ${business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation
                       ? "bg-green-100 text-green-700"
                       : "bg-red-100 text-red-700"
-                  }`}>
+                    }`}>
                     {business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation
                       ? "Allowed"
                       : "Not Allowed"}
@@ -451,32 +448,32 @@ const BusinessDetails = () => {
               </div>
 
               {/* Reminder Settings */}
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="p-3 bg-gray-50 border border-gray-200 ">
                 <p className="text-xs font-medium text-gray-700 mb-2">Reminders</p>
                 <div className="flex flex-wrap gap-2">
                   {business.settings?.appointmentSettings?.reminderSettings?.sendSMSReminder && (
-                    <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium">
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200  text-xs font-medium">
                       SMS
                     </span>
                   )}
                   {business.settings?.appointmentSettings?.reminderSettings?.sendEmailReminder && (
-                    <span className="px-2 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-medium">
+                    <span className="px-2 py-1 bg-green-50 text-green-700 border border-green-200  text-xs font-medium">
                       Email
                     </span>
                   )}
                   {business.settings?.appointmentSettings?.reminderSettings?.sendWhatsappReminder && (
-                    <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium">
+                    <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200  text-xs font-medium">
                       WhatsApp
                     </span>
                   )}
                   {(!business.settings?.appointmentSettings?.reminderSettings?.sendSMSReminder &&
                     !business.settings?.appointmentSettings?.reminderSettings?.sendEmailReminder &&
                     !business.settings?.appointmentSettings?.reminderSettings?.sendWhatsappReminder) && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium">
-                      None
-                    </span>
-                  )}
-                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">
+                      <span className="px-2 py-1 bg-gray-100 text-gray-600  text-xs font-medium">
+                        None
+                      </span>
+                    )}
+                  <span className="px-2 py-1 bg-gray-100 text-gray-700  text-xs font-medium">
                     {business.settings?.appointmentSettings?.reminderSettings?.reminderHours ?? "—"}h before
                   </span>
                 </div>
@@ -487,20 +484,20 @@ const BusinessDetails = () => {
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
             {/* Business Link */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                   <FaLink className="text-white text-sm" />
                 </div>
                 <h3 className="text-base font-semibold text-gray-800">Business Link</h3>
               </div>
-              <div className="border border-primary-200 bg-primary-50 p-3 rounded-lg">
+              <div className="border border-primary-200 bg-primary-50 p-3 ">
                 <p className="text-xs text-primary-700 mb-2 font-medium">Public Access</p>
                 <a
                   href={`/${business.businessLink}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs bg-white p-2 rounded-lg border border-gray-200 text-blue-600 hover:text-blue-700 mb-2 break-all"
+                  className="flex items-center gap-2 text-xs bg-white p-2  border border-gray-200 text-blue-600 hover:text-blue-700 mb-2 break-all"
                 >
                   <FaLink className="flex-shrink-0 text-xs" />
                   <span>/{business.businessLink}</span>
@@ -527,9 +524,9 @@ const BusinessDetails = () => {
 
             {/* Admin Information */}
             {business.admin && (
-              <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+              <div className="bg-white  border border-gray-200 p-5 sm:p-6">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                     <FaUserTie className="text-white text-sm" />
                   </div>
                   <h3 className="text-base font-semibold text-gray-800">Admin Details</h3>
@@ -557,7 +554,7 @@ const BusinessDetails = () => {
             )}
 
             {/* Currency & Timezone */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <h3 className="text-base font-semibold text-gray-800 mb-3">Settings</h3>
               <div className="space-y-2.5">
                 <div className="flex justify-between items-center pb-2.5 border-b border-gray-100">
@@ -576,7 +573,7 @@ const BusinessDetails = () => {
             </div>
 
             {/* Created Date */}
-            <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+            <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <h3 className="text-base font-semibold text-gray-800 mb-3">Timeline</h3>
               <div className="space-y-2.5">
                 <div className="pb-2.5 border-b border-gray-100">
@@ -584,10 +581,10 @@ const BusinessDetails = () => {
                   <p className="text-sm text-gray-800 font-medium">
                     {business.createdAt
                       ? new Date(business.createdAt).toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
                       : "—"}
                   </p>
                 </div>
@@ -596,10 +593,10 @@ const BusinessDetails = () => {
                   <p className="text-sm text-gray-800 font-medium">
                     {business.updatedAt
                       ? new Date(business.updatedAt).toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
                       : "—"}
                   </p>
                 </div>
@@ -610,9 +607,9 @@ const BusinessDetails = () => {
 
         {/* Managers Section */}
         {business.managers && business.managers.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6 mt-4 sm:mt-6">
+          <div className="bg-white  border border-gray-200 p-5 sm:p-6 mt-4 sm:mt-6">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
                 <FaUserTie className="text-white text-sm" />
               </div>
               <h2 className="text-base sm:text-lg font-semibold text-gray-800">

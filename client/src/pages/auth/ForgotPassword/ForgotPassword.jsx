@@ -60,7 +60,7 @@ const ForgotPassword = () => {
   if (isSubmitted) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center px-4">
-        <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8 text-center">
+        <div className="w-full max-w-md bg-white shadow-lg  p-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
               <svg
@@ -88,7 +88,7 @@ const ForgotPassword = () => {
 
           <button
             onClick={() => setIsSubmitted(false)}
-            className="w-full bg-gray-800 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition duration-200 mb-3"
+            className="w-full bg-gray-800 text-white py-2  font-medium hover:bg-gray-700 transition duration-200 mb-3"
           >
             Try Different {formData.resetMethod === 'email' ? 'Email' : 'Phone'}
           </button>
@@ -106,7 +106,7 @@ const ForgotPassword = () => {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8">
+      <div className="w-full max-w-md bg-white shadow-lg  p-8">
         <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">
           Forgot your password?
         </h2>
@@ -115,7 +115,7 @@ const ForgotPassword = () => {
         </p>
 
         {errors.general && (
-          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md mb-3 border border-red-200">
+          <div className="bg-red-50 text-red-600 text-sm p-3  mb-3 border border-red-200">
             {errors.general}
           </div>
         )}
@@ -167,7 +167,7 @@ const ForgotPassword = () => {
               )}
               <input
                 type={formData.resetMethod === 'email' ? 'email' : 'tel'}
-                className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400 text-gray-700"
+                className="w-full border border-gray-300  pl-10 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-gray-400 text-gray-700"
                 placeholder={
                   formData.resetMethod === 'email'
                     ? 'you@example.com'
@@ -186,7 +186,7 @@ const ForgotPassword = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gray-800 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition duration-200"
+            className="w-full bg-gray-800 text-white py-2  font-medium hover:bg-gray-700 transition duration-200"
           >
             {isLoading ? 'Sending...' : 'Send Reset Instructions'}
           </button>

@@ -28,6 +28,19 @@ class AppointmentService {
     }
   }
 
+  // Get services for booking (public)
+  async getBusinessServices(identifier) {
+    try {
+      const response = await apiClient.get(endpoints.services.publicByBusiness(identifier))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch services'
+      }
+    }
+  }
+
   // Get available time slots (by businessLink)
   async getAvailableSlots(businessLink, params = {}) {
     try {

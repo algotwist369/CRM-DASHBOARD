@@ -75,7 +75,7 @@ const Careers = () => {
             {positions.map((position, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+                className="bg-white   border border-gray-200 p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -96,7 +96,7 @@ const Careers = () => {
                 <p className="text-gray-600 text-sm mb-4">{position.description}</p>
                 <Link
                   to="/contact"
-                  className="inline-block px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+                  className="inline-block px-4 py-2 bg-primary-600 text-white  text-sm font-medium hover:bg-primary-700 transition-colors"
                 >
                   Apply Now
                 </Link>
@@ -106,7 +106,7 @@ const Careers = () => {
         </div>
 
         {/* Benefits Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 sm:p-12 mb-12">
+        <div className="bg-white   border border-gray-200 p-8 sm:p-12 mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
             Why Work With Us?
           </h2>
@@ -123,14 +123,14 @@ const Careers = () => {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-xl p-8 sm:p-12 text-white text-center">
+        <div className="bg-gradient-to-br from-primary-600 to-primary-800  p-8 sm:p-12 text-white text-center">
           <h2 className="text-3xl font-bold mb-4">Don't See a Role That Fits?</h2>
           <p className="text-xl text-primary-100 mb-6 max-w-2xl mx-auto">
             We're always looking for talented individuals. Send us your resume and we'll keep you in mind for future opportunities.
           </p>
           <Link
             to="/contact"
-            className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
           >
             Send Your Resume
           </Link>

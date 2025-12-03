@@ -65,7 +65,7 @@ const TargetAudience = ({
   )
 
   const renderAllCustomers = () => (
-    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div className="p-4 bg-blue-50 border border-blue-200 ">
       <div className="flex items-center gap-2">
         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -221,7 +221,7 @@ const TargetAudience = ({
           <h4 className="text-sm font-medium text-gray-700 mb-2">
             Segment Recipients ({recipients.length})
           </h4>
-          <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="p-3 bg-gray-50 ">
             <p className="text-sm text-gray-600">
               This segment contains {recipients.length} customers who match the selected criteria.
             </p>
@@ -344,7 +344,7 @@ const TargetAudience = ({
               <button
                 key={option.value}
                 onClick={() => handleRecipientTypeChange(option.value)}
-                className={`p-4 text-left border rounded-lg transition-all duration-200 ${
+                className={`p-4 text-left border  transition-all duration-200 ${
                   recipientType === option.value
                     ? 'bg-primary-50 border-primary-300 ring-2 ring-primary-200'
                     : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50'
@@ -361,7 +361,7 @@ const TargetAudience = ({
 
         {/* Error Display */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="p-3 bg-red-50 border border-red-200 ">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
@@ -374,7 +374,7 @@ const TargetAudience = ({
 
         {/* Summary */}
         {recipients.length > 0 && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="p-4 bg-green-50 border border-green-200 ">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

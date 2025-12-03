@@ -158,7 +158,7 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
           <button
             type="button"
             onClick={onSidebarToggle}
-            className="lg:hidden mr-3 inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            className="lg:hidden mr-3 inline-flex items-center justify-center  p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
             aria-label="Toggle sidebar"
           >
             {isSidebarCollapsed ? <HiMenu className="h-6 w-6" /> : <HiX className="h-6 w-6" />}
@@ -193,7 +193,7 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-64 lg:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-64 lg:w-80 pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <svg
                 className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
@@ -229,7 +229,7 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
 
             {/* Notification Dropdown */}
             {notificationMenuOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              <div className="absolute right-0 mt-2 w-80 bg-white  shadow-lg border border-gray-200 z-50">
                 <div className="p-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                   {loadingNotifications && (
@@ -298,7 +298,7 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
 
             {/* User Dropdown */}
             {userMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-white  shadow-lg border border-gray-200 z-50">
                 <div className="py-1">
                   <a
                     href="/staff/profile"

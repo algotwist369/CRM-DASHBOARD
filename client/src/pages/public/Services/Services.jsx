@@ -112,18 +112,19 @@ const Services = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
-              Our Services
-            </h1>
-            <p className="text-xl sm:text-2xl text-primary-100 max-w-3xl mx-auto">
-              Comprehensive CRM solutions designed to help your business grow and succeed
-            </p>
-          </div>
+      <div className="border-b border-gray-200 py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+          <p className="text-sm uppercase tracking-[0.2em] text-gray-500">
+            Services
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-semibold text-gray-900">
+            Practical tools for modern service teams
+          </h1>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            Everything you need to schedule work, stay in touch with clients, and understand how your business is performing—without the noise.
+          </p>
         </div>
       </div>
 
@@ -133,9 +134,9 @@ const Services = () => {
           {services.map((service, index) => (
             <div
               key={index}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+              className="bg-white  border border-gray-200 p-6 hover:border-gray-300 hover: transition-colors"
             >
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 mb-4">
+              <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-900 mb-4">
                 {service.icon}
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">{service.title}</h3>
@@ -143,7 +144,7 @@ const Services = () => {
               <ul className="space-y-2">
                 {service.features.map((feature, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
-                    <span className="text-primary-600 mt-1">✓</span>
+                    <span className="text-gray-400 mt-1 leading-none">•</span>
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -166,7 +167,7 @@ const Services = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <div key={index} className="text-center">
-                <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4 text-primary-600">
+                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-900">
                   {feature.icon}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
@@ -185,8 +186,8 @@ const Services = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Benefits for Your Business</h2>
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FaChartBar className="text-green-600 text-xl" />
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
+                    <FaChartBar className="text-xl" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Increase Revenue</h3>
@@ -194,8 +195,8 @@ const Services = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FaUsers className="text-blue-600 text-xl" />
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
+                    <FaUsers className="text-xl" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Improve Customer Experience</h3>
@@ -203,8 +204,8 @@ const Services = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FaClock className="text-purple-600 text-xl" />
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
+                    <FaClock className="text-xl" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Save Time</h3>
@@ -212,8 +213,8 @@ const Services = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FaBell className="text-orange-600 text-xl" />
+                  <div className="w-12 h-12 bg-gray-100  flex items-center justify-center flex-shrink-0 text-gray-800">
+                    <FaBell className="text-xl" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Better Communication</h3>
@@ -222,32 +223,22 @@ const Services = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white   border border-gray-200 p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-6">Get Started Today</h3>
               <p className="text-gray-600 mb-6">
                 Join thousands of businesses using our platform to manage appointments, customers, and grow their revenue.
               </p>
               <ul className="space-y-3 mb-6">
-                <li className="flex items-center gap-2 text-gray-700">
-                  <span className="text-green-600">✓</span>
-                  <span>Free trial available</span>
-                </li>
-                <li className="flex items-center gap-2 text-gray-700">
-                  <span className="text-green-600">✓</span>
-                  <span>No credit card required</span>
-                </li>
-                <li className="flex items-center gap-2 text-gray-700">
-                  <span className="text-green-600">✓</span>
-                  <span>Setup in minutes</span>
-                </li>
-                <li className="flex items-center gap-2 text-gray-700">
-                  <span className="text-green-600">✓</span>
-                  <span>24/7 support</span>
-                </li>
+                {['Free trial available', 'No credit card required', 'Setup in minutes', '24/7 support'].map((point, index) => (
+                  <li key={index} className="flex items-center gap-2 text-gray-700">
+                    <span className="text-gray-400">•</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
               </ul>
               <a
                 href="/auth/login"
-                className="inline-block w-full text-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                className="inline-block w-full text-center px-6 py-3 bg-gray-900 text-white  hover:bg-gray-800 transition-colors font-medium"
               >
                 Get Started
               </a>

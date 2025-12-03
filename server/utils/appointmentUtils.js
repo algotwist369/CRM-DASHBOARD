@@ -237,13 +237,46 @@ const validateAppointmentBooking = (appointmentData, business, existingAppointme
  * @param {Object} business - Business object
  * @returns {Object} - Pricing breakdown
  */
+/**
+ * Get price and duration from a service (handles both old format and new pricingOptions)
+ * @param {Object} service - Service object
+ * @param {Number} selectedDuration - Optional: specific duration to get price for
+ * @returns {Object} - { price, duration }
+ */
+const getServicePriceAndDuration = (service, selectedDuration = null) => {
+    // If pricingOptions exist and have active options
+    if (service.pricingOptions && service.pricingOptions.length > 0) {
+        const activeOptions = service.pricingOptions.filter(opt => opt.isActive !== false);
+        
+        if (activeOptions.length > 0) {
+            // If specific duration requested, find matching option
+            if (selectedDuration) {
+                const matchingOption = activeOptions.find(opt => opt.duration === selectedDuration);
+                if (matchingOption) {
+                    return { price: matchingOption.price, duration: matchingOption.duration };
+                }
+            }
+            // Otherwise, use the first active option (or could use min/max based on business logic)
+            const firstOption = activeOptions[0];
+            return { price: firstOption.price, duration: firstOption.duration };
+        }
+    }
+    
+    // Fallback to old format (single price/duration)
+    return {
+        price: service.price || 0,
+        duration: service.duration || 60
+    };
+};
+
 const calculateAppointmentPricing = (services, customer = null, business = null) => {
     let totalPrice = 0;
     let totalDuration = 0;
     
     services.forEach(service => {
-        totalPrice += service.price;
-        totalDuration += service.duration;
+        const { price, duration } = getServicePriceAndDuration(service);
+        totalPrice += price;
+        totalDuration += duration;
     });
     
     // Apply customer discounts (loyalty, etc.)
@@ -264,11 +297,14 @@ const calculateAppointmentPricing = (services, customer = null, business = null)
         finalPrice,
         totalDuration,
         breakdown: {
-            services: services.map(service => ({
-                name: service.serviceName,
-                price: service.price,
-                duration: service.duration
-            })),
+            services: services.map(service => {
+                const { price, duration } = getServicePriceAndDuration(service);
+                return {
+                    name: service.serviceName || service.name,
+                    price: price,
+                    duration: duration
+                };
+            }),
             subtotal: totalPrice,
             discount: discount,
             tax: tax,
@@ -405,5 +441,6 @@ module.exports = {
     generateConfirmationMessage,
     canCancelAppointment,
     formatTime,
-    getBusinessServices
+    getBusinessServices,
+    getServicePriceAndDuration
 };

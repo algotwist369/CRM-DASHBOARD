@@ -4,5 +4,19 @@
 
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Raleway', sans-serif;
+}
+
+@layer utilities {
+  @keyframes wiggle {
+
+    0%,
+    100% {
+      transform: rotate(-6deg) scale(1);
+    }
+
+    50% {
+      transform: rotate(6deg) scale(1.05);
+    }
+  }
 }

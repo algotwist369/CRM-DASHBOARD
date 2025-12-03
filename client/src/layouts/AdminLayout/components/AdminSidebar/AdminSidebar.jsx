@@ -15,12 +15,10 @@ import {
   HiOutlineCube,
   HiOutlineCalendar,
   HiOutlineDocumentText,
-  HiOutlineStar,
-  HiOutlineMail,
-  HiOutlineGift,
   HiOutlineClipboardList,
 } from 'react-icons/hi'
-import { FaUserCircle } from 'react-icons/fa';
+import { GrAnnounce } from "react-icons/gr";
+import { FaUserCircle, FaLock } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 
 
@@ -70,13 +68,13 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
     fetchUnreadCount();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 🔥 REAL-TIME: Listen for new notifications via Socket.IO
+  // REAL-TIME: Listen for new notifications via Socket.IO
   useEffect(() => {
     if (!socket || !connected) return;
 
     const handleNewNotification = (data) => {
       console.log('🔔 [Sidebar] Real-time notification received:', data);
-      
+
       // Update unread count immediately
       if (data.unreadCount !== undefined) {
         setUnreadNotificationCount(data.unreadCount);
@@ -183,36 +181,37 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       href: '/admin/invoices',
       icon: <HiOutlineDocumentText className="w-5 h-5" />,
     },
-    {
-      name: 'Reviews',
-      href: '/admin/reviews',
-      icon: <HiOutlineStar className="w-5 h-5" />,
-    },
+    // {
+    //   name: 'Reviews',
+    //   href: '/admin/reviews',
+    //   icon: <HiOutlineStar className="w-5 h-5" />,
+    // },
     {
       name: 'Campaigns',
       href: '/admin/campaigns',
-      icon: <HiOutlineMail className="w-5 h-5" />,
+      icon: <FaLock className="w-5 h-5 text-gray-500" />,
+      disabled: true,
       submenu: [
         { name: 'All Campaigns', href: '/admin/campaigns' },
         { name: 'Templates', href: '/admin/campaigns/templates' },
         { name: 'Automated', href: '/admin/campaigns/automated' },
       ],
     },
-    {
-      name: 'Loyalty',
-      href: '/admin/loyalty',
-      icon: <HiOutlineGift className="w-5 h-5" />,
-      submenu: [
-        { name: 'Rewards', href: '/admin/loyalty/rewards' },
-        { name: 'Plans', href: '/admin/loyalty/plans' },
-        { name: 'Subscriptions', href: '/admin/loyalty/subscriptions' },
-      ],
-    },
-    {
-      name: 'Analytics',
-      href: '/admin/analytics',
-      icon: <HiOutlineChartBar className="w-5 h-5" />,
-    },
+    // {
+    //   name: 'Loyalty',
+    //   href: '/admin/loyalty',
+    //   icon: <HiOutlineGift className="w-5 h-5" />,
+    //   submenu: [
+    //     { name: 'Rewards', href: '/admin/loyalty/rewards' },
+    //     { name: 'Plans', href: '/admin/loyalty/plans' },
+    //     { name: 'Subscriptions', href: '/admin/loyalty/subscriptions' },
+    //   ],
+    // },
+    // {
+    //   name: 'Analytics',
+    //   href: '/admin/analytics',
+    //   icon: <HiOutlineChartBar className="w-5 h-5" />,
+    // },
     {
       name: 'Notifications',
       href: '/admin/notifications',
@@ -251,10 +250,10 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
         {!isCollapsed ? (
           <>
             <div className="flex items-center flex-1 min-w-0">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 bg-primary-600  flex items-center justify-center flex-shrink-0">
                 <HiOutlineHome className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold tracking-wide ml-3 truncate">CRM Admin</h1>
+              <h1 className="text-xl font-bold tracking-wide ml-3 truncate">admin</h1>
             </div>
             <Button
               variant="ghost"
@@ -284,6 +283,10 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
             <NavLink
               to={item.href}
               onClick={(e) => {
+                if (item.disabled) {
+                  e.preventDefault()
+                  return
+                }
                 if (item.submenu) {
                   e.preventDefault()
                   // If sidebar is collapsed and item has submenu, expand the sidebar first
@@ -299,7 +302,8 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
               className={({ isActive }) => {
                 const isParentActive = isActive || isActiveRoute(item.href)
                 const hasActiveChild = item.submenu && isSubmenuActive(item.submenu)
-                const base = `relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30 group`
+                const base = `relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-3 py-2.5  text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30 group`
+                if (item.disabled) return `${base} text-gray-500 cursor-not-allowed opacity-60`
                 if (isParentActive) return `${base} bg-primary-600 text-white shadow-lg active:bg-primary-700`
                 if (hasActiveChild) return `${base} bg-primary-600/80 text-white hover:bg-primary-600 shadow-md`
                 return `${base} text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700`
@@ -340,9 +344,9 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
                     key={subItem.name}
                     to={subItem.href}
                     className={({ isActive }) => {
-                      const base = 'block px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
+                      const base = 'block px-3 py-2  text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
                       return (isActive || isActiveRoute(subItem.href))
-                        ? `${base} bg-primary-500 text-white shadow-sm active:bg-primary-600`
+                        ? `${base} bg-primary-500 text-white  active:bg-primary-600`
                         : `${base} text-gray-400 hover:bg-gray-800 hover:text-white hover:pl-4 active:bg-gray-700`
                     }}
                   >

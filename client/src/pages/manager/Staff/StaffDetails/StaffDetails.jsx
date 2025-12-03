@@ -109,7 +109,7 @@ const StaffDetails = () => {
           </div>
           <Link
             to={`/manager/staff/${id}/edit`}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             <FaEdit />
             <span>Edit Staff</span>
@@ -121,7 +121,7 @@ const StaffDetails = () => {
         {/* Main Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Personal Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
@@ -173,7 +173,7 @@ const StaffDetails = () => {
           </div>
 
           {/* Professional Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Professional Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {staff.specialization && (
@@ -217,7 +217,7 @@ const StaffDetails = () => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Status Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-4">Status</h3>
             <div className="space-y-3">
               <div>
@@ -248,7 +248,7 @@ const StaffDetails = () => {
 
           {/* Performance (if available) */}
           {staff.performance && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-4">Performance</h3>
               <div className="space-y-3">
                 {staff.performance.totalCustomers !== undefined && (

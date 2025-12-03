@@ -66,7 +66,7 @@ const Pagination = ({
         {showFirstLast && currentPage > 1 && (
           <button
             onClick={() => handlePageChange(1)}
-            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors`}
+            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100  transition-colors`}
             title="First page"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,7 +80,7 @@ const Pagination = ({
           <button
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent`}
+            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100  transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent`}
             title="Previous page"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,7 +94,7 @@ const Pagination = ({
           <button
             key={page}
             onClick={() => handlePageChange(page)}
-            className={`${sizeClasses[size]} font-medium rounded-md transition-colors ${
+            className={`${sizeClasses[size]} font-medium  transition-colors ${
               page === currentPage
                 ? 'bg-primary-600 text-white'
                 : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
@@ -109,7 +109,7 @@ const Pagination = ({
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent`}
+            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100  transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent`}
             title="Next page"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +122,7 @@ const Pagination = ({
         {showFirstLast && currentPage < totalPages && (
           <button
             onClick={() => handlePageChange(totalPages)}
-            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors`}
+            className={`${sizeClasses[size]} text-gray-500 hover:text-gray-700 hover:bg-gray-100  transition-colors`}
             title="Last page"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@ export const SimplePagination = ({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Previous
       </button>
@@ -159,7 +159,7 @@ export const SimplePagination = ({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Next
       </button>

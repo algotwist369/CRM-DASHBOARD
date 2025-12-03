@@ -66,6 +66,20 @@ const createCampaign = async (req, res, next) => {
             });
         } else if (campaignData.targetAudience === 'specific') {
             targetCustomers = campaignData.targetCustomers || [];
+            // Validate that all target customers belong to this business
+            if (targetCustomers.length > 0) {
+                const validCount = await Customer.countDocuments({
+                    _id: { $in: targetCustomers },
+                    business: business._id,
+                    isActive: true
+                });
+                if (validCount !== targetCustomers.length) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "One or more selected customers are invalid or do not belong to this business"
+                    });
+                }
+            }
             totalRecipients = targetCustomers.length;
         } else if (campaignData.targetAudience === 'segment') {
             // Build query based on segment filters
@@ -73,29 +87,55 @@ const createCampaign = async (req, res, next) => {
             const filters = campaignData.segmentFilters;
 
             if (filters) {
-                if (filters.customerType) {
+                // Customer Type
+                if (filters.customerType && filters.customerType.length > 0) {
                     query.customerType = { $in: filters.customerType };
                 }
-                if (filters.membershipTier) {
+
+                // Membership Tier
+                if (filters.membershipTier && filters.membershipTier.length > 0) {
                     query.membershipTier = { $in: filters.membershipTier };
                 }
-                if (filters.minTotalSpent) {
-                    query.totalSpent = { $gte: filters.minTotalSpent };
+
+                // Spending
+                if (filters.minTotalSpent !== undefined || filters.maxTotalSpent !== undefined) {
+                    query.totalSpent = {};
+                    if (filters.minTotalSpent !== undefined) query.totalSpent.$gte = filters.minTotalSpent;
+                    if (filters.maxTotalSpent !== undefined) query.totalSpent.$lte = filters.maxTotalSpent;
                 }
-                if (filters.maxTotalSpent) {
-                    query.totalSpent = { ...query.totalSpent, $lte: filters.maxTotalSpent };
+
+                // Visits
+                if (filters.minVisits !== undefined || filters.maxVisits !== undefined) {
+                    query.totalVisits = {};
+                    if (filters.minVisits !== undefined) query.totalVisits.$gte = filters.minVisits;
+                    if (filters.maxVisits !== undefined) query.totalVisits.$lte = filters.maxVisits;
                 }
-                if (filters.minVisits) {
-                    query.totalVisits = { $gte: filters.minVisits };
+
+                // Last Visit
+                if (filters.lastVisitBefore || filters.lastVisitAfter) {
+                    query.lastVisit = {};
+                    if (filters.lastVisitAfter) query.lastVisit.$gte = new Date(filters.lastVisitAfter);
+                    if (filters.lastVisitBefore) query.lastVisit.$lte = new Date(filters.lastVisitBefore);
                 }
+
+                // Tags
                 if (filters.tags && filters.tags.length > 0) {
                     query.tags = { $in: filters.tags };
                 }
+
+                // Contact Info Presence
                 if (filters.hasEmail) {
                     query.email = { $exists: true, $ne: '' };
                 }
                 if (filters.hasPhone) {
                     query.phone = { $exists: true, $ne: '' };
+                }
+
+                // Marketing Consent
+                if (filters.marketingConsent) {
+                    if (filters.marketingConsent.email) query['marketingConsent.email'] = true;
+                    if (filters.marketingConsent.sms) query['marketingConsent.sms'] = true;
+                    if (filters.marketingConsent.whatsapp) query['marketingConsent.whatsapp'] = true;
                 }
             }
 
@@ -108,7 +148,7 @@ const createCampaign = async (req, res, next) => {
         const campaign = await Campaign.create({
             ...campaignData,
             business: business._id,
-            targetCustomers,
+            targetCustomers: campaignData.targetAudience === 'all' ? [] : targetCustomers, // Don't store IDs for 'all' to save space
             stats: {
                 totalRecipients
             },
@@ -118,6 +158,9 @@ const createCampaign = async (req, res, next) => {
 
         // Invalidate cache
         await deleteCache(`business:${business._id}:campaigns`);
+        if (userRole === 'admin') {
+            await deleteCache(`admin:${userId}:all_businesses:campaigns*`);
+        }
 
         return res.status(201).json({
             success: true,
@@ -152,16 +195,24 @@ const getCampaigns = async (req, res, next) => {
             sortOrder = 'desc'
         } = req.query;
 
-        // Determine business
-        let business;
+        // Determine business(es)
+        let businessIds = [];
+
         if (userRole === 'admin') {
-            if (!businessId || !isValidObjectId(businessId)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Valid Business ID is required"
-                });
+            if (businessId && isValidObjectId(businessId)) {
+                const business = await Business.findOne({ _id: businessId, admin: userId });
+                if (!business) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Business not found or access denied"
+                    });
+                }
+                businessIds = [business._id];
+            } else {
+                // Fetch all businesses for admin
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
             if (!manager || !manager.business) {
@@ -170,23 +221,24 @@ const getCampaigns = async (req, res, next) => {
                     message: "Manager not found or business not assigned"
                 });
             }
-            if (!isValidObjectId(manager.business)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid business ID for manager"
-                });
-            }
-            business = await Business.findById(manager.business);
+            businessIds = [manager.business];
         }
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found or access denied"
+        if (businessIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                pagination: {
+                    total: 0,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    pages: 0
+                }
             });
         }
 
-        const cacheKey = `business:${business._id}:campaigns:${page}:${limit}:${status}:${type}:${startDate}:${endDate}:${sortBy}:${sortOrder}`;
+        const cacheKeyPrefix = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
+        const cacheKey = `${cacheKeyPrefix}:campaigns:${page}:${limit}:${status}:${type}:${startDate}:${endDate}:${sortBy}:${sortOrder}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -195,7 +247,7 @@ const getCampaigns = async (req, res, next) => {
         }
 
         // Build query
-        let query = { business: business._id };
+        let query = { business: { $in: businessIds } };
 
         if (status) {
             query.status = status;
@@ -217,6 +269,7 @@ const getCampaigns = async (req, res, next) => {
         sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
         const campaigns = await Campaign.find(query)
+            .populate('business', 'name') // Populate business name for list view
             .select('-recipients') // Exclude detailed recipients array for list view
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
@@ -305,6 +358,10 @@ const updateCampaign = async (req, res, next) => {
 
         // Invalidate cache
         await deleteCache(`business:${campaign.business}:campaigns`);
+        // Also invalidate admin all businesses cache
+        if (userRole === 'admin') {
+            await deleteCache(`admin:${userId}:all_businesses:campaigns*`);
+        }
 
         return res.json({
             success: true,
@@ -357,7 +414,7 @@ const launchCampaign = async (req, res, next) => {
             for (const channel of campaign.channels) {
                 // Check if customer has opted in for this channel
                 let canSend = false;
-                
+
                 if (channel === 'email' && customer.email && customer.marketingConsent?.email) {
                     canSend = true;
                 } else if (channel === 'sms' && customer.phone && customer.marketingConsent?.sms) {
@@ -383,7 +440,7 @@ const launchCampaign = async (req, res, next) => {
         // TODO: Implement actual sending logic here
         // This would integrate with email/SMS providers
         // For now, we'll just mark as completed
-        
+
         // Simulate campaign execution
         setTimeout(async () => {
             campaign.stats.sent = recipients.length;
@@ -394,7 +451,8 @@ const launchCampaign = async (req, res, next) => {
         }, 1000);
 
         // Invalidate cache
-        await deleteCache(`business:${campaign.business}:campaigns`);
+        await deleteCache(`business:${campaign.business._id}:campaigns`);
+        // We can't easily invalidate "all" cache here without userId, but it expires quickly (2m)
 
         return res.json({
             success: true,
@@ -452,16 +510,24 @@ const getCampaignStats = async (req, res, next) => {
         const userRole = req.user.role;
         const { businessId, startDate, endDate } = req.query;
 
-        // Determine business
-        let business;
+        // Determine business(es)
+        let businessIds = [];
+
         if (userRole === 'admin') {
-            if (!businessId || !isValidObjectId(businessId)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Valid Business ID is required"
-                });
+            if (businessId && isValidObjectId(businessId)) {
+                const business = await Business.findOne({ _id: businessId, admin: userId });
+                if (!business) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Business not found or access denied"
+                    });
+                }
+                businessIds = [business._id];
+            } else {
+                // Fetch all businesses for admin
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
             if (!manager || !manager.business) {
@@ -470,23 +536,31 @@ const getCampaignStats = async (req, res, next) => {
                     message: "Manager not found or business not assigned"
                 });
             }
-            if (!isValidObjectId(manager.business)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid business ID for manager"
-                });
-            }
-            business = await Business.findById(manager.business);
+            businessIds = [manager.business];
         }
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found or access denied"
+        if (businessIds.length === 0) {
+            return res.json({
+                success: true,
+                data: {
+                    totalSent: 0,
+                    totalDelivered: 0,
+                    totalOpened: 0,
+                    totalClicked: 0,
+                    totalConverted: 0,
+                    totalRevenue: 0,
+                    totalCost: 0,
+                    deliveryRate: 0,
+                    openRate: 0,
+                    clickRate: 0,
+                    conversionRate: 0,
+                    roi: 0
+                }
             });
         }
 
-        const cacheKey = `business:${business._id}:campaign:stats:${startDate}:${endDate}`;
+        const cacheKeyPrefix = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
+        const cacheKey = `${cacheKeyPrefix}:campaign:stats:${startDate}:${endDate}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -494,27 +568,54 @@ const getCampaignStats = async (req, res, next) => {
             return res.json({ success: true, source: "cache", data: cachedData });
         }
 
-        const stats = await Campaign.getPerformanceStats(
-            business._id,
-            new Date(startDate),
-            new Date(endDate)
-        );
+        // Aggregate stats across all selected businesses
+        // Note: Campaign.getPerformanceStats likely takes a single businessId. 
+        // We might need to loop or update the model method. 
+        // For now, let's assume we iterate and sum up if multiple businesses.
+
+        let aggregatedStats = {
+            totalSent: 0,
+            totalDelivered: 0,
+            totalOpened: 0,
+            totalClicked: 0,
+            totalConverted: 0,
+            totalRevenue: 0,
+            totalCost: 0
+        };
+
+        for (const bId of businessIds) {
+            const stats = await Campaign.getPerformanceStats(
+                bId,
+                new Date(startDate),
+                new Date(endDate)
+            );
+
+            aggregatedStats.totalSent += stats.totalSent || 0;
+            aggregatedStats.totalDelivered += stats.totalDelivered || 0;
+            aggregatedStats.totalOpened += stats.totalOpened || 0;
+            aggregatedStats.totalClicked += stats.totalClicked || 0;
+            aggregatedStats.totalConverted += stats.totalConverted || 0;
+            aggregatedStats.totalRevenue += stats.totalRevenue || 0;
+            aggregatedStats.totalCost += stats.totalCost || 0;
+        }
+
+        const stats = aggregatedStats;
 
         // Calculate rates
-        stats.deliveryRate = stats.totalSent > 0 
-            ? Math.round((stats.totalDelivered / stats.totalSent) * 100) 
+        stats.deliveryRate = stats.totalSent > 0
+            ? Math.round((stats.totalDelivered / stats.totalSent) * 100)
             : 0;
-        stats.openRate = stats.totalDelivered > 0 
-            ? Math.round((stats.totalOpened / stats.totalDelivered) * 100) 
+        stats.openRate = stats.totalDelivered > 0
+            ? Math.round((stats.totalOpened / stats.totalDelivered) * 100)
             : 0;
-        stats.clickRate = stats.totalOpened > 0 
-            ? Math.round((stats.totalClicked / stats.totalOpened) * 100) 
+        stats.clickRate = stats.totalOpened > 0
+            ? Math.round((stats.totalClicked / stats.totalOpened) * 100)
             : 0;
-        stats.conversionRate = stats.totalDelivered > 0 
-            ? Math.round((stats.totalConverted / stats.totalDelivered) * 100) 
+        stats.conversionRate = stats.totalDelivered > 0
+            ? Math.round((stats.totalConverted / stats.totalDelivered) * 100)
             : 0;
-        stats.roi = stats.totalCost > 0 
-            ? Math.round(((stats.totalRevenue - stats.totalCost) / stats.totalCost) * 100) 
+        stats.roi = stats.totalCost > 0
+            ? Math.round(((stats.totalRevenue - stats.totalCost) / stats.totalCost) * 100)
             : 0;
 
         // Cache for 5 minutes

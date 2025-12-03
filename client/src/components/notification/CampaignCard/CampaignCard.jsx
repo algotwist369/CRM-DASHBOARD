@@ -224,7 +224,7 @@ const CampaignCard = ({
       </div>
 
       {/* Target Audience */}
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+      <div className="mb-4 p-3 bg-gray-50 ">
         <h4 className="text-sm font-medium text-gray-700 mb-2">Target Audience</h4>
         <div className="flex items-center gap-2">
           <Badge variant="outline" size="sm">
@@ -240,7 +240,7 @@ const CampaignCard = ({
 
       {/* Schedule Information */}
       {scheduledAt && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+        <div className="mb-4 p-3 bg-blue-50 ">
           <h4 className="text-sm font-medium text-blue-900 mb-1">Schedule</h4>
           <p className="text-sm text-blue-700">
             {formatDate(scheduledAt)} at {formatTime(scheduledAt)}
@@ -250,7 +250,7 @@ const CampaignCard = ({
 
       {/* Performance Metrics */}
       {status === 'completed' && (
-        <div className="mb-4 p-3 bg-green-50 rounded-lg">
+        <div className="mb-4 p-3 bg-green-50 ">
           <h4 className="text-sm font-medium text-green-900 mb-2">Performance Summary</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -275,7 +275,7 @@ const CampaignCard = ({
 
       {/* Template Information */}
       {template && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+        <div className="mb-4 p-3 bg-gray-50 ">
           <h4 className="text-sm font-medium text-gray-700 mb-1">Template</h4>
           <p className="text-sm text-gray-600">{template.name}</p>
         </div>
@@ -283,7 +283,7 @@ const CampaignCard = ({
 
       {/* Additional Metadata */}
       {metadata && Object.keys(metadata).length > 0 && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+        <div className="mb-4 p-3 bg-gray-50 ">
           <h4 className="text-sm font-medium text-gray-700 mb-2">Additional Information</h4>
           <div className="space-y-1">
             {Object.entries(metadata).map(([key, value]) => (

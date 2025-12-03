@@ -17,6 +17,58 @@ class AdminService {
     }
   }
 
+  // Get admin stats
+  async getStats() {
+    try {
+      const response = await apiClient.get(endpoints.admin.stats)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch stats'
+      }
+    }
+  }
+
+  // Get admin profile
+  async getProfile() {
+    try {
+      const response = await apiClient.get(endpoints.admin.getProfile)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch profile'
+      }
+    }
+  }
+
+  // Update admin profile
+  async updateProfile(profileData) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updateProfile, profileData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update profile'
+      }
+    }
+  }
+
+  // Update admin password
+  async updatePassword(passwordData) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updatePassword, passwordData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update password'
+      }
+    }
+  }
+
   // Get managers
   async getManagers(params = {}) {
     try {
@@ -71,6 +123,19 @@ class AdminService {
     }
   }
 
+  // Update manager status
+  async updateManagerStatus(managerId, status) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updateManagerStatus(managerId), { isActive: status })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update manager status'
+      }
+    }
+  }
+
   // Delete manager
   async deleteManager(managerId) {
     try {
@@ -84,15 +149,17 @@ class AdminService {
     }
   }
 
+  // ================== DAILY BUSINESS MANAGEMENT ==================
+
   // Get daily business records (Admin access)
   async getDailyBusinessRecords(params = {}) {
     try {
       const response = await apiClient.get(endpoints.dailyBusiness.list, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch daily business records' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily business records'
       }
     }
   }
@@ -103,9 +170,9 @@ class AdminService {
       const response = await apiClient.get(endpoints.dailyBusiness.getSummary, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch daily summary' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily summary'
       }
     }
   }
@@ -116,9 +183,9 @@ class AdminService {
       const response = await apiClient.get(endpoints.dailyBusiness.getAnalytics, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business analytics' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business analytics'
       }
     }
   }
@@ -129,9 +196,9 @@ class AdminService {
       const response = await apiClient.get(endpoints.dailyBusiness.list, { params })
       return { success: true, ...response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch daily business list' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily business list'
       }
     }
   }
@@ -353,7 +420,7 @@ class AdminService {
   }
 
   // ============ CAMPAIGN MANAGEMENT ============
-  
+
   // Get all campaigns
   async getCampaigns(params = {}) {
     try {
@@ -441,6 +508,7 @@ class AdminService {
       }
     }
   }
+
 
   // Launch campaign
   async launchCampaign(id) {
@@ -561,6 +629,86 @@ class AdminService {
     }
   }
 
+  // ==================== Automated Campaigns ====================
+
+  // Get automated campaigns
+  async getAutomatedCampaigns(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.campaigns.automated, { params })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch automated campaigns'
+      }
+    }
+  }
+
+  // Get automated campaign by ID
+  async getAutomatedCampaign(id) {
+    try {
+      const response = await apiClient.get(`${endpoints.campaigns.automated}/${id}`)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch automated campaign'
+      }
+    }
+  }
+
+  // Create automated campaign
+  async createAutomatedCampaign(campaignData) {
+    try {
+      const response = await apiClient.post(endpoints.campaigns.automated, campaignData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create automated campaign'
+      }
+    }
+  }
+
+  // Update automated campaign
+  async updateAutomatedCampaign(id, campaignData) {
+    try {
+      const response = await apiClient.put(`${endpoints.campaigns.automated}/${id}`, campaignData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update automated campaign'
+      }
+    }
+  }
+
+  // Delete automated campaign
+  async deleteAutomatedCampaign(id) {
+    try {
+      const response = await apiClient.delete(`${endpoints.campaigns.automated}/${id}`)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete automated campaign'
+      }
+    }
+  }
+
+  // Trigger automated campaign manually
+  async triggerAutomatedCampaign(id) {
+    try {
+      const response = await apiClient.post(`${endpoints.campaigns.automated}/${id}/trigger`)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to trigger automated campaign'
+      }
+    }
+  }
+
   // ============ CAMPAIGN ANALYTICS ============
 
   // Get campaign insights
@@ -603,7 +751,7 @@ class AdminService {
   }
 
   // ============ CUSTOMER MANAGEMENT ============
-  
+
   // Get customers
   async getCustomers(params = {}) {
     try {
@@ -691,8 +839,24 @@ class AdminService {
     }
   }
 
+  // Lookup customer by phone
+  async lookupCustomer(phone, businessId) {
+    try {
+      const params = { phone }
+      if (businessId) params.businessId = businessId
+
+      const response = await apiClient.get(`${endpoints.customers.list}/lookup`, { params })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Customer not found'
+      }
+    }
+  }
+
   // ============ SERVICE MANAGEMENT ============
-  
+
   // Get services
   async getServices(params = {}) {
     try {
@@ -712,11 +876,14 @@ class AdminService {
   }
 
   // Get service by ID
-  async getService(id) {
+  async getService(id, config = {}) {
     try {
-      const response = await apiClient.get(endpoints.services.getById(id))
-      return response.data
+      const response = await apiClient.get(endpoints.services.getById(id), config)
+      return { success: true, ...response.data }
     } catch (error) {
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        throw error;
+      }
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to fetch service'
@@ -798,7 +965,7 @@ class AdminService {
   }
 
   // ============ APPOINTMENT MANAGEMENT ============
-  
+
   // Get appointments
   async getAppointments(params = {}) {
     try {
@@ -951,7 +1118,7 @@ class AdminService {
   }
 
   // ============ INVOICE MANAGEMENT ============
-  
+
   // Get invoices
   async getInvoices(params = {}) {
     try {
@@ -1082,7 +1249,7 @@ class AdminService {
   }
 
   // ============ REVIEW MANAGEMENT ============
-  
+
   // Get reviews
   async getReviews(params = {}) {
     try {
@@ -1226,7 +1393,7 @@ class AdminService {
   }
 
   // ============ ANALYTICS ============
-  
+
   // Get dashboard overview
   async getDashboardOverview(params = {}) {
     try {

@@ -13,7 +13,7 @@ const Card = ({
   onClick,
   ...props 
 }) => {
-  const baseClasses = 'bg-white rounded-lg border border-gray-200'
+  const baseClasses = 'bg-white  border border-gray-200'
   
   const variantClasses = {
     default: 'bg-white',
@@ -33,7 +33,7 @@ const Card = ({
   
   const shadowClasses = {
     none: '',
-    sm: 'shadow-sm',
+    sm: '',
     default: 'shadow',
     lg: 'shadow-lg',
     xl: 'shadow-xl'
