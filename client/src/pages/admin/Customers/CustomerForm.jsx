@@ -88,7 +88,7 @@ const CustomerForm = ({ mode = 'create' }) => {
                             phone: customer.phone || '',
                             dateOfBirth: customer.dateOfBirth ? new Date(customer.dateOfBirth).toISOString().split('T')[0] : '',
                             gender: customer.gender || '',
-                            gender: customer.gender || '',
+
                             address: customer.address?.address || (typeof customer.address === 'string' ? customer.address : '') || '',
                             city: customer.address?.city || '',
                             state: customer.address?.state || '',
@@ -179,7 +179,7 @@ const CustomerForm = ({ mode = 'create' }) => {
                     email: customer.email || '',
                     dateOfBirth: customer.dateOfBirth ? new Date(customer.dateOfBirth).toISOString().split('T')[0] : '',
                     gender: customer.gender || '',
-                    gender: customer.gender || '',
+
                     address: customer.address?.address || (typeof customer.address === 'string' ? customer.address : '') || '',
                     city: customer.address?.city || '',
                     state: customer.address?.state || '',
@@ -211,7 +211,7 @@ const CustomerForm = ({ mode = 'create' }) => {
                     state: '',
                     pincode: '',
                     membershipTier: 'none',
-                    membershipTier: 'none',
+
                     notes: '',
                     preferredLanguage: 'en',
                     source: 'walk-in',
@@ -240,7 +240,7 @@ const CustomerForm = ({ mode = 'create' }) => {
                 state: '',
                 pincode: '',
                 membershipTier: 'none',
-                membershipTier: 'none',
+
                 notes: '',
                 preferredLanguage: 'en',
                 source: 'walk-in',
