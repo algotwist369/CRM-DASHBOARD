@@ -333,14 +333,14 @@ const ChatBot = () => {
                   </button>
                 </div>
                 <p className="text-xs text-gray-600 mb-3">
-                  I'm Rama AI, your AI assistant! I can help you with business listing, appointments, features, and more.
+                  I'm SpaAdvisor, your AI assistant! I can help you with business listing, appointments, features, and more.
                 </p>
                 <button
                   onClick={handleNotificationClick}
                   className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white text-xs font-semibold py-2 px-4  hover:from-primary-700 hover:to-primary-800 transition-all flex items-center justify-center gap-2"
                 >
                   <FaComments />
-                  <span>Chat with Rama AI</span>
+                  <span>Chat with SpaAdvisor</span>
                 </button>
               </div>
             </div>

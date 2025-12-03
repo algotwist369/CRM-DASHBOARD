@@ -4,7 +4,9 @@ const Customer = require("../models/Customer");
 const Service = require("../models/Service");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
+const AdminNotification = require("../models/AdminNotification");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
+const { emitToUser } = require("../config/socket");
 
 // ================== Create Appointment ==================
 const createAppointment = async (req, res, next) => {
@@ -130,6 +132,35 @@ const createAppointment = async (req, res, next) => {
 
         // Invalidate cache
         await deleteCache(`business:${business._id}:appointments`);
+
+        // Notify business admin
+        if (business.admin) {
+            emitToUser(business.admin, 'new_appointment', {
+                message: `New appointment booked for ${customer.firstName} ${customer.lastName}`,
+                appointmentId: appointment._id,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                serviceName: service.name,
+                time: `${appointmentDate} at ${startTime}`
+            });
+
+            // Create persistent notification
+            await AdminNotification.createSystemNotification(
+                business.admin,
+                'New Appointment',
+                `New appointment booked for ${customer.firstName} ${customer.lastName} - ${service.name}`,
+                {
+                    type: 'business',
+                    priority: 'normal',
+                    actionUrl: `/admin/appointments/${appointment._id}`,
+                    actionText: 'View Appointment',
+                    metadata: {
+                        source: 'internal',
+                        eventId: appointment._id,
+                        category: 'appointment'
+                    }
+                }
+            );
+        }
 
         return res.status(201).json({
             success: true,
@@ -1151,6 +1182,36 @@ const bookAppointmentPublic = async (req, res, next) => {
         const confirmationCode = appointment.bookingNumber || `CONF${Date.now()}${Math.floor(Math.random() * 1000)}`;
         appointment.bookingNumber = confirmationCode;
         await appointment.save();
+
+        // Notify business admin
+        if (business.admin) {
+            emitToUser(business.admin, 'new_appointment', {
+                message: `New online booking: ${customer.firstName} ${customer.lastName}`,
+                appointmentId: appointment._id,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                serviceName: service.name,
+                time: `${appointmentDate} at ${startTime}`,
+                source: 'online'
+            });
+
+            // Create persistent notification
+            await AdminNotification.createSystemNotification(
+                business.admin,
+                'New Online Booking',
+                `New online booking received from ${customer.firstName} ${customer.lastName} for ${service.name}`,
+                {
+                    type: 'business',
+                    priority: 'high',
+                    actionUrl: `/admin/appointments/${appointment._id}`,
+                    actionText: 'View Booking',
+                    metadata: {
+                        source: 'online',
+                        eventId: appointment._id,
+                        category: 'appointment'
+                    }
+                }
+            );
+        }
 
         // Populate appointment for response
         await appointment.populate('business', 'name branch address phone');

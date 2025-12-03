@@ -800,6 +800,22 @@ class AdminService {
     }
   }
 
+  // Lookup customer by phone
+  async lookupCustomer(phone, businessId) {
+    try {
+      const params = { phone }
+      if (businessId) params.businessId = businessId
+
+      const response = await apiClient.get(`${endpoints.customers.list}/lookup`, { params })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Customer not found'
+      }
+    }
+  }
+
   // ============ SERVICE MANAGEMENT ============
 
   // Get services
@@ -821,11 +837,14 @@ class AdminService {
   }
 
   // Get service by ID
-  async getService(id) {
+  async getService(id, config = {}) {
     try {
-      const response = await apiClient.get(endpoints.services.getById(id))
-      return response.data
+      const response = await apiClient.get(endpoints.services.getById(id), config)
+      return { success: true, ...response.data }
     } catch (error) {
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        throw error;
+      }
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to fetch service'

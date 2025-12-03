@@ -3,12 +3,15 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { AdminSidebar, AdminHeader } from './components'
 import authService from '../../services/auth/authService'
 import SocketDebugPanel from '../../components/debug/SocketDebugPanel'
+import { useSocket } from '../../contexts/SocketContext'
+import toast from 'react-hot-toast'
 
 const AdminLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
   const location = useLocation()
+  const { socket } = useSocket()
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -40,6 +43,37 @@ const AdminLayout = () => {
       setSidebarCollapsed(JSON.parse(savedState))
     }
   }, [])
+
+  // Listen for real-time notifications
+  useEffect(() => {
+    if (!socket) return
+
+    const handleNewAppointment = (data) => {
+      toast.success(
+        <div>
+          <p className="font-bold">{data.message}</p>
+          <p className="text-sm text-gray-500">{data.time}</p>
+          {data.source === 'online' && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full mt-1 inline-block">Online Booking</span>}
+        </div>,
+        {
+          duration: 6000,
+          position: 'top-right',
+          icon: '📅',
+          style: {
+            border: '1px solid #E5E7EB',
+            padding: '16px',
+            color: '#1F2937',
+          },
+        }
+      )
+    }
+
+    socket.on('new_appointment', handleNewAppointment)
+
+    return () => {
+      socket.off('new_appointment', handleNewAppointment)
+    }
+  }, [socket])
 
   const handleSidebarToggle = () => {
     const newState = !sidebarCollapsed
@@ -90,7 +124,7 @@ const AdminLayout = () => {
         <footer className="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
-              <span>© 2024 RAMA CRM</span>
+              <span>© 2024 SpaAdvisor CRM</span>
               <span>•</span>
               <span>Version 1.0.0</span>
             </div>

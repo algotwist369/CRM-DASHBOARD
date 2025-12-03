@@ -124,7 +124,7 @@ const StaffLayout = () => {
         <footer className="bg-white border-t border-gray-200 px-3 sm:px-4 lg:px-6 py-3">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-xs sm:text-sm text-gray-600">
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <span>© 2024 RAMA</span>
+              <span>© 2024 SpaAdvisor</span>
               <span className="hidden sm:inline">•</span>
               <span>Staff Portal</span>
             </div>
