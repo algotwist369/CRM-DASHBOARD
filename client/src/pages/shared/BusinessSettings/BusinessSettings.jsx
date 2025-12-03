@@ -17,6 +17,7 @@ import {
   FaSave,
   FaSpinner,
 } from 'react-icons/fa'
+import BackButton from '../../../components/common/Button/BackButton'
 
 const BusinessSettings = () => {
   const navigate = useNavigate()
@@ -51,14 +52,14 @@ const BusinessSettings = () => {
     try {
       setLoading(true)
       const businessId = getBusinessId()
-      
+
       // For admin, if no businessId, return early (getBusinessId will handle navigation)
       const role = authService.getUserRole()
       if (role === 'admin' && !businessId) {
         setLoading(false)
         return
       }
-      
+
       const res = await businessSettingsService.getBusinessSettings(businessId)
       if (res.success) {
         setSettings(res.data?.data || res.data || {
@@ -103,7 +104,7 @@ const BusinessSettings = () => {
   // Initialize form data when settings are loaded
   useEffect(() => {
     console.log('Settings loaded:', settings)
-    
+
     if (settings.businessHours && Object.keys(settings.businessHours).length > 0) {
       setBusinessHours(settings.businessHours)
     } else {
@@ -118,23 +119,23 @@ const BusinessSettings = () => {
       })
       setBusinessHours(defaultHours)
     }
-    
+
     if (settings.settings?.appointmentSettings) {
       setAppointmentSettings(settings.settings.appointmentSettings)
     }
-    
+
     if (settings.notifications) {
       setNotificationPreferences(settings.notifications)
     }
-    
+
     if (settings.settings?.taxSettings) {
       setTaxSettings(settings.settings.taxSettings)
     }
-    
+
     if (settings.settings) {
       setGeneralSettings(settings.settings)
     }
-    
+
     if (settings.settings?.loyaltySettings) {
       setLoyaltySettings(settings.settings.loyaltySettings)
     }
@@ -148,7 +149,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     // Validate business hours before sending
     const validBusinessHours = {}
     daysOfWeek.forEach(day => {
@@ -166,13 +167,13 @@ const BusinessSettings = () => {
         }
       }
     })
-    
+
     try {
       setSaving(true)
       console.log('Saving business hours:', validBusinessHours)
       const res = await businessSettingsService.updateBusinessHours(businessId, validBusinessHours)
       console.log('Save response:', res)
-      
+
       if (res.success) {
         toast.success('Business hours updated successfully')
         // Refresh settings after save
@@ -196,7 +197,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.updateAppointmentSettings(businessId, appointmentSettings)
@@ -219,7 +220,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.updateNotificationPreferences(businessId, notificationPreferences)
@@ -242,7 +243,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.updatePaymentSettings(businessId, paymentMethods, bankDetails)
@@ -265,7 +266,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.updateTaxSettings(businessId, taxSettings)
@@ -288,7 +289,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.updateGeneralSettings(businessId, generalSettings)
@@ -311,7 +312,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.updateLoyaltySettings(businessId, loyaltySettings)
@@ -332,14 +333,14 @@ const BusinessSettings = () => {
       toast.error('Please select a date')
       return
     }
-    
+
     const businessId = getBusinessId()
     const role = authService.getUserRole()
     if (role === 'admin' && !businessId) {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.addHoliday(businessId, newHoliday.date, newHoliday.reason || 'Holiday')
@@ -365,7 +366,7 @@ const BusinessSettings = () => {
       toast.error('Business ID is required')
       return
     }
-    
+
     try {
       setSaving(true)
       const res = await businessSettingsService.removeHoliday(businessId, date)
@@ -408,13 +409,14 @@ const BusinessSettings = () => {
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
+        <BackButton />
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Business Settings</h1>
           <p className="text-gray-600">Manage your business configuration and preferences</p>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
+        <div className="bg-white  border border-gray-200  mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex overflow-x-auto">
               {tabs.map((tab) => {
@@ -423,11 +425,10 @@ const BusinessSettings = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === tab.id
+                    className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
                         ? 'border-primary-600 text-primary-600 font-medium'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     <Icon className="text-sm sm:text-base" />
                     <span className="text-sm sm:text-base">{tab.label}</span>
@@ -445,7 +446,7 @@ const BusinessSettings = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Business Hours</h2>
                 <div className="space-y-3">
                   {daysOfWeek.map((day) => (
-                    <div key={day} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
+                    <div key={day} className="flex items-center gap-4 p-4 border border-gray-200 ">
                       <div className="w-24 font-medium text-gray-700 capitalize">{day}</div>
                       <label className="flex items-center gap-2">
                         <input
@@ -499,7 +500,7 @@ const BusinessSettings = () => {
                 <button
                   onClick={saveBusinessHours}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                   Save Business Hours
@@ -523,7 +524,7 @@ const BusinessSettings = () => {
                         ...prev,
                         advanceBookingDays: parseInt(e.target.value)
                       }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      className="w-full border border-gray-300  px-4 py-2"
                       min="1"
                     />
                   </div>
@@ -538,7 +539,7 @@ const BusinessSettings = () => {
                         ...prev,
                         slotDuration: parseInt(e.target.value)
                       }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      className="w-full border border-gray-300  px-4 py-2"
                       min="5"
                     />
                   </div>
@@ -553,7 +554,7 @@ const BusinessSettings = () => {
                         ...prev,
                         bufferTime: parseInt(e.target.value)
                       }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      className="w-full border border-gray-300  px-4 py-2"
                       min="0"
                     />
                   </div>
@@ -573,7 +574,7 @@ const BusinessSettings = () => {
                 <button
                   onClick={saveAppointmentSettings}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                   Save Appointment Settings
@@ -638,7 +639,7 @@ const BusinessSettings = () => {
                 <button
                   onClick={saveNotificationPreferences}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                   Save Notification Preferences
@@ -691,28 +692,28 @@ const BusinessSettings = () => {
                         placeholder="Account Name"
                         value={bankDetails?.accountName || ''}
                         onChange={(e) => setBankDetails(prev => ({ ...prev, accountName: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                        className="w-full border border-gray-300  px-4 py-2"
                       />
                       <input
                         type="text"
                         placeholder="Account Number"
                         value={bankDetails?.accountNumber || ''}
                         onChange={(e) => setBankDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                        className="w-full border border-gray-300  px-4 py-2"
                       />
                       <input
                         type="text"
                         placeholder="Bank Name"
                         value={bankDetails?.bankName || ''}
                         onChange={(e) => setBankDetails(prev => ({ ...prev, bankName: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                        className="w-full border border-gray-300  px-4 py-2"
                       />
                       <input
                         type="text"
                         placeholder="IFSC Code"
                         value={bankDetails?.ifscCode || ''}
                         onChange={(e) => setBankDetails(prev => ({ ...prev, ifscCode: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                        className="w-full border border-gray-300  px-4 py-2"
                       />
                     </div>
                   </div>
@@ -720,7 +721,7 @@ const BusinessSettings = () => {
                 <button
                   onClick={savePaymentSettings}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                   Save Payment Settings
@@ -739,7 +740,7 @@ const BusinessSettings = () => {
                       type="text"
                       value={taxSettings?.gstNumber || ''}
                       onChange={(e) => setTaxSettings(prev => ({ ...prev, gstNumber: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      className="w-full border border-gray-300  px-4 py-2"
                       placeholder="GST Number"
                     />
                   </div>
@@ -749,7 +750,7 @@ const BusinessSettings = () => {
                       type="number"
                       value={taxSettings?.taxRate || 0}
                       onChange={(e) => setTaxSettings(prev => ({ ...prev, taxRate: parseFloat(e.target.value) }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      className="w-full border border-gray-300  px-4 py-2"
                       min="0"
                       max="100"
                       step="0.01"
@@ -768,7 +769,7 @@ const BusinessSettings = () => {
                 <button
                   onClick={saveTaxSettings}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                   Save Tax Settings
@@ -786,7 +787,7 @@ const BusinessSettings = () => {
                     <select
                       value={generalSettings?.currency || 'INR'}
                       onChange={(e) => setGeneralSettings(prev => ({ ...prev, currency: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      className="w-full border border-gray-300  px-4 py-2"
                     >
                       <option value="INR">INR - Indian Rupee</option>
                       <option value="USD">USD - US Dollar</option>
@@ -798,7 +799,7 @@ const BusinessSettings = () => {
                     <select
                       value={generalSettings?.timezone || 'Asia/Kolkata'}
                       onChange={(e) => setGeneralSettings(prev => ({ ...prev, timezone: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      className="w-full border border-gray-300  px-4 py-2"
                     >
                       <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
                       <option value="America/New_York">America/New_York (EST)</option>
@@ -809,7 +810,7 @@ const BusinessSettings = () => {
                 <button
                   onClick={saveGeneralSettings}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                   Save General Settings
@@ -844,7 +845,7 @@ const BusinessSettings = () => {
                             ...prev,
                             pointsPerRupee: parseInt(e.target.value)
                           }))}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                          className="w-full border border-gray-300  px-4 py-2"
                           min="1"
                         />
                       </div>
@@ -859,7 +860,7 @@ const BusinessSettings = () => {
                             ...prev,
                             minPointsToRedeem: parseInt(e.target.value)
                           }))}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                          className="w-full border border-gray-300  px-4 py-2"
                           min="1"
                         />
                       </div>
@@ -869,7 +870,7 @@ const BusinessSettings = () => {
                 <button
                   onClick={saveLoyaltySettings}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                   Save Loyalty Settings
@@ -881,26 +882,26 @@ const BusinessSettings = () => {
             {activeTab === 'holidays' && (
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Holidays</h2>
-                <div className="border border-gray-200 rounded-lg p-4 mb-4">
+                <div className="border border-gray-200  p-4 mb-4">
                   <h3 className="text-lg font-medium text-gray-800 mb-3">Add Holiday</h3>
                   <div className="flex gap-3">
                     <input
                       type="date"
                       value={newHoliday.date}
                       onChange={(e) => setNewHoliday(prev => ({ ...prev, date: e.target.value }))}
-                      className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+                      className="flex-1 border border-gray-300  px-4 py-2"
                     />
                     <input
                       type="text"
                       placeholder="Reason (optional)"
                       value={newHoliday.reason}
                       onChange={(e) => setNewHoliday(prev => ({ ...prev, reason: e.target.value }))}
-                      className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+                      className="flex-1 border border-gray-300  px-4 py-2"
                     />
                     <button
                       onClick={handleAddHoliday}
                       disabled={saving || !newHoliday.date}
-                      className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                      className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50"
                     >
                       {saving ? <FaSpinner className="animate-spin" /> : <FaPlus />}
                       Add
@@ -914,7 +915,7 @@ const BusinessSettings = () => {
                       {settings.holidays.map((holiday, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                          className="flex items-center justify-between p-3 border border-gray-200 "
                         >
                           <div>
                             <p className="font-medium text-gray-800">
@@ -930,7 +931,7 @@ const BusinessSettings = () => {
                           <button
                             onClick={() => handleRemoveHoliday(holiday.date)}
                             disabled={saving}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
+                            className="p-2 text-red-600 hover:bg-red-50  disabled:opacity-50"
                           >
                             <FaTimes />
                           </button>

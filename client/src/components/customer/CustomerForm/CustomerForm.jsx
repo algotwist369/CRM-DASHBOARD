@@ -191,7 +191,7 @@ const CustomerForm = ({
             <select
               value={formData.gender}
               onChange={(e) => handleInputChange('gender', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">Select gender</option>
               {genderOptions.map(option => (
@@ -207,7 +207,7 @@ const CustomerForm = ({
             <select
               value={formData.status}
               onChange={(e) => handleInputChange('status', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             >
               {statusOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -232,7 +232,7 @@ const CustomerForm = ({
             value={formData.address}
             onChange={(e) => handleInputChange('address', e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             placeholder="Enter full address"
           />
         </div>
@@ -262,7 +262,7 @@ const CustomerForm = ({
           <select
             value={formData.emergencyContact.relationship}
             onChange={(e) => handleEmergencyContactChange('relationship', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">Select relationship</option>
             {relationshipOptions.map(option => (
@@ -331,7 +331,7 @@ const CustomerForm = ({
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             placeholder="Add any additional notes about the customer"
           />
         </div>

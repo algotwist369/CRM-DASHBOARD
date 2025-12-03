@@ -210,7 +210,7 @@ const BusinessSettings = ({
             value={formData.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             placeholder="Brief description of your business"
           />
         </div>
@@ -225,7 +225,7 @@ const BusinessSettings = ({
         
         <div className="space-y-4">
           {days.map((day) => (
-            <div key={day.key} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
+            <div key={day.key} className="flex items-center gap-4 p-4 border border-gray-200 ">
               <div className="w-24">
                 <label className="text-sm font-medium text-gray-700">
                   {day.label}
@@ -272,7 +272,7 @@ const BusinessSettings = ({
         <h3 className="text-lg font-medium text-gray-900 mb-4">Booking Settings</h3>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-gray-200 ">
             <div>
               <h4 className="font-medium text-gray-900">Allow Online Booking</h4>
               <p className="text-sm text-gray-600">Enable customers to book appointments online</p>
@@ -285,7 +285,7 @@ const BusinessSettings = ({
             />
           </div>
 
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-gray-200 ">
             <div>
               <h4 className="font-medium text-gray-900">Require Deposit</h4>
               <p className="text-sm text-gray-600">Require a deposit for appointments</p>
@@ -299,7 +299,7 @@ const BusinessSettings = ({
           </div>
 
           {formData.settings.requireDeposit && (
-            <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="p-4 border border-gray-200 ">
               <Input
                 label="Deposit Amount ($)"
                 type="number"
@@ -337,7 +337,7 @@ const BusinessSettings = ({
               value={formData.settings.cancellationPolicy}
               onChange={(e) => handleSettingsChange('cancellationPolicy', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
               placeholder="Describe your cancellation policy"
             />
           </div>

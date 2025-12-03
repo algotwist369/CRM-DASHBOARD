@@ -3,21 +3,54 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineSave, HiOutlineInformationCircle } from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
+import BackButton from '../../../components/common/Button/BackButton';
 
 const CampaignTemplateForm = ({ mode = 'create' }) => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    type: 'email',
-    category: 'marketing',
-    subject: '',
-    content: '',
+    category: 'promotional',
+    campaignType: 'promotional',
+    message: {
+      subject: '',
+      body: '',
+      variables: []
+    },
+    emailContent: {
+      htmlBody: '',
+      previewText: ''
+    },
+    defaultChannels: ['email'],
+    defaultOffer: {
+      hasOffer: false,
+      offerType: 'percentage',
+      offerValue: 0,
+      validityDays: 7
+    },
+    suggestedAudience: {
+      customerType: [],
+      membershipTier: []
+    },
+    businessId: '',
+    isPublic: true,
     isActive: true,
-    isFeatured: false
+    tags: []
   });
+
+  // Fetch businesses on mount
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      const response = await adminService.getBusinesses();
+      if (response.success) {
+        setBusinesses(response.data || []);
+      }
+    };
+    fetchBusinesses();
+  }, []);
 
   useEffect(() => {
     const fetchTemplate = async () => {
@@ -44,18 +77,55 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
   }, [mode, id, navigate]);
 
   const handleChange = (e) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleNestedChange = (parent, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [parent]: {
+        ...prev[parent],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleChannelToggle = (channel) => {
+    setFormData(prev => ({
+      ...prev,
+      defaultChannels: prev.defaultChannels.includes(channel)
+        ? prev.defaultChannels.filter(c => c !== channel)
+        : [...prev.defaultChannels, channel]
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Extract used variables from message body
+    const variableRegex = /\{\{(\w+)\}\}/g;
+    const matches = [...formData.message.body.matchAll(variableRegex)];
+    const variables = [...new Set(matches.map(m => m[1]))];
+
+    const submitData = {
+      ...formData,
+      message: {
+        ...formData.message,
+        variables
+      },
+      businessId: formData.businessId || undefined
+    };
+
     try {
       setLoading(true);
       const response = mode === 'create'
-        ? await adminService.createCampaignTemplate(formData)
-        : await adminService.updateCampaignTemplate(id, formData);
-      
+        ? await adminService.createCampaignTemplate(submitData)
+        : await adminService.updateCampaignTemplate(id, submitData);
+
       if (response.success) {
         toast.success(`Template ${mode === 'create' ? 'created' : 'updated'} successfully!`);
         navigate('/admin/campaigns/templates');
@@ -71,18 +141,15 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
   };
 
   const insertPlaceholder = (placeholder) => {
-    const textarea = document.getElementById('content');
+    const textarea = document.getElementById('messageBody');
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = formData.content;
+    const text = formData.message.body;
     const before = text.substring(0, start);
     const after = text.substring(end, text.length);
-    
-    setFormData({
-      ...formData,
-      content: before + placeholder + after
-    });
-    
+
+    handleNestedChange('message', 'body', before + placeholder + after);
+
     // Set cursor position after placeholder
     setTimeout(() => {
       textarea.selectionStart = textarea.selectionEnd = start + placeholder.length;
@@ -91,15 +158,17 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
   };
 
   const placeholders = [
-    { label: 'Customer Name', value: '[NAME]' },
-    { label: 'Business Name', value: '[BUSINESS_NAME]' },
-    { label: 'Date', value: '[DATE]' },
-    { label: 'Time', value: '[TIME]' },
-    { label: 'Service', value: '[SERVICE]' },
-    { label: 'Price', value: '[PRICE]' },
-    { label: 'Discount', value: '[DISCOUNT]' },
-    { label: 'Loyalty Points', value: '[POINTS]' },
-    { label: 'Link', value: '[LINK]' }
+    { label: 'Customer Name', value: '{{customerName}}' },
+    { label: 'Business Name', value: '{{businessName}}' },
+    { label: 'Date', value: '{{date}}' },
+    { label: 'Time', value: '{{time}}' },
+    { label: 'Service', value: '{{serviceName}}' },
+    { label: 'Price', value: '{{price}}' },
+    { label: 'Discount', value: '{{discountAmount}}' },
+    { label: 'Offer Value', value: '{{offerValue}}' },
+    { label: 'Promo Code', value: '{{promoCode}}' },
+    { label: 'Loyalty Points', value: '{{loyaltyPoints}}' },
+    { label: 'Link', value: '{{link}}' }
   ];
 
   return (
@@ -107,13 +176,7 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <button
-            onClick={() => navigate('/admin/campaigns/templates')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2"
-          >
-            <HiOutlineArrowLeft className="w-5 h-5" />
-            Back to Templates
-          </button>
+          <BackButton />
           <h1 className="text-2xl font-bold text-gray-900">
             {mode === 'create' ? 'Create Campaign Template' : 'Edit Campaign Template'}
           </h1>
@@ -127,10 +190,10 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Form */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+          <div className="bg-white border border-gray-200 rounded p-6 space-y-6">
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Template Information</h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -142,44 +205,26 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="e.g., Welcome Email, Birthday Wishes"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description <span className="text-red-500">*</span>
+                    Description
                   </label>
                   <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
-                    required
                     rows="2"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="Briefly describe what this template is for"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Type <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="type"
-                      value={formData.type}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="email">Email</option>
-                      <option value="sms">SMS</option>
-                      <option value="whatsapp">WhatsApp</option>
-                      <option value="notification">Notification</option>
-                    </select>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Category <span className="text-red-500">*</span>
@@ -188,54 +233,136 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
-                      <option value="marketing">Marketing</option>
-                      <option value="transactional">Transactional</option>
+                      <option value="welcome">Welcome</option>
+                      <option value="birthday">Birthday</option>
+                      <option value="anniversary">Anniversary</option>
                       <option value="promotional">Promotional</option>
-                      <option value="announcement">Announcement</option>
                       <option value="seasonal">Seasonal</option>
+                      <option value="retention">Retention</option>
+                      <option value="reactivation">Reactivation</option>
+                      <option value="feedback">Feedback</option>
+                      <option value="thank_you">Thank You</option>
+                      <option value="review_request">Review Request</option>
+                      <option value="appointment_reminder">Appointment Reminder</option>
+                      <option value="loyalty">Loyalty</option>
+                      <option value="referral">Referral</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Campaign Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="campaignType"
+                      value={formData.campaignType}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="promotional">Promotional</option>
+                      <option value="seasonal">Seasonal</option>
+                      <option value="loyalty">Loyalty</option>
+                      <option value="reactivation">Reactivation</option>
+                      <option value="birthday">Birthday</option>
+                      <option value="anniversary">Anniversary</option>
+                      <option value="referral">Referral</option>
+                      <option value="feedback">Feedback</option>
+                      <option value="announcement">Announcement</option>
                     </select>
                   </div>
                 </div>
 
-                {(formData.type === 'email') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Business (Optional)
+                  </label>
+                  <select
+                    name="businessId"
+                    value={formData.businessId}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">System-wide template</option>
+                    {businesses.map(business => (
+                      <option key={business._id} value={business._id}>{business.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave empty for system-wide templates available to all businesses
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Default Channels <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {['email', 'sms', 'whatsapp', 'push_notification'].map(channel => (
+                      <label key={channel} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.defaultChannels.includes(channel)}
+                          onChange={() => handleChannelToggle(channel)}
+                          className="rounded"
+                        />
+                        <span className="text-sm font-medium text-gray-700 capitalize">
+                          {channel.replace('_', ' ')}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {formData.defaultChannels.includes('email') && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject Line {formData.type === 'email' && <span className="text-red-500">*</span>}
+                      Subject Line <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      name="subject"
-                      value={formData.subject}
-                      onChange={handleChange}
-                      required={formData.type === 'email'}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Enter email subject line"
+                      value={formData.message.subject}
+                      onChange={(e) => handleNestedChange('message', 'subject', e.target.value)}
+                      required={formData.defaultChannels.includes('email')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter email subject line (use {{variables}})"
                     />
                   </div>
                 )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Message Content <span className="text-red-500">*</span>
+                    Message Body <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    id="content"
-                    name="content"
-                    value={formData.content}
-                    onChange={handleChange}
+                    id="messageBody"
+                    value={formData.message.body}
+                    onChange={(e) => handleNestedChange('message', 'body', e.target.value)}
                     required
                     rows="10"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
-                    placeholder="Enter your message content here. Use placeholders like [NAME], [DATE], etc."
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                    placeholder="Enter your message content here. Use placeholders like {{customerName}}, {{date}}, etc."
                   />
                   <p className="text-xs text-gray-500 mt-2">
-                    Use placeholders from the sidebar to personalize your message
+                    Use {'{{variable}}'} format for placeholders. Click buttons on the right to insert.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="isPublic"
+                      checked={formData.isPublic}
+                      onChange={handleChange}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Public Template</span>
+                  </label>
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -245,16 +372,6 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
                       className="rounded"
                     />
                     <span className="text-sm font-medium text-gray-700">Active</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="isFeatured"
-                      checked={formData.isFeatured}
-                      onChange={handleChange}
-                      className="rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Featured Template</span>
                   </label>
                 </div>
               </div>
@@ -266,14 +383,14 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
             <button
               type="button"
               onClick={() => navigate('/admin/campaigns/templates')}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-2 disabled:opacity-50"
             >
               <HiOutlineSave className="w-5 h-5" />
               {loading ? 'Saving...' : mode === 'create' ? 'Create Template' : 'Update Template'}
@@ -284,7 +401,7 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
         {/* Sidebar - Placeholders & Help */}
         <div className="lg:col-span-1 space-y-6">
           {/* Placeholders */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white border border-gray-200 rounded p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Available Placeholders</h3>
             <p className="text-xs text-gray-600 mb-4">Click to insert into your message</p>
             <div className="space-y-2">
@@ -293,7 +410,7 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
                   key={placeholder.value}
                   type="button"
                   onClick={() => insertPlaceholder(placeholder.value)}
-                  className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                  className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
                 >
                   <span className="font-medium text-gray-900">{placeholder.label}</span>
                   <span className="text-gray-500 ml-2 font-mono text-xs">{placeholder.value}</span>
@@ -303,35 +420,36 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
           </div>
 
           {/* Help */}
-          <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+          <div className="bg-blue-50 rounded border border-blue-200 p-6">
             <div className="flex items-start gap-3">
               <HiOutlineInformationCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-blue-900 mb-2">Template Tips</h3>
                 <ul className="text-xs text-blue-800 space-y-2">
-                  <li>• Use placeholders to personalize messages</li>
+                  <li>• Use {'{{variable}}'} format for dynamic content</li>
                   <li>• Keep subject lines under 50 characters</li>
                   <li>• SMS messages should be under 160 characters</li>
-                  <li>• Test your template before using it</li>
+                  <li>• Test your template before using it in campaigns</li>
                   <li>• Include a clear call-to-action</li>
+                  <li>• Public templates are available to all businesses</li>
                 </ul>
               </div>
             </div>
           </div>
 
           {/* Preview */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white border border-gray-200 rounded p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Preview</h3>
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              {formData.type === 'email' && formData.subject && (
+            <div className="bg-gray-50 rounded p-4 border border-gray-200">
+              {formData.defaultChannels.includes('email') && formData.message.subject && (
                 <div className="mb-3 pb-3 border-b border-gray-300">
                   <p className="text-xs text-gray-500">Subject:</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{formData.subject}</p>
+                  <p className="text-sm font-medium text-gray-900 mt-1">{formData.message.subject}</p>
                 </div>
               )}
               <p className="text-xs text-gray-500 mb-2">Message:</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                {formData.content || 'Your message will appear here...'}
+                {formData.message.body || 'Your message will appear here...'}
               </p>
             </div>
           </div>
@@ -342,4 +460,3 @@ const CampaignTemplateForm = ({ mode = 'create' }) => {
 };
 
 export default CampaignTemplateForm;
-

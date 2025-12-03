@@ -81,7 +81,7 @@ const Notifications = () => {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
         {notifications.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <div className="bg-white   border border-gray-200 p-12 text-center">
             <FaBell className="mx-auto text-gray-400 text-5xl mb-4" />
             <h3 className="text-2xl font-bold text-gray-900 mb-2">No Notifications</h3>
             <p className="text-gray-600">You're all caught up! No new notifications.</p>
@@ -91,7 +91,7 @@ const Notifications = () => {
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`bg-white rounded-xl shadow-sm border-2 p-6 ${getBgColor(notification.type)} ${
+                className={`bg-white   border-2 p-6 ${getBgColor(notification.type)} ${
                   !notification.read ? 'ring-2 ring-primary-500' : ''
                 }`}
               >

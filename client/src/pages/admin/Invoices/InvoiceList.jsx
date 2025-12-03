@@ -5,7 +5,7 @@ import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
 
 const StatsCard = memo(({ title, value, icon, color }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+  <div className="bg-white   border border-gray-200 p-6">
     <div className="flex items-center justify-between">
       <div><p className="text-sm font-medium text-gray-600">{title}</p><p className={`text-2xl font-bold mt-2 ${color}`}>{value}</p></div>
       <div className={`p-3 rounded-full ${color.replace('text', 'bg').replace('600', '100')}`}>{icon}</div>
@@ -14,15 +14,15 @@ const StatsCard = memo(({ title, value, icon, color }) => (
 ));
 
 const InvoiceRow = memo(({ invoice, onView }) => {
-  const statusColors = { 
-    paid: 'bg-green-100 text-green-800', 
-    pending: 'bg-yellow-100 text-yellow-800', 
-    overdue: 'bg-red-100 text-red-800', 
+  const statusColors = {
+    paid: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    overdue: 'bg-red-100 text-red-800',
     cancelled: 'bg-gray-100 text-gray-800',
     'partially-paid': 'bg-blue-100 text-blue-800'
   };
 
-  const customerName = invoice.customer 
+  const customerName = invoice.customer
     ? `${invoice.customer.firstName || ''} ${invoice.customer.lastName || ''}`.trim() || 'N/A'
     : invoice.customerSnapshot?.name || 'N/A';
   const invoiceDate = invoice.invoiceDate ? new Date(invoice.invoiceDate) : new Date();
@@ -68,25 +68,32 @@ const InvoiceList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Helper to validate ObjectId
+  const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
+
   // Fetch businesses
   const fetchBusinesses = useCallback(async () => {
     try {
       const response = await adminService.getBusinesses();
       if (response.success) {
         setBusinesses(response.data || []);
-        if (!selectedBusinessId && response.data && response.data.length > 0) {
-          const firstBusinessId = response.data[0]._id;
-          setSelectedBusinessId(firstBusinessId);
-          localStorage.setItem('selectedBusinessId', firstBusinessId);
-        }
       }
     } catch (error) {
       console.error('Failed to fetch businesses:', error);
     }
+  }, []);
+
+  // Validate selectedBusinessId on mount/change
+  useEffect(() => {
+    if (selectedBusinessId && !isValidObjectId(selectedBusinessId)) {
+      setSelectedBusinessId('');
+      localStorage.removeItem('selectedBusinessId');
+    }
   }, [selectedBusinessId]);
 
   const fetchInvoices = useCallback(async () => {
-    if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null' || selectedBusinessId.trim() === '') {
+    // Allow empty selectedBusinessId (for "All Businesses"), but validate if present
+    if (selectedBusinessId && !isValidObjectId(selectedBusinessId)) {
       setLoading(false);
       return;
     }
@@ -94,7 +101,7 @@ const InvoiceList = () => {
     try {
       setLoading(true);
       const params = {
-        businessId: selectedBusinessId,
+        businessId: selectedBusinessId || undefined,
         page: currentPage,
         limit: 20,
         status: statusFilter || undefined,
@@ -103,7 +110,7 @@ const InvoiceList = () => {
 
       const [invoicesRes, statsRes] = await Promise.all([
         adminService.getInvoices(params),
-        adminService.getInvoiceStats({ businessId: selectedBusinessId })
+        adminService.getInvoiceStats({ businessId: selectedBusinessId || undefined })
       ]);
 
       if (invoicesRes.success) {
@@ -137,7 +144,8 @@ const InvoiceList = () => {
   }, [fetchBusinesses]);
 
   useEffect(() => {
-    if (selectedBusinessId) {
+    // Always fetch invoices, even if selectedBusinessId is empty (All Businesses)
+    if (!selectedBusinessId || isValidObjectId(selectedBusinessId)) {
       fetchInvoices();
     }
   }, [fetchInvoices, selectedBusinessId]);
@@ -155,7 +163,7 @@ const InvoiceList = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><HiOutlineDocumentText className="text-primary-600" />Invoices & Payments</h1><p className="text-gray-600 mt-1">Manage your invoices</p></div>
-        <button onClick={() => navigate('/admin/invoices/create')} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"><HiOutlinePlus className="w-5 h-5" />Create Invoice</button>
+        <button onClick={() => navigate('/admin/invoices/create')} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"><HiOutlinePlus className="w-5 h-5" />Create Invoice</button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -165,35 +173,8 @@ const InvoiceList = () => {
         <StatsCard key="overdue" title="Overdue" value={formatCurrency(stats.overdue)} icon={<HiOutlineCurrencyDollar className="w-6 h-6 text-red-600" />} color="text-red-600" />
       </div>
 
-      {/* Business Selector */}
-      {businesses.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <HiOutlineDocumentText className="w-5 h-5 text-blue-600" />
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Business</label>
-              <select
-                value={selectedBusinessId}
-                onChange={(e) => {
-                  setSelectedBusinessId(e.target.value);
-                  localStorage.setItem('selectedBusinessId', e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-              >
-                {businesses.map((business) => (
-                  <option key={business._id} value={business._id}>
-                    {business.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white   border border-gray-200 p-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
@@ -209,10 +190,38 @@ const InvoiceList = () => {
                     fetchInvoices();
                   }
                 }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
+
+          {/* Business Selector */}
+          {businesses.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <select
+                  value={selectedBusinessId}
+                  onChange={(e) => {
+                    setSelectedBusinessId(e.target.value);
+                    if (e.target.value) {
+                      localStorage.setItem('selectedBusinessId', e.target.value);
+                    } else {
+                      localStorage.removeItem('selectedBusinessId');
+                    }
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500  bg-white"
+                >
+                  <option value="">All Businesses</option>
+                  {businesses.map((business, index) => (
+                    <option key={business._id || index} value={business._id}>
+                      {business.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
           <div className="min-w-[150px]">
             <select
               value={statusFilter}
@@ -220,7 +229,7 @@ const InvoiceList = () => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Status</option>
               <option value="paid">Paid</option>
@@ -230,14 +239,14 @@ const InvoiceList = () => {
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
-          <button onClick={fetchInvoices} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+          <button onClick={fetchInvoices} className="px-4 py-2 border border-gray-300  hover:bg-gray-50 flex items-center gap-2">
             <HiOutlineRefresh className="w-5 h-5" />
             Refresh
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white   border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -258,10 +267,10 @@ const InvoiceList = () => {
                 <tr><td colSpan="7" className="px-6 py-12 text-center"><HiOutlineDocumentText className="mx-auto h-12 w-12 text-gray-400" /><p className="mt-2 text-sm text-gray-500">No invoices found</p></td></tr>
               ) : (
                 invoices.map((invoice, index) => (
-                  <InvoiceRow 
-                    key={invoice._id || invoice.id || `invoice-${index}`} 
-                    invoice={invoice} 
-                    onView={(id) => navigate(`/admin/invoices/${id}`)} 
+                  <InvoiceRow
+                    key={invoice._id || invoice.id || `invoice-${index}`}
+                    invoice={invoice}
+                    onView={(id) => navigate(`/admin/invoices/${id}`)}
                   />
                 ))
               )}
@@ -276,14 +285,14 @@ const InvoiceList = () => {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
                 Next
               </button>
@@ -299,14 +308,14 @@ const InvoiceList = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Next
                 </button>

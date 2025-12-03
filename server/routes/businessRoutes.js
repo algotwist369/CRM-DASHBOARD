@@ -9,6 +9,9 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 // Get all public businesses (for home page listing)
 router.get("/public/list", businessController.getPublicBusinesses);
 
+// Get master list of Indian locations (states and cities)
+router.get("/public/locations/india", businessController.getIndiaLocations);
+
 // Get businesses near a location (geospatial query)
 // Query params: lat, lng, maxDistance (in meters, default 5000), type, page, limit
 router.get("/public/nearby", businessController.getBusinessesNearby);

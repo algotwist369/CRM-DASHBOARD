@@ -23,11 +23,12 @@ import { ServiceList, ServiceForm, ServiceDetails } from './pages/admin/Services
 import { AppointmentList as AdminAppointmentList, AppointmentForm, AppointmentDetails as AdminAppointmentDetails } from './pages/admin/Appointments'
 import { InvoiceList, InvoiceForm } from './pages/admin/Invoices'
 import { ReviewList, ReviewDetails } from './pages/admin/Reviews'
-import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns } from './pages/admin/Campaigns'
+import { CampaignList as AdminCampaignList, CampaignForm, CampaignTemplates, CampaignDetails as AdminCampaignDetails, CampaignTemplateForm, AutomatedCampaigns, AutomatedCampaignForm } from './pages/admin/Campaigns'
 import { LoyaltyRewards, LoyaltyRewardForm, LoyaltyPlans, LoyaltySubscriptions } from './pages/admin/Loyalty'
 import { AdminAnalytics } from './pages/admin/Analytics'
 import AdminReports from './pages/admin/Reports/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings/AdminSettings'
+import AdminProfile from './pages/admin/Profile/AdminProfile'
 
 // Manager Pages
 import ManagerDashboard from './pages/manager/Dashboard/ManagerDashboard'
@@ -60,7 +61,14 @@ import {
   Careers,
   Notifications,
   Contact,
-  FreeListing
+  FreeListing,
+  BookDemo,
+  GoogleMyBusinessReviews,
+  FacebookReviews,
+  YelpReviews,
+  TripAdvisorReviews,
+  ReviewsManagement,
+  YelpPlaybook
 } from './pages/public'
 import { BusinessInfo, ServiceSelection, StaffSelection, TimeSelection, CustomerInfo, BookingConfirmation } from './pages/public/Booking'
 import AppointmentStatus from './pages/public/AppointmentStatus/AppointmentStatus'

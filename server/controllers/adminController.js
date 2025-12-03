@@ -13,6 +13,11 @@ const isValidObjectId = (id) => {
 };
 const Staff = require("../models/Staff");
 const Transaction = require("../models/Transaction");
+const Customer = require("../models/Customer");
+const Service = require("../models/Service");
+const Appointment = require("../models/Appointment");
+const Invoice = require("../models/Invoice");
+const Campaign = require("../models/Campaign");
 const { setCache, getCache, deleteCache, getOrSet } = require("../utils/cache");
 const { cacheKeys } = require("../config/redis");
 const { formatCurrency } = require("../utils/businessUtils");
@@ -29,13 +34,13 @@ const getAdminDashboard = async (req, res, next) => {
         const dashboard = await getOrSet(cacheKey, async () => {
             // Get admin info
             const admin = await Admin.findById(adminId).select('name companyName email');
-            
+
             // Get businesses count by type with optimized query
             const businesses = await Business.find({ admin: adminId, isActive: true })
                 .select('type name branch businessLink managers staff')
                 .sort({ createdAt: -1 }) // Sort by newest first
                 .lean(); // Use lean() for better performance
-            
+
             const businessStats = {
                 total: businesses.length,
                 salon: businesses.filter(b => b.type === 'salon').length,
@@ -44,21 +49,21 @@ const getAdminDashboard = async (req, res, next) => {
             };
 
             // Get managers count with optimized query
-            const managerCount = await Manager.countDocuments({ 
+            const managerCount = await Manager.countDocuments({
                 business: { $in: businesses.map(b => b._id) },
-                isActive: true 
+                isActive: true
             });
 
             // Get staff count with optimized query
-            const staffCount = await Staff.countDocuments({ 
+            const staffCount = await Staff.countDocuments({
                 business: { $in: businesses.map(b => b._id) },
-                isActive: true 
+                isActive: true
             });
 
             // Get recent transactions (last 30 days) with optimized query
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            
+
             // Only query transactions if there are businesses
             let recentTransactions = [];
             if (businesses.length > 0) {
@@ -125,10 +130,10 @@ const getAdminDashboard = async (req, res, next) => {
         const limit = parseInt(recentBusinessesLimit);
         const startIndex = (page - 1) * limit;
         const endIndex = page * limit;
-        
+
         const paginatedBusinesses = dashboard.businesses.slice(startIndex, endIndex);
         const totalPages = Math.ceil(dashboard.businesses.length / limit);
-        
+
         const recentBusinesses = paginatedBusinesses.map(b => ({
             id: b._id,
             name: b.name,
@@ -141,9 +146,9 @@ const getAdminDashboard = async (req, res, next) => {
 
         // Remove the businesses array from response and add pagination
         const { businesses, ...restDashboard } = dashboard;
-        
-        return res.json({ 
-            success: true, 
+
+        return res.json({
+            success: true,
             data: {
                 ...restDashboard,
                 recentBusinesses,
@@ -163,85 +168,92 @@ const getAdminDashboard = async (req, res, next) => {
 // ================== Create Business ==================
 const createBusiness = async (req, res, next) => {
     try {
-        const { 
+        const {
             // Basic Information
-            type, 
-            name, 
-            branch, 
-            address, 
-            city, 
-            state, 
+            type,
+            name,
+            branch,
+            address,
+            city,
+            state,
             country,
             zipCode,
             phone,
             alternatePhone,
-            email, 
-            website, 
+            email,
+            website,
             description,
-            
+
             // Location & Maps
             googleMapsUrl, // NEW: Google Maps URL for auto lat/lng extraction
-            
+
             // Images
             images, // { logo, banner, gallery, thumbnail }
-            
+
             // Social Media
             socialMedia, // { facebook, instagram, twitter, linkedin, youtube, whatsapp, telegram }
-            
+
             // Registration & Legal
             registration, // { gstNumber, panNumber, registrationNumber, licenseNumber, taxId, registrationDate, expiryDate }
-            
+
             // Category & Tags
             category,
             subCategory,
             tags,
             specialties,
-            
+
             // Payment Methods
             paymentMethods, // { cash, card, upi, netBanking, wallet }
-            
+
             // Bank Details
             bankDetails, // { accountName, accountNumber, bankName, ifscCode, branch, upiId, qrCode }
-            
+
             // Business Capacity
-            capacity, // { seating, parking, rooms, area }
-            
+            capacity, // { seatingCapacity, parkingSpaces, numberOfRooms, numberOfFloors, totalArea }
+
             // Ratings & Reviews
-            ratings, // { average, total, distribution }
-            
+            ratings, // { average, totalReviews, fiveStars, fourStars, threeStars, twoStars, oneStar }
+
             // Features & Amenities
             features,
             amenities,
-            
+
+            // Languages Supported
+            languages, // [{ type: String }] e.g., ["English", "Hindi", "Marathi"]
+
             // SEO & Marketing
-            seo, // { metaTitle, metaDescription, metaKeywords, ogImage }
-            
+            seo, // { metaTitle, metaDescription, keywords, ogImage }
+
             // Subscription
-            subscription, // { plan, startDate, endDate, features }
-            
+            subscription, // { plan, startDate, endDate, isActive, features }
+
             // Statistics
             statistics, // { totalCustomers, totalAppointments, totalRevenue, totalOrders, averageRating }
-            
+
             // Notification Preferences
-            notificationPreferences, // { email, sms, whatsapp, push }
-            
+            notificationPreferences, // { emailNotifications, smsNotifications, whatsappNotifications, pushNotifications }
+
             // Custom Fields
-            customFields, // Flexible key-value pairs
-            
+            customFields, // Flexible key-value pairs [{ key, value, type }]
+
+            // Business Hours & Days Off
+            businessHours, // Mixed type for flexible business hours structure
+            daysOff, // [{ type: Date }] Specific dates when business is closed
+
             // Holidays
-            holidays, // [{ name, date }]
-            
+            holidays, // [{ name, date, reason }]
+
             // Settings
-            settings 
+            settings
         } = req.body;
         const adminId = req.user.id;
 
         // Validate business type - now supports more types
         const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
         if (!validTypes.includes(type)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
+            return res.status(400).json({
+                success: false,
+                message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`
             });
         }
 
@@ -264,59 +276,68 @@ const createBusiness = async (req, res, next) => {
         if (email) businessData.email = email;
         if (website) businessData.website = website;
         if (description) businessData.description = description;
-        
+
         // NEW: Google Maps URL - coordinates will be auto-extracted by pre-save hook
         if (googleMapsUrl) businessData.googleMapsUrl = googleMapsUrl;
-        
+
         // Images
         if (images) businessData.images = images;
-        
+
         // Social Media
         if (socialMedia) businessData.socialMedia = socialMedia;
-        
+
         // Registration
         if (registration) businessData.registration = registration;
-        
+
         // Category & Tags
         if (category) businessData.category = category;
         if (subCategory) businessData.subCategory = subCategory;
         if (tags) businessData.tags = tags;
         if (specialties) businessData.specialties = specialties;
-        
+
         // Payment Methods
         if (paymentMethods) businessData.paymentMethods = paymentMethods;
-        
+
         // Bank Details
         if (bankDetails) businessData.bankDetails = bankDetails;
-        
+
         // Capacity
         if (capacity) businessData.capacity = capacity;
-        
+
         // Ratings
         if (ratings) businessData.ratings = ratings;
-        
+
         // Features & Amenities
         if (features) businessData.features = features;
         if (amenities) businessData.amenities = amenities;
-        
+
+        // Languages Supported
+        if (languages) businessData.languages = languages;
+
         // SEO
         if (seo) businessData.seo = seo;
-        
+
         // Subscription
         if (subscription) businessData.subscription = subscription;
-        
-        // Statistics
-        if (statistics) businessData.statistics = statistics;
-        
-        // Notification Preferences
-        if (notificationPreferences) businessData.notificationPreferences = notificationPreferences;
-        
+
+        // Statistics - map to 'stats' as per model
+        if (statistics) businessData.stats = statistics;
+
+        // Notification Preferences - map to 'notifications' as per model
+        if (notificationPreferences) businessData.notifications = notificationPreferences;
+
         // Custom Fields
         if (customFields) businessData.customFields = customFields;
-        
+
+        // Business Hours
+        if (businessHours) businessData.businessHours = businessHours;
+
+        // Days Off
+        if (daysOff) businessData.daysOff = daysOff;
+
         // Holidays
         if (holidays) businessData.holidays = holidays;
-        
+
         // Settings with defaults
         businessData.settings = settings || {
             workingHours: {
@@ -347,7 +368,7 @@ const createBusiness = async (req, res, next) => {
                 type: business.type,
                 branch: business.branch,
                 businessLink: business.businessLink,
-                location: business.location, // Include extracted coordinates
+                location: business.location, 
                 googleMapsUrl: business.googleMapsUrl
             }
         });
@@ -369,10 +390,10 @@ const getBusinesses = async (req, res, next) => {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
 
-        let query = { admin: adminId, isActive: true };
+        let query = { admin: adminId };
 
         // Filter by type
-        if (type && ['salon', 'spa', 'hotel','restaurant','retail','gym','clinic','cafe','studio','education','automotive','others'].includes(type)) {
+        if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
             query.type = type;
         }
 
@@ -447,9 +468,9 @@ const getBusinessById = async (req, res, next) => {
 
         // Validate ID
         if (!id || !isValidObjectId(id)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Valid Business ID is required" 
+            return res.status(400).json({
+                success: false,
+                message: "Valid Business ID is required"
             });
         }
 
@@ -485,17 +506,17 @@ const updateBusiness = async (req, res, next) => {
         if (updates.type) {
             const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
             if (!validTypes.includes(updates.type)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`
                 });
             }
         }
 
         // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
         const updatedBusiness = await Business.findByIdAndUpdate(
-            id, 
-            { ...updates, updatedAt: new Date() }, 
+            id,
+            { ...updates, updatedAt: new Date() },
             { new: true, runValidators: true }
         ).populate('managers', 'name username email phone isActive');
 
@@ -503,9 +524,9 @@ const updateBusiness = async (req, res, next) => {
         await deleteCache(`admin:${adminId}:businesses`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
-        return res.json({ 
-            success: true, 
-            message: "Business updated successfully", 
+        return res.json({
+            success: true,
+            message: "Business updated successfully",
             data: {
                 id: updatedBusiness._id,
                 name: updatedBusiness.name,
@@ -523,6 +544,41 @@ const updateBusiness = async (req, res, next) => {
         });
     } catch (err) {
         next(err);
+    }
+};
+
+// ================== Update Business status ==================
+const updateBusinessStatus = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        const business = await Business.findOne({ _id: id, admin: adminId });
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+
+        // Update business
+        const updateData = {};
+        if (isActive !== undefined) updateData.isActive = isActive;
+        const updatedBusiness = await Business.findByIdAndUpdate(id, updateData, { new: true });
+
+        // Invalidate cache
+        await deleteCache(`admin:${adminId}:businesses:*`);
+        await deleteCache(`admin:${adminId}:dashboard`);
+
+        return res.json({
+            success: true,
+            message: "Business status updated successfully",
+            data: {
+                id: updatedBusiness._id,
+                isActive: updatedBusiness.isActive,
+                updatedAt: updatedBusiness.updatedAt
+            }
+        });
+    } catch (error) {
+        next(error);
     }
 };
 
@@ -562,9 +618,9 @@ const createManager = async (req, res, next) => {
 
         // Validate businessId
         if (!businessId || !isValidObjectId(businessId)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Valid Business ID is required" 
+            return res.status(400).json({
+                success: false,
+                message: "Valid Business ID is required"
             });
         }
 
@@ -582,9 +638,9 @@ const createManager = async (req, res, next) => {
 
         // Validate PIN (4 digits)
         if (!/^\d{4}$/.test(pin)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "PIN must be exactly 4 digits" 
+            return res.status(400).json({
+                success: false,
+                message: "PIN must be exactly 4 digits"
             });
         }
 
@@ -612,10 +668,10 @@ const createManager = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Manager created successfully",
-            data: { 
-                id: manager._id, 
+            data: {
+                id: manager._id,
                 name: manager.name,
-                username: manager.username, 
+                username: manager.username,
                 business: business.name,
                 businessLink: business.businessLink
             }
@@ -624,7 +680,6 @@ const createManager = async (req, res, next) => {
         next(err);
     }
 };
-
 
 // ================== Get Managers ==================
 const getManagers = async (req, res, next) => {
@@ -642,7 +697,7 @@ const getManagers = async (req, res, next) => {
         const businesses = await Business.find({ admin: adminId }).select('_id');
         const businessIds = businesses.map(b => b._id);
 
-        let query = { business: { $in: businessIds }, isActive: true };
+        let query = { business: { $in: businessIds } };
 
         if (search) {
             query.$or = [
@@ -769,9 +824,9 @@ const updateManager = async (req, res, next) => {
 
         // Validate PIN if provided
         if (pin !== undefined && !/^\d{4}$/.test(pin)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "PIN must be exactly 4 digits" 
+            return res.status(400).json({
+                success: false,
+                message: "PIN must be exactly 4 digits"
             });
         }
 
@@ -800,6 +855,48 @@ const updateManager = async (req, res, next) => {
                 email: updatedManager.email,
                 phone: updatedManager.phone,
                 pinUpdated: pin !== undefined
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ================== Update Manager status ==================
+const updateManagerStatus = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        const manager = await Manager.findById(id).populate('business');
+        if (!manager) {
+            return res.status(404).json({ success: false, message: "Manager not found" });
+        }
+
+        // Check if manager belongs to admin's business
+        const business = await Business.findOne({ _id: manager.business._id, admin: adminId });
+        if (!business) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        // Update manager
+        const updateData = {};
+        if (isActive !== undefined) updateData.isActive = isActive;
+        const updatedManager = await Manager.findByIdAndUpdate(id, updateData, { new: true }).populate('business');
+
+        // Invalidate cache
+        await deleteCache(`admin:${adminId}:managers:*`);
+        await deleteCache(`admin:${adminId}:dashboard`);
+
+        return res.json({
+            success: true,
+            message: "Manager updated successfully",
+            data: {
+                id: updatedManager._id,
+                isActive: updatedManager.isActive,
+                createdAt: updatedManager.createdAt,
+                updatedAt: updatedManager.updatedAt
             }
         });
     } catch (error) {
@@ -854,9 +951,9 @@ const getBusinessLink = async (req, res, next) => {
 
         // Validate businessId
         if (!businessId || !isValidObjectId(businessId)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Valid Business ID is required" 
+            return res.status(400).json({
+                success: false,
+                message: "Valid Business ID is required"
             });
         }
 
@@ -886,14 +983,14 @@ const getAdminProfile = async (req, res, next) => {
     try {
         const adminId = req.user.id;
         const admin = await Admin.findById(adminId).select('name companyName email phone createdAt updatedAt');
-        
+
         if (!admin) {
             return res.status(404).json({ success: false, message: "Admin not found" });
         }
 
-        return res.json({ 
-            success: true, 
-            data: admin 
+        return res.json({
+            success: true,
+            data: admin
         });
     } catch (err) {
         next(err);
@@ -956,16 +1053,16 @@ const updateAdminPassword = async (req, res, next) => {
         const { currentPassword, newPassword } = req.body;
 
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Current password and new password are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Current password and new password are required"
             });
         }
 
         if (newPassword.length < 6) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "New password must be at least 6 characters long" 
+            return res.status(400).json({
+                success: false,
+                message: "New password must be at least 6 characters long"
             });
         }
 
@@ -998,17 +1095,152 @@ const updateAdminPassword = async (req, res, next) => {
     }
 };
 
+// ================== Get Admin Stats ==================
+const getAdminStats = async (req, res, next) => {
+    try {
+        const adminId = req.user.id;
+        const cacheKey = `admin:${adminId}:stats`;
+
+        // Try cache first
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", ...cachedData });
+        }
+
+        // Get all businesses for this admin
+        const businesses = await Business.find({ admin: adminId }).select('_id');
+        const businessIds = businesses.map(b => b._id);
+
+        // Count all entities in parallel for better performance
+        const [
+            totalBusinesses,
+            activeBusinesses,
+            totalManagers,
+            activeManagers,
+            totalStaff,
+            activeStaff,
+            totalCustomers,
+            activeCustomers,
+            totalServices,
+            activeServices,
+            totalAppointments,
+            completedAppointments,
+            pendingAppointments,
+            cancelledAppointments,
+            totalTransactions,
+            totalInvoices,
+            paidInvoices,
+            totalCampaigns
+        ] = await Promise.all([
+            Business.countDocuments({ admin: adminId }),
+            Business.countDocuments({ admin: adminId, isActive: true }),
+            Manager.countDocuments({ business: { $in: businessIds } }),
+            Manager.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Staff.countDocuments({ business: { $in: businessIds } }),
+            Staff.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Customer.countDocuments({ business: { $in: businessIds } }),
+            Customer.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Service.countDocuments({ business: { $in: businessIds } }),
+            Service.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Appointment.countDocuments({ business: { $in: businessIds } }),
+            Appointment.countDocuments({ business: { $in: businessIds }, status: 'completed' }),
+            Appointment.countDocuments({ business: { $in: businessIds }, status: 'pending' }),
+            Appointment.countDocuments({ business: { $in: businessIds }, status: 'cancelled' }),
+            Transaction.countDocuments({ business: { $in: businessIds } }),
+            Invoice.countDocuments({ business: { $in: businessIds } }),
+            Invoice.countDocuments({ business: { $in: businessIds }, paymentStatus: 'paid' }),
+            Campaign.countDocuments({ business: { $in: businessIds } })
+        ]);
+
+        // Calculate total revenue
+        const transactions = await Transaction.find({ business: { $in: businessIds } })
+            .select('finalPrice')
+            .lean();
+        const totalRevenue = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
+
+        const stats = {
+            businesses: {
+                total: totalBusinesses,
+                active: activeBusinesses,
+                inactive: totalBusinesses - activeBusinesses
+            },
+            managers: {
+                total: totalManagers,
+                active: activeManagers,
+                inactive: totalManagers - activeManagers
+            },
+            staff: {
+                total: totalStaff,
+                active: activeStaff,
+                inactive: totalStaff - activeStaff
+            },
+            customers: {
+                total: totalCustomers,
+                active: activeCustomers,
+                inactive: totalCustomers - activeCustomers
+            },
+            services: {
+                total: totalServices,
+                active: activeServices,
+                inactive: totalServices - activeServices
+            },
+            appointments: {
+                total: totalAppointments,
+                completed: completedAppointments,
+                pending: pendingAppointments,
+                cancelled: cancelledAppointments
+            },
+            transactions: {
+                total: totalTransactions,
+                totalRevenue: formatCurrency(totalRevenue),
+                totalRevenueRaw: totalRevenue
+            },
+            invoices: {
+                total: totalInvoices,
+                paid: paidInvoices,
+                unpaid: totalInvoices - paidInvoices
+            },
+            campaigns: {
+                total: totalCampaigns
+            },
+            // Grand totals
+            grandTotals: {
+                allEntities: totalBusinesses + totalManagers + totalStaff + totalCustomers +
+                    totalServices + totalAppointments + totalTransactions +
+                    totalInvoices + totalCampaigns,
+                allActiveEntities: activeBusinesses + activeManagers + activeStaff +
+                    activeCustomers + activeServices
+            }
+        };
+
+        const response = {
+            success: true,
+            data: stats
+        };
+
+        // Cache for 5 minutes
+        await setCache(cacheKey, response, 300);
+
+        return res.json(response);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getAdminDashboard,
+    getAdminStats,
     createBusiness,
     getBusinesses,
     getBusinessById,
     updateBusiness,
+    updateBusinessStatus,
     deleteBusiness,
     createManager,
     getManagers,
     getManagerById,
     updateManager,
+    updateManagerStatus,
     deleteManager,
     getBusinessLink,
     getAdminProfile,

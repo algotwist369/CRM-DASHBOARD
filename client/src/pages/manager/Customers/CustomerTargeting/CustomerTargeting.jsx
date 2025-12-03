@@ -246,7 +246,7 @@ const CustomerTargeting = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/customers')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -260,7 +260,7 @@ const CustomerTargeting = () => {
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
         >
           <FaFilter />
           {showFilters ? 'Hide Filters' : 'Show Filters'}
@@ -290,7 +290,7 @@ const CustomerTargeting = () => {
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Targeting Criteria</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -300,7 +300,7 @@ const CustomerTargeting = () => {
               <select
                 value={criteria.customerType}
                 onChange={(e) => handleCriteriaChange('customerType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {customerTypeOptions.map((option) => (
                   <option key={option.value || 'all'} value={option.value}>
@@ -318,7 +318,7 @@ const CustomerTargeting = () => {
                 min="0"
                 value={criteria.minVisits}
                 onChange={(e) => handleCriteriaChange('minVisits', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Minimum"
               />
             </div>
@@ -330,7 +330,7 @@ const CustomerTargeting = () => {
                 min="0"
                 value={criteria.maxVisits}
                 onChange={(e) => handleCriteriaChange('maxVisits', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Maximum"
               />
             </div>
@@ -344,7 +344,7 @@ const CustomerTargeting = () => {
                 step="0.01"
                 value={criteria.minSpent}
                 onChange={(e) => handleCriteriaChange('minSpent', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Minimum"
               />
             </div>
@@ -357,7 +357,7 @@ const CustomerTargeting = () => {
                 step="0.01"
                 value={criteria.maxSpent}
                 onChange={(e) => handleCriteriaChange('maxSpent', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Maximum"
               />
             </div>
@@ -370,7 +370,7 @@ const CustomerTargeting = () => {
                 min="0"
                 value={criteria.lastVisitDays}
                 onChange={(e) => handleCriteriaChange('lastVisitDays', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., 30"
               />
             </div>
@@ -384,7 +384,7 @@ const CustomerTargeting = () => {
                 max="100"
                 value={criteria.ageRange.min}
                 onChange={(e) => handleCriteriaChange('ageRange.min', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Minimum"
               />
             </div>
@@ -397,7 +397,7 @@ const CustomerTargeting = () => {
                 max="100"
                 value={criteria.ageRange.max}
                 onChange={(e) => handleCriteriaChange('ageRange.max', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Maximum"
               />
             </div>
@@ -409,7 +409,7 @@ const CustomerTargeting = () => {
                 type="text"
                 value={criteria.location.city}
                 onChange={(e) => handleCriteriaChange('location.city', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="City name"
               />
             </div>
@@ -420,7 +420,7 @@ const CustomerTargeting = () => {
                 type="text"
                 value={criteria.location.state}
                 onChange={(e) => handleCriteriaChange('location.state', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="State name"
               />
             </div>
@@ -431,7 +431,7 @@ const CustomerTargeting = () => {
                 type="text"
                 value={criteria.location.pincode}
                 onChange={(e) => handleCriteriaChange('location.pincode', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Pincode"
               />
             </div>
@@ -465,7 +465,7 @@ const CustomerTargeting = () => {
                 <button
                   key={gender}
                   onClick={() => handleArrayToggle('gender', gender)}
-                  className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
+                  className={`px-4 py-2  text-sm capitalize transition-colors ${
                     criteria.gender.includes(gender)
                       ? 'bg-primary-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -482,7 +482,7 @@ const CustomerTargeting = () => {
             <button
               onClick={handleSearch}
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <>
@@ -498,7 +498,7 @@ const CustomerTargeting = () => {
             </button>
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
             >
               <FaTimes />
               Reset Filters
@@ -668,7 +668,7 @@ const CustomerTargeting = () => {
 
       {/* Empty State */}
       {targetCustomers.length === 0 && !loading && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white   border border-gray-200 p-12 text-center">
           <FaBullseye className="mx-auto text-gray-400 text-4xl mb-4" />
           <p className="text-gray-600 mb-2">No target customers found</p>
           <p className="text-sm text-gray-500">Use the filters above to search for customers</p>

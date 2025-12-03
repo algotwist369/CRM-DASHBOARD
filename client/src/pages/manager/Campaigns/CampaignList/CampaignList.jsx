@@ -199,7 +199,7 @@ const CampaignList = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 ">
               <FaBullhorn className="text-white text-xl" />
             </div>
             Marketing Campaigns
@@ -209,13 +209,13 @@ const CampaignList = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 border border-gray-300  hover:bg-gray-50 transition-colors"
           >
             {viewMode === 'grid' ? 'List View' : 'Grid View'}
           </button>
           <button
             onClick={() => navigate('/manager/campaigns/create')}
-            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white  hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
           >
             <FaPlus />
             Create Campaign
@@ -225,7 +225,7 @@ const CampaignList = () => {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Total Campaigns</span>
             <FaBullhorn className="text-purple-500" />
@@ -234,7 +234,7 @@ const CampaignList = () => {
           <p className="text-xs text-gray-500 mt-1">{campaigns.filter(c => c.status === 'running').length} active</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Total Revenue</span>
             <FaRupeeSign className="text-green-500" />
@@ -245,7 +245,7 @@ const CampaignList = () => {
           <p className="text-xs text-green-600 mt-1">From all campaigns</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Total Sent</span>
             <FaEnvelopeOpen className="text-blue-500" />
@@ -256,7 +256,7 @@ const CampaignList = () => {
           <p className="text-xs text-gray-500 mt-1">Messages delivered</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Avg. Engagement</span>
             <FaPercentage className="text-orange-500" />
@@ -271,7 +271,7 @@ const CampaignList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white   border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="relative md:col-span-2">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -280,14 +280,14 @@ const CampaignList = () => {
               placeholder="Search campaigns..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Status</option>
             <option value="draft">Draft</option>
@@ -301,7 +301,7 @@ const CampaignList = () => {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Types</option>
             <option value="promotional">Promotional</option>
@@ -319,7 +319,7 @@ const CampaignList = () => {
               setSortBy(field)
               setSortOrder(order)
             }}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="createdAt-desc">Newest First</option>
             <option value="createdAt-asc">Oldest First</option>
@@ -332,7 +332,7 @@ const CampaignList = () => {
       </div>
 
       {/* Campaigns Grid/List */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white   border border-gray-200">
         {loading ? (
           <div className="p-12 text-center">
             <FaSpinner className="animate-spin mx-auto text-primary-600 text-3xl mb-4" />
@@ -354,7 +354,7 @@ const CampaignList = () => {
             {filteredCampaigns.map((campaign) => (
               <div
                 key={campaign._id}
-                className="bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden"
+                className="bg-gradient-to-br from-white to-gray-50  border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden"
               >
                 {/* Campaign Header */}
                 <div className="p-6 border-b border-gray-200">
@@ -444,7 +444,7 @@ const CampaignList = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => navigate(`/manager/campaigns/${campaign._id}`)}
-                        className="p-2 text-gray-600 hover:bg-white rounded-lg transition-colors"
+                        className="p-2 text-gray-600 hover:bg-white  transition-colors"
                         title="View Details"
                       >
                         <FaEye />
@@ -514,14 +514,14 @@ const CampaignList = () => {
                   <div className="flex items-center gap-2 ml-4">
                     <button
                       onClick={() => navigate(`/manager/campaigns/${campaign._id}/analytics`)}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
                     >
                       <FaChartLine />
                       Analytics
                     </button>
                     <button
                       onClick={() => navigate(`/manager/campaigns/${campaign._id}`)}
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
                     >
                       <FaEye />
                       View
@@ -545,7 +545,7 @@ const CampaignList = () => {
               <button
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                 disabled={pagination.page === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
@@ -555,7 +555,7 @@ const CampaignList = () => {
               <button
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                 disabled={pagination.page >= pagination.pages}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>

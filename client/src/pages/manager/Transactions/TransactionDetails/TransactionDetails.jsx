@@ -155,7 +155,7 @@ const TransactionDetails = () => {
         {/* Main Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Customer Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
@@ -198,7 +198,7 @@ const TransactionDetails = () => {
           </div>
 
           {/* Service Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Service Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
@@ -245,7 +245,7 @@ const TransactionDetails = () => {
           </div>
 
           {/* Pricing Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Pricing Breakdown</h2>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -275,7 +275,7 @@ const TransactionDetails = () => {
 
           {/* Additional Information */}
           {(transaction.notes || transaction.rating) && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h2>
               <div className="space-y-4">
                 {transaction.notes && (
@@ -302,7 +302,7 @@ const TransactionDetails = () => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Payment Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-4">Payment Information</h3>
             <div className="space-y-3">
               <div>
@@ -327,7 +327,7 @@ const TransactionDetails = () => {
           </div>
 
           {/* Transaction Details */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-4">Transaction Details</h3>
             <div className="space-y-3">
               <div>

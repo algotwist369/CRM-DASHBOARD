@@ -108,7 +108,7 @@ const BusinessCard = ({
 
       {/* Business Link */}
       {businessLink && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-md">
+        <div className="mb-4 p-3 bg-gray-50 ">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">Public Booking Link</p>
@@ -148,7 +148,7 @@ const BusinessCard = ({
       </div>
 
       {/* Additional Stats */}
-      <div className="mb-4 p-3 bg-blue-50 rounded-md">
+      <div className="mb-4 p-3 bg-blue-50 ">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-blue-900">Total Appointments</span>
           <span className="text-lg font-semibold text-blue-900">

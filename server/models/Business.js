@@ -3,11 +3,11 @@ const mongoose = require("mongoose");
 const businessSchema = new mongoose.Schema(
     {
         admin: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true, index: true },
-        type: { 
-            type: String, 
-            enum: ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"], 
-            required: true, 
-            index: true 
+        type: {
+            type: String,
+            enum: ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"],
+            required: true,
+            index: true
         },
         name: { type: String, required: true, index: true },
         branch: { type: String, required: true, index: true },
@@ -21,9 +21,9 @@ const businessSchema = new mongoose.Schema(
         email: { type: String },
         website: { type: String },
         description: { type: String },
-        businessLink: { type: String, unique: true, index: true }, // Generated link for managers
+        businessLink: { type: String, unique: true, index: true },
         isActive: { type: Boolean, default: true, index: true },
-        
+
         // Business Images
         images: {
             logo: { type: String }, // URL to logo image
@@ -31,7 +31,7 @@ const businessSchema = new mongoose.Schema(
             gallery: [{ type: String }], // Array of gallery image URLs
             thumbnail: { type: String } // URL to thumbnail
         },
-        
+
         // Social Media Links
         socialMedia: {
             facebook: { type: String },
@@ -42,7 +42,7 @@ const businessSchema = new mongoose.Schema(
             whatsapp: { type: String },
             telegram: { type: String }
         },
-        
+
         // Business Registration & Legal
         registration: {
             gstNumber: { type: String },
@@ -53,13 +53,13 @@ const businessSchema = new mongoose.Schema(
             registrationDate: { type: Date },
             expiryDate: { type: Date }
         },
-        
+
         // Business Category & Tags
         category: { type: String },
         subCategory: { type: String },
         tags: [{ type: String }],
         specialties: [{ type: String }],
-        
+
         // Payment Methods
         paymentMethods: {
             cash: { type: Boolean, default: true },
@@ -68,7 +68,7 @@ const businessSchema = new mongoose.Schema(
             netBanking: { type: Boolean, default: false },
             wallet: { type: Boolean, default: false }
         },
-        
+
         // Bank Details for Payments
         bankDetails: {
             accountName: { type: String },
@@ -79,7 +79,7 @@ const businessSchema = new mongoose.Schema(
             upiId: { type: String },
             qrCode: { type: String }
         },
-        
+
         // Business Capacity & Size
         capacity: {
             seatingCapacity: { type: Number },
@@ -88,7 +88,7 @@ const businessSchema = new mongoose.Schema(
             numberOfFloors: { type: Number },
             totalArea: { type: String } // e.g., "1000 sq ft"
         },
-        
+
         // Ratings & Reviews
         ratings: {
             average: { type: Number, default: 0, min: 0, max: 5 },
@@ -99,14 +99,14 @@ const businessSchema = new mongoose.Schema(
             twoStars: { type: Number, default: 0 },
             oneStar: { type: Number, default: 0 }
         },
-        
+
         // Business Features & Amenities
         features: [{ type: String }], // e.g., ["WiFi", "AC", "Parking", "Pet Friendly"]
         amenities: [{ type: String }],
-        
+
         // Languages Supported
         languages: [{ type: String }], // e.g., ["English", "Hindi", "Marathi"]
-        
+
         // SEO & Marketing
         seo: {
             metaTitle: { type: String },
@@ -114,7 +114,7 @@ const businessSchema = new mongoose.Schema(
             keywords: [{ type: String }],
             ogImage: { type: String }
         },
-        
+
         // Subscription & Plan (for SaaS)
         subscription: {
             plan: { type: String, enum: ["free", "basic", "premium", "enterprise"], default: "free" },
@@ -123,7 +123,7 @@ const businessSchema = new mongoose.Schema(
             isActive: { type: Boolean, default: true },
             features: [{ type: String }]
         },
-        
+
         // Business Statistics
         stats: {
             totalCustomers: { type: Number, default: 0 },
@@ -132,7 +132,7 @@ const businessSchema = new mongoose.Schema(
             totalOrders: { type: Number, default: 0 },
             averageRating: { type: Number, default: 0 }
         },
-        
+
         // Notification Preferences
         notifications: {
             emailNotifications: { type: Boolean, default: true },
@@ -140,33 +140,33 @@ const businessSchema = new mongoose.Schema(
             whatsappNotifications: { type: Boolean, default: false },
             pushNotifications: { type: Boolean, default: true }
         },
-        
+
         // Custom Fields (for flexibility)
         customFields: [{
             key: { type: String },
             value: { type: mongoose.Schema.Types.Mixed },
             type: { type: String, enum: ["text", "number", "date", "boolean", "array"] }
         }],
-        
+
         // Business Hours & Days Off
         businessHours: {
             type: mongoose.Schema.Types.Mixed,
             default: {}
         },
         daysOff: [{ type: Date }], // Specific dates when business is closed
-        holidays: [{ 
+        holidays: [{
             name: { type: String },
             date: { type: Date },
             reason: { type: String }
         }],
-        
+
         // Location Coordinates (for maps)
         location: {
             type: { type: String, enum: ["Point"], default: "Point" },
             coordinates: { type: [Number], default: [0, 0] } // [longitude, latitude]
         },
         googleMapsUrl: { type: String }, // Full Google Maps URL - lat/lng auto-extracted
-        
+
         // Business-specific settings
         settings: {
             workingHours: {
@@ -176,7 +176,7 @@ const businessSchema = new mongoose.Schema(
             },
             currency: { type: String, default: "INR" },
             timezone: { type: String, default: "Asia/Kolkata" },
-            
+
             // Appointment settings
             appointmentSettings: {
                 advanceBookingDays: { type: Number, default: 30 }, // How many days in advance can book
@@ -232,7 +232,7 @@ businessSchema.index({ category: 1, subCategory: 1 }); // For category filtering
  */
 function extractLatLngFromGoogleMapsUrl(url) {
     if (!url) return null;
-    
+
     try {
         // Method 1: Check for ?q=lat,lng or &q=lat,lng
         const qMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
@@ -243,7 +243,7 @@ function extractLatLngFromGoogleMapsUrl(url) {
                 return { lat, lng };
             }
         }
-        
+
         // Method 2: Check for /@lat,lng format
         const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
         if (atMatch) {
@@ -253,7 +253,7 @@ function extractLatLngFromGoogleMapsUrl(url) {
                 return { lat, lng };
             }
         }
-        
+
         // Method 3: Check for /place/name/lat,lng format
         const placeMatch = url.match(/\/place\/[^/]+\/[^/]*@?(-?\d+\.?\d*),(-?\d+\.?\d*)/);
         if (placeMatch) {
@@ -263,7 +263,7 @@ function extractLatLngFromGoogleMapsUrl(url) {
                 return { lat, lng };
             }
         }
-        
+
         // Method 4: Check for ll=lat,lng (alternative parameter)
         const llMatch = url.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
         if (llMatch) {
@@ -273,7 +273,7 @@ function extractLatLngFromGoogleMapsUrl(url) {
                 return { lat, lng };
             }
         }
-        
+
         return null;
     } catch (error) {
         console.error('Error extracting coordinates from Google Maps URL:', error);
@@ -286,32 +286,29 @@ function extractLatLngFromGoogleMapsUrl(url) {
  */
 function isValidLatLng(lat, lng) {
     return (
-        !isNaN(lat) && 
-        !isNaN(lng) && 
-        lat >= -90 && 
-        lat <= 90 && 
-        lng >= -180 && 
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
         lng <= 180
     );
 }
 
 // Pre-save middleware to handle business link and location extraction
-businessSchema.pre('save', async function(next) {
+businessSchema.pre('save', async function (next) {
     try {
         // Generate business link if not exists
         if (!this.businessLink) {
-            const admin = await mongoose.model('Admin').findById(this.admin);
-            if (admin) {
-                const cleanCompanyName = admin.companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-                const shortId = this._id.toString().slice(-3);
-                this.businessLink = `${cleanCompanyName}_${shortId}`;
-            }
+            const cleanBusinessName = this.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const shortId = this._id.toString().slice(-3);
+            this.businessLink = `${cleanBusinessName}_${shortId}`;
         }
-        
+
         // Extract lat/lng from Google Maps URL if provided
         if (this.googleMapsUrl && this.isModified('googleMapsUrl')) {
             const coordinates = extractLatLngFromGoogleMapsUrl(this.googleMapsUrl);
-            
+
             if (coordinates) {
                 // Update location with extracted coordinates
                 // MongoDB uses [longitude, latitude] order for GeoJSON
@@ -324,7 +321,7 @@ businessSchema.pre('save', async function(next) {
                 console.warn('⚠️ Could not extract coordinates from Google Maps URL. Please check the URL format.');
             }
         }
-        
+
         next();
     } catch (error) {
         console.error('Error in pre-save middleware:', error);

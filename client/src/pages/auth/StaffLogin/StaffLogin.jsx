@@ -117,7 +117,7 @@ const StaffLogin = () => {
 
   return (
     <div className='max-h-screen flex flex-col justify-center items-center px-4'>
-      <div className='w-full max-w-md bg-white shadow-lg rounded-xl p-8'>
+      <div className='w-full max-w-md bg-white shadow-lg  p-8'>
         <h2 className='text-center text-2xl font-semibold text-gray-800 mb-1'>
           Staff Login 👤
         </h2>
@@ -126,7 +126,7 @@ const StaffLogin = () => {
         </p>
 
         {errors.general && (
-          <div className='bg-red-50 text-red-600 text-sm p-3 rounded-md mb-3 border border-red-200'>
+          <div className='bg-red-50 text-red-600 text-sm p-3  mb-3 border border-red-200'>
             {errors.general}
           </div>
         )}
@@ -143,7 +143,7 @@ const StaffLogin = () => {
                 type='text'
                 className={`w-full border ${
                   errors.username ? 'border-red-400' : 'border-gray-300'
-                } rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-1 ${
+                }  pl-10 pr-3 py-2 focus:outline-none focus:ring-1 ${
                   errors.username ? 'focus:ring-red-400' : 'focus:ring-gray-400'
                 } text-gray-700`}
                 placeholder='Enter your username'
@@ -168,7 +168,7 @@ const StaffLogin = () => {
                 maxLength={4}
                 className={`w-full border ${
                   errors.pin ? 'border-red-400' : 'border-gray-300'
-                } rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-1 ${
+                }  pl-10 pr-3 py-2 focus:outline-none focus:ring-1 ${
                   errors.pin ? 'focus:ring-red-400' : 'focus:ring-gray-400'
                 } text-gray-700 text-center text-2xl tracking-widest`}
                 placeholder='••••'
@@ -205,7 +205,7 @@ const StaffLogin = () => {
           <button
             type='submit'
             disabled={isLoading}
-            className='w-full bg-gray-800 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
+            className='w-full bg-gray-800 text-white py-2  font-medium hover:bg-gray-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>

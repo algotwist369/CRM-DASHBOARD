@@ -5,7 +5,10 @@ const serviceController = require("../controllers/serviceController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// All routes require authentication (Admin or Manager)
+// Public route for booking services
+router.get("/public/business/:identifier", serviceController.getPublicBusinessServices);
+
+// All routes below require authentication (Admin or Manager)
 router.use(authMiddleware, roleMiddleware(["admin", "manager"]));
 
 // ================== Service Management ==================

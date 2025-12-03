@@ -200,7 +200,7 @@ const StaffProfile = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={fetchProfile}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300  hover:bg-gray-50 text-sm font-medium text-gray-700"
               title="Refresh"
             >
               <HiRefresh className="text-gray-600" />
@@ -209,7 +209,7 @@ const StaffProfile = () => {
             {!editing && (
               <button
                 onClick={() => setEditing(true)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 text-sm font-medium"
               >
                 Edit Profile
               </button>
@@ -221,7 +221,7 @@ const StaffProfile = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Column - Profile Overview */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="bg-white  border border-gray-200 p-5">
             <div className="text-center mb-5">
               <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <FaUser className="text-primary-600 text-3xl" />
@@ -283,7 +283,7 @@ const StaffProfile = () => {
 
         {/* Right Column - Profile Details */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg border border-gray-200 p-5 sm:p-6">
+          <div className="bg-white  border border-gray-200 p-5 sm:p-6">
             {editing ? (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 pb-5 border-b border-gray-200">
@@ -295,14 +295,14 @@ const StaffProfile = () => {
                         setEditing(false)
                         fetchProfile()
                       }}
-                      className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                      className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300  hover:bg-gray-50"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-primary-600  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {saving ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -325,7 +325,7 @@ const StaffProfile = () => {
                           onChange={(e) => handleInputChange('name', e.target.value)}
                           className={`w-full pl-10 pr-4 py-2 text-base border ${
                             errors.name ? 'border-red-500' : 'border-gray-300'
-                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                          }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                           placeholder="Enter full name"
                         />
                       </div>
@@ -342,7 +342,7 @@ const StaffProfile = () => {
                           onChange={(e) => handleInputChange('email', e.target.value)}
                           className={`w-full pl-10 pr-4 py-2 text-base border ${
                             errors.email ? 'border-red-500' : 'border-gray-300'
-                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                          }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                           placeholder="Enter email"
                         />
                       </div>
@@ -361,7 +361,7 @@ const StaffProfile = () => {
                           onChange={(e) => handleInputChange('phone', e.target.value)}
                           className={`w-full pl-10 pr-4 py-2 text-base border ${
                             errors.phone ? 'border-red-500' : 'border-gray-300'
-                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                          }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                           placeholder="Enter phone number"
                         />
                       </div>
@@ -376,7 +376,7 @@ const StaffProfile = () => {
                           type="text"
                           value={formData.address}
                           onChange={(e) => handleInputChange('address', e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                           placeholder="Enter address"
                         />
                       </div>
@@ -396,7 +396,7 @@ const StaffProfile = () => {
                           type="text"
                           value={formData.specialization}
                           onChange={(e) => handleInputChange('specialization', e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                           placeholder="e.g., Hair cutting, Facial treatment"
                         />
                       </div>
@@ -411,7 +411,7 @@ const StaffProfile = () => {
                         onChange={(e) => handleInputChange('experience', parseInt(e.target.value) || 0)}
                         className={`w-full px-4 py-2 text-base border ${
                           errors.experience ? 'border-red-500' : 'border-gray-300'
-                        } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                        }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                         placeholder="Years of experience"
                       />
                       {errors.experience && <p className="text-red-500 text-xs mt-1">{errors.experience}</p>}
@@ -431,7 +431,7 @@ const StaffProfile = () => {
                           type="time"
                           value={formData.workingHours.start}
                           onChange={(e) => handleInputChange('workingHours.start', e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                     </div>
@@ -444,7 +444,7 @@ const StaffProfile = () => {
                           type="time"
                           value={formData.workingHours.end}
                           onChange={(e) => handleInputChange('workingHours.end', e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="w-full pl-10 pr-4 py-2 text-base border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                     </div>
@@ -458,7 +458,7 @@ const StaffProfile = () => {
                           key={day.value}
                           type="button"
                           onClick={() => handleDayToggle(day.value)}
-                          className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-colors min-w-[80px] ${
+                          className={`px-3 sm:px-4 py-2 text-sm font-medium  transition-colors min-w-[80px] ${
                             formData.workingHours.days.includes(day.value)
                               ? 'bg-primary-600 text-white hover:bg-primary-700'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
@@ -525,7 +525,7 @@ const StaffProfile = () => {
                             profile.workingHours.days.map((day) => (
                               <span
                                 key={day}
-                                className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg"
+                                className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 "
                               >
                                 {day.charAt(0).toUpperCase() + day.slice(1)}
                               </span>

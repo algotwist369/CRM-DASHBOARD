@@ -103,7 +103,7 @@ const NotificationAnalytics = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/notifications')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -121,7 +121,7 @@ const NotificationAnalytics = () => {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Total Recipients</span>
             <FaUsers className="text-blue-500" />
@@ -129,7 +129,7 @@ const NotificationAnalytics = () => {
           <p className="text-3xl font-bold text-gray-900">{overview.totalRecipients || 0}</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Sent</span>
             <FaEnvelope className="text-green-500" />
@@ -140,7 +140,7 @@ const NotificationAnalytics = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Delivered</span>
             <FaCheckCircle className="text-blue-500" />
@@ -148,7 +148,7 @@ const NotificationAnalytics = () => {
           <p className="text-3xl font-bold text-gray-900">{overview.delivered || 0}</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Failed</span>
             <FaTimesCircle className="text-red-500" />
@@ -159,7 +159,7 @@ const NotificationAnalytics = () => {
 
       {/* Engagement Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Opened</span>
             <FaEye className="text-purple-500" />
@@ -170,7 +170,7 @@ const NotificationAnalytics = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Clicked</span>
             <FaMousePointer className="text-indigo-500" />
@@ -181,7 +181,7 @@ const NotificationAnalytics = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Engagement</span>
             <FaChartLine className="text-primary-500" />
@@ -192,7 +192,7 @@ const NotificationAnalytics = () => {
           <p className="text-sm text-gray-500 mt-1">Overall engagement</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Conversions</span>
             <FaCalendarCheck className="text-green-500" />
@@ -207,7 +207,7 @@ const NotificationAnalytics = () => {
       {/* Performance Metrics */}
       {(performance.revenue > 0 || performance.newBookings > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <FaRupeeSign className="text-green-500" />
@@ -222,7 +222,7 @@ const NotificationAnalytics = () => {
             </p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <FaCalendarCheck className="text-blue-500" />
@@ -241,7 +241,7 @@ const NotificationAnalytics = () => {
 
       {/* Delivery Details */}
       {deliveries && deliveries.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Delivery Details</h3>
           <div className="overflow-x-auto">
             <table className="w-full">

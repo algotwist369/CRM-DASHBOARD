@@ -179,13 +179,13 @@ const StaffCard = ({
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
+        <div className="text-center p-3 bg-gray-50 ">
           <p className="text-xl font-semibold text-gray-900">
             {totalAppointments || 0}
           </p>
           <p className="text-sm text-gray-500">Appointments</p>
         </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
+        <div className="text-center p-3 bg-gray-50 ">
           <p className="text-xl font-semibold text-gray-900">
             {formatCurrency(totalRevenue)}
           </p>
@@ -195,7 +195,7 @@ const StaffCard = ({
 
       {/* Experience */}
       {experience && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+        <div className="mb-4 p-3 bg-blue-50 ">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-blue-900">Experience</span>
             <span className="text-sm text-blue-700">

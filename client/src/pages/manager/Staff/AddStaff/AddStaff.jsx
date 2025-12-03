@@ -160,7 +160,7 @@ const AddStaff = () => {
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Personal Information */}
           <div>
@@ -180,7 +180,7 @@ const AddStaff = () => {
                     onChange={handleChange}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.name ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter full name"
                   />
                 </div>
@@ -202,7 +202,7 @@ const AddStaff = () => {
                     maxLength={10}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.phone ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter phone number"
                   />
                 </div>
@@ -221,7 +221,7 @@ const AddStaff = () => {
                     onChange={handleChange}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.email ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter email (optional)"
                   />
                 </div>
@@ -239,7 +239,7 @@ const AddStaff = () => {
                     name="role"
                     value={formData.role}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
                   >
                     <option value="stylist">Stylist</option>
                     <option value="therapist">Therapist</option>
@@ -269,7 +269,7 @@ const AddStaff = () => {
                     name="specialization"
                     value={formData.specialization}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="e.g., Hair cutting, Facial treatment"
                   />
                 </div>
@@ -291,7 +291,7 @@ const AddStaff = () => {
                     step="0.5"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.experience ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="0"
                   />
                 </div>
@@ -312,7 +312,7 @@ const AddStaff = () => {
                     step="0.01"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.salary ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter salary (optional)"
                   />
                 </div>
@@ -334,7 +334,7 @@ const AddStaff = () => {
                     step="0.1"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.commission ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="0"
                   />
                 </div>
@@ -362,7 +362,7 @@ const AddStaff = () => {
                     onChange={handleChange}
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.username ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter username (optional)"
                   />
                 </div>
@@ -383,7 +383,7 @@ const AddStaff = () => {
                     inputMode="numeric"
                     className={`w-full pl-10 pr-4 py-2 border ${
                       errors.pin ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter 4-digit PIN (optional)"
                   />
                 </div>
@@ -397,14 +397,14 @@ const AddStaff = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

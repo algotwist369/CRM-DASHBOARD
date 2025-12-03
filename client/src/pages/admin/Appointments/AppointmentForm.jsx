@@ -188,11 +188,11 @@ const AppointmentForm = () => {
         <p className="text-gray-600 mt-1">Create a new appointment booking</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <form onSubmit={handleSubmit} className="bg-white   border border-gray-200">
         <div className="p-6 space-y-6">
           {/* Business Selector */}
           {businesses.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200  p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Business <span className="text-red-500">*</span>
               </label>
@@ -200,7 +200,7 @@ const AppointmentForm = () => {
                 value={selectedBusinessId}
                 onChange={(e) => setSelectedBusinessId(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               >
                 <option value="">Select a business</option>
                 {businesses.map((business) => (
@@ -220,7 +220,7 @@ const AppointmentForm = () => {
                 value={formData.customerId}
                 onChange={handleChange}
                 required
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors.customerId ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors.customerId ? 'border-red-500' : 'border-gray-300'}`}
               >
                 <option value="">Select customer</option>
                 {customers.map((customer) => (
@@ -239,7 +239,7 @@ const AppointmentForm = () => {
                 value={formData.serviceId}
                 onChange={handleChange}
                 required
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors.serviceId ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors.serviceId ? 'border-red-500' : 'border-gray-300'}`}
               >
                 <option value="">Select service</option>
                 {services.map((service) => (
@@ -257,7 +257,7 @@ const AppointmentForm = () => {
                 name="staffId"
                 value={formData.staffId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">Select staff</option>
                 {staff.map((member) => (
@@ -274,7 +274,7 @@ const AppointmentForm = () => {
                 name="bookingSource"
                 value={formData.bookingSource}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               >
                 <option value="walk-in">Walk-in</option>
                 <option value="online">Online</option>
@@ -292,7 +292,7 @@ const AppointmentForm = () => {
                 onChange={handleChange}
                 min={new Date().toISOString().split('T')[0]}
                 required
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors.appointmentDate ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors.appointmentDate ? 'border-red-500' : 'border-gray-300'}`}
               />
               {formErrors.appointmentDate && <p className="mt-1 text-sm text-red-600">{formErrors.appointmentDate}</p>}
             </div>
@@ -305,7 +305,7 @@ const AppointmentForm = () => {
                 value={formData.startTime}
                 onChange={handleChange}
                 required
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors.startTime ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors.startTime ? 'border-red-500' : 'border-gray-300'}`}
               />
               {formErrors.startTime && <p className="mt-1 text-sm text-red-600">{formErrors.startTime}</p>}
             </div>
@@ -318,7 +318,7 @@ const AppointmentForm = () => {
                 value={formData.endTime}
                 onChange={handleChange}
                 required
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 ${formErrors.endTime ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 ${formErrors.endTime ? 'border-red-500' : 'border-gray-300'}`}
               />
               {formErrors.endTime && <p className="mt-1 text-sm text-red-600">{formErrors.endTime}</p>}
             </div>
@@ -329,7 +329,7 @@ const AppointmentForm = () => {
                 name="paymentMethod"
                 value={formData.paymentMethod}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               >
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
@@ -347,7 +347,7 @@ const AppointmentForm = () => {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -359,7 +359,7 @@ const AppointmentForm = () => {
               value={formData.customerNotes}
               onChange={handleChange}
               rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               placeholder="Any special notes from the customer..."
             />
           </div>
@@ -371,7 +371,7 @@ const AppointmentForm = () => {
               value={formData.specialRequests}
               onChange={handleChange}
               rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-primary-500"
               placeholder="Any special requests or requirements..."
             />
           </div>
@@ -381,14 +381,14 @@ const AppointmentForm = () => {
           <button
             type="button"
             onClick={() => navigate('/admin/appointments')}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 flex items-center gap-2 disabled:opacity-50"
           >
             <HiOutlineSave className="w-5 h-5" />
             {loading ? 'Creating...' : 'Book Appointment'}

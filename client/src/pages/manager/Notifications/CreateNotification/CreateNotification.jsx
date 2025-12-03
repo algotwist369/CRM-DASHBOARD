@@ -167,7 +167,7 @@ const CreateNotification = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/notifications')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -180,7 +180,7 @@ const CreateNotification = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
           
           <div className="space-y-4">
@@ -192,7 +192,7 @@ const CreateNotification = () => {
                 name="type"
                 value={formData.type}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 required
               >
                 {notificationTypes.map(type => (
@@ -210,7 +210,7 @@ const CreateNotification = () => {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Enter notification title"
                 required
               />
@@ -225,7 +225,7 @@ const CreateNotification = () => {
                 value={formData.message}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Enter notification message"
                 required
               />
@@ -234,7 +234,7 @@ const CreateNotification = () => {
         </div>
 
         {/* Target Audience */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaUsers />
             Target Audience
@@ -249,7 +249,7 @@ const CreateNotification = () => {
                 name="targetAudience.type"
                 value={formData.targetAudience.type}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 required
               >
                 {targetAudienceTypes.map(type => (
@@ -267,7 +267,7 @@ const CreateNotification = () => {
                   <input
                     type="number"
                     placeholder="Min Visits"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 "
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
                       targetAudience: {
@@ -285,7 +285,7 @@ const CreateNotification = () => {
                   <input
                     type="number"
                     placeholder="Min Spent"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 "
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
                       targetAudience: {
@@ -307,7 +307,7 @@ const CreateNotification = () => {
         </div>
 
         {/* Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Content</h2>
           
           <div className="space-y-4">
@@ -321,7 +321,7 @@ const CreateNotification = () => {
                 name="content.imageUrl"
                 value={formData.content.imageUrl}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="https://example.com/image.jpg"
               />
             </div>
@@ -336,7 +336,7 @@ const CreateNotification = () => {
                 name="content.actionUrl"
                 value={formData.content.actionUrl}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="https://example.com/action"
               />
             </div>
@@ -350,7 +350,7 @@ const CreateNotification = () => {
                 name="content.actionText"
                 value={formData.content.actionText}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Book Now, Claim Offer, etc."
               />
             </div>
@@ -365,7 +365,7 @@ const CreateNotification = () => {
                   name="content.discountCode"
                   value={formData.content.discountCode}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="SAVE20"
                 />
               </div>
@@ -380,7 +380,7 @@ const CreateNotification = () => {
                   onChange={handleChange}
                   min="0"
                   max="100"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="20"
                 />
               </div>
@@ -389,7 +389,7 @@ const CreateNotification = () => {
         </div>
 
         {/* Delivery Settings */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaCalendarAlt />
             Delivery Settings
@@ -404,7 +404,7 @@ const CreateNotification = () => {
                 {channels.map(channel => (
                   <label
                     key={channel.value}
-                    className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-center gap-2 p-3 border-2  cursor-pointer transition-colors ${
                       formData.delivery.channels.includes(channel.value)
                         ? 'border-primary-600 bg-primary-50'
                         : 'border-gray-300 hover:border-gray-400'
@@ -432,7 +432,7 @@ const CreateNotification = () => {
                 name="delivery.scheduledAt"
                 value={formData.delivery.scheduledAt}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -444,7 +444,7 @@ const CreateNotification = () => {
                 name="delivery.priority"
                 value={formData.delivery.priority}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="low">Low</option>
                 <option value="normal">Normal</option>
@@ -456,7 +456,7 @@ const CreateNotification = () => {
         </div>
 
         {/* Campaign Info (Optional) */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaTag />
             Campaign Information (Optional)
@@ -472,7 +472,7 @@ const CreateNotification = () => {
                 name="campaign.name"
                 value={formData.campaign.name}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Summer Sale 2024"
               />
             </div>
@@ -486,7 +486,7 @@ const CreateNotification = () => {
                 value={formData.campaign.description}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Campaign description..."
               />
             </div>
@@ -495,7 +495,7 @@ const CreateNotification = () => {
 
         {/* Estimated Cost */}
         {(targetCount > 0 || estimatedCost > 0) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="bg-blue-50 border border-blue-200  p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-900">Target Audience</p>
@@ -514,14 +514,14 @@ const CreateNotification = () => {
           <button
             type="button"
             onClick={() => navigate('/manager/notifications')}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? (
               <>

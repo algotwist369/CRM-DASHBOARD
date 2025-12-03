@@ -207,7 +207,7 @@ const AppointmentDetails = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/appointments')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -221,7 +221,7 @@ const AppointmentDetails = () => {
         </div>
         <button
           onClick={() => setShowStatusModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
         >
           <FaEdit />
           Update Status
@@ -232,7 +232,7 @@ const AppointmentDetails = () => {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Appointment Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment Information</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -269,12 +269,12 @@ const AppointmentDetails = () => {
                 <div className="flex flex-wrap gap-2">
                   {Array.isArray(appointment.services)
                     ? appointment.services.map((service, index) => (
-                        <span key={index} className="px-3 py-1 bg-primary-100 text-primary-800 rounded-lg text-sm">
+                        <span key={index} className="px-3 py-1 bg-primary-100 text-primary-800  text-sm">
                           {service?.serviceName || service}
                         </span>
                       ))
                     : appointment.serviceName && (
-                        <span className="px-3 py-1 bg-primary-100 text-primary-800 rounded-lg text-sm">
+                        <span className="px-3 py-1 bg-primary-100 text-primary-800  text-sm">
                           {appointment.serviceName}
                         </span>
                       )}
@@ -284,7 +284,7 @@ const AppointmentDetails = () => {
           </div>
 
           {/* Customer Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h2>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
@@ -321,7 +321,7 @@ const AppointmentDetails = () => {
 
           {/* Staff Information */}
           {appointment.staff && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Staff Information</h2>
               <div className="flex items-center gap-3">
                 <FaUserTie className="text-gray-400" />
@@ -338,7 +338,7 @@ const AppointmentDetails = () => {
 
           {/* Notes */}
           {(appointment.customerNotes || appointment.specialRequests || appointment.completionNotes) && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <FaStickyNote />
                 Notes
@@ -370,7 +370,7 @@ const AppointmentDetails = () => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Summary */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Summary</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -417,7 +417,7 @@ const AppointmentDetails = () => {
           </div>
 
           {/* Timeline */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Timeline</h2>
             <div className="space-y-3">
               <div>
@@ -459,7 +459,7 @@ const AppointmentDetails = () => {
       {/* Status Update Modal */}
       {showStatusModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white  shadow-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Appointment Status</h2>
             
             <div className="space-y-4">
@@ -468,7 +468,7 @@ const AppointmentDetails = () => {
                 <select
                   value={statusUpdate.status}
                   onChange={(e) => setStatusUpdate(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Select Status</option>
                   <option value="pending">Pending</option>
@@ -486,7 +486,7 @@ const AppointmentDetails = () => {
                   value={statusUpdate.notes}
                   onChange={(e) => setStatusUpdate(prev => ({ ...prev, notes: e.target.value }))}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Add notes about this status update..."
                 />
               </div>
@@ -496,7 +496,7 @@ const AppointmentDetails = () => {
               <button
                 onClick={handleStatusUpdate}
                 disabled={updating || !statusUpdate.status}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {updating ? (
                   <>
@@ -515,7 +515,7 @@ const AppointmentDetails = () => {
                     notes: appointment.completionNotes || ''
                   })
                 }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 text-gray-700  hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
