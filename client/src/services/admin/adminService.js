@@ -30,6 +30,45 @@ class AdminService {
     }
   }
 
+  // Get admin profile
+  async getProfile() {
+    try {
+      const response = await apiClient.get(endpoints.admin.getProfile)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch profile'
+      }
+    }
+  }
+
+  // Update admin profile
+  async updateProfile(profileData) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updateProfile, profileData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update profile'
+      }
+    }
+  }
+
+  // Update admin password
+  async updatePassword(passwordData) {
+    try {
+      const response = await apiClient.put(endpoints.admin.updatePassword, passwordData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update password'
+      }
+    }
+  }
+
   // Get managers
   async getManagers(params = {}) {
     try {
