@@ -388,7 +388,7 @@ const AppointmentList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loadingAppointments ? (
                 <tr>
-                  <td colSpan="6" className="px-4 bg-red-400 py-12 text-center">
+                  <td colSpan="6" className="px-4 py-12 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
                   </td>
                 </tr>

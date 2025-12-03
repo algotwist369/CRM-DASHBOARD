@@ -326,10 +326,20 @@ const BusinessList = () => {
 
       const res = await businessService.getBusinesses(params);
       if (res.success) {
-        const list = res.data?.data || res.data?.businesses || [];
-        setBusinesses(list);
-        if (res.data?.pagination) {
-          setPagination(prev => ({ ...prev, ...res.data.pagination }));
+        // Handle nested data structure from service wrapper
+        const responseData = res.data?.data || res.data?.businesses || [];
+        const paginationData = res.data?.pagination;
+
+        setBusinesses(responseData);
+
+        if (paginationData) {
+          setPagination(prev => ({
+            ...prev,
+            currentPage: paginationData.page,
+            totalPages: paginationData.pages,
+            total: paginationData.total,
+            limit: paginationData.limit
+          }));
         }
       } else {
         setError(res.error || "Failed to load businesses");
@@ -518,9 +528,18 @@ const BusinessList = () => {
     const listRes = await businessService.getBusinesses(params);
     if (listRes.success) {
       const list = listRes.data?.data || listRes.data?.businesses || [];
+      const paginationData = listRes.data?.pagination;
+
       setBusinesses(list);
-      if (listRes.data?.pagination) {
-        setPagination(prev => ({ ...prev, ...listRes.data.pagination }));
+
+      if (paginationData) {
+        setPagination(prev => ({
+          ...prev,
+          currentPage: paginationData.page,
+          totalPages: paginationData.pages,
+          total: paginationData.total,
+          limit: paginationData.limit
+        }));
       }
     }
     await fetchDashboardStats();
@@ -779,7 +798,7 @@ const BusinessList = () => {
       )}
 
       {/* Analytics Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+      {/* <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {analyticsValues.map((card) => (
           <AnalyticsCard
             key={card.title}
@@ -788,7 +807,7 @@ const BusinessList = () => {
             value={card.value}
           />
         ))}
-      </section>
+      </section> */}
 
       {/* Business List Table */}
       <section className="bg-white shadow-md  sm: p-4 sm:p-5">

@@ -2,7 +2,9 @@
 const Service = require("../models/Service");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
+const Appointment = require("../models/Appointment");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
+const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
 
 // ================== Create Service ==================
 const createService = async (req, res, next) => {
@@ -41,7 +43,7 @@ const createService = async (req, res, next) => {
 
         // Remove businessId from serviceData to prevent override
         const { businessId, ...cleanServiceData } = serviceData;
-        
+
         // Create service
         const service = await Service.create({
             ...cleanServiceData,
@@ -83,37 +85,61 @@ const getServices = async (req, res, next) => {
         } = req.query;
 
         // Determine business ID
+        let businessIds = [];
         let business;
+
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                business = await Business.findOne({ _id: businessId, admin: userId });
+                if (business) businessIds = [business._id];
+            } else {
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            if (manager) {
+                business = await Business.findById(manager.business);
+                if (business) businessIds = [business._id];
+            }
         }
 
-        if (!business) {
+        if (businessIds.length === 0) {
+            if (userRole === 'admin' && !businessId) {
+                return res.json({
+                    success: true,
+                    data: [],
+                    pagination: {
+                        total: 0,
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        pages: 0
+                    }
+                });
+            }
             return res.status(404).json({
                 success: false,
                 message: "Business not found or access denied"
             });
         }
 
-        const cacheKey = `business:${business._id}:services:${page}:${limit}:${search}:${category}:${serviceType}:${isActive}:${minPrice}:${maxPrice}:${sortBy}:${sortOrder}`;
+        const cacheKeyPrefix = businessId ? `business:${businessId}` : `admin:${userId}`;
+        const cacheKey = `${cacheKeyPrefix}:services:${page}:${limit}:${search}:${category}:${serviceType}:${isActive}:${minPrice}:${maxPrice}:${sortBy}:${sortOrder}`;
 
         // Try cache first
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
-        }
+        // NOTE: Caching is disabled to ensure real-time booking stats are accurate.
+        // const cachedData = await getCache(cacheKey);
+        // if (cachedData) {
+        //     return res.json({ success: true, source: "cache", ...cachedData });
+        // }
 
         // Build query
-        let query = { business: business._id };
+        let query = {};
+        if (businessIds.length === 1) {
+            query.business = businessIds[0];
+        } else {
+            query.business = { $in: businessIds };
+        }
 
         if (isActive !== undefined) {
             query.isActive = isActive === 'true';
@@ -138,6 +164,7 @@ const getServices = async (req, res, next) => {
 
         // Price filtering - handle both old format (price) and new format (pricingOptions)
         // Note: We'll filter in memory after fetching to handle both formats properly
+        // WARNING: This in-memory filtering breaks pagination consistency.
         const minPriceFilter = minPrice ? Number(minPrice) : null;
         const maxPriceFilter = maxPrice ? Number(maxPrice) : null;
 
@@ -146,6 +173,8 @@ const getServices = async (req, res, next) => {
         sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
         let services = await Service.find(query)
+            .populate('business', 'name')
+            .populate('category', 'name')
             .populate('assignedStaff', 'name role')
             .populate('packageDetails.includedServices.service', 'name price')
             .skip((page - 1) * limit)
@@ -153,9 +182,36 @@ const getServices = async (req, res, next) => {
             .sort(sortOptions)
             .lean();
 
+        // Calculate real-time stats for these services
+        const serviceIds = services.map(s => s._id);
+        const bookingStats = await Appointment.aggregate([
+            { $match: { service: { $in: serviceIds } } },
+            {
+                $group: {
+                    _id: "$service",
+                    count: { $sum: 1 },
+                    revenue: { $sum: "$totalAmount" }
+                }
+            }
+        ]);
+
+        const statsMap = {};
+        bookingStats.forEach(stat => {
+            statsMap[stat._id.toString()] = {
+                count: stat.count,
+                revenue: stat.revenue || 0
+            };
+        });
+
+        services.forEach(service => {
+            if (!service.stats) service.stats = {};
+            const stats = statsMap[service._id.toString()] || { count: 0, revenue: 0 };
+            service.stats.totalBookings = stats.count;
+            service.stats.totalRevenue = stats.revenue;
+        });
+
         // Filter by price if minPrice or maxPrice specified (handle both old and new format)
         if (minPriceFilter !== null || maxPriceFilter !== null) {
-            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
             services = services.filter(service => {
                 const { price } = getServicePriceAndDuration(service);
                 if (minPriceFilter !== null && price < minPriceFilter) return false;
@@ -169,7 +225,6 @@ const getServices = async (req, res, next) => {
         if (minPriceFilter !== null || maxPriceFilter !== null) {
             // If price filtering, we need to count after filtering
             const allServices = await Service.find(query).lean();
-            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
             total = allServices.filter(service => {
                 const { price } = getServicePriceAndDuration(service);
                 if (minPriceFilter !== null && price < minPriceFilter) return false;
@@ -192,7 +247,7 @@ const getServices = async (req, res, next) => {
         };
 
         // Cache for 5 minutes
-        await setCache(cacheKey, response, 300);
+        // await setCache(cacheKey, response, 300);
 
         return res.json(response);
     } catch (err) {
@@ -211,7 +266,8 @@ const getServiceById = async (req, res, next) => {
             .populate('business', 'name type branch')
             .populate('assignedStaff', 'name role phone email')
             .populate('packageDetails.includedServices.service')
-            .populate('membershipDetails.includedServices.service');
+            .populate('membershipDetails.includedServices.service')
+            .lean();
 
         if (!service) {
             return res.status(404).json({
@@ -222,7 +278,7 @@ const getServiceById = async (req, res, next) => {
 
         // Get business ID (handle both populated and unpopulated)
         const businessId = service.business?._id || service.business;
-        
+
         // Verify access
         if (userRole === 'admin') {
             const business = await Business.findOne({
@@ -244,6 +300,22 @@ const getServiceById = async (req, res, next) => {
                 });
             }
         }
+
+        // Calculate real-time stats
+        const bookingStats = await Appointment.aggregate([
+            { $match: { service: service._id } },
+            {
+                $group: {
+                    _id: "$service",
+                    count: { $sum: 1 },
+                    revenue: { $sum: "$totalAmount" }
+                }
+            }
+        ]);
+
+        if (!service.stats) service.stats = {};
+        service.stats.totalBookings = bookingStats.length > 0 ? bookingStats[0].count : 0;
+        service.stats.totalRevenue = bookingStats.length > 0 ? bookingStats[0].revenue : 0;
 
         return res.json({
             success: true,
@@ -295,7 +367,7 @@ const updateService = async (req, res, next) => {
 
         // Remove protected fields from updates (cannot be changed)
         const { business, businessId, createdBy, createdByModel, _id, __v, ...allowedUpdates } = updates;
-        
+
         // Update service
         Object.assign(service, allowedUpdates);
         service.updatedBy = userId;
@@ -483,32 +555,83 @@ const getPopularServices = async (req, res, next) => {
         const { businessId, limit = 10 } = req.query;
 
         // Determine business ID
+        let businessIds = [];
         let business;
+
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                business = await Business.findOne({ _id: businessId, admin: userId });
+                if (business) businessIds = [business._id];
+            } else {
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            if (manager) {
+                business = await Business.findById(manager.business);
+                if (business) businessIds = [business._id];
+            }
         }
 
-        if (!business) {
+        if (businessIds.length === 0) {
+            if (userRole === 'admin' && !businessId) {
+                return res.json({
+                    success: true,
+                    data: []
+                });
+            }
             return res.status(404).json({
                 success: false,
                 message: "Business not found or access denied"
             });
         }
 
-        const services = await Service.getPopularServices(business._id, parseInt(limit));
+        let services = [];
+        // If specific business or manager, use the model method (which might be optimized for single business)
+        // However, the model method likely takes a single ID.
+        // If we have multiple businesses, we might need to aggregate or loop.
+        // For simplicity and performance, if multiple businesses, we might need a custom query here or update the model method.
+        // Let's check if we can just use Service.find with sort for popular.
+
+        if (businessIds.length === 1) {
+            services = await Service.getPopularServices(businessIds[0], parseInt(limit));
+        } else {
+            // Manual implementation for multiple businesses
+            services = await Service.find({
+                business: { $in: businessIds },
+                isActive: true
+            })
+                .sort({ 'stats.totalBookings': -1, 'ratings.average': -1 })
+                .limit(parseInt(limit))
+                .populate('business', 'name')
+                .lean();
+        }
+
+        // Ensure we have plain objects and calculate real-time stats
+        const plainServices = services.map(s => s.toObject ? s.toObject() : s);
+
+        const serviceIds = plainServices.map(s => s._id);
+        if (serviceIds.length > 0) {
+            const bookingStats = await Appointment.aggregate([
+                { $match: { service: { $in: serviceIds } } },
+                { $group: { _id: "$service", count: { $sum: 1 } } }
+            ]);
+
+            const statsMap = {};
+            bookingStats.forEach(stat => {
+                statsMap[stat._id.toString()] = stat.count;
+            });
+
+            plainServices.forEach(service => {
+                if (!service.stats) service.stats = {};
+                service.stats.totalBookings = statsMap[service._id.toString()] || 0;
+            });
+        }
 
         return res.json({
             success: true,
-            data: services
+            data: plainServices
         });
     } catch (err) {
         next(err);
@@ -546,9 +669,30 @@ const getFeaturedServices = async (req, res, next) => {
 
         const services = await Service.getFeaturedServices(business._id);
 
+        // Ensure we have plain objects and calculate real-time stats
+        const plainServices = services.map(s => s.toObject ? s.toObject() : s);
+
+        const serviceIds = plainServices.map(s => s._id);
+        if (serviceIds.length > 0) {
+            const bookingStats = await Appointment.aggregate([
+                { $match: { service: { $in: serviceIds } } },
+                { $group: { _id: "$service", count: { $sum: 1 } } }
+            ]);
+
+            const statsMap = {};
+            bookingStats.forEach(stat => {
+                statsMap[stat._id.toString()] = stat.count;
+            });
+
+            plainServices.forEach(service => {
+                if (!service.stats) service.stats = {};
+                service.stats.totalBookings = statsMap[service._id.toString()] || 0;
+            });
+        }
+
         return res.json({
             success: true,
-            data: services
+            data: plainServices
         });
     } catch (err) {
         next(err);
@@ -563,21 +707,32 @@ const getServiceCategories = async (req, res, next) => {
         const { businessId } = req.query;
 
         // Determine business ID
+        let businessIds = [];
         let business;
+
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                business = await Business.findOne({ _id: businessId, admin: userId });
+                if (business) businessIds = [business._id];
+            } else {
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            if (manager) {
+                business = await Business.findById(manager.business);
+                if (business) businessIds = [business._id];
+            }
         }
 
-        if (!business) {
+        if (businessIds.length === 0) {
+            if (userRole === 'admin' && !businessId) {
+                return res.json({
+                    success: true,
+                    data: []
+                });
+            }
             return res.status(404).json({
                 success: false,
                 message: "Business not found or access denied"
@@ -586,7 +741,14 @@ const getServiceCategories = async (req, res, next) => {
 
         // Get unique categories with service count
         // First get all services to calculate average price (handling both old and new format)
-        const allServices = await Service.find({ business: business._id, isActive: true }).lean();
+        let query = { isActive: true };
+        if (businessIds.length === 1) {
+            query.business = businessIds[0];
+        } else {
+            query.business = { $in: businessIds };
+        }
+
+        const allServices = await Service.find(query).lean();
         const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
 
         // Group by category and calculate averages

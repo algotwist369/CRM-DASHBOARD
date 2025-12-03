@@ -11,7 +11,6 @@ const isValidObjectId = (id) => {
 };
 const Staff = require("../models/Staff");
 const DailyBusiness = require("../models/DailyBusiness");
-const Transaction = require("../models/Transaction");
 const { setCache, getCache } = require("../utils/cache");
 const { generateBusinessAnalytics } = require("../utils/businessUtils");
 const indiaLocations = require("../data/indiaLocations");
@@ -47,21 +46,21 @@ const getPublicBusinesses = async (req, res, next) => {
         const cacheKey = useCursor
             ? `public:businesses:cursor:${cursor || 'start'}:${limitNumber}:${search || ''}:${type || ''}`
             : `public:businesses:page:${pageNumber}:${limitNumber}:${search || ''}:${type || ''}`;
-        
+
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
-        
-        const baseQuery = { 
+
+        const baseQuery = {
             isActive: true,
             'settings.appointmentSettings.allowOnlineBooking': true
         };
-        
+
         if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
             baseQuery.type = type;
         }
-        
+
         if (search) {
             const searchRegex = { $regex: search, $options: 'i' };
             baseQuery.$or = [
@@ -89,11 +88,11 @@ const getPublicBusinesses = async (req, res, next) => {
             .skip(skip)
             .limit(limitNumber)
             .lean();
-        
+
         const Service = require("../models/Service");
         const businessIds = businesses.map(b => b._id);
         const servicesMap = {};
-        
+
         if (businessIds.length > 0) {
             const services = await Service.find({
                 business: { $in: businessIds },
@@ -103,10 +102,10 @@ const getPublicBusinesses = async (req, res, next) => {
                 .select('name price duration category business pricingOptions')
                 .sort({ displayOrder: 1, name: 1 })
                 .lean();
-            
+
             // Use helper function to get price and duration (handles both old and new format)
             const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
-            
+
             services.forEach(service => {
                 if (!servicesMap[service.business]) {
                     servicesMap[service.business] = [];
@@ -123,7 +122,7 @@ const getPublicBusinesses = async (req, res, next) => {
                 }
             });
         }
-        
+
         const formattedBusinesses = businesses.map(business => ({
             id: business._id,
             name: business.name,
@@ -188,9 +187,9 @@ const getPublicBusinesses = async (req, res, next) => {
                 hasMore: formattedBusinesses.length === limitNumber
             }
         };
-        
+
         await setCache(cacheKey, response, 300);
-        
+
         return res.json(response);
     } catch (err) {
         next(err);
@@ -201,18 +200,18 @@ const getPublicBusinesses = async (req, res, next) => {
 const getBusinessInfoByLink = async (req, res, next) => {
     try {
         const { businessLink } = req.params;
-        
+
         const business = await Business.findOne({ businessLink, isActive: true })
             .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods')
             .lean();
-        
+
         if (!business) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Business not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
             });
         }
-        
+
         // Return comprehensive public business information
         const businessInfo = {
             id: business._id,
@@ -256,7 +255,7 @@ const getBusinessInfoByLink = async (req, res, next) => {
             currency: business.settings?.currency,
             timezone: business.settings?.timezone
         };
-        
+
         return res.json({ success: true, data: businessInfo });
     } catch (err) {
         next(err);
@@ -272,9 +271,9 @@ const getBusinessById = async (req, res, next) => {
 
         // Validate ID
         if (!id || !isValidObjectId(id)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Valid Business ID is required" 
+            return res.status(400).json({
+                success: false,
+                message: "Valid Business ID is required"
             });
         }
 
@@ -460,7 +459,7 @@ const getBusinessAnalytics = async (req, res, next) => {
         // Set date range based on period
         const endDate = new Date();
         const startDate = new Date();
-        
+
         switch (period) {
             case 'daily':
                 startDate.setDate(endDate.getDate() - 1);
@@ -509,11 +508,11 @@ const getBusinessesNearby = async (req, res, next) => {
         } = req.query;
 
         // ================== Input Validation & Sanitization ==================
-        
+
         // Validate coordinates are provided
         if (!lat || !lng) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Latitude and longitude are required",
                 code: "MISSING_COORDINATES"
             });
@@ -524,8 +523,8 @@ const getBusinessesNearby = async (req, res, next) => {
         const longitude = parseFloat(lng);
 
         if (isNaN(latitude) || isNaN(longitude)) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Invalid latitude or longitude format",
                 code: "INVALID_COORDINATES"
             });
@@ -533,16 +532,16 @@ const getBusinessesNearby = async (req, res, next) => {
 
         // Validate coordinate ranges
         if (latitude < -90 || latitude > 90) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Latitude must be between -90 and 90",
                 code: "INVALID_LATITUDE"
             });
         }
 
         if (longitude < -180 || longitude > 180) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Longitude must be between -180 and 180",
                 code: "INVALID_LONGITUDE"
             });
@@ -550,7 +549,7 @@ const getBusinessesNearby = async (req, res, next) => {
 
         // Validate and sanitize maxDistance (100m to 100km)
         const maxDistanceMeters = Math.min(Math.max(parseInt(maxDistance) || 5000, 100), 100000);
-        
+
         // Validate and sanitize pagination
         const pageNumber = Math.max(1, parseInt(page) || 1);
         const limitNumber = Math.min(Math.max(parseInt(limit) || 20, 1), 50); // Max 50 per page
@@ -565,8 +564,8 @@ const getBusinessesNearby = async (req, res, next) => {
         // Validate business type if provided
         const validTypes = ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'];
         if (type && !validTypes.includes(type)) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`,
                 code: "INVALID_BUSINESS_TYPE"
             });
@@ -578,10 +577,10 @@ const getBusinessesNearby = async (req, res, next) => {
             : `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:page:${pageNumber}:${limitNumber}`;
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
-            return res.json({ 
-                success: true, 
+            return res.json({
+                success: true,
                 source: "cache",
-                ...cachedData 
+                ...cachedData
             });
         }
 
@@ -700,7 +699,7 @@ const getBusinessesNearby = async (req, res, next) => {
         const Service = require("../models/Service");
         const businessIds = businesses.map(b => b._id);
         const servicesMap = {};
-        
+
         if (businessIds.length > 0) {
             const services = await Service.find({
                 business: { $in: businessIds },
@@ -710,10 +709,10 @@ const getBusinessesNearby = async (req, res, next) => {
                 .select('name price duration category business pricingOptions')
                 .sort({ displayOrder: 1, name: 1 })
                 .lean();
-            
+
             // Use helper function to get price and duration (handles both old and new format)
             const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
-            
+
             // Group services by business (limit to 5 per business)
             services.forEach(service => {
                 if (!servicesMap[service.business]) {
@@ -912,9 +911,9 @@ const updateBusiness = async (req, res, next) => {
         // Validate ID for admin
         if (userRole === 'admin') {
             if (!id || !isValidObjectId(id)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Valid Business ID is required" 
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid Business ID is required"
                 });
             }
             // Admin can update any of their businesses
@@ -928,7 +927,7 @@ const updateBusiness = async (req, res, next) => {
             if (!manager) {
                 return res.status(404).json({ success: false, message: "Manager not found" });
             }
-            
+
             // If no ID provided, update manager's own business
             if (!id || id === 'mine') {
                 businessId = manager.business.toString();
@@ -936,9 +935,9 @@ const updateBusiness = async (req, res, next) => {
 
             // Validate businessId before query
             if (!businessId || !isValidObjectId(businessId)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Valid Business ID is required" 
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid Business ID is required"
                 });
             }
 
@@ -957,17 +956,17 @@ const updateBusiness = async (req, res, next) => {
         if (updates.type) {
             const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
             if (!validTypes.includes(updates.type)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`
                 });
             }
         }
 
         // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
         const updatedBusiness = await Business.findByIdAndUpdate(
-            businessId, 
-            { ...updates, updatedAt: new Date() }, 
+            businessId,
+            { ...updates, updatedAt: new Date() },
             { new: true, runValidators: true }
         ).populate('managers', 'name username email phone isActive');
 
@@ -986,9 +985,9 @@ const updateBusiness = async (req, res, next) => {
             await deleteCache(`business:${businessId}:info`);
         }
 
-        return res.json({ 
-            success: true, 
-            message: "Business updated successfully", 
+        return res.json({
+            success: true,
+            message: "Business updated successfully",
             data: {
                 id: updatedBusiness._id,
                 name: updatedBusiness.name,

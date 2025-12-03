@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback, useRef, memo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   FaCalendarAlt,
-  FaDollarSign,
-  FaUsers,
   FaSpinner,
   FaEye,
   FaChartLine,

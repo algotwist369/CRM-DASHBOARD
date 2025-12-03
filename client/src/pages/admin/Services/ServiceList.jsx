@@ -7,6 +7,7 @@ import {
 import { CiFilter } from 'react-icons/ci';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
+import BackButton from '../../../components/common/Button/BackButton';
 
 const StatsCard = memo(({ title, value, description }) => (
   <div className="border border-gray-200 bg-white p-4">
@@ -91,6 +92,9 @@ const ServiceRow = memo(({ service, onView, onEdit, onDelete }) => {
           </div>
         </div>
       </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {service.business?.name || '--'}
+      </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
         {pricingInfo.isVariable ? (
           <div>
@@ -130,6 +134,8 @@ const ServiceRow = memo(({ service, onView, onEdit, onDelete }) => {
     </tr>
   );
 });
+
+
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[a-f\d]{24}$/i.test(value);
 
@@ -175,12 +181,14 @@ const ServiceList = () => {
 
         const storedValue = localStorage.getItem('selectedBusinessId');
         const resolvedBusinessId = resolveBusinessId(storedValue, businessList);
-        let nextBusinessId = resolvedBusinessId || (businessList[0]?._id || '');
+        // Default to '' (All Businesses) if no valid selection is stored
+        let nextBusinessId = resolvedBusinessId || '';
 
         if (nextBusinessId && isValidObjectId(nextBusinessId)) {
           setSelectedBusinessId(nextBusinessId);
           localStorage.setItem('selectedBusinessId', nextBusinessId);
         } else {
+          setSelectedBusinessId(''); // Ensure state matches "All Businesses"
           localStorage.removeItem('selectedBusinessId');
         }
       }
@@ -192,9 +200,10 @@ const ServiceList = () => {
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
-    if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) return;
+    // if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) return; // Allow fetching for all businesses
     try {
-      const response = await adminService.getServiceCategories({ businessId: selectedBusinessId });
+      const params = selectedBusinessId && isValidObjectId(selectedBusinessId) ? { businessId: selectedBusinessId } : {};
+      const response = await adminService.getServiceCategories(params);
       if (response.success) setCategories(response.data || []);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
@@ -202,23 +211,28 @@ const ServiceList = () => {
   }, [selectedBusinessId]);
 
   const fetchServices = useCallback(async () => {
-    if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) {
-      setLoading(false);
-      return;
-    }
+    // if (!selectedBusinessId || !isValidObjectId(selectedBusinessId)) { // Allow fetching for all businesses
+    //   setLoading(false);
+    //   return;
+    // }
 
     try {
       setLoading(true);
       const params = {
-        businessId: selectedBusinessId,
+        businessId: selectedBusinessId && isValidObjectId(selectedBusinessId) ? selectedBusinessId : undefined,
         page: currentPage,
         limit: 20,
         search: searchTerm || undefined
       };
 
+      const popularParams = { limit: 10 };
+      if (selectedBusinessId && isValidObjectId(selectedBusinessId)) {
+        popularParams.businessId = selectedBusinessId;
+      }
+
       const [servicesRes, popularRes] = await Promise.all([
         adminService.getServices(params),
-        adminService.getPopularServices({ businessId: selectedBusinessId, limit: 10 })
+        adminService.getPopularServices(popularParams)
       ]);
 
       if (servicesRes.success) {
@@ -245,11 +259,10 @@ const ServiceList = () => {
   useEffect(() => { fetchBusinesses(); }, [fetchBusinesses]);
 
   useEffect(() => {
-    if (businessesLoaded && selectedBusinessId && isValidObjectId(selectedBusinessId)) {
+    if (businessesLoaded) {
+      // Always fetch if businesses are loaded, regardless of selection
       fetchCategories();
       fetchServices();
-    } else if (businessesLoaded && !selectedBusinessId) {
-      setLoading(false);
     }
   }, [businessesLoaded, selectedBusinessId, fetchServices, fetchCategories]);
 
@@ -266,6 +279,7 @@ const ServiceList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
+      <BackButton />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -327,6 +341,7 @@ const ServiceList = () => {
                   }}
                   className="w-full px-4 py-2 border border-gray-300  bg-white focus:outline-none focus:ring-0 transition"
                 >
+                  <option value="">All Businesses</option>
                   {businesses.filter(b => b?._id).map(b => (
                     <option key={b._id} value={b._id}>{b.name}</option>
                   ))}
@@ -335,7 +350,7 @@ const ServiceList = () => {
             )}
 
             {/* Refresh */}
-            <div className="flex justify-start md:justify-end">
+            <div className="flex justify-start md:justify-start">
               <button
                 onClick={fetchServices}
                 className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition"
@@ -356,6 +371,7 @@ const ServiceList = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -365,9 +381,9 @@ const ServiceList = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div></td></tr>
+                <tr><td colSpan="7" className="px-6 py-12 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div></td></tr>
               ) : services.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center"><HiOutlineCube className="mx-auto h-12 w-12 text-gray-400" /><p className="mt-2 text-sm text-gray-500">No services found</p></td></tr>
+                <tr><td colSpan="7" className="px-6 py-12 text-center"><HiOutlineCube className="mx-auto h-12 w-12 text-gray-400" /><p className="mt-2 text-sm text-gray-500">No services found</p></td></tr>
               ) : (
                 services.map((service, index) => (
                   <ServiceRow

@@ -109,6 +109,7 @@ const FilterSection = memo(({
                 onChange={(e) => setSelectedBusinessId(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 outline-none focus:border-primary-500 transition-colors bg-white"
               >
+                <option value="">All Businesses</option>
                 {businesses.map((business, index) => (
                   <option key={business.id || business._id || index} value={business.id || business._id}>
                     {business.name}
@@ -132,8 +133,17 @@ const FilterSection = memo(({
   );
 });
 
-const CustomerTable = memo(({ customers, loading, onView, onEdit, onDelete }) => {
-  const headers = ["Customer", "Phone", "Tier", "Points", "Visits", "Total Spent", "Actions"];
+const CustomerTable = memo(({ customers, loading, onView, onEdit, onDelete, showBusinessColumn }) => {
+  const headers = [
+    "Customer",
+    "Phone",
+    ...(showBusinessColumn ? ["Business"] : []),
+    "Tier",
+    "Points",
+    "Visits",
+    "Total Spent",
+    "Actions"
+  ];
 
   const getTierBadge = (tier) => {
     const badges = {
@@ -196,6 +206,11 @@ const CustomerTable = memo(({ customers, loading, onView, onEdit, onDelete }) =>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.phone}</td>
+                {showBusinessColumn && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {customer.business?.name || 'N/A'}
+                  </td>
+                )}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTierBadge(customer.membershipTier)}`}>
                     {customer.membershipTier || 'None'}
@@ -304,15 +319,16 @@ const CustomerList = () => {
           setBusinesses(businessesData);
 
           // Validate selectedBusinessId or set default
-          if (businessesData.length > 0) {
-            const isValidId = businessesData.some(b => (b.id || b._id) === selectedBusinessId);
-            console.log('Current selectedBusinessId:', selectedBusinessId, 'IsValid:', isValidId);
+          // Validate selectedBusinessId
+          if (businessesData.length > 0 && selectedBusinessId) {
+            // Check if it's a valid ObjectId AND exists in the list
+            const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(selectedBusinessId);
+            const existsInList = businessesData.some(b => (b.id || b._id) === selectedBusinessId);
 
-            if (!selectedBusinessId || !isValidId) {
-              const firstBusinessId = businessesData[0].id || businessesData[0]._id;
-              console.log('Setting default business ID:', firstBusinessId);
-              setSelectedBusinessId(firstBusinessId);
-              localStorage.setItem('selectedBusinessId', firstBusinessId);
+            if (!isValidObjectId || !existsInList) {
+              console.warn('Invalid or missing business ID in localStorage, resetting...');
+              setSelectedBusinessId('');
+              localStorage.setItem('selectedBusinessId', '');
             }
           }
         }
@@ -324,7 +340,8 @@ const CustomerList = () => {
   }, []); // Remove selectedBusinessId dependency to avoid infinite loop logic
 
   const fetchCustomers = useCallback(async () => {
-    if (!selectedBusinessId || selectedBusinessId === 'undefined' || selectedBusinessId === 'null') {
+    // Allow empty selectedBusinessId for "All Businesses"
+    if (selectedBusinessId === 'undefined' || selectedBusinessId === 'null') {
       setLoading(false);
       return;
     }
@@ -467,6 +484,7 @@ const CustomerList = () => {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        showBusinessColumn={!selectedBusinessId}
       />
 
       <Pagination
