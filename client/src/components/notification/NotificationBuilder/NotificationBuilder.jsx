@@ -167,7 +167,7 @@ const NotificationBuilder = ({
             <button
               key={type.value}
               onClick={() => handleInputChange('type', type.value)}
-              className={`p-4 text-left border rounded-lg transition-all duration-200 ${
+              className={`p-4 text-left border  transition-all duration-200 ${
                 formData.type === type.value
                   ? 'bg-primary-50 border-primary-300 ring-2 ring-primary-200'
                   : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50'
@@ -193,7 +193,7 @@ const NotificationBuilder = ({
             <button
               key={priority.value}
               onClick={() => handleInputChange('priority', priority.value)}
-              className={`flex-1 p-4 text-left border rounded-lg transition-all duration-200 ${
+              className={`flex-1 p-4 text-left border  transition-all duration-200 ${
                 formData.priority === priority.value
                   ? 'bg-primary-50 border-primary-300 ring-2 ring-primary-200'
                   : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50'
@@ -225,7 +225,7 @@ const NotificationBuilder = ({
             Message <span className="text-red-500">*</span>
           </label>
           <textarea
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+            className="block w-full  border-gray-300  focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
             rows={6}
             value={formData.message}
             onChange={(e) => handleInputChange('message', e.target.value)}

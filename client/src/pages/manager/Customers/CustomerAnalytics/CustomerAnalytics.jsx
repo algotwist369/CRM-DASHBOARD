@@ -96,7 +96,7 @@ const CustomerAnalytics = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/manager/customers')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100  transition-colors"
           >
             <FaArrowLeft className="text-gray-600" />
           </button>
@@ -111,7 +111,7 @@ const CustomerAnalytics = () => {
       </div>
 
       {/* Date Range Filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white   border border-gray-200 p-4">
         <div className="flex items-center gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
@@ -119,7 +119,7 @@ const CustomerAnalytics = () => {
               type="date"
               value={dateRange.startDate}
               onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div>
@@ -128,7 +128,7 @@ const CustomerAnalytics = () => {
               type="date"
               value={dateRange.endDate}
               onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div>
@@ -136,7 +136,7 @@ const CustomerAnalytics = () => {
             <select
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -149,7 +149,7 @@ const CustomerAnalytics = () => {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Total Customers</span>
             <FaUsers className="text-blue-500" />
@@ -160,7 +160,7 @@ const CustomerAnalytics = () => {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">New Customers</span>
             <FaUsers className="text-green-500" />
@@ -169,7 +169,7 @@ const CustomerAnalytics = () => {
           <p className="text-xs text-gray-500 mt-1">Total new customers</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Returning Customers</span>
             <FaUsers className="text-purple-500" />
@@ -178,7 +178,7 @@ const CustomerAnalytics = () => {
           <p className="text-xs text-gray-500 mt-1">2-4 visits</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Loyal Customers</span>
             <FaUsers className="text-yellow-500" />
@@ -191,7 +191,7 @@ const CustomerAnalytics = () => {
       {/* Value Analysis */}
       {value && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FaChartBar />
               Customer Value
@@ -218,7 +218,7 @@ const CustomerAnalytics = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white   border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FaStar />
               Customer Satisfaction
@@ -243,7 +243,7 @@ const CustomerAnalytics = () => {
 
       {/* Growth Data */}
       {growth && growth.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white   border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <FaChartLine />
             Customer Growth

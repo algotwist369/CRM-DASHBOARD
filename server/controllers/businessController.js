@@ -11,38 +11,59 @@ const isValidObjectId = (id) => {
 };
 const Staff = require("../models/Staff");
 const DailyBusiness = require("../models/DailyBusiness");
-const Transaction = require("../models/Transaction");
 const { setCache, getCache } = require("../utils/cache");
 const { generateBusinessAnalytics } = require("../utils/businessUtils");
+const indiaLocations = require("../data/indiaLocations");
 
 // ================== Get All Public Businesses (Public) ==================
 const getPublicBusinesses = async (req, res, next) => {
     try {
-        const { page = 1, limit = 20, search, type } = req.query;
-        
-        const cacheKey = `public:businesses:${page}:${limit}:${search || ''}:${type || ''}`;
-        
-        // Try cache first
+        const {
+            page = 1,
+            limit = 20,
+            search,
+            type,
+            cursor
+        } = req.query;
+
+        const limitNumber = Math.min(Math.max(parseInt(limit) || 20, 1), 50);
+        const pageNumber = Math.max(1, parseInt(page) || 1);
+        const useCursor = Boolean(cursor);
+
+        let cursorDate = null;
+        if (cursor) {
+            const parsedDate = new Date(cursor);
+            if (Number.isNaN(parsedDate.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid cursor value. Please provide a valid ISO date string.",
+                    code: "INVALID_CURSOR"
+                });
+            }
+            cursorDate = parsedDate;
+        }
+
+        const cacheKey = useCursor
+            ? `public:businesses:cursor:${cursor || 'start'}:${limitNumber}:${search || ''}:${type || ''}`
+            : `public:businesses:page:${pageNumber}:${limitNumber}:${search || ''}:${type || ''}`;
+
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
-        
-        // Build query - only active businesses that allow online booking
-        let query = { 
+
+        const baseQuery = {
             isActive: true,
             'settings.appointmentSettings.allowOnlineBooking': true
         };
-        
-        // Filter by type if provided
+
         if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
-            query.type = type;
+            baseQuery.type = type;
         }
-        
-        // Enhanced search by name, branch, city, state, address, category, tags, and business link
+
         if (search) {
             const searchRegex = { $regex: search, $options: 'i' };
-            query.$or = [
+            baseQuery.$or = [
                 { name: searchRegex },
                 { branch: searchRegex },
                 { city: searchRegex },
@@ -53,48 +74,55 @@ const getPublicBusinesses = async (req, res, next) => {
                 { tags: { $in: [new RegExp(search, 'i')] } }
             ];
         }
-        
+
+        const query = { ...baseQuery };
+        if (cursorDate) {
+            query.createdAt = { $lt: cursorDate };
+        }
+
+        const skip = useCursor ? 0 : (pageNumber - 1) * limitNumber;
+
         const businesses = await Business.find(query)
             .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags createdAt')
-            .sort({ createdAt: -1 })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
+            .sort({ createdAt: -1, _id: -1 })
+            .skip(skip)
+            .limit(limitNumber)
             .lean();
-        
-        const total = await Business.countDocuments(query);
-        
-        // Fetch services for all businesses
+
         const Service = require("../models/Service");
         const businessIds = businesses.map(b => b._id);
         const servicesMap = {};
-        
+
         if (businessIds.length > 0) {
             const services = await Service.find({
                 business: { $in: businessIds },
                 isActive: true,
                 isAvailableOnline: true
             })
-                .select('name price duration category business')
+                .select('name price duration category business pricingOptions')
                 .sort({ displayOrder: 1, name: 1 })
                 .lean();
-            
-            // Group services by business (limit to 5 per business)
+
+            // Use helper function to get price and duration (handles both old and new format)
+            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+
             services.forEach(service => {
                 if (!servicesMap[service.business]) {
                     servicesMap[service.business] = [];
                 }
                 if (servicesMap[service.business].length < 5) {
+                    const { price, duration } = getServicePriceAndDuration(service);
                     servicesMap[service.business].push({
                         name: service.name,
-                        price: service.price,
-                        duration: service.duration,
-                        category: service.category
+                        price: price,
+                        duration: duration,
+                        category: service.category,
+                        pricingOptions: service.pricingOptions || null // Include pricingOptions if available
                     });
                 }
             });
         }
-        
-        // Format businesses for public display
+
         const formattedBusinesses = businesses.map(business => ({
             id: business._id,
             name: business.name,
@@ -109,45 +137,59 @@ const getPublicBusinesses = async (req, res, next) => {
             website: business.website,
             description: business.description,
             businessLink: business.businessLink,
-            // NEW: Location data for maps
             location: business.location,
             googleMapsUrl: business.googleMapsUrl,
-            // Images for display
             images: business.images,
-            // Social media links
             socialMedia: business.socialMedia,
-            // Ratings & reviews
             ratings: business.ratings,
-            // Category & tags for filtering
             category: business.category,
             tags: business.tags,
-            // Features & amenities
             features: business.features,
             amenities: business.amenities,
-            // Services
             services: servicesMap[business._id] || [],
-            // Settings
             workingHours: business.settings?.workingHours,
             appointmentSettings: {
                 allowOnlineBooking: business.settings?.appointmentSettings?.allowOnlineBooking,
                 slotDuration: business.settings?.appointmentSettings?.slotDuration
-            }
+            },
+            createdAt: business.createdAt
         }));
-        
+
+        let total = null;
+        if (!useCursor) {
+            total = await Business.countDocuments(baseQuery);
+        }
+
+        const lastBusiness = formattedBusinesses[formattedBusinesses.length - 1];
+        const nextCursor = lastBusiness
+            ? {
+                cursor: lastBusiness.createdAt?.toISOString?.() || new Date().toISOString(),
+                cursorId: lastBusiness.id
+            }
+            : null;
+
         const response = {
             success: true,
             data: formattedBusinesses,
-            pagination: {
-                total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit)
+            pagination: useCursor
+                ? null
+                : {
+                    total,
+                    page: pageNumber,
+                    limit: limitNumber,
+                    pages: total ? Math.ceil(total / limitNumber) : null,
+                    hasMore: total ? pageNumber * limitNumber < total : false
+                },
+            cursorPagination: {
+                cursor: cursorDate ? cursorDate.toISOString() : null,
+                limit: limitNumber,
+                nextCursor: formattedBusinesses.length === limitNumber ? nextCursor : null,
+                hasMore: formattedBusinesses.length === limitNumber
             }
         };
-        
-        // Cache for 5 minutes
+
         await setCache(cacheKey, response, 300);
-        
+
         return res.json(response);
     } catch (err) {
         next(err);
@@ -158,18 +200,18 @@ const getPublicBusinesses = async (req, res, next) => {
 const getBusinessInfoByLink = async (req, res, next) => {
     try {
         const { businessLink } = req.params;
-        
+
         const business = await Business.findOne({ businessLink, isActive: true })
             .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods')
             .lean();
-        
+
         if (!business) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Business not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
             });
         }
-        
+
         // Return comprehensive public business information
         const businessInfo = {
             id: business._id,
@@ -213,7 +255,7 @@ const getBusinessInfoByLink = async (req, res, next) => {
             currency: business.settings?.currency,
             timezone: business.settings?.timezone
         };
-        
+
         return res.json({ success: true, data: businessInfo });
     } catch (err) {
         next(err);
@@ -229,9 +271,9 @@ const getBusinessById = async (req, res, next) => {
 
         // Validate ID
         if (!id || !isValidObjectId(id)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Valid Business ID is required" 
+            return res.status(400).json({
+                success: false,
+                message: "Valid Business ID is required"
             });
         }
 
@@ -417,7 +459,7 @@ const getBusinessAnalytics = async (req, res, next) => {
         // Set date range based on period
         const endDate = new Date();
         const startDate = new Date();
-        
+
         switch (period) {
             case 'daily':
                 startDate.setDate(endDate.getDate() - 1);
@@ -454,14 +496,23 @@ const getBusinessAnalytics = async (req, res, next) => {
 // ================== Get Businesses Near Location (Public - Geospatial Query) ==================
 const getBusinessesNearby = async (req, res, next) => {
     try {
-        const { lat, lng, maxDistance = 5000, type, page = 1, limit = 20 } = req.query;
+        const {
+            lat,
+            lng,
+            maxDistance = 5000,
+            type,
+            page = 1,
+            limit = 20,
+            cursorDistance,
+            cursorId
+        } = req.query;
 
         // ================== Input Validation & Sanitization ==================
-        
+
         // Validate coordinates are provided
         if (!lat || !lng) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Latitude and longitude are required",
                 code: "MISSING_COORDINATES"
             });
@@ -472,8 +523,8 @@ const getBusinessesNearby = async (req, res, next) => {
         const longitude = parseFloat(lng);
 
         if (isNaN(latitude) || isNaN(longitude)) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Invalid latitude or longitude format",
                 code: "INVALID_COORDINATES"
             });
@@ -481,16 +532,16 @@ const getBusinessesNearby = async (req, res, next) => {
 
         // Validate coordinate ranges
         if (latitude < -90 || latitude > 90) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Latitude must be between -90 and 90",
                 code: "INVALID_LATITUDE"
             });
         }
 
         if (longitude < -180 || longitude > 180) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "Longitude must be between -180 and 180",
                 code: "INVALID_LONGITUDE"
             });
@@ -498,30 +549,38 @@ const getBusinessesNearby = async (req, res, next) => {
 
         // Validate and sanitize maxDistance (100m to 100km)
         const maxDistanceMeters = Math.min(Math.max(parseInt(maxDistance) || 5000, 100), 100000);
-        
+
         // Validate and sanitize pagination
         const pageNumber = Math.max(1, parseInt(page) || 1);
         const limitNumber = Math.min(Math.max(parseInt(limit) || 20, 1), 50); // Max 50 per page
-        const skip = (pageNumber - 1) * limitNumber;
+
+        const parsedCursorDistance = cursorDistance !== undefined ? parseFloat(cursorDistance) : null;
+        const hasCursorDistance = typeof parsedCursorDistance === 'number' && !Number.isNaN(parsedCursorDistance) && parsedCursorDistance >= 0;
+        const cursorObjectId = cursorId && mongoose.Types.ObjectId.isValid(cursorId) ? new mongoose.Types.ObjectId(cursorId) : null;
+        const useCursor = hasCursorDistance || !!cursorObjectId;
+
+        const skip = useCursor ? 0 : (pageNumber - 1) * limitNumber;
 
         // Validate business type if provided
         const validTypes = ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'];
         if (type && !validTypes.includes(type)) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`,
                 code: "INVALID_BUSINESS_TYPE"
             });
         }
 
         // ================== Cache Check ==================
-        const cacheKey = `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:${pageNumber}:${limitNumber}`;
+        const cacheKey = useCursor
+            ? `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:cursor:${hasCursorDistance ? parsedCursorDistance : 'none'}:${cursorObjectId || 'none'}:${limitNumber}`
+            : `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:page:${pageNumber}:${limitNumber}`;
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
-            return res.json({ 
-                success: true, 
+            return res.json({
+                success: true,
                 source: "cache",
-                ...cachedData 
+                ...cachedData
             });
         }
 
@@ -594,6 +653,27 @@ const getBusinessesNearby = async (req, res, next) => {
             }
         ];
 
+        if (useCursor) {
+            if (hasCursorDistance && cursorObjectId) {
+                pipeline.push({
+                    $match: {
+                        $or: [
+                            { distance: { $gt: parsedCursorDistance } },
+                            { distance: parsedCursorDistance, _id: { $gt: cursorObjectId } }
+                        ]
+                    }
+                });
+            } else if (hasCursorDistance) {
+                pipeline.push({
+                    $match: { distance: { $gt: parsedCursorDistance } }
+                });
+            } else if (cursorObjectId) {
+                pipeline.push({
+                    $match: { _id: { $gt: cursorObjectId } }
+                });
+            }
+        }
+
         // ================== Execute Query ==================
         let result;
         try {
@@ -613,34 +693,39 @@ const getBusinessesNearby = async (req, res, next) => {
 
         // ================== Process Results ==================
         const businesses = result[0]?.data || [];
-        const total = result[0]?.metadata?.[0]?.total || 0;
+        const total = useCursor ? null : (result[0]?.metadata?.[0]?.total || 0);
 
         // Fetch services for all businesses
         const Service = require("../models/Service");
         const businessIds = businesses.map(b => b._id);
         const servicesMap = {};
-        
+
         if (businessIds.length > 0) {
             const services = await Service.find({
                 business: { $in: businessIds },
                 isActive: true,
                 isAvailableOnline: true
             })
-                .select('name price duration category business')
+                .select('name price duration category business pricingOptions')
                 .sort({ displayOrder: 1, name: 1 })
                 .lean();
-            
+
+            // Use helper function to get price and duration (handles both old and new format)
+            const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+
             // Group services by business (limit to 5 per business)
             services.forEach(service => {
                 if (!servicesMap[service.business]) {
                     servicesMap[service.business] = [];
                 }
                 if (servicesMap[service.business].length < 5) {
+                    const { price, duration } = getServicePriceAndDuration(service);
                     servicesMap[service.business].push({
                         name: service.name,
-                        price: service.price,
-                        duration: service.duration,
-                        category: service.category
+                        price: price,
+                        duration: duration,
+                        category: service.category,
+                        pricingOptions: service.pricingOptions || null // Include pricingOptions if available
                     });
                 }
             });
@@ -679,21 +764,32 @@ const getBusinessesNearby = async (req, res, next) => {
                     slotDuration: business.settings?.appointmentSettings?.slotDuration
                 },
                 distance: Math.round(distance),
-                distanceKm: parseFloat((distance / 1000).toFixed(2))
+                distanceKm: parseFloat((distance / 1000).toFixed(2)),
+                distanceMeters: distance
             };
         });
 
         // ================== Build Response ==================
+        const lastBusiness = formattedBusinesses[formattedBusinesses.length - 1];
+        const nextCursor = lastBusiness
+            ? {
+                cursorDistance: lastBusiness.distanceMeters,
+                cursorId: lastBusiness.id
+            }
+            : null;
+
         const response = {
             success: true,
             data: formattedBusinesses,
-            pagination: {
-                total,
-                page: pageNumber,
-                limit: limitNumber,
-                pages: Math.ceil(total / limitNumber),
-                hasMore: skip + limitNumber < total
-            },
+            pagination: useCursor
+                ? null
+                : {
+                    total,
+                    page: pageNumber,
+                    limit: limitNumber,
+                    pages: Math.ceil(total / limitNumber),
+                    hasMore: skip + limitNumber < total
+                },
             searchLocation: {
                 latitude,
                 longitude,
@@ -703,6 +799,13 @@ const getBusinessesNearby = async (req, res, next) => {
             meta: {
                 resultsCount: formattedBusinesses.length,
                 searchRadius: `${(maxDistanceMeters / 1000).toFixed(1)} km`
+            },
+            cursorPagination: {
+                cursorDistance: hasCursorDistance ? parsedCursorDistance : null,
+                cursorId: cursorObjectId ? cursorObjectId.toString() : null,
+                limit: limitNumber,
+                nextCursor: formattedBusinesses.length === limitNumber ? nextCursor : null,
+                hasMore: formattedBusinesses.length === limitNumber
             }
         };
 
@@ -737,6 +840,63 @@ const getBusinessesNearby = async (req, res, next) => {
     }
 };
 
+const getIndiaLocations = async (req, res, next) => {
+    try {
+        const { search = "", state = "" } = req.query;
+        const normalizedSearch = search.trim().toLowerCase();
+        const normalizedState = state.trim().toLowerCase();
+
+        const states = indiaLocations
+            .map((entry) => {
+                const stateMatches = entry.state.toLowerCase().includes(normalizedState);
+                const cities = entry.cities.filter((city) => {
+                    if (!normalizedSearch) return true;
+                    return (
+                        city.toLowerCase().includes(normalizedSearch) ||
+                        entry.state.toLowerCase().includes(normalizedSearch)
+                    );
+                });
+
+                if (normalizedState && !stateMatches && cities.length === 0) {
+                    return null;
+                }
+
+                if (normalizedSearch && cities.length === 0 && !entry.state.toLowerCase().includes(normalizedSearch)) {
+                    return null;
+                }
+
+                return {
+                    state: entry.state,
+                    stateCode: entry.stateCode,
+                    cities
+                };
+            })
+            .filter(Boolean)
+            .filter((entry) => entry.cities.length > 0);
+
+        const flattenedLocations = states.flatMap((entry) =>
+            entry.cities.map((city) => ({
+                state: entry.state,
+                stateCode: entry.stateCode,
+                city
+            }))
+        );
+
+        return res.json({
+            success: true,
+            data: {
+                totalStates: indiaLocations.length,
+                matchedStates: states.length,
+                totalCities: flattenedLocations.length,
+                states,
+                locations: flattenedLocations
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // ================== Update Business (Admin + Manager shared endpoint) ==================
 const updateBusiness = async (req, res, next) => {
     try {
@@ -751,9 +911,9 @@ const updateBusiness = async (req, res, next) => {
         // Validate ID for admin
         if (userRole === 'admin') {
             if (!id || !isValidObjectId(id)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Valid Business ID is required" 
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid Business ID is required"
                 });
             }
             // Admin can update any of their businesses
@@ -767,7 +927,7 @@ const updateBusiness = async (req, res, next) => {
             if (!manager) {
                 return res.status(404).json({ success: false, message: "Manager not found" });
             }
-            
+
             // If no ID provided, update manager's own business
             if (!id || id === 'mine') {
                 businessId = manager.business.toString();
@@ -775,9 +935,9 @@ const updateBusiness = async (req, res, next) => {
 
             // Validate businessId before query
             if (!businessId || !isValidObjectId(businessId)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Valid Business ID is required" 
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid Business ID is required"
                 });
             }
 
@@ -796,17 +956,17 @@ const updateBusiness = async (req, res, next) => {
         if (updates.type) {
             const validTypes = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
             if (!validTypes.includes(updates.type)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}` 
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`
                 });
             }
         }
 
         // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
         const updatedBusiness = await Business.findByIdAndUpdate(
-            businessId, 
-            { ...updates, updatedAt: new Date() }, 
+            businessId,
+            { ...updates, updatedAt: new Date() },
             { new: true, runValidators: true }
         ).populate('managers', 'name username email phone isActive');
 
@@ -825,9 +985,9 @@ const updateBusiness = async (req, res, next) => {
             await deleteCache(`business:${businessId}:info`);
         }
 
-        return res.json({ 
-            success: true, 
-            message: "Business updated successfully", 
+        return res.json({
+            success: true,
+            message: "Business updated successfully",
             data: {
                 id: updatedBusiness._id,
                 name: updatedBusiness.name,
@@ -872,5 +1032,6 @@ module.exports = {
     getBusinessDailyRecords,
     getBusinessAnalytics,
     getBusinessesNearby,
+    getIndiaLocations,
     updateBusiness
 };

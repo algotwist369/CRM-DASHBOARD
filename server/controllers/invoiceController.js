@@ -27,6 +27,14 @@ const createInvoice = async (req, res, next) => {
             taxRate = 18
         } = req.body;
 
+        // Validate items
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "At least one item is required"
+            });
+        }
+
         // Determine business
         let business;
         if (userRole === 'admin') {
@@ -75,7 +83,7 @@ const createInvoice = async (req, res, next) => {
         // Get membership plan for tier-based discount
         let membershipPlan = null;
         let tierDiscount = 0;
-        
+
         if (customer.membershipTier && customer.membershipTier !== 'none') {
             membershipPlan = await MembershipPlan.findOne({
                 business: business._id,
@@ -90,17 +98,21 @@ const createInvoice = async (req, res, next) => {
         let taxTotal = 0;
 
         const processedItems = items.map(item => {
-            const itemSubtotal = item.price * item.quantity;
-            let itemDiscount = item.discount || 0;
-            
+            if (!item.name || !item.price || !item.quantity) {
+                throw new Error("Item name, price, and quantity are required");
+            }
+
+            const itemSubtotal = Number(item.price) * Number(item.quantity);
+            let itemDiscount = Number(item.discount) || 0;
+
             // Apply membership tier discount
             if (membershipPlan) {
                 const memberDiscount = membershipPlan.calculateDiscount(itemSubtotal, item.service);
                 itemDiscount += memberDiscount;
             }
-            
+
             const itemTaxableAmount = itemSubtotal - itemDiscount;
-            const itemTax = (itemTaxableAmount * taxRate) / 100;
+            const itemTax = (itemTaxableAmount * Number(taxRate)) / 100;
             const itemTotal = itemTaxableAmount + itemTax;
 
             subtotal += itemSubtotal;
@@ -109,6 +121,7 @@ const createInvoice = async (req, res, next) => {
 
             return {
                 ...item,
+                itemType: item.itemType || 'service', // Default to service if missing
                 discount: itemDiscount,
                 tax: itemTax,
                 total: itemTotal
@@ -172,6 +185,12 @@ const createInvoice = async (req, res, next) => {
             }
         });
     } catch (err) {
+        if (err.message === "Item name, price, and quantity are required") {
+            return res.status(400).json({
+                success: false,
+                message: err.message
+            });
+        }
         next(err);
     }
 };
@@ -193,29 +212,34 @@ const getInvoices = async (req, res, next) => {
             search
         } = req.query;
 
-        // Determine business
-        let business;
+        // Determine business(es)
+        let businessIds = [];
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                const business = await Business.findOne({ _id: businessId, admin: userId });
+                if (!business) {
+                    return res.status(404).json({ success: false, message: "Business not found or access denied" });
+                }
+                businessIds = [business._id];
+            } else {
+                // Fetch all businesses for this admin
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            businessIds = [manager.business];
         }
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found or access denied"
+        if (businessIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                pagination: { total: 0, page: parseInt(page), limit: parseInt(limit), pages: 0 }
             });
         }
 
-        const cacheKey = `business:${business._id}:invoices:${page}:${limit}:${status}:${paymentStatus}:${customerId}:${startDate}:${endDate}:${search}`;
+        const cacheKey = `invoices:${userId}:${businessId || 'all'}:${page}:${limit}:${status}:${paymentStatus}:${customerId}:${startDate}:${endDate}:${search}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -224,7 +248,7 @@ const getInvoices = async (req, res, next) => {
         }
 
         // Build query
-        let query = { business: business._id };
+        let query = { business: { $in: businessIds } };
 
         if (status) {
             query.status = status;
@@ -252,6 +276,7 @@ const getInvoices = async (req, res, next) => {
         const invoices = await Invoice.find(query)
             .populate('customer', 'firstName lastName phone email')
             .populate('appointment', 'bookingNumber appointmentDate')
+            .populate('business', 'name') // Populate business name for list view
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .sort({ invoiceDate: -1 })
@@ -422,19 +447,19 @@ const addPayment = async (req, res, next) => {
         if (invoice.paymentStatus === 'paid' && !invoice.loyaltyPointsEarned) {
             const business = await Business.findById(invoice.business);
             const customer = await Customer.findById(invoice.customer);
-            
+
             if (customer && business.settings?.loyaltySettings?.enabled) {
                 const pointsRate = business.settings.loyaltySettings.pointsPerRupee || 1;
-                const multiplier = customer.membershipTier !== 'none' 
+                const multiplier = customer.membershipTier !== 'none'
                     ? (business.settings.loyaltySettings.tierMultipliers?.[customer.membershipTier] || 1)
                     : 1;
-                
+
                 const pointsToEarn = Math.floor(invoice.total * pointsRate * multiplier);
-                
+
                 if (pointsToEarn > 0) {
                     // Add points to customer
-                    await customer.addLoyaltyPoints(pointsToEarn);
-                    
+                    await customer.loyaltyPoints(pointsToEarn);
+
                     // Create loyalty transaction
                     await LoyaltyTransaction.createEarnedTransaction({
                         business: business._id,
@@ -446,7 +471,7 @@ const addPayment = async (req, res, next) => {
                         invoice: invoice._id,
                         description: `Earned ${pointsToEarn} points from invoice ${invoice.invoiceNumber}`
                     });
-                    
+
                     // Update invoice
                     invoice.loyaltyPointsEarned = pointsToEarn;
                     await invoice.save();
@@ -572,29 +597,35 @@ const getInvoiceStats = async (req, res, next) => {
         const userRole = req.user.role;
         const { businessId, startDate, endDate } = req.query;
 
-        // Determine business
-        let business;
+        // Determine business(es)
+        let businessIds = [];
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                const business = await Business.findOne({ _id: businessId, admin: userId });
+                if (!business) {
+                    return res.status(404).json({ success: false, message: "Business not found or access denied" });
+                }
+                businessIds = [business._id];
+            } else {
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            businessIds = [manager.business];
         }
 
-        if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found or access denied"
+        if (businessIds.length === 0) {
+            return res.json({
+                success: true,
+                data: {
+                    totalInvoices: 0, unpaid: 0, partial: 0, paid: 0, overdue: 0,
+                    totalRevenue: 0, totalPaid: 0, totalPending: 0, averageInvoiceValue: 0
+                }
             });
         }
 
-        const cacheKey = `business:${business._id}:invoice:stats:${startDate}:${endDate}`;
+        const cacheKey = `invoice:stats:${userId}:${businessId || 'all'}:${startDate}:${endDate}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -602,10 +633,10 @@ const getInvoiceStats = async (req, res, next) => {
             return res.json({ success: true, source: "cache", data: cachedData });
         }
 
-        // Build date filter
-        const dateFilter = { business: business._id };
+        // Build match stage
+        const matchStage = { business: { $in: businessIds } };
         if (startDate && endDate) {
-            dateFilter.invoiceDate = {
+            matchStage.invoiceDate = {
                 $gte: new Date(startDate),
                 $lte: new Date(endDate)
             };
@@ -613,7 +644,7 @@ const getInvoiceStats = async (req, res, next) => {
 
         // Aggregate statistics
         const stats = await Invoice.aggregate([
-            { $match: dateFilter },
+            { $match: matchStage },
             {
                 $group: {
                     _id: null,

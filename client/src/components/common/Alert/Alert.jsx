@@ -41,7 +41,7 @@ const Alert = ({
   )
 
   return (
-    <div className={`rounded-md border p-4 ${currentType.container} ${className}`}>
+    <div className={` border p-4 ${currentType.container} ${className}`}>
       <div className="flex">
         <div className="flex-shrink-0">
           {icon || <div className={currentType.icon}>{defaultIcon}</div>}
@@ -62,7 +62,7 @@ const Alert = ({
               <button
                 type="button"
                 onClick={onDismiss}
-                className={`inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${currentType.icon} hover:opacity-75`}
+                className={`inline-flex  p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${currentType.icon} hover:opacity-75`}
               >
                 <span className="sr-only">Dismiss</span>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

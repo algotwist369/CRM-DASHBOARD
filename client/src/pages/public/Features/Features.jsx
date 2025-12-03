@@ -105,9 +105,9 @@ const Features = () => {
             return (
               <div
                 key={index}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 hover:shadow-lg transition-shadow"
+                className="bg-white   border border-gray-200 p-6 sm:p-8 hover:shadow-lg transition-shadow"
               >
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-100  flex items-center justify-center mb-4">
                   <Icon className="text-primary-600 text-xl sm:text-2xl" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
@@ -129,7 +129,7 @@ const Features = () => {
           </p>
           <a
             href="/register"
-            className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
           >
             Start Free Trial
           </a>

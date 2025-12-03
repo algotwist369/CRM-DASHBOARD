@@ -85,7 +85,7 @@ const StaffSidebar = ({ isCollapsed, onToggle }) => {
         {!isCollapsed ? (
           <>
             <div className="flex items-center flex-1 min-w-0">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 bg-primary-600  flex items-center justify-center flex-shrink-0">
                 <HiOutlineHome className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-xl font-bold tracking-wide ml-3 truncate">Staff Portal</h1>
@@ -130,7 +130,7 @@ const StaffSidebar = ({ isCollapsed, onToggle }) => {
                   }
                 }}
                 className={({ isActive }) => {
-                  const base = `relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30 group`
+                  const base = `relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-3 py-2.5  text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30 group`
                   if (isActive || isParentActive) return `${base} bg-primary-600 text-white shadow-lg active:bg-primary-700`
                   if (hasActiveChild) return `${base} bg-primary-600/80 text-white hover:bg-primary-600 shadow-md`
                   return `${base} text-gray-300 hover:bg-gray-800 hover:text-white active:bg-gray-700`
@@ -166,9 +166,9 @@ const StaffSidebar = ({ isCollapsed, onToggle }) => {
                       key={subItem.name}
                       to={subItem.href}
                       className={({ isActive }) => {
-                        const base = 'block px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
+                        const base = 'block px-3 py-2  text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30'
                         return (isActive || isActiveRoute(subItem.href))
-                          ? `${base} bg-primary-500 text-white shadow-sm active:bg-primary-600`
+                          ? `${base} bg-primary-500 text-white  active:bg-primary-600`
                           : `${base} text-gray-400 hover:bg-gray-800 hover:text-white hover:pl-4 active:bg-gray-700`
                       }}
                     >

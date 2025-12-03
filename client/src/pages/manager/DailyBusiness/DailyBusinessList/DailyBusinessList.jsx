@@ -124,14 +124,14 @@ const DailyBusinessList = () => {
           <div className="flex gap-3">
             <Link
               to="/manager/daily-business/analytics"
-              className="flex items-center justify-center gap-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 border border-primary-600 text-primary-600  hover:bg-primary-50 transition-colors"
             >
               <FaChartLine />
               <span>Analytics</span>
             </Link>
             <Link
               to="/manager/daily-business/add"
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
             >
               <FaPlus />
               <span>Add Record</span>
@@ -141,7 +141,7 @@ const DailyBusinessList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white   border border-gray-200 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Start Date */}
           <div className="relative">
@@ -153,7 +153,7 @@ const DailyBusinessList = () => {
                 setStartDate(e.target.value)
                 handleFilterChange()
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Start Date"
             />
           </div>
@@ -168,7 +168,7 @@ const DailyBusinessList = () => {
                 setEndDate(e.target.value)
                 handleFilterChange()
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="End Date"
             />
           </div>
@@ -181,7 +181,7 @@ const DailyBusinessList = () => {
                 setEndDate('')
                 handleFilterChange()
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Clear Filters
             </button>
@@ -195,17 +195,17 @@ const DailyBusinessList = () => {
           <FaSpinner className="animate-spin text-4xl text-primary-600" />
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600">
+        <div className="bg-red-50 border border-red-200  p-4 text-red-600">
           {error}
         </div>
       ) : records.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white   border border-gray-200 p-12 text-center">
           <FaCalendarAlt className="text-6xl text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No daily business records found</h3>
           <p className="text-gray-500 mb-6">Get started by adding your first daily business record</p>
           <Link
             to="/manager/daily-business/add"
-            className="inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
           >
             <FaPlus />
             <span>Add Record</span>
@@ -218,7 +218,7 @@ const DailyBusinessList = () => {
             {records.map((record) => (
               <div
                 key={record._id || record.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+                className="bg-white   border border-gray-200 p-5 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -235,14 +235,14 @@ const DailyBusinessList = () => {
                   <div className="flex gap-2">
                     <Link
                       to={`/manager/daily-business/${record._id || record.id}`}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-blue-600 hover:bg-blue-50  transition-colors"
                       title="View Details"
                     >
                       <FaEye />
                     </Link>
                     <Link
                       to={`/manager/daily-business/${record._id || record.id}/edit`}
-                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-600 hover:bg-gray-50  transition-colors"
                       title="Edit"
                     >
                       <FaEdit />
@@ -250,7 +250,7 @@ const DailyBusinessList = () => {
                     <button
                       onClick={() => handleDelete(record._id || record.id)}
                       disabled={deleting === (record._id || record.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      className="p-2 text-red-600 hover:bg-red-50  transition-colors disabled:opacity-50"
                       title="Delete"
                     >
                       {deleting === (record._id || record.id) ? (
@@ -331,7 +331,7 @@ const DailyBusinessList = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-xl">
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white ">
               <div className="text-sm text-gray-600">
                 Showing {(pagination.currentPage - 1) * pagination.limit + 1} to{' '}
                 {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of{' '}
@@ -341,17 +341,17 @@ const DailyBusinessList = () => {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={pagination.currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
-                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-lg">
+                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 ">
                   {pagination.currentPage} / {pagination.totalPages}
                 </span>
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={pagination.currentPage >= pagination.totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>

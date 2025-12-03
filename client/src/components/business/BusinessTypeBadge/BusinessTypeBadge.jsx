@@ -99,7 +99,7 @@ export const BusinessTypeSelector = ({
           <button
             key={type.value}
             onClick={() => onTypeSelect(type.value)}
-            className={`p-3 text-left border rounded-lg transition-all duration-200 ${
+            className={`p-3 text-left border  transition-all duration-200 ${
               selectedType === type.value
                 ? 'bg-primary-50 border-primary-300 ring-2 ring-primary-200'
                 : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50'

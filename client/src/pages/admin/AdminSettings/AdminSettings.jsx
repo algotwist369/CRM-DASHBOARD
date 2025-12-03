@@ -173,7 +173,7 @@ const AdminSettings = () => {
         </div>
         <button
           onClick={fetchProfile}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300  hover:bg-gray-50"
         >
           <HiOutlineRefresh className="w-5 h-5" />
           Refresh
@@ -181,7 +181,7 @@ const AdminSettings = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white   border border-gray-200">
         <div className="border-b border-gray-200">
           <nav className="flex -mb-px">
             <button
@@ -221,7 +221,7 @@ const AdminSettings = () => {
                     type="text"
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                       errors.name ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter your full name"
@@ -238,7 +238,7 @@ const AdminSettings = () => {
                     type="text"
                     value={profile.companyName}
                     onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                       errors.companyName ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter company name"
@@ -255,7 +255,7 @@ const AdminSettings = () => {
                     type="email"
                     value={profile.email}
                     onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                       errors.email ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter email address"
@@ -272,7 +272,7 @@ const AdminSettings = () => {
                     type="tel"
                     value={profile.phone}
                     onChange={(e) => setProfile({ ...profile, phone: e.target.value.replace(/\D/g, '') })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                       errors.phone ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter phone number"
@@ -286,14 +286,14 @@ const AdminSettings = () => {
                 <button
                   type="button"
                   onClick={fetchProfile}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <HiOutlineSave className="w-5 h-5" />
                   {saving ? 'Saving...' : 'Save Changes'}
@@ -305,7 +305,7 @@ const AdminSettings = () => {
           {/* Password Tab */}
           {activeTab === 'password' && (
             <form onSubmit={handlePasswordSubmit} className="space-y-6 max-w-2xl">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-yellow-50 border border-yellow-200  p-4">
                 <p className="text-sm text-yellow-800">
                   <strong>Security Tip:</strong> Use a strong password with at least 6 characters, including letters and numbers.
                 </p>
@@ -321,7 +321,7 @@ const AdminSettings = () => {
                     type="password"
                     value={passwordData.currentPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                       errors.currentPassword ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter current password"
@@ -338,7 +338,7 @@ const AdminSettings = () => {
                     type="password"
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                       errors.newPassword ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter new password"
@@ -355,7 +355,7 @@ const AdminSettings = () => {
                     type="password"
                     value={passwordData.confirmPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                       errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Confirm new password"
@@ -368,14 +368,14 @@ const AdminSettings = () => {
                 <button
                   type="button"
                   onClick={() => setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50"
                 >
                   Clear
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <HiOutlineLockClosed className="w-5 h-5" />
                   {saving ? 'Updating...' : 'Update Password'}

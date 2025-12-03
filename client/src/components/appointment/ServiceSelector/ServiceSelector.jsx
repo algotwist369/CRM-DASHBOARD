@@ -41,7 +41,7 @@ const ServiceSelector = ({
 
   const getServiceClasses = (service) => {
     const isSelected = isServiceSelected(service)
-    const baseClasses = 'w-full p-4 text-left border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2'
+    const baseClasses = 'w-full p-4 text-left border  transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2'
     
     if (disabled) {
       return `${baseClasses} bg-gray-50 border-gray-200 cursor-not-allowed`
@@ -96,7 +96,7 @@ const ServiceSelector = ({
 
       {/* Selected Services Summary */}
       {multiple && selectedServices.length > 0 && (
-        <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-md">
+        <div className="mb-4 p-3 bg-primary-50 border border-primary-200 ">
           <h4 className="text-sm font-medium text-primary-800 mb-2">
             Selected Services:
           </h4>
@@ -191,7 +191,7 @@ const ServiceSelector = ({
 
       {/* Total Summary */}
       {multiple && selectedServices.length > 0 && (
-        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
+        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 ">
           <div className="flex justify-between items-center">
             <span className="font-medium text-gray-900">
               Total Duration:
@@ -230,7 +230,7 @@ export const ServiceCard = ({
   return (
     <div
       onClick={handleClick}
-      className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+      className={`p-4 border  cursor-pointer transition-all duration-200 ${
         isSelected 
           ? 'bg-primary-50 border-primary-300 ring-2 ring-primary-200' 
           : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50'

@@ -147,7 +147,7 @@ const AddDailyBusiness = () => {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+      <div className="bg-blue-50 border border-blue-200  p-4 mb-6">
         <div className="flex items-start gap-3">
           <FaInfoCircle className="text-blue-600 mt-0.5" />
           <div className="flex-1">
@@ -160,7 +160,7 @@ const AddDailyBusiness = () => {
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Date Selection */}
           <div>
@@ -177,7 +177,7 @@ const AddDailyBusiness = () => {
                 max={new Date().toISOString().split('T')[0]}
                 className={`w-full pl-10 pr-4 py-2 border ${
                   errors.date ? 'border-red-500' : 'border-gray-300'
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
               />
             </div>
             {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
@@ -185,7 +185,7 @@ const AddDailyBusiness = () => {
 
           {/* Business Info */}
           {businessInfo && (
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gray-50  p-4">
               <h3 className="text-sm font-medium text-gray-700 mb-2">Business</h3>
               <p className="text-gray-900 font-semibold">{businessInfo.name}</p>
               {businessInfo.type && (
@@ -206,7 +206,7 @@ const AddDailyBusiness = () => {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={4}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Add any notes or observations about the day (optional)"
               />
             </div>
@@ -224,7 +224,7 @@ const AddDailyBusiness = () => {
                 name="weather"
                 value={formData.weather}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., Sunny, Rainy, Cloudy (optional)"
               />
             </div>
@@ -247,13 +247,13 @@ const AddDailyBusiness = () => {
                     handleAddEvent()
                   }
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., Festival, Holiday, Special Promotion"
               />
               <button
                 type="button"
                 onClick={handleAddEvent}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="px-4 py-2 bg-gray-200 text-gray-700  hover:bg-gray-300 transition-colors"
               >
                 Add
               </button>
@@ -288,14 +288,14 @@ const AddDailyBusiness = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !businessInfo}
-              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

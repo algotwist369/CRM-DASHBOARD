@@ -89,7 +89,7 @@ const ManagerLayout = () => {
         <footer className="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
-              <span>© 2024 RAMA CRM CRM</span>
+              <span>© 2024 SpaAdvisor</span>
               <span>•</span>
               <span>Version 1.0.0</span>
             </div>

@@ -1,7 +1,4 @@
-/**
- * Script to create Admin account
- * Usage: node server/scripts/createAdmin.js
- */
+ 
 
 require('dotenv').config();
 const mongoose = require('mongoose');

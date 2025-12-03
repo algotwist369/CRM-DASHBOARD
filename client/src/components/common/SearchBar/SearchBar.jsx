@@ -84,7 +84,7 @@ const SearchBar = ({
             <select
               value={activeFilters[filter.key] || ''}
               onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">All {filter.label}</option>
               {filter.options.map(option => (
@@ -106,7 +106,7 @@ const SearchBar = ({
               type="date"
               value={activeFilters[filter.key] || ''}
               onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
         )
@@ -123,14 +123,14 @@ const SearchBar = ({
                 placeholder="Min"
                 value={activeFilters[`${filter.key}_min`] || ''}
                 onChange={(e) => handleFilterChange(`${filter.key}_min`, e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                className="flex-1 px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
               />
               <input
                 type="number"
                 placeholder="Max"
                 value={activeFilters[`${filter.key}_max`] || ''}
                 onChange={(e) => handleFilterChange(`${filter.key}_max`, e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                className="flex-1 px-3 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
           </div>
@@ -156,7 +156,7 @@ const SearchBar = ({
           value={searchTerm}
           onChange={handleSearchChange}
           placeholder={placeholder}
-          className="block w-full pl-10 pr-12 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+          className="block w-full pl-10 pr-12 py-2 border border-gray-300  focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
           {...props}
         />
         
@@ -187,7 +187,7 @@ const SearchBar = ({
 
       {/* Filter Dropdown */}
       {showFilterDropdown && showFilters && filters.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg p-4">
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300  shadow-lg p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-gray-900">Filters</h3>
             {getActiveFiltersCount() > 0 && (
@@ -217,7 +217,7 @@ const SearchBar = ({
                   return (
                     <span
                       key={key}
-                      className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-100 text-primary-800"
+                      className="inline-flex items-center px-2 py-1  text-xs font-medium bg-primary-100 text-primary-800"
                     >
                       {filter?.label}: {displayValue}
                       <button

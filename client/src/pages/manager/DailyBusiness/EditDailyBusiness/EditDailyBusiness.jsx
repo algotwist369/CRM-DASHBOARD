@@ -150,10 +150,10 @@ const EditDailyBusiness = () => {
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white   border border-gray-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Read-only Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 ">
             <div>
               <p className="text-sm text-gray-500">Date</p>
               <p className="font-semibold text-gray-900">
@@ -200,7 +200,7 @@ const EditDailyBusiness = () => {
                 step="0.01"
                 className={`w-full pl-10 pr-4 py-2 border ${
                   errors.totalExpenses ? 'border-red-500' : 'border-gray-300'
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                 placeholder="Enter total expenses for the day"
               />
             </div>
@@ -222,7 +222,7 @@ const EditDailyBusiness = () => {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={4}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Add any notes or observations about the day (optional)"
               />
             </div>
@@ -240,7 +240,7 @@ const EditDailyBusiness = () => {
                 name="weather"
                 value={formData.weather}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., Sunny, Rainy, Cloudy (optional)"
               />
             </div>
@@ -262,13 +262,13 @@ const EditDailyBusiness = () => {
                     handleAddEvent()
                   }
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., Festival, Holiday, Special Promotion"
               />
               <button
                 type="button"
                 onClick={handleAddEvent}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="px-4 py-2 bg-gray-200 text-gray-700  hover:bg-gray-300 transition-colors"
               >
                 Add
               </button>
@@ -300,14 +300,14 @@ const EditDailyBusiness = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-2 border border-gray-300  text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>

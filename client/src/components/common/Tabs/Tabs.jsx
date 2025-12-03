@@ -27,7 +27,7 @@ const Tabs = ({
     pills: {
       tab: 'text-gray-500 hover:text-gray-700 hover:bg-gray-100',
       activeTab: 'text-white bg-primary-600',
-      container: 'bg-gray-100 rounded-lg p-1'
+      container: 'bg-gray-100  p-1'
     },
     underline: {
       tab: 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent',
@@ -55,7 +55,7 @@ const Tabs = ({
               onClick={() => handleTabClick(index, tab)}
               className={`${sizeClasses[size]} font-medium transition-colors ${
                 activeTab === index ? currentVariant.activeTab : currentVariant.tab
-              } ${variant === 'pills' ? 'rounded-md' : ''}`}
+              } ${variant === 'pills' ? '' : ''}`}
               aria-current={activeTab === index ? 'page' : undefined}
             >
               {tab.icon && (
@@ -112,7 +112,7 @@ export const TabPanel = ({ children, isActive, className = '' }) => {
 export const TabList = ({ children, variant = 'default', size = 'md', className = '' }) => {
   const variantClasses = {
     default: 'border-b border-gray-200',
-    pills: 'bg-gray-100 rounded-lg p-1',
+    pills: 'bg-gray-100  p-1',
     underline: 'border-b border-gray-200'
   }
 
@@ -170,7 +170,7 @@ export const Tab = ({
       onClick={onClick}
       className={`${sizeClasses[size]} font-medium transition-colors ${
         isActive ? currentVariant.activeTab : currentVariant.tab
-      } ${variant === 'pills' ? 'rounded-md' : ''} ${className}`}
+      } ${variant === 'pills' ? '' : ''} ${className}`}
       aria-current={isActive ? 'page' : undefined}
     >
       {icon && (

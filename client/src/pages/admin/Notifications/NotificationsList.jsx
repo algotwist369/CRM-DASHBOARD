@@ -321,11 +321,11 @@ const NotificationsList = () => {
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <div className="bg-white rounded-lg p-5 sm:p-6 border border-gray-200">
+        <div className="bg-white  p-5 sm:p-6 border border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary-600  flex items-center justify-center">
                   <FaBell className="text-white text-lg" />
                 </div>
                 <div>
@@ -339,7 +339,7 @@ const NotificationsList = () => {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300  hover:bg-gray-50 text-sm font-medium text-gray-700"
               >
                 <FaArrowLeft className="text-gray-600" />
                 <span className="hidden sm:inline">Back</span>
@@ -347,7 +347,7 @@ const NotificationsList = () => {
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
               >
                 <HiRefresh className={`text-lg ${refreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Refresh</span>
@@ -355,7 +355,7 @@ const NotificationsList = () => {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white  hover:bg-green-700 text-sm font-medium"
                 >
                   <FaCheck />
                   <span className="hidden sm:inline">Mark All</span>
@@ -364,7 +364,7 @@ const NotificationsList = () => {
               <button
                 onClick={handleClearAll}
                 disabled={notifications.length === 0}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-600 text-white  hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                 title="Delete all notifications permanently"
               >
                 <FaTrash />
@@ -377,7 +377,7 @@ const NotificationsList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 mb-6">
+      <div className="bg-white   border border-gray-200 p-4 sm:p-5 mb-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="flex items-center gap-2">
             <FaFilter className="text-gray-600" />
@@ -390,7 +390,7 @@ const NotificationsList = () => {
                 setIsRead(e.target.value)
                 setCurrentPage(1)
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
+              className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
             >
               <option value="">All Status</option>
               <option value="false">Unread Only</option>
@@ -403,7 +403,7 @@ const NotificationsList = () => {
                 setType(e.target.value)
                 setCurrentPage(1)
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
+              className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
             >
               <option value="">All Types</option>
               <option value="system">System</option>
@@ -422,7 +422,7 @@ const NotificationsList = () => {
                   setType('')
                   setCurrentPage(1)
                 }}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:text-red-700 font-medium hover:bg-red-50 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:text-red-700 font-medium hover:bg-red-50  transition-colors"
               >
                 <HiOutlineX className="text-base" />
                 Clear Filters
@@ -433,7 +433,7 @@ const NotificationsList = () => {
       </div>
 
       {/* Notifications List */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white   border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-gray-500">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
@@ -493,12 +493,12 @@ const NotificationsList = () => {
                           
                           <div className="flex items-center gap-3 flex-wrap mt-3">
                             {notification.type && (
-                              <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getTypeColor(notification.type)}`}>
+                              <span className={`px-2.5 py-1  text-xs font-medium ${getTypeColor(notification.type)}`}>
                                 {notification.type}
                               </span>
                             )}
                             {notification.priority && (
-                              <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${getPriorityColor(notification.priority)}`}>
+                              <span className={`px-2.5 py-1  text-xs font-medium border ${getPriorityColor(notification.priority)}`}>
                                 {notification.priority}
                               </span>
                             )}
@@ -531,7 +531,7 @@ const NotificationsList = () => {
                         {isUnread && (
                           <button
                             onClick={() => handleMarkAsRead(notification._id || notification.id)}
-                            className="p-2.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            className="p-2.5 text-green-600 hover:bg-green-50  transition-colors"
                             title="Mark as read"
                           >
                             <FaCheck className="text-sm" />
@@ -539,7 +539,7 @@ const NotificationsList = () => {
                         )}
                         <button
                           onClick={() => handleDelete(notification._id || notification.id)}
-                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2.5 text-red-600 hover:bg-red-50  transition-colors"
                           title="Delete"
                         >
                           <FaTrash className="text-sm" />
@@ -563,17 +563,17 @@ const NotificationsList = () => {
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
-                  <span className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">
+                  <span className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 ">
                     Page {currentPage} of {pagination.totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
                     disabled={currentPage >= pagination.totalPages}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                   </button>

@@ -81,7 +81,7 @@ const Pricing = () => {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`bg-white rounded-xl shadow-lg border-2 p-6 sm:p-8 relative ${
+              className={`bg-white  shadow-lg border-2 p-6 sm:p-8 relative ${
                 plan.popular
                   ? 'border-primary-600 scale-105 sm:scale-110'
                   : 'border-gray-200'
@@ -118,7 +118,7 @@ const Pricing = () => {
 
               <Link
                 to={plan.name === 'Enterprise' ? '/contact' : '/register'}
-                className={`block w-full text-center px-6 py-3 rounded-lg font-semibold transition-colors ${
+                className={`block w-full text-center px-6 py-3  font-semibold transition-colors ${
                   plan.popular
                     ? 'bg-primary-600 text-white hover:bg-primary-700'
                     : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
@@ -133,7 +133,7 @@ const Pricing = () => {
 
       {/* FAQ Section */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white   border border-gray-200 p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Frequently Asked Questions</h2>
           <div className="space-y-6">
             <div>

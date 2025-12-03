@@ -2,15 +2,15 @@
 
 /**
  * Generate business link for manager access
- * @param {string} companyName - Admin's company name
+ * @param {string} businessName - Business name
  * @param {string} businessId - Business ID
  * @returns {string} - Generated business link
  */
-const generateBusinessLink = (companyName, businessId) => {
-    const cleanCompanyName = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+const generateBusinessLink = (businessName, businessId) => {
+    const cleanBusinessName = businessName.toLowerCase().replace(/[^a-z0-9]/g, '');
     // Extract last 3 digits from businessId ObjectId for shorter link
     const shortId = businessId.toString().slice(-3);
-    return `${cleanCompanyName}_${shortId}`;
+    return `${cleanBusinessName}_${shortId}`;
 };
 
 /**
@@ -37,7 +37,7 @@ const calculateDailyMetrics = (transactions) => {
     transactions.forEach(transaction => {
         // Revenue calculation
         metrics.totalRevenue += transaction.finalPrice || 0;
-        
+
         // Service breakdown
         const serviceType = transaction.serviceType || 'other';
         if (!metrics.serviceBreakdown[serviceType]) {
@@ -130,7 +130,7 @@ const generateBusinessAnalytics = (dailyBusinessRecords, period = 'monthly') => 
     }
 
     // Sort records by date
-    const sortedRecords = [...dailyBusinessRecords].sort((a, b) => 
+    const sortedRecords = [...dailyBusinessRecords].sort((a, b) =>
         new Date(a.date) - new Date(b.date)
     );
 
@@ -147,7 +147,7 @@ const generateBusinessAnalytics = (dailyBusinessRecords, period = 'monthly') => 
     sortedRecords.forEach(record => {
         const recordDate = new Date(record.date);
         const dayKey = recordDate.toISOString().split('T')[0];
-        
+
         analytics.totalRevenue += record.totalIncome || 0;
         analytics.totalCustomers += record.totalCustomers || 0;
         analytics.totalExpenses += record.totalExpenses || 0;
@@ -226,8 +226,8 @@ const generateBusinessAnalytics = (dailyBusinessRecords, period = 'monthly') => 
     const recordCount = sortedRecords.length;
     analytics.averageDailyRevenue = recordCount > 0 ? analytics.totalRevenue / recordCount : 0;
     analytics.averageDailyCustomers = recordCount > 0 ? analytics.totalCustomers / recordCount : 0;
-    analytics.profitMargin = analytics.totalRevenue > 0 
-        ? (analytics.netProfit / analytics.totalRevenue) * 100 
+    analytics.profitMargin = analytics.totalRevenue > 0
+        ? (analytics.netProfit / analytics.totalRevenue) * 100
         : 0;
 
     // Calculate growth rates
@@ -238,7 +238,7 @@ const generateBusinessAnalytics = (dailyBusinessRecords, period = 'monthly') => 
         const lastRevenue = lastRecord.totalIncome || 0;
         const firstCustomers = firstRecord.totalCustomers || 0;
         const lastCustomers = lastRecord.totalCustomers || 0;
-        
+
         if (firstRevenue > 0) {
             analytics.revenueGrowth = ((lastRevenue - firstRevenue) / firstRevenue) * 100;
         }
@@ -252,10 +252,10 @@ const generateBusinessAnalytics = (dailyBusinessRecords, period = 'monthly') => 
     Object.keys(serviceStats).forEach(serviceName => {
         const service = serviceStats[serviceName];
         service.averagePrice = service.customers > 0 ? service.revenue / service.customers : 0;
-        service.percentage = totalServiceRevenue > 0 
-            ? (service.revenue / totalServiceRevenue) * 100 
+        service.percentage = totalServiceRevenue > 0
+            ? (service.revenue / totalServiceRevenue) * 100
             : 0;
-        
+
         analytics.serviceBreakdown[serviceName] = {
             revenue: service.revenue,
             customers: service.customers,
@@ -415,8 +415,8 @@ const generateBusinessReport = (business, transactions, dailyBusiness, startDate
     });
 
     report.summary.totalCustomers = new Set(transactions.map(t => t.customerPhone)).size;
-    report.summary.averageTransactionValue = transactions.length > 0 
-        ? report.summary.totalRevenue / transactions.length 
+    report.summary.averageTransactionValue = transactions.length > 0
+        ? report.summary.totalRevenue / transactions.length
         : 0;
 
     // Calculate net profit from daily business records

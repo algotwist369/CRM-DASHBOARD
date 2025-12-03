@@ -4,4 +4,4 @@ export { default as CampaignTemplates } from './CampaignTemplates';
 export { default as CampaignDetails } from './CampaignDetails';
 export { default as CampaignTemplateForm } from './CampaignTemplateForm';
 export { default as AutomatedCampaigns } from './AutomatedCampaigns';
-
+export { default as AutomatedCampaignForm } from './AutomatedCampaignForm';

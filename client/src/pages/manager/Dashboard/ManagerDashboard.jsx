@@ -151,7 +151,7 @@ const ManagerDashboard = () => {
   if (error) {
     return (
       <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <div className="bg-red-50 border border-red-200  p-4 text-red-700">
           {error}
         </div>
       </div>
@@ -166,7 +166,7 @@ const ManagerDashboard = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleGoBack}
-              className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
+              className="p-2  bg-white border border-gray-200 hover:bg-gray-100 transition-colors"
               title="Go Back"
             >
               <FaArrowLeft className="text-gray-700" />
@@ -181,7 +181,7 @@ const ManagerDashboard = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm font-medium"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200  hover:bg-gray-100 transition-colors disabled:opacity-50 text-sm font-medium"
             title="Refresh Dashboard"
           >
             <HiRefresh className={`text-gray-700 ${refreshing ? 'animate-spin' : ''}`} />
@@ -200,9 +200,9 @@ const ManagerDashboard = () => {
       {/* Business Info and Analytics Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {/* Business Information */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+        <div className="bg-white  border border-gray-200 p-4 sm:p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
               <FaBuilding className="text-white text-sm" />
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-gray-800">Business Information</h2>
@@ -216,9 +216,9 @@ const ManagerDashboard = () => {
         </div>
 
         {/* Analytics Summary */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+        <div className="bg-white  border border-gray-200 p-4 sm:p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
               <FaChartLine className="text-white text-sm" />
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-gray-800">Performance Summary</h2>
@@ -246,9 +246,9 @@ const ManagerDashboard = () => {
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+      <div className="bg-white  border border-gray-200 p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
             <FaExchangeAlt className="text-white text-sm" />
           </div>
           <h2 className="text-base sm:text-lg font-semibold text-gray-800">Recent Transactions</h2>
@@ -291,17 +291,17 @@ const ManagerDashboard = () => {
                   <button
                     onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-200  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
-                  <span className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg">
+                  <span className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 border border-gray-200 ">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-200  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                   </button>
@@ -322,9 +322,9 @@ const ManagerDashboard = () => {
 
 // Simple Stat Card Component
 const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
-  <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+  <div className="bg-white  border border-gray-200 p-4 sm:p-5">
     <div className="flex items-center gap-3 sm:gap-4">
-      <div className={`${iconBg} p-2 sm:p-3 rounded-lg flex-shrink-0`}>
+      <div className={`${iconBg} p-2 sm:p-3  flex-shrink-0`}>
         <Icon className={`${iconColor} text-xl sm:text-2xl`} />
       </div>
       <div className="flex-1 min-w-0">

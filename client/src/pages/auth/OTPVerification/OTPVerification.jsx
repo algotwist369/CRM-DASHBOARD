@@ -222,9 +222,9 @@ const OTPVerification = () => {
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <Card className="py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <Card className="py-8 px-4 shadow sm: sm:px-10">
             <div className="text-center space-y-6">
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="p-4 bg-green-50 border border-green-200 ">
                 <div className="flex items-center justify-center mb-2">
                   <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -271,7 +271,7 @@ const OTPVerification = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <Card className="py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <Card className="py-8 px-4 shadow sm: sm:px-10">
           <form className="space-y-6" onSubmit={handleVerify}>
             {/* Error Alert */}
             {errors.general && (
@@ -294,7 +294,7 @@ const OTPVerification = () => {
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    className={`w-12 h-12 text-center text-lg font-semibold border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                    className={`w-12 h-12 text-center text-lg font-semibold border  focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                       errors.otp ? 'border-red-500' : 'border-gray-300'
                     }`}
                     autoComplete="off"
@@ -394,7 +394,7 @@ const OTPVerification = () => {
         </Card>
 
         {/* Demo Code */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 ">
           <h3 className="text-sm font-medium text-blue-900 mb-2">Demo Verification Code</h3>
           <p className="text-sm text-blue-700">
             For testing purposes, use: <span className="font-mono font-bold">123456</span>
