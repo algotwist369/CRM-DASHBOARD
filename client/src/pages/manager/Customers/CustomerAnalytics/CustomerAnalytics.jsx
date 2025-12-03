@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import {
   FaChartLine,
   FaUsers,
-  FaDollarSign,
+  FaRupeeSign,
   FaArrowLeft,
   FaSpinner,
   FaCalendarAlt,
@@ -15,6 +15,12 @@ import {
   FaChartPie
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+import {
+  formatCurrency,
+  formatNumber,
+  normalizeCustomerAnalyticsResponse,
+  SEGMENT_META
+} from '../utils/customerUtils'
 
 const CustomerAnalytics = () => {
   const navigate = useNavigate()
@@ -37,10 +43,11 @@ const CustomerAnalytics = () => {
       const result = await managerService.getCustomerAnalyticsOverview(params)
       
       if (result.success) {
-        // Handle both response structures: result.data.data or result.data
-        const analyticsData = result.data?.data || result.data
-        if (analyticsData) {
-          setAnalytics(analyticsData)
+        const raw = result.data?.data || result.data
+        const normalized = raw ? normalizeCustomerAnalyticsResponse(raw) : null
+
+        if (normalized) {
+          setAnalytics(normalized)
         } else {
           setAnalytics(null)
           toast.error('No analytics data available')
@@ -60,13 +67,6 @@ const CustomerAnalytics = () => {
   useEffect(() => {
     fetchAnalytics()
   }, [fetchAnalytics])
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount || 0)
-  }
 
   if (loading) {
     return (
@@ -88,6 +88,13 @@ const CustomerAnalytics = () => {
   }
 
   const { overview, segments, lifecycle, value, retention, preferences, growth } = analytics
+
+  const segmentSummary = [
+    { key: 'new', icon: <FaUsers className="text-green-500" /> },
+    { key: 'returning', icon: <FaUsers className="text-purple-500" /> },
+    { key: 'loyal', icon: <FaUsers className="text-yellow-500" /> },
+    { key: 'inactive', icon: <FaUsers className="text-red-500" /> }
+  ]
 
   return (
     <div className="p-6 space-y-6">
@@ -154,38 +161,22 @@ const CustomerAnalytics = () => {
             <span className="text-sm font-medium text-gray-600">Total Customers</span>
             <FaUsers className="text-blue-500" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{overview?.totalCustomers || 0}</p>
-          {overview?.newCustomers > 0 && (
-            <p className="text-sm text-blue-600 mt-1">+{overview.newCustomers} new in period</p>
+          <p className="text-3xl font-bold text-gray-900">{formatNumber(overview.totalCustomers)}</p>
+          {overview.newCustomers > 0 && (
+            <p className="text-sm text-blue-600 mt-1">+{formatNumber(overview.newCustomers)} new in period</p>
           )}
         </div>
 
-        <div className="bg-white   border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">New Customers</span>
-            <FaUsers className="text-green-500" />
+        {segmentSummary.map(({ key, icon }) => (
+          <div key={key} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">{SEGMENT_META[key]?.label || key}</span>
+              {icon}
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{formatNumber(segments[key])}</p>
+            <p className="text-xs text-gray-500 mt-1">{SEGMENT_META[key]?.description || ''}</p>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{segments?.new || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">Total new customers</p>
-        </div>
-
-        <div className="bg-white   border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">Returning Customers</span>
-            <FaUsers className="text-purple-500" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{segments?.returning || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">2-4 visits</p>
-        </div>
-
-        <div className="bg-white   border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">Loyal Customers</span>
-            <FaUsers className="text-yellow-500" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{segments?.loyal || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">5+ visits</p>
-        </div>
+        ))}
       </div>
 
       {/* Value Analysis */}
@@ -199,20 +190,18 @@ const CustomerAnalytics = () => {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Average First Visit</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {value.avgFirstVisit?.toFixed(1) || 0}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{formatNumber(value.avgFirstVisit || 0, { maximumFractionDigits: 1 })}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Average Total Spent</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(value.avgTotalSpent || 0)}
+                  {formatCurrency(value.avgTotalSpent)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total Revenue</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(value.totalRevenue || 0)}
+                  {formatCurrency(value.totalRevenue)}
                 </p>
               </div>
             </div>
@@ -233,7 +222,7 @@ const CustomerAnalytics = () => {
               <div>
                 <p className="text-sm text-gray-600">Average Loyalty Points</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {Math.floor(value.avgLoyaltyPoints || 0)}
+                  {formatNumber(value.avgLoyaltyPoints || 0, { maximumFractionDigits: 0 })}
                 </p>
               </div>
             </div>
@@ -261,8 +250,8 @@ const CustomerAnalytics = () => {
                 {growth.map((item, index) => (
                   <tr key={index}>
                     <td className="px-4 py-3 text-sm text-gray-900">{item._id || item.period || 'N/A'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{item.count || 0}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">{item.total || 0}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{formatNumber(item.count || 0)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">{formatNumber(item.total || 0)}</td>
                   </tr>
                 ))}
               </tbody>

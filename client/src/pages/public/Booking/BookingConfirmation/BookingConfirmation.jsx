@@ -11,7 +11,7 @@ import {
   FaUser,
   FaPhone,
   FaEnvelope,
-  FaDollarSign,
+  FaRupeeSign,
   FaPrint,
   FaCreditCard,
   FaMobileAlt,
@@ -404,11 +404,56 @@ const BookingConfirmation = () => {
                 <Card className="sticky top-6 border-primary-100 ring-4 ring-gray-50/50">
                   <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Summary</h2>
                   
-                  {/* Price Breakdown */}
-                  <div className="space-y-3 mb-6 bg-gray-50  p-4">
-                    <div className="flex justify-between text-gray-600">
-                      <span>Subtotal</span>
-                      <span>₹{basePrice.toLocaleString()}</span>
+                  <div className="space-y-3 mb-4">
+                    {isOnlinePayment && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          <FaRupeeSign className="text-green-600 text-sm" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {ONLINE_PAYMENT_DISCOUNT}% Discount Applied
+                            </p>
+                            <p className="text-xs text-gray-600 mt-0.5">
+                              You save ₹{discount.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {!isOnlinePayment && paymentMethod === 'cash' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-start gap-2">
+                          <FaRupeeSign className="text-blue-600 text-sm mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900 mb-2">
+                              Save {ONLINE_PAYMENT_DISCOUNT}% with Online Payment
+                            </p>
+                            <div className="bg-white rounded p-2 border border-gray-200">
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-gray-600">Cash Payment:</span>
+                                <span className="font-medium text-gray-900">₹{basePrice.toLocaleString()}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-600">Online Payment:</span>
+                                <span className="font-semibold text-green-600">₹{finalPrice.toLocaleString()}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-gray-100">
+                                <span className="text-gray-700">You Save:</span>
+                                <span className="font-semibold text-green-600">₹{discount.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-600 mt-2">
+                              Select UPI, Card, Wallet, Net Banking, or Online to avail discount
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Base Price</span>
+                      <span className={`text-base font-medium ${isOnlinePayment ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        ₹{basePrice.toLocaleString()}
+                      </span>
                     </div>
                     
                     {isOnlinePayment && (

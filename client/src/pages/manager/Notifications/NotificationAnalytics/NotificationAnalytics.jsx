@@ -11,7 +11,7 @@ import {
   FaSpinner,
   FaEye,
   FaMousePointer,
-  FaDollarSign,
+  FaRupeeSign,
   FaCalendarCheck
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
@@ -210,7 +210,7 @@ const NotificationAnalytics = () => {
           <div className="bg-white   border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <FaDollarSign className="text-green-500" />
+                <FaRupeeSign className="text-green-500" />
                 Revenue Generated
               </h3>
             </div>

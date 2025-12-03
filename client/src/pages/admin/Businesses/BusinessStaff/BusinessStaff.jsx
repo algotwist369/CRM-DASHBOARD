@@ -5,7 +5,7 @@ import {
   FaPhone,
   FaEnvelope,
   FaIdBadge,
-  FaDollarSign,
+  FaRupeeSign,
   FaStar,
   FaSpinner,
   FaChevronLeft,
@@ -276,35 +276,35 @@ const BusinessStaff = () => {
                 {(member.performance?.totalCustomers > 0 ||
                   member.performance?.totalRevenue > 0 ||
                   member.performance?.rating > 0) && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
-                      {member.performance?.totalCustomers > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Customers</p>
-                          <p className="font-semibold text-gray-800">
-                            {member.performance.totalCustomers}
-                          </p>
-                        </div>
-                      )}
-                      {member.performance?.totalRevenue > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Revenue</p>
-                          <p className="font-semibold text-gray-800 flex items-center justify-center gap-1">
-                            <FaDollarSign className="text-xs" />
-                            {member.performance.totalRevenue.toLocaleString("en-IN")}
-                          </p>
-                        </div>
-                      )}
-                      {member.performance?.rating > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Rating</p>
-                          <p className="font-semibold text-gray-800 flex items-center justify-center gap-1">
-                            <FaStar className="text-yellow-500" />
-                            {member.performance.rating.toFixed(1)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
+                    {member.performance?.totalCustomers > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500">Customers</p>
+                        <p className="font-semibold text-gray-800">
+                          {member.performance.totalCustomers}
+                        </p>
+                      </div>
+                    )}
+                    {member.performance?.totalRevenue > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500">Revenue</p>
+                        <p className="font-semibold text-gray-800 flex items-center justify-center gap-1">
+                          <FaRupeeSign className="text-xs" />
+                          {member.performance.totalRevenue.toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                    )}
+                    {member.performance?.rating > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500">Rating</p>
+                        <p className="font-semibold text-gray-800 flex items-center justify-center gap-1">
+                          <FaStar className="text-yellow-500" />
+                          {member.performance.rating.toFixed(1)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Salary & Commission */}
                 {(member.salary || member.commission) && (

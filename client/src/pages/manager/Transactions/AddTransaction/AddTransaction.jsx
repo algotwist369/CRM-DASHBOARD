@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaClipboardList,
   FaTags,
-  FaDollarSign,
-  FaPercent,
+  FaRupeeSign,
   FaCreditCard,
   FaUserTag,
   FaStickyNote,
@@ -223,7 +222,7 @@ const AddTransaction = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                 <div className="relative">
-                  <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaPhoneAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="tel"
                     name="customerPhone"
@@ -338,7 +337,7 @@ const AddTransaction = () => {
                   Base Price (₹) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="number"
                     name="basePrice"
@@ -359,7 +358,7 @@ const AddTransaction = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Discount (₹)</label>
                 <div className="relative">
-                  <FaPercent className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="number"
                     name="discount"
@@ -380,7 +379,7 @@ const AddTransaction = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tax (₹)</label>
                 <div className="relative">
-                  <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="number"
                     name="tax"
@@ -401,7 +400,7 @@ const AddTransaction = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Final Price (₹)</label>
                 <div className="relative">
-                  <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-600" />
+                  <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-600" />
                   <input
                     type="text"
                     value={calculatedPrice.toFixed(2)}

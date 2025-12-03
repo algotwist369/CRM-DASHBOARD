@@ -7,7 +7,7 @@ import {
   FaArrowRight,
   FaCheckCircle,
   FaClock,
-  FaChevronDown
+  FaRupeeSign
 } from 'react-icons/fa'
 import { FiCheck, FiPlus } from 'react-icons/fi'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
@@ -479,13 +479,27 @@ const ServiceSelection = () => {
                               isSelected ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-500'
                             } ${!hasOptions ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            {isSelected ? <FiCheck className="text-sm" /> : <FiPlus className="text-sm" />}
-                          </button>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wide flex-wrap">
-                              <span>{service.category || 'Service'}</span>
-                              <span>•</span>
-                              <span>{service.serviceType || 'General'}</span>
+                            {isSelected && <FaCheckCircle className="text-white text-xs" />}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              {serviceName}
+                            </h3>
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                              {serviceDuration > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <FaClock />
+                                  <span>{serviceDuration} min</span>
+                                </div>
+                              )}
+                              {servicePrice > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <FaRupeeSign />
+                                  <span className="font-semibold">
+                                    ₹{servicePrice.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <button
                               type="button"

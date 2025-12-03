@@ -388,7 +388,7 @@ class ManagerService {
   // Get appointments
   async getAppointments(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.appointments.getAppointments, { params })
+      const response = await apiClient.get(endpoints.appointments.list, { params })
       return { success: true, data: response.data }
     } catch (error) {
       return { 

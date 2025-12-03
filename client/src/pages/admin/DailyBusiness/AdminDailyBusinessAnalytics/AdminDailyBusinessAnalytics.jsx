@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   FaChartLine,
   FaUsers,
-  FaDollarSign,
+  FaRupeeSign,
   FaArrowLeft,
   FaSpinner,
   FaArrowUp,
@@ -283,11 +283,13 @@ const AdminDailyBusinessAnalytics = () => {
             {summaryCards.map((card, index) => (
               <div key={index} className="bg-white  border border-gray-200 p-5">
                 <div className="flex items-center justify-between mb-2">
-                  {/* <card.icon className={`${card.iconColor} text-xl`} /> */}
-                  {card.growth !== undefined && (
-                    <span className={`flex items-center gap-1 text-xs ${card.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {card.growth >= 0 ? <FaArrowUp /> : <FaArrowDown />}
-                      {formatPercent(Math.abs(card.growth))}
+                  <FaRupeeSign className="text-green-600 text-2xl" />
+                  {analytics.revenueGrowth !== undefined && (
+                    <span className={`flex items-center gap-1 text-sm ${
+                      analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {analytics.revenueGrowth >= 0 ? <FaArrowUp /> : <FaArrowDown />}
+                      {formatPercent(Math.abs(analytics.revenueGrowth))}
                     </span>
                   )}
                   {card.badge && (
@@ -300,7 +302,41 @@ const AdminDailyBusinessAnalytics = () => {
                   <p className="text-xs text-gray-500 mt-1">{card.subText}</p>
                 )}
               </div>
-            ))}
+            )}
+
+            {analytics.totalExpenses !== undefined && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <FaRupeeSign className="text-red-600 text-2xl mb-2" />
+                <p className="text-sm text-gray-500 mb-1">Total Expenses</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(analytics.totalExpenses)}
+                </p>
+                {analytics.efficiencyMetrics?.expenseRatio !== undefined && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formatPercent(analytics.efficiencyMetrics.expenseRatio)} of revenue
+                  </p>
+                )}
+              </div>
+            )}
+
+            {analytics.netProfit !== undefined && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <FaChartLine className="text-purple-600 text-2xl" />
+                  {analytics.profitMargin !== undefined && (
+                    <span className="text-sm text-gray-500">
+                      {formatPercent(analytics.profitMargin)} margin
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Net Profit</p>
+                <p className={`text-2xl font-bold ${
+                  analytics.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(analytics.netProfit)}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Peak Performance */}

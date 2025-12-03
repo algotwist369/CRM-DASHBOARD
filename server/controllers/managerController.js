@@ -348,8 +348,8 @@ const addTransaction = async (req, res, next) => {
 const getTransactions = async (req, res, next) => {
     try {
         const managerId = req.user.id;
-        const { page = 1, limit = 10, startDate, endDate, serviceType } = req.query;
-        const cacheKey = `manager:${managerId}:transactions:${startDate}:${endDate}:${serviceType}:${page}:${limit}`;
+        const { page = 1, limit = 10, startDate, endDate, serviceType, paymentStatus } = req.query;
+        const cacheKey = `manager:${managerId}:transactions:${startDate}:${endDate}:${serviceType}:${paymentStatus}:${page}:${limit}`;
 
         const cachedData = await getCache(cacheKey);
         if (cachedData) return res.json({ success: true, source: "cache", ...cachedData });
@@ -371,6 +371,10 @@ const getTransactions = async (req, res, next) => {
 
         if (serviceType) {
             query.serviceType = serviceType;
+        }
+
+        if (paymentStatus) {
+            query.paymentStatus = paymentStatus;
         }
 
         const transactions = await Transaction.find(query)

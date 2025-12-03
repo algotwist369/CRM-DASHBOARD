@@ -7,6 +7,8 @@ import {
   HiOutlineHome,
   HiOutlineUser,
   HiOutlineOfficeBuilding,
+  HiOutlineCash,
+  HiOutlineClipboardList,
   HiOutlineCog
 } from 'react-icons/hi'
 import { FaUserCircle } from 'react-icons/fa'
@@ -47,6 +49,16 @@ const StaffSidebar = ({ isCollapsed, onToggle }) => {
       name: 'My Business',
       href: '/staff/business',
       icon: <HiOutlineOfficeBuilding className="w-5 h-5" />
+    },
+    {
+      name: 'Transactions',
+      href: '/staff/transactions',
+      icon: <HiOutlineCash className="w-5 h-5" />
+    },
+    {
+      name: 'Daily Business',
+      href: '/staff/daily-business',
+      icon: <HiOutlineClipboardList className="w-5 h-5" />
     },
     {
       name: 'Settings',

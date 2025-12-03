@@ -90,6 +90,10 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
       'dashboard': 'Dashboard',
       'profile': 'My Profile',
       'business': 'My Business',
+      'transactions': 'Transactions',
+      'add': 'Add Transaction',
+      'edit': 'Edit Transaction',
+      'daily-business': 'Daily Business',
       'settings': 'Settings',
     }
 
@@ -103,9 +107,19 @@ const StaffHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
       let currentPath = '/staff'
       for (let i = 1; i < pathSegments.length; i++) {
         const segment = pathSegments[i]
-        currentPath += `/${segment}`
-        const name = routeNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
-        breadcrumbs.push({ name, path: currentPath })
+        const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) || /^\d+$/.test(segment)
+ 
+        if (isId) {
+          // This is an ID segment - always update path
+          currentPath += `/${segment}`
+          const name = routeNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+          breadcrumbs.push({ name, path: currentPath })
+        } else {
+          // This is a segment name - update path and name
+          currentPath += `/${segment}`
+          const name = routeNames[segment] || segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+          breadcrumbs.push({ name, path: currentPath })
+        }
       }
       
       // If on dashboard or just /staff, ensure Dashboard is shown

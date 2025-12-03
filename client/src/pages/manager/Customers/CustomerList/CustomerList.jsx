@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -6,18 +6,94 @@ import {
   FaSearch,
   FaFilter,
   FaEye,
-  FaEdit,
   FaSpinner,
-  FaPhone,
-  FaEnvelope,
-  FaDollarSign,
-  FaCalendarAlt,
+  FaPhoneAlt,
+  FaRupeeSign,
   FaStar,
   FaChartLine,
   FaArrowUp,
   FaArrowDown
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+import {
+  normalizeCustomerCollection,
+  formatCurrency,
+  formatDate,
+  buildCustomerTypeFilterOptions,
+  formatNumber
+} from '../utils/customerUtils'
+
+const SEGMENT_STYLES = {
+  vip: { label: 'VIP', color: 'bg-purple-100 text-purple-800' },
+  loyal: { label: 'Loyal', color: 'bg-green-100 text-green-800' },
+  returning: { label: 'Returning', color: 'bg-blue-100 text-blue-800' },
+  new: { label: 'New', color: 'bg-sky-100 text-sky-800' },
+  at_risk: { label: 'At Risk', color: 'bg-red-100 text-red-800' },
+  inactive: { label: 'Inactive', color: 'bg-red-100 text-red-800' },
+  regular: { label: 'Regular', color: 'bg-gray-100 text-gray-800' }
+}
+
+const deriveSegmentDetails = ({ customerType, totalVisits, totalSpent, lastVisit, isActive }) => {
+  const key = (customerType || '').toLowerCase()
+  if (SEGMENT_STYLES[key]) {
+    const { label, color } = SEGMENT_STYLES[key]
+    return { key, label, color }
+  }
+
+  if (!isActive) return { key: 'inactive', ...SEGMENT_STYLES.inactive }
+
+  if (totalVisits <= 1) return { key: 'new', ...SEGMENT_STYLES.new }
+  if (totalVisits >= 5 || totalSpent >= 50000) return { key: 'loyal', ...SEGMENT_STYLES.loyal }
+
+  if (lastVisit) {
+    const daysSince = Math.floor((Date.now() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24))
+    if (daysSince > 90) {
+      return { key: 'at_risk', ...SEGMENT_STYLES.at_risk }
+    }
+  }
+
+  return { key: 'regular', ...SEGMENT_STYLES.regular }
+}
+
+const normalizeCustomerRecord = (raw) => {
+  const totalVisits = raw.totalVisits ?? raw.stats?.totalVisits ?? 0
+  const totalSpent = raw.totalSpent ?? raw.stats?.totalSpent ?? 0
+  const averageSpent = raw.averageSpent ?? raw.stats?.averageSpent ?? 0
+  const lastVisit = raw.lastVisit ?? raw.stats?.lastVisit ?? null
+  const averageRating = raw.averageRating ?? raw.stats?.averageRating ?? 0
+  const isActive = raw.isActive ?? raw.status === 'active'
+
+  const segment = deriveSegmentDetails({
+    customerType: raw.customerType,
+    totalVisits,
+    totalSpent,
+    lastVisit,
+    isActive
+  })
+
+  const name = raw.fullName || raw.name || [raw.firstName, raw.lastName].filter(Boolean).join(' ').trim() || 'Unnamed Customer'
+
+  return {
+    id: raw.id || raw._id,
+    name,
+    email: raw.email || raw.contactEmail || '',
+    phone: raw.phone || raw.contactPhone || '',
+    customerType: raw.customerType || segment.key,
+    totalVisits,
+    totalSpent,
+    averageSpent,
+    lastVisit,
+    loyaltyPoints: raw.loyaltyPoints ?? 0,
+    membershipTier: raw.membershipTier || 'standard',
+    averageRating,
+    isActive,
+    createdAt: raw.createdAt,
+    tags: raw.tags || [],
+    segmentKey: segment.key,
+    segmentLabel: segment.label,
+    segmentColor: segment.color
+  }
+}
 
 const CustomerList = () => {
   const navigate = useNavigate()
@@ -41,12 +117,13 @@ const CustomerList = () => {
       }
       
       if (debouncedSearch) params.search = debouncedSearch
-      if (segmentFilter) params.segment = segmentFilter
+      if (segmentFilter) params.customerType = segmentFilter
 
       const result = await managerService.getCustomers(params)
       
       if (result.success) {
-        setCustomers(result.data.data || [])
+        const normalized = normalizeCustomerCollection(result.data?.data || result.data || [])
+        setCustomers(normalized)
         setPagination(prev => ({
           ...prev,
           total: result.data.pagination?.total || 0,
@@ -76,39 +153,6 @@ const CustomerList = () => {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount || 0)
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Never'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const getSegmentBadge = (customer) => {
-    const visits = customer.stats?.totalVisits || 0
-    const spent = customer.stats?.totalSpent || 0
-    const lastVisit = customer.stats?.lastVisit
-    
-    if (visits === 1) return { label: 'New', color: 'bg-blue-100 text-blue-800' }
-    if (visits >= 2 && visits <= 4) return { label: 'Returning', color: 'bg-green-100 text-green-800' }
-    if (visits >= 5) return { label: 'Loyal', color: 'bg-purple-100 text-purple-800' }
-    if (spent >= 5000) return { label: 'High Value', color: 'bg-yellow-100 text-yellow-800' }
-    if (lastVisit) {
-      const daysSince = Math.floor((new Date() - new Date(lastVisit)) / (1000 * 60 * 60 * 24))
-      if (daysSince > 90) return { label: 'Inactive', color: 'bg-red-100 text-red-800' }
-    }
-    return { label: 'Active', color: 'bg-gray-100 text-gray-800' }
-  }
-
   const handleSort = (field) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
@@ -122,6 +166,8 @@ const CustomerList = () => {
     if (sortBy !== field) return null
     return sortOrder === 'asc' ? <FaArrowUp className="ml-1" /> : <FaArrowDown className="ml-1" />
   }
+
+  const segmentOptions = useMemo(() => buildCustomerTypeFilterOptions(customers), [customers])
 
   return (
     <div className="p-6 space-y-6">
@@ -165,12 +211,11 @@ const CustomerList = () => {
             }}
             className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            <option value="">All Segments</option>
-            <option value="new">New Customers</option>
-            <option value="returning">Returning Customers</option>
-            <option value="loyal">Loyal Customers</option>
-            <option value="inactive">Inactive Customers</option>
-            <option value="high_value">High Value Customers</option>
+            {segmentOptions.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -198,7 +243,6 @@ const CustomerList = () => {
               <p className="text-sm text-gray-600">Total Customers</p>
               <p className="text-2xl font-bold text-gray-900">{pagination.total}</p>
             </div>
-            <FaUsers className="text-3xl text-primary-500" />
           </div>
         </div>
 
@@ -206,11 +250,10 @@ const CustomerList = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Active</p>
-              <p className="text-2xl font-bold text-green-600">
-                {customers.filter(c => c.status === 'active').length}
+              <p className="text-2xl font-bold text-primary-600">
+                {customers.filter(c => c.isActive).length}
               </p>
             </div>
-            <FaUsers className="text-3xl text-green-500" />
           </div>
         </div>
 
@@ -218,25 +261,23 @@ const CustomerList = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {formatCurrency(customers.reduce((sum, c) => sum + (c.stats?.totalSpent || 0), 0))}
+              <p className="text-2xl font-bold text-primary-600">
+                {formatCurrency(customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0))}
               </p>
             </div>
-            <FaDollarSign className="text-3xl text-blue-500" />
           </div>
         </div>
 
         <div className="bg-white   border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Avg. Spending</p>
-              <p className="text-2xl font-bold text-purple-600">
+              <p className="text-sm text-gray-600 text-center">Avg. Spending</p>
+              <p className="text-2xl font-bold text-primary-600">
                 {customers.length > 0
-                  ? formatCurrency(customers.reduce((sum, c) => sum + (c.stats?.totalSpent || 0), 0) / customers.length)
+                  ? formatCurrency(customers.reduce((sum, c) => sum + (c.averageSpent || 0), 0) / customers.length)
                   : formatCurrency(0)}
               </p>
             </div>
-            <FaChartLine className="text-3xl text-purple-500" />
           </div>
         </div>
       </div>
@@ -250,7 +291,6 @@ const CustomerList = () => {
           </div>
         ) : customers.length === 0 ? (
           <div className="p-12 text-center">
-            <FaUsers className="mx-auto text-gray-400 text-4xl mb-4" />
             <p className="text-gray-600">No customers found</p>
           </div>
         ) : (
@@ -293,55 +333,70 @@ const CustomerList = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {customers.map((customer) => {
-                    const segment = getSegmentBadge(customer)
+                    const {
+                      id,
+                      name,
+                      email,
+                      phone,
+                      totalVisits,
+                      totalSpent,
+                      lastVisit,
+                      averageRating,
+                      segmentLabel,
+                      segmentColor
+                    } = customer
+
                     return (
                       <tr 
-                        key={customer._id} 
+                        key={id} 
                         className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/manager/customers/${customer._id}`)}
+                        onClick={() => navigate(`/manager/customers/${id}`)}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap">
+
+
+                        <td className=" py-1 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                              <FaUsers className="text-primary-600" />
+                            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                              <div className="text-xs text-gray-500">{customer.email}</div>
+                              <div className="text-sm font-medium text-gray-900">{name}</div>
+                              <div className="text-xs text-gray-500">{email}</div>
                             </div>
                           </div>
                         </td>
+
+
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 flex items-center gap-2">
-                            <FaPhone className="text-gray-400" />
-                            {customer.phone}
+                            <FaPhoneAlt className="text-gray-400 " />
+                            {phone}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${segment.color}`}>
-                            {segment.label}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${segmentColor}`}>
+                            {segmentLabel}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {customer.stats?.totalVisits || 0}
+                            {totalVisits || 0}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-semibold text-gray-900">
-                            {formatCurrency(customer.stats?.totalSpent || 0)}
+                            {formatCurrency(totalSpent || 0)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
-                            {formatDate(customer.stats?.lastVisit)}
+                            {formatDate(lastVisit)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-1">
                             <FaStar className="text-yellow-400" />
                             <span className="text-sm text-gray-900">
-                              {(customer.stats?.averageRating || 0).toFixed(1)}
+                              {(averageRating || 0).toFixed(1)}
                             </span>
                           </div>
                         </td>
@@ -350,7 +405,7 @@ const CustomerList = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                navigate(`/manager/customers/${customer._id}`)
+                                navigate(`/manager/customers/${id}`)
                               }}
                               className="p-2 text-primary-600 hover:bg-primary-50  transition-colors"
                               title="View Details"

@@ -2,17 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaIdBadge,
-  FaDollarSign,
+  FaRupeeSign,
   FaSpinner,
   FaSearch,
   FaFilter,
   FaEdit,
   FaTrash,
   FaEye,
-  FaPlus
+  FaPlus,
+  FaCalendar
 } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import managerService from '../../../../services/manager/managerService'
@@ -260,7 +261,7 @@ const StaffList = () => {
                 <div className="space-y-2 text-sm">
                   {member.phone && (
                     <div className="flex items-center gap-2 text-gray-600">
-                      <FaPhone className="text-gray-400" />
+                      <FaPhoneAlt className="text-gray-400" />
                       <span>{member.phone}</span>
                     </div>
                   )}
@@ -277,7 +278,8 @@ const StaffList = () => {
                     </div>
                   )}
                   {member.experience !== undefined && (
-                    <div className="text-gray-600">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <FaCalendar className="text-gray-400" />
                       <span className="font-medium">Experience:</span> {member.experience} years
                     </div>
                   )}
@@ -285,7 +287,7 @@ const StaffList = () => {
                     <div className="flex items-center gap-4 pt-2 border-t border-gray-100">
                       {member.salary && (
                         <div className="flex items-center gap-1 text-gray-600">
-                          <FaDollarSign className="text-green-600" />
+                          <FaRupeeSign className="text-green-600" />
                           <span className="font-medium">{formatCurrency(member.salary)}</span>
                         </div>
                       )}

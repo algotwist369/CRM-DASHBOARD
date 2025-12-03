@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, memo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   FaCalendarAlt,
-  FaDollarSign,
+  FaRupeeSign,
   FaUsers,
   FaStickyNote,
   FaCloudSun,
@@ -369,12 +369,180 @@ const AdminDailyBusinessDetails = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Main Details */}
-        <div className="lg:col-span-2 space-y-4">
-          <SummaryCards record={record} />
-          <FinancialBreakdown record={record} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ServiceBreakdown services={record.services} />
-            <StaffPerformance staffPerformance={record.staffPerformance} />
+        <div className="lg:col-span-2 space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <FaRupeeSign className="text-green-600 text-2xl" />
+                <div>
+                  <p className="text-sm text-gray-500">Total Income</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(record.totalIncome)}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <FaUsers className="text-blue-600 text-2xl" />
+                <div>
+                  <p className="text-sm text-gray-500">Total Customers</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {record.totalCustomers || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <FaRupeeSign className="text-purple-600 text-2xl" />
+                <div>
+                  <p className="text-sm text-gray-500">Net Profit</p>
+                  <p className={`text-2xl font-bold ${
+                    record.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {formatCurrency(record.netProfit)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Financial Breakdown */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Financial Breakdown</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Total Income</span>
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(record.totalIncome)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Total Expenses</span>
+                <span className="font-semibold text-red-600">
+                  {formatCurrency(record.totalExpenses)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                <span className="text-lg font-semibold text-gray-900">Net Profit</span>
+                <span className={`text-lg font-bold ${
+                  record.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(record.netProfit)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Service Breakdown */}
+          {record.services && record.services.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Service Breakdown</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="text-left text-sm text-gray-500 border-b">
+                      <th className="pb-2">Service</th>
+                      <th className="pb-2">Customers</th>
+                      <th className="pb-2">Revenue</th>
+                      <th className="pb-2">Avg. Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {record.services.map((service, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="py-3 font-medium text-gray-900">
+                          {service.serviceName || service.serviceType}
+                        </td>
+                        <td className="py-3 text-gray-700">{service.customerCount || 0}</td>
+                        <td className="py-3 text-gray-700">
+                          {formatCurrency(service.totalRevenue)}
+                        </td>
+                        <td className="py-3 text-gray-700">
+                          {formatCurrency(service.averagePrice)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Staff Performance */}
+          {record.staffPerformance && record.staffPerformance.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Staff Performance</h2>
+              <div className="space-y-4">
+                {record.staffPerformance.map((perf, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <FaUserTie className="text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {typeof perf.staff === 'object' ? perf.staff.name : 'Staff Member'}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {perf.customersServed || 0} customers served
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        {formatCurrency(perf.revenue)}
+                      </p>
+                      {perf.commission > 0 && (
+                        <p className="text-sm text-gray-500">
+                          Commission: {formatCurrency(perf.commission)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Additional Information */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h2>
+            <div className="space-y-4">
+              {record.notes && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <FaStickyNote className="text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700">Notes</span>
+                  </div>
+                  <p className="text-gray-900 pl-6">{record.notes}</p>
+                </div>
+              )}
+              {record.weather && (
+                <div className="flex items-center gap-3">
+                  <FaCloudSun className="text-gray-400" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Weather: </span>
+                    <span className="text-gray-900">{record.weather}</span>
+                  </div>
+                </div>
+              )}
+              {record.specialEvents && record.specialEvents.length > 0 && (
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Special Events: </span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {record.specialEvents.map((event, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
+                      >
+                        {event}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <AdditionalInfo record={record} />
         </div>

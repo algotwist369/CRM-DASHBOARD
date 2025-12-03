@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
-  FaDollarSign,
+  FaRupeeSign,
   FaCalendarAlt,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaSpinner,
   FaSearch,
   FaFilter,
@@ -26,6 +26,22 @@ const SERVICE_TYPE_COLORS = {
   other: 'bg-gray-100 text-gray-700',
 }
 
+const PAYMENT_STATUS_COLORS = {
+  completed: 'bg-green-100 text-green-700',
+  approved: 'bg-green-100 text-green-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  refunded: 'bg-red-100 text-red-700',
+  failed: 'bg-red-100 text-red-700',
+}
+
+const PAYMENT_METHOD_COLORS = {
+  cash: 'bg-gray-100 text-gray-700',
+  card: 'bg-blue-100 text-blue-700',
+  upi: 'bg-purple-100 text-purple-700',
+  wallet: 'bg-emerald-100 text-emerald-700',
+  other: 'bg-slate-100 text-slate-700',
+}
+
 const TransactionList = () => {
   const navigate = useNavigate()
   const [transactions, setTransactions] = useState([])
@@ -34,6 +50,7 @@ const TransactionList = () => {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterServiceType, setFilterServiceType] = useState('')
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [pagination, setPagination] = useState({
@@ -54,17 +71,18 @@ const TransactionList = () => {
       if (startDate) params.startDate = startDate
       if (endDate) params.endDate = endDate
       if (filterServiceType) params.serviceType = filterServiceType
+      if (filterPaymentStatus) params.paymentStatus = filterPaymentStatus
 
       const res = await managerService.getTransactions(params)
       if (res.success) {
         const transactionData = res.data?.data || []
-        // Filter by search if needed (client-side for now)
         let filteredData = transactionData
         if (debouncedSearch) {
           filteredData = transactionData.filter(t =>
             t.customerName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
             t.customerPhone?.includes(debouncedSearch) ||
-            t.serviceName?.toLowerCase().includes(debouncedSearch.toLowerCase())
+            t.serviceName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            t.paymentMethod?.toLowerCase().includes(debouncedSearch.toLowerCase())
           )
         }
         setTransactions(filteredData)
@@ -77,13 +95,15 @@ const TransactionList = () => {
         }
       } else {
         setError(res.error || 'Failed to fetch transactions')
+        toast.error(res.error || 'Failed to fetch transactions')
       }
     } catch (e) {
       setError('Failed to fetch transactions')
+      toast.error('Failed to fetch transactions')
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, filterServiceType, startDate, endDate, pagination.currentPage, pagination.limit])
+  }, [debouncedSearch, filterServiceType, filterPaymentStatus, startDate, endDate, pagination.currentPage, pagination.limit])
 
   useEffect(() => {
     fetchTransactions()
@@ -103,8 +123,12 @@ const TransactionList = () => {
   }, [])
 
   const formatCurrency = (amount) => {
-    if (!amount) return '₹0'
-    return `₹${parseInt(amount).toLocaleString('en-IN')}`
+    const value = Number(amount || 0)
+    return value.toLocaleString('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: value < 1000 ? 2 : 0
+    })
   }
 
   const formatDate = (dateString) => {
@@ -125,6 +149,47 @@ const TransactionList = () => {
       minute: '2-digit',
     })
   }
+
+  const summary = useMemo(() => {
+    const base = {
+      overallCount: pagination.total || 0,
+      pageCount: transactions.length,
+      completed: 0,
+      pending: 0,
+      refunded: 0,
+      revenue: 0,
+      averageTicket: 0
+    }
+
+    if (!transactions.length) {
+      return base
+    }
+
+    let revenue = 0
+    let completed = 0
+    let pending = 0
+    let refunded = 0
+
+    transactions.forEach((transaction) => {
+      const amount = Number(transaction.finalPrice || 0)
+      revenue += amount
+
+      const status = (transaction.paymentStatus || '').toLowerCase()
+      if (status === 'completed') completed += 1
+      else if (status === 'pending') pending += 1
+      else if (status === 'refunded') refunded += 1
+    })
+
+    return {
+      overallCount: pagination.total || transactions.length,
+      pageCount: transactions.length,
+      completed,
+      pending,
+      refunded,
+      revenue,
+      averageTicket: transactions.length ? revenue / transactions.length : 0
+    }
+  }, [transactions, pagination.total])
 
   return (
     <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
@@ -210,6 +275,48 @@ const TransactionList = () => {
               <option value="other">Other</option>
             </select>
           </div>
+
+          {/* Payment Status Filter */}
+          <div className="relative">
+            <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <select
+              value={filterPaymentStatus}
+              onChange={(e) => {
+                setFilterPaymentStatus(e.target.value)
+                handleFilterChange()
+              }}
+              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
+            >
+              <option value="">All Payment Status</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="refunded">Refunded</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs uppercase text-gray-500 tracking-wide">Total Transactions</p>
+          <p className="mt-2 text-2xl font-semibold text-gray-900">{summary.overallCount}</p>
+          <p className="text-xs text-gray-500 mt-1">Showing {summary.pageCount} on this page</p>
+        </div>
+        <div className="bg-white border border-green-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs uppercase text-green-600 tracking-wide">Completed</p>
+          <p className="mt-2 text-2xl font-semibold text-green-700">{summary.completed}</p>
+          <p className="text-xs text-green-500 mt-1">Payments received</p>
+        </div>
+        <div className="bg-white border border-yellow-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs uppercase text-yellow-600 tracking-wide">Pending</p>
+          <p className="mt-2 text-2xl font-semibold text-yellow-700">{summary.pending}</p>
+          <p className="text-xs text-yellow-500 mt-1">Awaiting payment confirmation</p>
+        </div>
+        <div className="bg-white border border-blue-200 rounded-xl p-4 shadow-sm">
+          <p className="text-xs uppercase text-blue-600 tracking-wide">Revenue (Page)</p>
+          <p className="mt-2 text-2xl font-semibold text-blue-700">{formatCurrency(summary.revenue)}</p>
+          <p className="text-xs text-blue-500 mt-1">Avg ticket {formatCurrency(summary.averageTicket)}</p>
         </div>
       </div>
 
@@ -271,14 +378,13 @@ const TransactionList = () => {
                     <tr key={transaction._id || transaction.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <FaUser className="text-gray-400 mr-2" />
                           <div>
                             <div className="text-sm font-medium text-gray-900">
                               {transaction.customerName || '-'}
                             </div>
                             {transaction.customerPhone && (
                               <div className="text-sm text-gray-500 flex items-center gap-1">
-                                <FaPhone className="text-xs" />
+
                                 {transaction.customerPhone}
                               </div>
                             )}
@@ -300,7 +406,7 @@ const TransactionList = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          <FaDollarSign className="text-green-600" />
+                          <FaRupeeSign className="text-green-600" />
                           <span className="text-sm font-semibold text-gray-900">
                             {formatCurrency(transaction.finalPrice)}
                           </span>
@@ -312,18 +418,18 @@ const TransactionList = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 capitalize">
-                          {transaction.paymentMethod || '-'}
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                            PAYMENT_METHOD_COLORS[transaction.paymentMethod] || PAYMENT_METHOD_COLORS.other
+                          }`}>
+                            {transaction.paymentMethod || 'N/A'}
+                          </span>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                            PAYMENT_STATUS_COLORS[transaction.paymentStatus] || PAYMENT_STATUS_COLORS.pending
+                          }`}>
+                            {transaction.paymentStatus || 'pending'}
+                          </span>
                         </div>
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs mt-1 ${
-                          transaction.paymentStatus === 'completed'
-                            ? 'bg-green-100 text-green-700'
-                            : transaction.paymentStatus === 'pending'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {transaction.paymentStatus || 'completed'}
-                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{formatDate(transaction.transactionDate)}</div>

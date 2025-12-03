@@ -1,4 +1,5 @@
 // staffController.js - Staff operations
+const mongoose = require("mongoose");
 const Staff = require("../models/Staff");
 const Business = require("../models/Business");
 const Transaction = require("../models/Transaction");
@@ -210,9 +211,353 @@ const getStaffDashboard = async (req, res, next) => {
     }
 };
 
+const invalidateTransactionCaches = async (staffId, managerId, businessId) => {
+    const patterns = [
+        `staff:${staffId}:dashboard`,
+        `staff:${staffId}:transactions*`,
+        `manager:${managerId}:dashboard`,
+        `manager:${managerId}:transactions*`,
+        `daily-business:${businessId}:*`,
+        `business:${businessId}:daily-business*`
+    ];
+
+    await Promise.all(patterns.map((key) => deleteCache(key)));
+};
+
+// ================== Add Transaction (Staff) ==================
+const addTransaction = async (req, res, next) => {
+    try {
+        const staffId = req.user.id;
+        const {
+            customerName,
+            customerPhone,
+            customerEmail,
+            serviceName,
+            serviceType,
+            serviceCategory,
+            basePrice,
+            discount = 0,
+            tax = 0,
+            paymentMethod = "cash",
+            notes,
+            rating
+        } = req.body;
+
+        if (!customerName || !customerName.trim()) {
+            return res.status(400).json({ success: false, message: "Customer name is required" });
+        }
+
+        if (!serviceName || !serviceName.trim()) {
+            return res.status(400).json({ success: false, message: "Service name is required" });
+        }
+
+        if (!serviceType || !serviceType.trim()) {
+            return res.status(400).json({ success: false, message: "Service type is required" });
+        }
+
+        const basePriceNumber = Number(basePrice);
+        const discountNumber = Number(discount) || 0;
+        const taxNumber = Number(tax) || 0;
+
+        if (!Number.isFinite(basePriceNumber) || basePriceNumber <= 0) {
+            return res.status(400).json({ success: false, message: "Base price must be a positive number" });
+        }
+
+        if (discountNumber < 0 || taxNumber < 0) {
+            return res.status(400).json({ success: false, message: "Discount and tax must not be negative" });
+        }
+
+        const staff = await Staff.findById(staffId).populate('manager').populate('business');
+        if (!staff || !staff.manager || !staff.business) {
+            return res.status(403).json({ success: false, message: "Staff account is not linked to a manager or business" });
+        }
+
+        const finalPrice = basePriceNumber - discountNumber + taxNumber;
+
+        const transaction = await Transaction.create({
+            business: staff.business._id,
+            manager: staff.manager._id,
+            staff: staffId,
+            customerName: customerName.trim(),
+            customerPhone: customerPhone || undefined,
+            customerEmail: customerEmail || undefined,
+            isNewCustomer: true,
+            serviceName: serviceName.trim(),
+            serviceType,
+            serviceCategory: serviceCategory || undefined,
+            basePrice: basePriceNumber,
+            discount: discountNumber,
+            tax: taxNumber,
+            finalPrice,
+            paymentMethod,
+            paymentStatus: "completed",
+            notes: notes || undefined,
+            rating: rating ? Number(rating) : undefined,
+            transactionDate: new Date()
+        });
+
+        await invalidateTransactionCaches(staffId, staff.manager._id, staff.business._id);
+
+        return res.status(201).json({
+            success: true,
+            message: "Transaction added successfully",
+            data: transaction
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get My Transactions ==================
+const getMyTransactions = async (req, res, next) => {
+    try {
+        const staffId = req.user.id;
+        const { page = 1, limit = 10, startDate, endDate, serviceType } = req.query;
+        const cacheKey = `staff:${staffId}:transactions:${startDate || ""}:${endDate || ""}:${serviceType || ""}:${page}:${limit}`;
+
+        const cached = await getCache(cacheKey);
+        if (cached) {
+            return res.json({ success: true, source: "cache", ...cached });
+        }
+
+        const staff = await Staff.findById(staffId).populate('business');
+        if (!staff || !staff.business) {
+            return res.status(403).json({ success: false, message: "Staff account is not linked to a business" });
+        }
+
+        const query = {
+            staff: staffId,
+            business: staff.business._id
+        };
+
+        if (startDate && endDate) {
+            query.transactionDate = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
+        if (serviceType) {
+            query.serviceType = serviceType;
+        }
+
+        const pageNumber = parseInt(page, 10) || 1;
+        const limitNumber = Math.min(parseInt(limit, 10) || 10, 100);
+
+        const transactions = await Transaction.find(query)
+            .populate('manager', 'name username')
+            .sort({ transactionDate: -1 })
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber);
+
+        const total = await Transaction.countDocuments(query);
+
+        const response = {
+            success: true,
+            data: transactions.map(t => t.toObject()),
+            pagination: {
+                total,
+                page: pageNumber,
+                limit: limitNumber,
+                pages: Math.ceil(total / limitNumber)
+            }
+        };
+
+        await setCache(cacheKey, response, 120);
+        return res.json(response);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Transaction Details ==================
+const getMyTransactionById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const staffId = req.user.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid transaction ID" });
+        }
+
+        const transaction = await Transaction.findOne({ _id: id, staff: staffId })
+            .populate('business', 'name type branch')
+            .populate('manager', 'name username')
+            .populate('staff', 'name role');
+
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: "Transaction not found" });
+        }
+
+        return res.json({ success: true, data: transaction });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Update Transaction ==================
+const updateTransaction = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const staffId = req.user.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid transaction ID" });
+        }
+
+        const transaction = await Transaction.findOne({ _id: id, staff: staffId });
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: "Transaction not found" });
+        }
+
+        const updates = {};
+        const {
+            customerName,
+            customerPhone,
+            customerEmail,
+            serviceName,
+            serviceType,
+            serviceCategory,
+            basePrice,
+            discount,
+            tax,
+            paymentMethod,
+            paymentStatus,
+            notes,
+            rating
+        } = req.body;
+
+        if (customerName !== undefined) {
+            if (!customerName.trim()) {
+                return res.status(400).json({ success: false, message: "Customer name is required" });
+            }
+            updates.customerName = customerName.trim();
+        }
+
+        if (customerPhone !== undefined) {
+            updates.customerPhone = customerPhone || undefined;
+        }
+
+        if (customerEmail !== undefined) {
+            updates.customerEmail = customerEmail || undefined;
+        }
+
+        if (serviceName !== undefined) {
+            if (!serviceName.trim()) {
+                return res.status(400).json({ success: false, message: "Service name is required" });
+            }
+            updates.serviceName = serviceName.trim();
+        }
+
+        if (serviceType !== undefined) {
+            updates.serviceType = serviceType;
+        }
+
+        if (serviceCategory !== undefined) {
+            updates.serviceCategory = serviceCategory || undefined;
+        }
+
+        let finalPrice;
+        let basePriceNumber = transaction.basePrice;
+        let discountNumber = transaction.discount;
+        let taxNumber = transaction.tax;
+
+        if (basePrice !== undefined) {
+            basePriceNumber = Number(basePrice);
+            if (!Number.isFinite(basePriceNumber) || basePriceNumber <= 0) {
+                return res.status(400).json({ success: false, message: "Base price must be a positive number" });
+            }
+            updates.basePrice = basePriceNumber;
+        }
+
+        if (discount !== undefined) {
+            discountNumber = Number(discount) || 0;
+            if (discountNumber < 0) {
+                return res.status(400).json({ success: false, message: "Discount must not be negative" });
+            }
+            updates.discount = discountNumber;
+        }
+
+        if (tax !== undefined) {
+            taxNumber = Number(tax) || 0;
+            if (taxNumber < 0) {
+                return res.status(400).json({ success: false, message: "Tax must not be negative" });
+            }
+            updates.tax = taxNumber;
+        }
+
+        finalPrice = basePriceNumber - discountNumber + taxNumber;
+        updates.finalPrice = finalPrice;
+
+        if (paymentMethod !== undefined) {
+            updates.paymentMethod = paymentMethod;
+        }
+
+        if (paymentStatus !== undefined) {
+            updates.paymentStatus = paymentStatus;
+        }
+
+        if (notes !== undefined) {
+            updates.notes = notes || undefined;
+        }
+
+        if (rating !== undefined) {
+            if (rating !== '' && (Number(rating) < 1 || Number(rating) > 5)) {
+                return res.status(400).json({ success: false, message: "Rating must be between 1 and 5" });
+            }
+            updates.rating = rating ? Number(rating) : undefined;
+        }
+
+        updates.updatedAt = new Date();
+
+        Object.assign(transaction, updates);
+        await transaction.save();
+
+        const staff = await Staff.findById(staffId).populate('manager').populate('business');
+        if (staff && staff.manager && staff.business) {
+            await invalidateTransactionCaches(staffId, staff.manager._id, staff.business._id);
+        }
+
+        return res.json({ success: true, message: "Transaction updated successfully", data: transaction });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Delete Transaction ==================
+const deleteTransaction = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const staffId = req.user.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid transaction ID" });
+        }
+
+        const transaction = await Transaction.findOneAndDelete({ _id: id, staff: staffId });
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: "Transaction not found" });
+        }
+
+        const staff = await Staff.findById(staffId).populate('manager').populate('business');
+        if (staff && staff.manager && staff.business) {
+            await invalidateTransactionCaches(staffId, staff.manager._id, staff.business._id);
+        }
+
+        return res.json({ success: true, message: "Transaction deleted successfully" });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getMyProfile,
     updateMyProfile,
     getMyBusiness,
-    getStaffDashboard
+    getStaffDashboard,
+    addTransaction,
+    getMyTransactions,
+    getMyTransactionById,
+    updateTransaction,
+    deleteTransaction
 };

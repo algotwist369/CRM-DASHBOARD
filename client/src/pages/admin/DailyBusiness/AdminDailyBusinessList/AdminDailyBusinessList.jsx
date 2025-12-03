@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef, memo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   FaCalendarAlt,
+  FaRupeeSign,
+  FaUsers,
   FaSpinner,
   FaEye,
   FaChartLine,
@@ -388,7 +390,86 @@ const AdminDailyBusinessList = () => {
           {/* Records Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {records.map((record) => (
-              <BusinessRecordCard key={record._id || record.id} record={record} />
+              <div
+                key={record._id || record.id}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              >
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FaCalendarAlt className="text-primary-600" />
+                    <h3 className="font-semibold text-gray-900">
+                      {formatDate(record.date)}
+                    </h3>
+                  </div>
+                  {record.business && (
+                    <div className="flex items-center gap-2">
+                      <FaBuilding className="text-gray-400 text-sm" />
+                      <p className="text-sm text-gray-500">{record.business.name}</p>
+                      {record.business.branch && (
+                        <span className="text-xs text-gray-400">({record.business.branch})</span>
+                      )}
+                    </div>
+                  )}
+                  {record.manager && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Manager: {typeof record.manager === 'object' ? record.manager.name : record.manager}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {/* Revenue */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <FaRupeeSign className="text-green-600" />
+                      <span className="text-sm">Revenue</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(record.totalIncome)}
+                    </span>
+                  </div>
+
+                  {/* Customers */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <FaUsers className="text-blue-600" />
+                      <span className="text-sm">Customers</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">
+                      {record.totalCustomers || 0}
+                    </span>
+                  </div>
+
+                  {/* Expenses & Profit */}
+                  <div className="pt-3 border-t border-gray-100 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Expenses</span>
+                      <span className="text-red-600 font-medium">
+                        {formatCurrency(record.totalExpenses)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-700 font-medium">Net Profit</span>
+                      <span className={`font-bold ${
+                        record.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {formatCurrency(record.netProfit)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* View Details Button */}
+                  <div className="pt-3 border-t border-gray-100">
+                    <Link
+                      to={`/admin/daily-business/${record._id || record.id}`}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                      <FaEye />
+                      <span>View Details</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
 
