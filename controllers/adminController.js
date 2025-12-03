@@ -368,7 +368,7 @@ const createBusiness = async (req, res, next) => {
                 type: business.type,
                 branch: business.branch,
                 businessLink: business.businessLink,
-                location: business.location, // Include extracted coordinates
+                location: business.location, 
                 googleMapsUrl: business.googleMapsUrl
             }
         });
@@ -581,7 +581,6 @@ const updateBusinessStatus = async (req, res, next) => {
         next(error);
     }
 };
-
 
 // ================== Delete Business ==================
 const deleteBusiness = async (req, res, next) => {

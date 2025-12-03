@@ -2,6 +2,7 @@
 const Customer = require("../models/Customer");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
+const Appointment = require("../models/Appointment");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
 
 // ================== Create Customer ==================
@@ -63,23 +64,83 @@ const createCustomer = async (req, res, next) => {
             });
         }
 
-        // Check for duplicate customers
-        const duplicates = await Customer.findDuplicates(business._id, phone, email);
-        if (duplicates.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Customer with this phone or email already exists",
-                duplicates: duplicates.map(c => ({
-                    id: c._id,
-                    name: c.fullName,
-                    phone: c.phone,
-                    email: c.email
-                }))
+        // Check if customer exists by phone
+        let customer = await Customer.findOne({ business: business._id, phone });
+
+        if (customer) {
+            // Update existing customer
+            // Check for email conflict if email is being updated
+            if (email && email !== customer.email) {
+                const emailExists = await Customer.findOne({
+                    business: business._id,
+                    email,
+                    _id: { $ne: customer._id }
+                });
+                if (emailExists) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Email already in use by another customer"
+                    });
+                }
+            }
+
+            // Update fields
+            customer.firstName = firstName;
+            customer.lastName = lastName;
+            customer.email = email;
+            customer.alternatePhone = alternatePhone;
+            customer.dateOfBirth = dateOfBirth;
+            customer.gender = gender;
+            customer.anniversary = anniversary;
+            customer.address = address;
+            customer.profilePicture = profilePicture;
+            customer.preferredLanguage = preferredLanguage;
+            customer.source = source;
+            customer.referredBy = referredBy;
+            customer.preferences = preferences;
+            customer.tags = tags;
+            customer.category = category;
+            customer.notes = notes;
+            customer.internalNotes = internalNotes;
+            customer.marketingConsent = marketingConsent;
+            customer.socialMedia = socialMedia;
+            customer.emergencyContact = emergencyContact;
+            customer.customFields = customFields;
+
+            customer.updatedBy = userId;
+            customer.updatedByModel = userRole === 'admin' ? 'Admin' : 'Manager';
+
+            await customer.save();
+
+            // Invalidate cache
+            await deleteCache(`business:${business._id}:customers`);
+
+            return res.status(200).json({
+                success: true,
+                message: "Customer updated successfully",
+                data: {
+                    id: customer._id,
+                    fullName: customer.fullName,
+                    phone: customer.phone,
+                    email: customer.email,
+                    customerType: customer.customerType
+                }
             });
         }
 
+        // Check for email duplicate (for new customer)
+        if (email) {
+            const emailExists = await Customer.findOne({ business: business._id, email });
+            if (emailExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Email already in use by another customer"
+                });
+            }
+        }
+
         // Create customer
-        const customer = await Customer.create({
+        customer = await Customer.create({
             business: business._id,
             firstName,
             lastName,
@@ -144,37 +205,61 @@ const getCustomers = async (req, res, next) => {
         } = req.query;
 
         // Determine business ID
+        let businessIds = [];
         let business;
+
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                business = await Business.findOne({ _id: businessId, admin: userId });
+                if (business) businessIds = [business._id];
+            } else {
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            if (manager) {
+                business = await Business.findById(manager.business);
+                if (business) businessIds = [business._id];
+            }
         }
 
-        if (!business) {
+        if (businessIds.length === 0) {
+            if (userRole === 'admin' && !businessId) {
+                return res.json({
+                    success: true,
+                    data: [],
+                    pagination: {
+                        total: 0,
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        pages: 0
+                    }
+                });
+            }
             return res.status(404).json({
                 success: false,
                 message: "Business not found or access denied"
             });
         }
 
-        const cacheKey = `business:${business._id}:customers:${page}:${limit}:${search}:${customerType}:${tags}:${sortBy}:${sortOrder}`;
+        const cacheKeyPrefix = businessId ? `business:${businessId}` : `admin:${userId}`;
+        const cacheKey = `${cacheKeyPrefix}:customers:${page}:${limit}:${search}:${customerType}:${tags}:${sortBy}:${sortOrder}`;
 
         // Try cache first
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
-        }
+        // NOTE: Caching is disabled to ensure real-time stats are accurate.
+        // const cachedData = await getCache(cacheKey);
+        // if (cachedData) {
+        //     return res.json({ success: true, source: "cache", ...cachedData });
+        // }
 
         // Build query
-        let query = { business: business._id, isActive: true };
+        let query = { isActive: true };
+        if (businessIds.length === 1) {
+            query.business = businessIds[0];
+        } else {
+            query.business = { $in: businessIds };
+        }
 
         // Filter by customer type
         if (customerType) {
@@ -209,26 +294,58 @@ const getCustomers = async (req, res, next) => {
             .sort(sortOptions)
             .lean();
 
+        // Calculate real-time stats for these customers
+        const customerIds = customers.map(c => c._id);
+        const appointmentStats = await Appointment.aggregate([
+            {
+                $match: {
+                    customer: { $in: customerIds },
+                    status: 'completed'
+                }
+            },
+            {
+                $group: {
+                    _id: "$customer",
+                    totalVisits: { $sum: 1 },
+                    totalSpent: { $sum: "$totalAmount" },
+                    lastVisit: { $max: "$appointmentDate" }
+                }
+            }
+        ]);
+
+        const statsMap = {};
+        appointmentStats.forEach(stat => {
+            statsMap[stat._id.toString()] = stat;
+        });
+
         const total = await Customer.countDocuments(query);
 
         const response = {
             success: true,
-            data: customers.map(customer => ({
-                id: customer._id,
-                fullName: `${customer.firstName} ${customer.lastName || ''}`.trim(),
-                email: customer.email,
-                phone: customer.phone,
-                customerType: customer.customerType,
-                totalVisits: customer.totalVisits,
-                totalSpent: customer.totalSpent,
-                averageSpent: customer.averageSpent,
-                lastVisit: customer.lastVisit,
-                loyaltyPoints: customer.loyaltyPoints,
-                membershipTier: customer.membershipTier,
-                tags: customer.tags,
-                isActive: customer.isActive,
-                createdAt: customer.createdAt
-            })),
+            data: customers.map(customer => {
+                const stats = statsMap[customer._id.toString()] || {};
+                const totalVisits = stats.totalVisits || customer.totalVisits || 0;
+                const totalSpent = stats.totalSpent || customer.totalSpent || 0;
+                // Calculate average spent if visits > 0
+                const averageSpent = totalVisits > 0 ? Math.round(totalSpent / totalVisits) : 0;
+
+                return {
+                    id: customer._id,
+                    fullName: `${customer.firstName} ${customer.lastName || ''}`.trim(),
+                    email: customer.email,
+                    phone: customer.phone,
+                    customerType: customer.customerType,
+                    totalVisits: totalVisits,
+                    totalSpent: totalSpent,
+                    averageSpent: averageSpent,
+                    lastVisit: stats.lastVisit || customer.lastVisit,
+                    loyaltyPoints: customer.loyaltyPoints,
+                    membershipTier: customer.membershipTier,
+                    tags: customer.tags,
+                    isActive: customer.isActive,
+                    createdAt: customer.createdAt
+                };
+            }),
             pagination: {
                 total,
                 page: parseInt(page),
@@ -238,7 +355,7 @@ const getCustomers = async (req, res, next) => {
         };
 
         // Cache for 2 minutes
-        await setCache(cacheKey, response, 120);
+        // await setCache(cacheKey, response, 120);
 
         return res.json(response);
     } catch (err) {
@@ -258,8 +375,9 @@ const getCustomerById = async (req, res, next) => {
             .populate('preferences.preferredStaff', 'name role phone')
             .populate('preferences.preferredServices', 'name price duration')
             .populate('referredBy', 'firstName lastName phone email')
-            .populate('createdBy')
-            .populate('updatedBy');
+            .populate('createdBy', 'name email role')
+            .populate('updatedBy', 'name email role')
+            .lean();
 
         if (!customer) {
             return res.status(404).json({
@@ -288,6 +406,32 @@ const getCustomerById = async (req, res, next) => {
                     message: "Access denied"
                 });
             }
+        }
+
+        // Calculate real-time stats
+        const stats = await Appointment.aggregate([
+            {
+                $match: {
+                    customer: customer._id,
+                    status: 'completed'
+                }
+            },
+            {
+                $group: {
+                    _id: "$customer",
+                    totalVisits: { $sum: 1 },
+                    totalSpent: { $sum: "$totalAmount" },
+                    lastVisit: { $max: "$appointmentDate" }
+                }
+            }
+        ]);
+
+        if (stats.length > 0) {
+            const stat = stats[0];
+            customer.totalVisits = stat.totalVisits;
+            customer.totalSpent = stat.totalSpent;
+            customer.lastVisit = stat.lastVisit;
+            customer.averageSpent = stat.totalVisits > 0 ? Math.round(stat.totalSpent / stat.totalVisits) : 0;
         }
 
         return res.json({
@@ -422,38 +566,68 @@ const getCustomerStats = async (req, res, next) => {
         const { businessId } = req.query;
 
         // Determine business ID
+        let businessIds = [];
         let business;
+
         if (userRole === 'admin') {
-            if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+            if (businessId) {
+                business = await Business.findOne({ _id: businessId, admin: userId });
+                if (business) businessIds = [business._id];
+            } else {
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            if (manager) {
+                business = await Business.findById(manager.business);
+                if (business) businessIds = [business._id];
+            }
         }
 
-        if (!business) {
+        if (businessIds.length === 0) {
+            if (userRole === 'admin' && !businessId) {
+                return res.json({
+                    success: true,
+                    data: {
+                        totalCustomers: 0,
+                        newCustomers: 0,
+                        regularCustomers: 0,
+                        vipCustomers: 0,
+                        inactiveCustomers: 0,
+                        totalSpent: 0,
+                        totalVisits: 0,
+                        averageSpent: 0,
+                        totalLoyaltyPoints: 0
+                    }
+                });
+            }
             return res.status(404).json({
                 success: false,
                 message: "Business not found or access denied"
             });
         }
 
-        const cacheKey = `business:${business._id}:customer:stats`;
+        const cacheKeyPrefix = businessId ? `business:${businessId}` : `admin:${userId}`;
+        const cacheKey = `${cacheKeyPrefix}:customer:stats`;
 
         // Try cache first
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", data: cachedData });
+        // const cachedData = await getCache(cacheKey);
+        // if (cachedData) {
+        //     return res.json({ success: true, source: "cache", data: cachedData });
+        // }
+
+        // Build query
+        let query = { isActive: true };
+        if (businessIds.length === 1) {
+            query.business = businessIds[0];
+        } else {
+            query.business = { $in: businessIds };
         }
 
         // Aggregate statistics
         const stats = await Customer.aggregate([
-            { $match: { business: business._id, isActive: true } },
+            { $match: query },
             {
                 $group: {
                     _id: null,
@@ -491,7 +665,7 @@ const getCustomerStats = async (req, res, next) => {
         };
 
         // Cache for 5 minutes
-        await setCache(cacheKey, result, 300);
+        // await setCache(cacheKey, result, 300);
 
         return res.json({
             success: true,
@@ -583,6 +757,76 @@ const redeemLoyaltyPoints = async (req, res, next) => {
     }
 };
 
+// ================== Lookup Customer ==================
+const lookupCustomer = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { phone, businessId } = req.query;
+
+        if (!phone) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number is required"
+            });
+        }
+
+        // Determine business ID
+        let businessIds = [];
+        let business;
+
+        if (userRole === 'admin') {
+            if (businessId) {
+                business = await Business.findOne({ _id: businessId, admin: userId });
+                if (business) businessIds = [business._id];
+            } else {
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                businessIds = businesses.map(b => b._id);
+            }
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager) {
+                business = await Business.findById(manager.business);
+                if (business) businessIds = [business._id];
+            }
+        }
+
+        if (businessIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found or access denied"
+            });
+        }
+
+        // Build query
+        let query = { phone: phone, isActive: true };
+        if (businessIds.length === 1) {
+            query.business = businessIds[0];
+        } else {
+            query.business = { $in: businessIds };
+        }
+
+        const customer = await Customer.findOne(query)
+            .populate('business', 'name type branch')
+            .populate('preferences.preferredStaff', 'name role')
+            .lean();
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer not found"
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: customer
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     createCustomer,
     getCustomers,
@@ -591,5 +835,6 @@ module.exports = {
     deleteCustomer,
     getCustomerStats,
     addLoyaltyPoints,
-    redeemLoyaltyPoints
+    redeemLoyaltyPoints,
+    lookupCustomer
 };

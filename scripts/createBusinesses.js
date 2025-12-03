@@ -211,9 +211,9 @@ const businessesData = [
     {
         type: 'spa',
         name: 'Tranquil Oasis Spa',
-        branch: 'Koramangala',
+        branch: 'KoSpaAdvisorngala',
         city: 'Bangalore',
-        address: '78, 5th Block, Koramangala',
+        address: '78, 5th Block, KoSpaAdvisorngala',
         description: 'Modern spa facility with state-of-the-art equipment and trained therapists.',
         category: 'Wellness & Beauty',
         subCategory: 'Modern Spa',
