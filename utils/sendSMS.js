@@ -1,13 +1,19 @@
 // sendSMS.js - SMS sending utility using Twilio
- 
+
 const twilio = require('twilio');
 
 // Initialize Twilio client (only if credentials are available)
 let client = null;
-if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-    client = twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
+const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.TWILIO_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const fromPhone = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_PHONE;
+
+if (accountSid && authToken) {
+    client = twilio(accountSid, authToken);
+} else {
+    console.warn("Twilio Credentials Missing:",
+        !accountSid ? "Account SID/TWILIO_SID" : "",
+        !authToken ? "Auth Token" : ""
     );
 }
 
@@ -22,7 +28,11 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
 const sendSMS = async (options) => {
     try {
         // Check if Twilio is configured
-        if (!client || !process.env.TWILIO_PHONE_NUMBER) {
+        if (!client || !fromPhone) {
+            console.warn('Twilio not fully configured',
+                !client ? "(Client init failed)" : "",
+                !fromPhone ? "(Missing Phone Number)" : ""
+            );
             console.warn('Twilio not configured, SMS will be logged instead of sent');
             console.log(`SMS to ${options.to}: ${options.message}`);
             return {
@@ -33,12 +43,18 @@ const sendSMS = async (options) => {
             };
         }
 
+        // Format phone number: default to Indian (+91) if 10 digits
+        let toPhone = options.to;
+        if (toPhone && /^\d{10}$/.test(toPhone.toString())) {
+            toPhone = `+91${toPhone}`;
+        }
+
         const result = await client.messages.create({
             body: options.message,
-            from: options.from || process.env.TWILIO_PHONE_NUMBER,
-            to: options.to
+            from: options.from || fromPhone,
+            to: toPhone
         });
-        
+
         return {
             success: true,
             messageId: result.sid,
@@ -57,7 +73,7 @@ const sendSMS = async (options) => {
  */
 const sendBulkSMS = async (messages) => {
     const results = [];
-    
+
     for (const message of messages) {
         try {
             const result = await sendSMS(message);
@@ -66,7 +82,7 @@ const sendBulkSMS = async (messages) => {
             results.push({ success: false, phone: message.to, error: error.message });
         }
     }
-    
+
     return results;
 };
 
@@ -86,19 +102,19 @@ const sendTemplateSMS = async (options) => {
         welcome: `Welcome to {{businessName}}! Thank you for choosing us. We're excited to serve you. For bookings, visit: {{businessUrl}}`,
         feedback_request: `Hi {{customerName}}, how was your recent visit to {{businessName}}? We'd love your feedback! Rate us: {{feedbackUrl}}`
     };
-    
+
     const template = templates[options.template];
     if (!template) {
         throw new Error(`Template '${options.template}' not found`);
     }
-    
+
     // Replace template variables
     let message = template;
     Object.keys(options.data).forEach(key => {
         const placeholder = `{{${key}}}`;
         message = message.replace(new RegExp(placeholder, 'g'), options.data[key]);
     });
-    
+
     return sendSMS({
         to: options.to,
         message: message
@@ -121,7 +137,7 @@ const sendWhatsApp = async (options) => {
             to: `whatsapp:${options.to}`,
             mediaUrl: options.media || []
         });
-        
+
         return {
             success: true,
             messageId: result.sid,
@@ -157,7 +173,7 @@ Your appointment with *{{businessName}}* has been confirmed!
 Please arrive 10 minutes before your appointment time.
 
 Thank you for choosing {{businessName}}! 🙏`,
-        
+
         promotional_offer: `🎁 *Special Offer from {{businessName}}!*
 
 Dear {{customerName}},
@@ -173,7 +189,7 @@ We have an exclusive offer just for you!
 Book now: {{actionUrl}}
 
 Don't miss out on this amazing deal! ✨`,
-        
+
         appointment_reminder: `⏰ *Appointment Reminder*
 
 Dear {{customerName}},
@@ -186,19 +202,19 @@ This is a friendly reminder about your upcoming appointment with *{{businessName
 
 We look forward to seeing you! 😊`
     };
-    
+
     const template = templates[options.template];
     if (!template) {
         throw new Error(`Template '${options.template}' not found`);
     }
-    
+
     // Replace template variables
     let message = template;
     Object.keys(options.data).forEach(key => {
         const placeholder = `{{${key}}}`;
         message = message.replace(new RegExp(placeholder, 'g'), options.data[key]);
     });
-    
+
     return sendWhatsApp({
         to: options.to,
         message: message

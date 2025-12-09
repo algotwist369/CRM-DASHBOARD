@@ -102,7 +102,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Optimized JSON parsing with size limits
-app.use(express.json({ 
+app.use(express.json({
     limit: '10mb',
     verify: (req, res, buf) => {
         // Store raw body for webhook verification if needed
@@ -110,8 +110,8 @@ app.use(express.json({
     }
 }));
 
-app.use(express.urlencoded({ 
-    extended: true, 
+app.use(express.urlencoded({
+    extended: true,
     limit: '10mb',
     parameterLimit: 1000
 }));
@@ -128,10 +128,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
         // Set proper CORS headers for uploaded images
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-        
+
         // Set caching based on file type
-        if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg') || 
-            filePath.endsWith('.png') || filePath.endsWith('.gif') || 
+        if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg') ||
+            filePath.endsWith('.png') || filePath.endsWith('.gif') ||
             filePath.endsWith('.webp')) {
             res.set('Cache-Control', 'public, max-age=604800'); // 7 days for images
         }
@@ -158,6 +158,11 @@ app.use("/api/campaign-scheduler", campaignSchedulerRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/settings", businessSettingsRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
+
+// === PHASE 2 ENHANCEMENT: New Routes ===
+app.use("/api/expenses", require("./routes/expenseRoutes"));
+app.use("/api/inventory", require("./routes/inventoryRoutes"));
+
 
 // ================== Health Check ==================
 app.get("/", (req, res) => res.send("Backend is running ✅"));
