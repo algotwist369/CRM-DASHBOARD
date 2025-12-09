@@ -17,7 +17,7 @@ import AdminDashboard from './pages/admin/Dashboard/AdminDashboard'
 import { BusinessList, CreateBusiness, EditBusiness, BusinessDetails, BusinessAnalytics, BusinessStaff, BusinessDailyRecords } from './pages/admin/Businesses'
 import { ManagerList, CreateManager, ManagerDetails, EditManager } from './pages/admin/Managers'
 import { NotificationsList } from './pages/admin/Notifications'
-import { AdminDailyBusinessList, AdminDailyBusinessDetails, AdminDailyBusinessAnalytics } from './pages/admin/DailyBusiness'
+import { AdminDailyBusinessList, AdminDailyBusinessDetails, AdminDailyBusinessAnalytics, AdminCloseDailyBusiness } from './pages/admin/DailyBusiness'
 import { CustomerList as AdminCustomerList, CustomerForm, CustomerDetails as AdminCustomerDetails } from './pages/admin/Customers'
 import { ServiceList, ServiceForm, ServiceDetails } from './pages/admin/Services'
 import { AppointmentList as AdminAppointmentList, AppointmentForm, AppointmentDetails as AdminAppointmentDetails } from './pages/admin/Appointments'
@@ -29,6 +29,18 @@ import { AdminAnalytics } from './pages/admin/Analytics'
 import AdminReports from './pages/admin/Reports/AdminReports'
 import AdminSettings from './pages/admin/AdminSettings/AdminSettings'
 import AdminProfile from './pages/admin/Profile/AdminProfile'
+// Phase 3: Expense Management
+import ExpenseList from './pages/admin/Expenses/ExpenseList'
+import ExpenseDetails from './pages/admin/Expenses/ExpenseDetails'
+import PendingApprovals from './pages/admin/Expenses/PendingApprovals'
+// Phase 3: Inventory Management
+import ProductList from './pages/admin/Inventory/ProductList'
+import ProductDetails from './pages/admin/Inventory/ProductDetails'
+import LowStockAlerts from './pages/admin/Inventory/LowStockAlerts'
+import InventoryInsights from './pages/admin/Inventory/InventoryInsights'
+// Phase 3: Manager & Analytics
+import ManagerPermissions from './pages/admin/Managers/ManagerPermissions'
+import ProfitabilityAnalysis from './pages/admin/Analytics/ProfitabilityAnalysis'
 
 // Manager Pages
 import ManagerDashboard from './pages/manager/Dashboard/ManagerDashboard'
@@ -41,6 +53,10 @@ import { NotificationList, CreateNotification, NotificationAnalytics } from './p
 import { CampaignList, CreateCampaign, CampaignDetails, CampaignAnalytics, CampaignAnalyticsOverview } from './pages/manager/Campaigns'
 import ManagerReports from './pages/manager/Reports/ManagerReports'
 import ManagerSettings from './pages/manager/ManagerSettings/ManagerSettings'
+// Phase 3: Manager Pages
+import MyExpenses from './pages/manager/Expenses/MyExpenses'
+import StockManagement from './pages/manager/Inventory/StockManagement'
+import CloseDailyBusiness from './pages/manager/DailyBusiness/CloseDailyBusiness'
 
 // Staff Pages
 import StaffDashboard from './pages/staff/Dashboard/StaffDashboard'
@@ -121,6 +137,7 @@ function App() {
                     {/* daily business routes */}
                     <Route path="daily-business" element={<AdminDailyBusinessList />} />
                     <Route path="daily-business/analytics" element={<AdminDailyBusinessAnalytics />} />
+                    <Route path="daily-business/close" element={<AdminCloseDailyBusiness />} />
                     <Route path="daily-business/:id" element={<AdminDailyBusinessDetails />} />
                     <Route path="customers" element={<AdminCustomerList />} />
                     <Route path="customers/create" element={<CustomerForm mode="create" />} />
@@ -156,6 +173,18 @@ function App() {
                     <Route path="loyalty/subscriptions" element={<LoyaltySubscriptions />} />
                     {/* analytics routes */}
                     <Route path="analytics" element={<AdminAnalytics />} />
+                    {/* Phase 3: expense routes */}
+                    <Route path="expenses" element={<ExpenseList />} />
+                    <Route path="expenses/pending" element={<PendingApprovals />} />
+                    <Route path="expenses/:id" element={<ExpenseDetails />} />
+                    {/* Phase 3: inventory routes */}
+                    <Route path="inventory/products" element={<ProductList />} />
+                    <Route path="inventory/products/:id" element={<ProductDetails />} />
+                    <Route path="inventory/low-stock" element={<LowStockAlerts />} />
+                    <Route path="inventory/insights" element={<InventoryInsights />} />
+                    {/* Phase 3: manager permissions & analytics */}
+                    <Route path="managers/permissions" element={<ManagerPermissions />} />
+                    <Route path="analytics/profitability" element={<ProfitabilityAnalysis />} />
                     {/* reports routes */}
                     <Route path="reports" element={<AdminReports />} />
                     {/* settings routes */}
@@ -197,6 +226,10 @@ function App() {
                     <Route path="campaigns/:id/analytics" element={<CampaignAnalytics />} />
                     <Route path="campaigns/analytics" element={<CampaignAnalyticsOverview />} />
                     <Route path="reports" element={<ManagerReports />} />
+                    {/* Phase 3: expense & inventory routes */}
+                    <Route path="expenses" element={<MyExpenses />} />
+                    <Route path="inventory/stock" element={<StockManagement />} />
+                    <Route path="daily-business/close" element={<CloseDailyBusiness />} />
                     <Route path="business-settings" element={<BusinessSettings />} />
                     <Route path="settings" element={<ManagerSettings />} />
                     <Route index element={<Navigate to="/manager/dashboard" replace />} />

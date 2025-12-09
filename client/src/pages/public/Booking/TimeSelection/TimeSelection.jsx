@@ -230,10 +230,10 @@ const TimeSelection = () => {
                           onClick={() => isAvailable && selectTime(slotTime)}
                           disabled={!isAvailable}
                           className={`p-3  border-2 transition-all ${isSelected
-                              ? 'border-green-200 bg-green-200 text-green-700 shadow-md font-semibold' // Selected State (Solid Green)
-                              : isAvailable
-                                ? 'border-green-200 bg-green-50 text-green-700 hover:border-green-400 hover:bg-green-100' // Available State (Light Green)
-                                : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-50' // Unavailable State
+                            ? 'border-green-200 bg-green-200 text-green-700 shadow-md font-semibold' // Selected State (Solid Green)
+                            : isAvailable
+                              ? 'border-green-200 bg-green-50 text-green-700 hover:border-green-400 hover:bg-green-100' // Available State (Light Green)
+                              : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-50' // Unavailable State
                             }`}
                         >
                           {formatTime(slotTime)}

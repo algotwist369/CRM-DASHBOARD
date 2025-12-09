@@ -1,13 +1,13 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  FaFacebook, 
-  FaTwitter, 
-  FaLinkedin, 
-  FaInstagram, 
+import {
+  FaFacebook,
+  FaTwitter,
+  FaLinkedin,
+  FaInstagram,
   FaYoutube,
   FaMapMarkerAlt,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaRocket,
   FaBrain
@@ -106,7 +106,7 @@ const PublicFooter = () => {
               </div>
             </div>
             <p className="text-gray-400 mb-6 text-sm leading-relaxed">
-              Transform your business with our AI-powered CRM platform. Manage appointments, customers, 
+              Transform your business with our AI-powered CRM platform. Manage appointments, customers,
               marketing campaigns, and analytics all in one place. Free listing available - start growing your business today!
             </p>
             <div className="flex items-center gap-4 mb-6">
@@ -162,7 +162,7 @@ const PublicFooter = () => {
             </div>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-primary-600/20  flex items-center justify-center flex-shrink-0">
-                <FaPhone className="text-primary-400" />
+                <FaPhoneAlt className="text-primary-400" />
               </div>
               <div>
                 <p className="font-semibold text-white mb-1">Phone</p>

@@ -18,8 +18,20 @@ router.get("/", customerController.getCustomers);
 // Get customer statistics
 router.get("/stats", customerController.getCustomerStats);
 
+// Get customer analytics overview
+router.get("/analytics/overview", customerController.getCustomerAnalyticsOverview);
+
+// Get customer AI insights
+router.get("/analytics/insights", customerController.getCustomerInsights);
+
 // Lookup customer by phone
 router.get("/lookup", customerController.lookupCustomer);
+
+// Add customer note
+router.post("/:id/notes", customerController.addCustomerNote);
+
+// Get customer timeline
+router.get("/:id/timeline", customerController.getCustomerTimeline);
 
 // Get customer by ID
 router.get("/:id", customerController.getCustomerById);

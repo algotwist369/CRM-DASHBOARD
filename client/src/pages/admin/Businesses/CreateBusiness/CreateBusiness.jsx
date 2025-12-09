@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   FaStore,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaGlobe,
   FaMapMarkerAlt,
@@ -169,7 +169,7 @@ const CreateBusiness = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
       setFormData((prev) => ({
@@ -180,7 +180,7 @@ const CreateBusiness = () => {
         },
       }));
     } else {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
     validateField(name, type === "checkbox" ? checked : value);
   };
@@ -257,7 +257,7 @@ const CreateBusiness = () => {
       setLoading(true);
       // Clean up empty objects and arrays before sending
       const cleanedData = { ...formData };
-      
+
       // Remove empty nested objects
       Object.keys(cleanedData).forEach((key) => {
         if (typeof cleanedData[key] === "object" && !Array.isArray(cleanedData[key])) {
@@ -313,26 +313,25 @@ const CreateBusiness = () => {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-  return (
+        return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Basic Information</h3>
-            
-          <div>
+
+            <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Business Type <span className="text-red-500">*</span>
               </label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-                className={`w-full border ${
-                  errors.type ? "border-red-500" : "border-gray-300"
-                }  p-2.5 focus:ring-primary-500 focus:border-primary-500`}
-            >
-              <option value="">Select Type</option>
-              <option value="salon">Salon</option>
-              <option value="spa">Spa</option>
-              <option value="hotel">Hotel</option>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                className={`w-full border ${errors.type ? "border-red-500" : "border-gray-300"
+                  }  p-2.5 focus:ring-primary-500 focus:border-primary-500`}
+              >
+                <option value="">Select Type</option>
+                <option value="salon">Salon</option>
+                <option value="spa">Spa</option>
+                <option value="hotel">Hotel</option>
                 <option value="restaurant">Restaurant</option>
                 <option value="retail">Retail</option>
                 <option value="gym">Gym</option>
@@ -342,43 +341,43 @@ const CreateBusiness = () => {
                 <option value="education">Education</option>
                 <option value="automotive">Automotive</option>
                 <option value="others">Others</option>
-            </select>
-            {errors.type && <p className="text-red-500 text-sm mt-1">{errors.type}</p>}
-          </div>
+              </select>
+              {errors.type && <p className="text-red-500 text-sm mt-1">{errors.type}</p>}
+            </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Business Name <span className="text-red-500">*</span>
               </label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaBuilding className="text-gray-400 mr-2" />
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter business name"
-                className="w-full focus:outline-none"
-              />
+                <FaBuilding className="text-gray-400 mr-2" />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Enter business name"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-          </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Branch <span className="text-red-500">*</span>
               </label>
-            <input
-              type="text"
-              name="branch"
-              value={formData.branch}
-              onChange={handleChange}
-              placeholder="e.g., Main Branch"
+              <input
+                type="text"
+                name="branch"
+                value={formData.branch}
+                onChange={handleChange}
+                placeholder="e.g., Main Branch"
                 className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
+              />
+            </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">Description</label>
               <textarea
                 name="description"
@@ -396,41 +395,41 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Location & Contact</h3>
-            
+
             <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Address <span className="text-red-500">*</span>
               </label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
                 placeholder="Enter full address"
-              rows={2}
+                rows={2}
                 className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-            ></textarea>
-          </div>
+              ></textarea>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {["city", "state", "country"].map((field) => (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {["city", "state", "country"].map((field) => (
                 <div key={field}>
                   <label className="block text-gray-700 font-medium mb-1">
                     {field.charAt(0).toUpperCase() + field.slice(1)}
                     {field !== "country" && <span className="text-red-500">*</span>}
                   </label>
-              <input
-                type="text"
-                name={field}
-                value={formData[field]}
-                onChange={handleChange}
-                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                  <input
+                    type="text"
+                    name={field}
+                    value={formData[field]}
+                    onChange={handleChange}
+                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                     className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-              />
+                  />
                 </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">Zip Code</label>
               <input
                 type="text"
@@ -447,18 +446,18 @@ const CreateBusiness = () => {
                 Phone <span className="text-red-500">*</span>
               </label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaPhone className="text-gray-400 mr-2" />
-              <input
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="10-digit phone number"
-                className="w-full focus:outline-none"
-              />
+                <FaPhoneAlt className="text-gray-400 mr-2" />
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="10-digit phone number"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
             </div>
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-          </div>
 
             <div>
               <label className="block text-gray-700 font-medium mb-1">Alternate Phone</label>
@@ -472,39 +471,39 @@ const CreateBusiness = () => {
               />
             </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Email</label>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Email</label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaEnvelope className="text-gray-400 mr-2" />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Business email"
-                className="w-full focus:outline-none"
-              />
+                <FaEnvelope className="text-gray-400 mr-2" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Business email"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
             </div>
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Website</label>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Website</label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaGlobe className="text-gray-400 mr-2" />
-              <input
-                type="text"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                placeholder="https://example.com"
-                className="w-full focus:outline-none"
-              />
+                <FaGlobe className="text-gray-400 mr-2" />
+                <input
+                  type="text"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  placeholder="https://example.com"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.website && <p className="text-red-500 text-sm mt-1">{errors.website}</p>}
             </div>
-            {errors.website && <p className="text-red-500 text-sm mt-1">{errors.website}</p>}
-          </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">Google Maps URL</label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
                 <FaMapMarkerAlt className="text-gray-400 mr-2" />
@@ -526,7 +525,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Category & Tags</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Category</label>
@@ -687,7 +686,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Images & Social Media</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Logo URL</label>
@@ -759,7 +758,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Registration & Legal</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">GST Number</label>
@@ -844,7 +843,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Payment & Banking</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Payment Methods Accepted</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -952,7 +951,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Capacity & Features</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Business Capacity</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1106,7 +1105,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Business Hours & Settings</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Working Hours</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1241,7 +1240,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Additional Settings</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">SEO Settings</h4>
               <div className="space-y-3">
@@ -1258,14 +1257,14 @@ const CreateBusiness = () => {
                 </div>
                 <div>
                   <label className="block text-gray-700 font-medium mb-1">Meta Description</label>
-            <textarea
+                  <textarea
                     name="seo.metaDescription"
                     value={formData.seo.metaDescription}
-              onChange={handleChange}
+                    onChange={handleChange}
                     placeholder="SEO Meta Description"
-              rows={3}
+                    rows={3}
                     className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-            ></textarea>
+                  ></textarea>
                 </div>
                 <div>
                   <label className="block text-gray-700 font-medium mb-1">Keywords</label>
@@ -1349,7 +1348,7 @@ const CreateBusiness = () => {
                   />
                 </div>
               </div>
-          </div>
+            </div>
 
             <div className="border-t pt-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Notification Preferences</h4>
@@ -1465,18 +1464,16 @@ const CreateBusiness = () => {
                 return (
                   <div
                     key={stepNum}
-                    className={`flex flex-col items-center min-w-[80px] ${
-                      isActive ? "text-primary-600" : isCompleted ? "text-green-600" : "text-gray-400"
-                    }`}
+                    className={`flex flex-col items-center min-w-[80px] ${isActive ? "text-primary-600" : isCompleted ? "text-green-600" : "text-gray-400"
+                      }`}
                   >
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                        isActive
+                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isActive
                           ? "border-primary-600 bg-primary-50"
                           : isCompleted
-                          ? "border-green-600 bg-green-50"
-                          : "border-gray-300 bg-gray-50"
-                      }`}
+                            ? "border-green-600 bg-green-50"
+                            : "border-gray-300 bg-gray-50"
+                        }`}
                     >
                       {isCompleted ? (
                         <FaCheckCircle className="text-green-600" />
@@ -1501,11 +1498,10 @@ const CreateBusiness = () => {
                 type="button"
                 onClick={handlePrevious}
                 disabled={currentStep === 1}
-                className={`flex items-center gap-2 px-6 py-2.5  font-medium transition-all ${
-                  currentStep === 1
+                className={`flex items-center gap-2 px-6 py-2.5  font-medium transition-all ${currentStep === 1
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
+                  }`}
               >
                 <FaChevronLeft /> Previous
               </button>
@@ -1519,16 +1515,16 @@ const CreateBusiness = () => {
                   Next <FaChevronRight />
                 </button>
               ) : (
-          <button
-            type="submit"
-            disabled={loading}
+                <button
+                  type="submit"
+                  disabled={loading}
                   className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white  font-medium transition-all disabled:opacity-60"
-          >
+                >
                   {loading ? "Creating..." : "Create Business"}
-          </button>
+                </button>
               )}
             </div>
-        </form>
+          </form>
         </div>
       </div>
     </div>

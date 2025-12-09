@@ -442,6 +442,10 @@ const getBusinessAnalytics = async (req, res, next) => {
         const userRole = req.user.role;
         const { period = 'monthly' } = req.query;
 
+        // Import Models locally if not top-level to avoid circular dependency risks or just ensuring availability
+        const Transaction = require("../models/Transaction");
+        const Appointment = require("../models/Appointment");
+
         // Verify access
         let hasAccess = false;
         if (userRole === 'admin') {
@@ -460,29 +464,118 @@ const getBusinessAnalytics = async (req, res, next) => {
         const endDate = new Date();
         const startDate = new Date();
 
+        // Adjust dates to cover full days
+        endDate.setHours(23, 59, 59, 999);
+        startDate.setHours(0, 0, 0, 0);
+
+        let daysInPeriod = 30; // Default
+
         switch (period) {
             case 'daily':
-                startDate.setDate(endDate.getDate() - 1);
+                startDate.setDate(endDate.getDate() - 1); // Last 24h effectively? Or today? Usually means "Today" or "Yesterday"
+                // User logic was -1 day. Let's keep consistent but ensure ranges.
+                daysInPeriod = 1;
                 break;
             case 'weekly':
                 startDate.setDate(endDate.getDate() - 7);
+                daysInPeriod = 7;
                 break;
             case 'monthly':
                 startDate.setMonth(endDate.getMonth() - 1);
+                daysInPeriod = 30;
                 break;
             case 'yearly':
                 startDate.setFullYear(endDate.getFullYear() - 1);
+                daysInPeriod = 365;
+                break;
+            case 'all':
+                startDate.setTime(0); // Beginning of time
+                // Calculate days since business creation for accurate averages
+                const biz = await Business.findById(id).select('createdAt');
+                if (biz && biz.createdAt) {
+                    const diffTime = Math.abs(endDate - new Date(biz.createdAt));
+                    daysInPeriod = Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)), 1);
+                } else {
+                    daysInPeriod = 365; // Fallback
+                }
                 break;
             default:
                 startDate.setMonth(endDate.getMonth() - 1);
         }
 
+        // Get Daily Records (for granular trends if available)
         const dailyRecords = await DailyBusiness.find({
             business: id,
             date: { $gte: startDate, $lte: endDate }
         }).sort({ date: -1 });
 
+        // Generate Base Analytics
         const analytics = generateBusinessAnalytics(dailyRecords, period);
+
+        // =========================================================================
+        // OVERRIDE WITH HYBRID REAL-TIME STATS (To Match Manager Dashboard)
+        // =========================================================================
+
+        // Construct Match Queries
+        const txnMatch = {
+            business: new mongoose.Types.ObjectId(id),
+            paymentStatus: 'completed',
+            isRefunded: false
+        };
+
+        const apptMatch = {
+            business: new mongoose.Types.ObjectId(id),
+            status: 'completed'
+        };
+
+        // Apply Date Filter ONLY if NOT 'all' time
+        if (period !== 'all') {
+            txnMatch.transactionDate = { $gte: startDate, $lte: endDate };
+            apptMatch.appointmentDate = { $gte: startDate, $lte: endDate };
+        }
+
+        // 1. Transactions Revenue & Count
+        const txnStats = await Transaction.aggregate([
+            { $match: txnMatch },
+            { $group: { _id: null, total: { $sum: "$finalPrice" }, count: { $sum: 1 }, customers: { $sum: 1 } } } // Approx customers count
+        ]);
+
+        const txnRevenue = txnStats[0]?.total || 0;
+        const txnCount = txnStats[0]?.count || 0;
+        // txnCustomers is approximation, we usually just sum counts for "Total Customers" metric in this hybrid model
+
+        // 2. Missing Appointments (Ghost Revenue)
+        const apptStats = await Appointment.aggregate([
+            { $match: apptMatch },
+            {
+                $lookup: {
+                    from: "transactions",
+                    localField: "_id",
+                    foreignField: "appointment",
+                    as: "existingTxn"
+                }
+            },
+            { $match: { existingTxn: { $size: 0 } } },
+            { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
+        ]);
+
+        const apptRevenue = apptStats[0]?.total || 0;
+        const apptCount = apptStats[0]?.count || 0;
+
+        // 3. Update Analytics Object
+        const totalHybridRevenue = txnRevenue + apptRevenue;
+        const totalHybridCustomers = txnCount + apptCount; // Matches "Total Customers" logic in manager dashboard (Total Interactions)
+
+        analytics.totalRevenue = totalHybridRevenue;
+        analytics.totalCustomers = totalHybridCustomers;
+
+        // Recalculate Averages
+        analytics.averageDailyRevenue = analytics.totalRevenue / Math.max(daysInPeriod, 1);
+        analytics.averageDailyCustomers = analytics.totalCustomers / Math.max(daysInPeriod, 1);
+
+        // Update Net Profit (assuming expenses from DailyBusiness are still best source for expenses)
+        // Profit = Hybrid Revenue - Reported Expenses
+        analytics.netProfit = analytics.totalRevenue - analytics.totalExpenses;
 
         return res.json({
             success: true,

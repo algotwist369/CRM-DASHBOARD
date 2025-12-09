@@ -274,7 +274,7 @@ const PublicHeader = () => {
   const renderMobileSection = (section) => {
     const isOpen = openMobileSection === section.title
     return (
-      <div key={section.title} className="border border-gray-200  overflow-hidden">
+      <div key={section.title} className="border border-gray-200 overflow-hidden">
         <button
           type="button"
           onClick={() => setOpenMobileSection(isOpen ? null : section.title)}
@@ -321,7 +321,7 @@ const PublicHeader = () => {
 
   return (
     <>
-      <header className="bg-white  border-b border-gray-200 sticky top-0 z-50">
+      <header className="bg-primary-50 border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaGlobe,
   FaMapMarkerAlt,
@@ -70,8 +70,8 @@ const ManagerCard = memo(({ manager }) => (
         <p className="text-xs text-gray-500 truncate">@{manager.username}</p>
       </div>
       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${manager.isActive
-          ? 'bg-green-100 text-green-700'
-          : 'bg-red-100 text-red-700'
+        ? 'bg-green-100 text-green-700'
+        : 'bg-red-100 text-red-700'
         }`}>
         {manager.isActive ? 'Active' : 'Inactive'}
       </span>
@@ -85,7 +85,7 @@ const ManagerCard = memo(({ manager }) => (
       )}
       {manager.phone && (
         <p className="flex items-center gap-2 text-gray-600">
-          <FaPhone className="text-gray-400 text-xs flex-shrink-0" />
+          <FaPhoneAlt className="text-gray-400 text-xs flex-shrink-0" />
           {manager.phone}
         </p>
       )}
@@ -237,8 +237,8 @@ const BusinessDetails = () => {
               {business.type?.toUpperCase()}
             </span>
             <span className={`px-3 py-1.5 text-xs font-medium  border ${business.isActive
-                ? "bg-green-50 text-green-700 border-green-200"
-                : "bg-red-50 text-red-700 border-red-200"
+              ? "bg-green-50 text-green-700 border-green-200"
+              : "bg-red-50 text-red-700 border-red-200"
               }`}>
               {business.isActive ? "Active" : "Inactive"}
             </span>
@@ -298,7 +298,7 @@ const BusinessDetails = () => {
             <div className="bg-white  border border-gray-200 p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 bg-primary-600  flex items-center justify-center">
-                  <FaPhone className="text-white text-sm" />
+                  <FaPhoneAlt className="text-white text-sm" />
                 </div>
                 <h2 className="text-base sm:text-lg font-semibold text-gray-800">Contact Information</h2>
               </div>
@@ -309,7 +309,7 @@ const BusinessDetails = () => {
                   value={`${business.address}, ${business.city}, ${business.state}, ${business.country}`}
                 />
                 <InfoRow
-                  icon={FaPhone}
+                  icon={FaPhoneAlt}
                   label="Phone"
                   value={business.phone}
                   isLink
@@ -425,8 +425,8 @@ const BusinessDetails = () => {
                 <p className="text-xs font-medium text-gray-700 mb-2">Cancellation Policy</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className={`px-2 py-1  font-medium ${business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
                     }`}>
                     {business.settings?.appointmentSettings?.cancellationPolicy?.allowCancellation
                       ? "Allowed"

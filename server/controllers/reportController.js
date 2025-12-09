@@ -49,19 +49,24 @@ const getManagerReports = async (req, res, next) => {
 // ================== Get Admin Reports (All Businesses) ==================
 const getAdminReports = async (req, res, next) => {
     try {
+        const adminId = req.user.id;
         const { page = 1, limit = 10 } = req.query;
-        const cacheKey = `reports:admin:page:${page}:limit:${limit}`;
+        const cacheKey = `reports:admin:${adminId}:page:${page}:limit:${limit}`;
 
         const cachedData = await getCache(cacheKey);
         if (cachedData) return res.json({ success: true, source: "cache", ...cachedData });
 
-        const reports = await DailyBusiness.find()
+        // Get admin's businesses
+        const businesses = await Business.find({ admin: adminId }).select('_id');
+        const businessIds = businesses.map(b => b._id);
+
+        const reports = await DailyBusiness.find({ business: { $in: businessIds } })
             .populate("manager", "username")
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .sort({ date: -1 });
 
-        const total = await DailyBusiness.countDocuments();
+        const total = await DailyBusiness.countDocuments({ business: { $in: businessIds } });
 
         const response = {
             success: true,
@@ -85,8 +90,16 @@ const getAdminReports = async (req, res, next) => {
 // ================== Revenue Trends ==================
 const revenueTrends = async (req, res, next) => {
     try {
-        const managerId = req.user.role === "manager" ? req.user.id : null;
-        const match = managerId ? { manager: managerId } : {};
+        const { role, id } = req.user;
+        let match = {};
+
+        if (role === 'admin') {
+            const businesses = await Business.find({ admin: id }).select('_id');
+            match = { business: { $in: businesses.map(b => b._id) } };
+        } else {
+            // Manager
+            match = { manager: id };
+        }
 
         const data = await DailyBusiness.aggregate([
             { $match: match },
@@ -130,7 +143,7 @@ const exportReports = async (req, res, next) => {
 
         if (userRole === "admin") {
             if (scope === "admin") {
-                // Admin exporting all businesses
+                // Admin exporting all their businesses
                 const businesses = await Business.find({ admin: userId }).select('_id');
                 const businessIds = businesses.map(b => b._id);
                 reports = await DailyBusiness.find({ business: { $in: businessIds } })
@@ -138,8 +151,14 @@ const exportReports = async (req, res, next) => {
                     .populate("business", "name")
                     .lean();
             } else {
-                // Admin exporting specific business or all
-                reports = await DailyBusiness.find()
+                // Admin exporting specific business or all (default to all THEIR businesses if no filter)
+                // For now, if "scope" is not 'admin' (maybe 'business'?), we should check if businessId is passed?
+                // But looking at existing logic, it was falling back to 'all'. 
+                // We MUST restartrict 'all' to 'all admin's businesses'.
+                const businesses = await Business.find({ admin: userId }).select('_id');
+                const businessIds = businesses.map(b => b._id);
+
+                reports = await DailyBusiness.find({ business: { $in: businessIds } })
                     .populate("manager", "username name")
                     .populate("business", "name")
                     .lean();
@@ -234,10 +253,10 @@ const getAnalytics = async (req, res, next) => {
                 // Admin viewing all their businesses
                 const businesses = await Business.find({ admin: userId }).select('_id');
                 const businessIds = businesses.map(b => b._id);
-                if (businessIds.length > 0) {
-                    businessFilter.business = { $in: businessIds };
-                    businessOnlyFilter.business = { $in: businessIds };
-                }
+
+                // CRITICAL FIX: Always apply filter, even if empty. An admin with no businesses should see nothing.
+                businessFilter.business = { $in: businessIds };
+                businessOnlyFilter.business = { $in: businessIds };
             }
         } else if (userRole === 'manager') {
             // Manager viewing their business only

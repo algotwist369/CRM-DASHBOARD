@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  FaSpinner, 
-  FaCheckCircle, 
-  FaPhone, 
-  FaBuilding, 
-  FaUsers, 
-  FaChartLine, 
+import {
+  FaSpinner,
+  FaCheckCircle,
+  FaPhoneAlt,
+  FaBuilding,
+  FaUsers,
+  FaChartLine,
   FaShieldAlt,
   FaStar,
   FaClock,
@@ -87,7 +87,7 @@ const FreeListing = () => {
 
   const handleRegistrationSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!registrationData.companyName.trim()) {
       toast.error('Please enter company name')
       return
@@ -101,7 +101,7 @@ const FreeListing = () => {
     // Validate mobile number format
     const mobileRegex = /^[0-9]{10,15}$/
     const cleanMobile = registrationData.mobileNumber.replace(/[^0-9]/g, '')
-    
+
     if (!mobileRegex.test(cleanMobile)) {
       toast.error('Please enter a valid mobile number (10-15 digits)')
       return
@@ -112,7 +112,7 @@ const FreeListing = () => {
       // TODO: Replace with actual API call
       // await apiClient.post('/auth/send-otp', { mobileNumber: cleanMobile })
       await new Promise(resolve => setTimeout(resolve, 1500))
-      
+
       setStep(2)
       setCountdown(60) // 60 seconds countdown
       toast.success('OTP sent to your mobile number')
@@ -125,7 +125,7 @@ const FreeListing = () => {
 
   const handleOTPChange = (index, value) => {
     if (value.length > 1) return
-    
+
     const newOtp = [...otp]
     newOtp[index] = value.replace(/[^0-9]/g, '')
     setOtp(newOtp)
@@ -147,7 +147,7 @@ const FreeListing = () => {
   const handleOTPVerify = async (e) => {
     e.preventDefault()
     const otpValue = otp.join('')
-    
+
     if (otpValue.length !== 6) {
       toast.error('Please enter complete OTP')
       return
@@ -158,14 +158,14 @@ const FreeListing = () => {
       // TODO: Replace with actual API call
       // await apiClient.post('/auth/verify-otp', { mobileNumber: registrationData.mobileNumber, otp: otpValue })
       await new Promise(resolve => setTimeout(resolve, 1500))
-      
+
       toast.success('OTP verified successfully!')
-      
+
       // Show listing form modal
       setShowListingForm(true)
       setStep(1) // Reset to step 1 for next time
       setOtp(['', '', '', '', '', ''])
-      
+
       // Pre-fill form data
       setListingFormData(prev => ({
         ...prev,
@@ -189,7 +189,7 @@ const FreeListing = () => {
       // const cleanMobile = registrationData.mobileNumber.replace(/[^0-9]/g, '')
       // await apiClient.post('/auth/resend-otp', { mobileNumber: cleanMobile })
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       toast.success('OTP resent to your mobile number')
       setOtp(['', '', '', '', '', ''])
       setCountdown(60)
@@ -201,14 +201,14 @@ const FreeListing = () => {
 
   const validateFormStep = (step) => {
     const errors = {}
-    
+
     if (step === 1) {
       if (!listingFormData.type) errors.type = 'Business type is required'
       if (!listingFormData.name || listingFormData.name.trim().length < 3) {
         errors.name = 'Business name must be at least 3 characters'
       }
     }
-    
+
     if (step === 2) {
       if (!listingFormData.email) {
         errors.email = 'Email is required'
@@ -222,11 +222,11 @@ const FreeListing = () => {
       if (!listingFormData.state) errors.state = 'State is required'
       if (!listingFormData.zipCode) errors.zipCode = 'Zip code is required'
     }
-    
+
     if (step === 3) {
       if (!listingFormData.category) errors.category = 'Category is required'
     }
-    
+
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -280,14 +280,14 @@ const FreeListing = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validateFormStep(formStep)) {
       return
     }
 
     try {
       setIsSubmittingForm(true)
-      
+
       // Prepare form data with files
       const formDataToSubmit = new FormData()
       Object.keys(listingFormData).forEach(key => {
@@ -296,7 +296,7 @@ const FreeListing = () => {
         }
       })
       formDataToSubmit.append('phone', registrationData.mobileNumber.replace(/[^0-9]/g, ''))
-      
+
       // Append documents
       uploadedDocuments.forEach((doc) => {
         formDataToSubmit.append(`documents`, doc.file)
@@ -307,13 +307,13 @@ const FreeListing = () => {
       //   headers: { 'Content-Type': 'multipart/form-data' }
       // })
       await new Promise(resolve => setTimeout(resolve, 2000))
-      
+
       // Close form modal and show success modal
       setShowListingForm(false)
       setShowSuccessModal(true)
       setFormStep(1)
       setIsSubmittingForm(false)
-      
+
       // Reset form data
       setListingFormData({
         type: '',
@@ -339,12 +339,12 @@ const FreeListing = () => {
   }
 
   const businessTypes = [
-    'Salon', 'Spa', 'Hotel', 'Restaurant', 'Retail', 'Gym', 
+    'Salon', 'Spa', 'Hotel', 'Restaurant', 'Retail', 'Gym',
     'Clinic', 'Cafe', 'Studio', 'Education', 'Automotive', 'Others'
   ]
 
   const categories = [
-    'Beauty & Wellness', 'Food & Beverage', 'Healthcare', 
+    'Beauty & Wellness', 'Food & Beverage', 'Healthcare',
     'Fitness', 'Retail', 'Education', 'Automotive', 'Others'
   ]
 
@@ -396,11 +396,10 @@ const FreeListing = () => {
             <div className="mb-6 bg-white   p-4">
               <div className="flex items-center justify-center gap-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                    step >= 1 
-                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/50' 
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 1
+                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/50'
                       : 'bg-gray-200 text-gray-500'
-                  }`}>
+                    }`}>
                     {step > 1 ? <FaCheckCircle className="text-lg" /> : '1'}
                   </div>
                   <span className={`text-sm font-semibold hidden sm:block ${step >= 1 ? 'text-primary-600' : 'text-gray-500'}`}>
@@ -409,11 +408,10 @@ const FreeListing = () => {
                 </div>
                 <div className={`w-20 h-1 rounded-full transition-all ${step >= 2 ? 'bg-primary-600' : 'bg-gray-200'}`}></div>
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                    step >= 2 
-                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/50' 
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 2
+                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/50'
                       : 'bg-gray-200 text-gray-500'
-                  }`}>
+                    }`}>
                     {step > 2 ? <FaCheckCircle className="text-lg" /> : '2'}
                   </div>
                   <span className={`text-sm font-semibold hidden sm:block ${step >= 2 ? 'text-primary-600' : 'text-gray-500'}`}>
@@ -433,7 +431,7 @@ const FreeListing = () => {
                   </h2>
                   <p className="text-primary-100 text-sm mt-1">Get started in just 2 simple steps</p>
                 </div> */}
-                
+
                 <form onSubmit={handleRegistrationSubmit} className="p-6 sm:p-8 space-y-6">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -518,7 +516,7 @@ const FreeListing = () => {
                 <div className="p-6 sm:p-8">
                   <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-                      <FaPhone className="text-3xl text-primary-600" />
+                      <FaPhoneAlt className="text-3xl text-primary-600" />
                     </div>
                     <p className="text-gray-600 mb-2 text-base">
                       We've sent a 6-digit OTP to
@@ -567,17 +565,16 @@ const FreeListing = () => {
                           </>
                         )}
                       </button>
-                      
+
                       <div className="text-center space-y-2">
                         <button
                           type="button"
                           onClick={handleResendOTP}
                           disabled={countdown > 0}
-                          className={`text-sm font-semibold transition-colors flex items-center justify-center gap-2 mx-auto ${
-                            countdown > 0
+                          className={`text-sm font-semibold transition-colors flex items-center justify-center gap-2 mx-auto ${countdown > 0
                               ? 'text-gray-400 cursor-not-allowed'
                               : 'text-primary-600 hover:text-primary-700'
-                          }`}
+                            }`}
                         >
                           <FaEnvelope className={countdown > 0 ? 'opacity-50' : ''} />
                           {countdown > 0 ? (
@@ -747,11 +744,10 @@ const FreeListing = () => {
             {[1, 2, 3, 4].map((step) => (
               <React.Fragment key={step}>
                 <div className="flex items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                    formStep >= step
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${formStep >= step
                       ? 'bg-primary-600 text-white shadow-lg'
                       : 'bg-gray-200 text-gray-500'
-                  }`}>
+                    }`}>
                     {formStep > step ? <FaCheckCircle /> : step}
                   </div>
                   <div className="ml-2 hidden sm:block">
@@ -764,9 +760,8 @@ const FreeListing = () => {
                   </div>
                 </div>
                 {step < 4 && (
-                  <div className={`flex-1 h-1 mx-2 rounded-full transition-all ${
-                    formStep > step ? 'bg-primary-600' : 'bg-gray-200'
-                  }`}></div>
+                  <div className={`flex-1 h-1 mx-2 rounded-full transition-all ${formStep > step ? 'bg-primary-600' : 'bg-gray-200'
+                    }`}></div>
                 )}
               </React.Fragment>
             ))}
@@ -780,7 +775,7 @@ const FreeListing = () => {
                   <FaBuilding className="text-primary-600" />
                   Basic Information
                 </h3>
-                
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Business Type <span className="text-red-500">*</span>
@@ -789,9 +784,8 @@ const FreeListing = () => {
                     name="type"
                     value={listingFormData.type}
                     onChange={handleFormChange}
-                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                      formErrors.type ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.type ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     required
                   >
                     <option value="">Select business type</option>
@@ -813,9 +807,8 @@ const FreeListing = () => {
                       value={listingFormData.name}
                       onChange={handleFormChange}
                       placeholder="Enter your business name"
-                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        formErrors.name ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.name ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       required
                     />
                     <FaBuilding className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -857,7 +850,7 @@ const FreeListing = () => {
             {formStep === 2 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <FaPhone className="text-primary-600" />
+                  <FaPhoneAlt className="text-primary-600" />
                   Contact Details
                 </h3>
 
@@ -872,9 +865,8 @@ const FreeListing = () => {
                       value={listingFormData.email}
                       onChange={handleFormChange}
                       placeholder="business@example.com"
-                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        formErrors.email ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.email ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       required
                     />
                     <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -910,9 +902,8 @@ const FreeListing = () => {
                       onChange={handleFormChange}
                       placeholder="Enter complete address"
                       rows={3}
-                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        formErrors.address ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.address ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       required
                     />
                     <FaMapMarkerAlt className="absolute left-4 top-3 text-gray-400" />
@@ -931,9 +922,8 @@ const FreeListing = () => {
                       value={listingFormData.city}
                       onChange={handleFormChange}
                       placeholder="City"
-                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        formErrors.city ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.city ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       required
                     />
                     {formErrors.city && <p className="text-red-500 text-xs mt-1">{formErrors.city}</p>}
@@ -949,9 +939,8 @@ const FreeListing = () => {
                       value={listingFormData.state}
                       onChange={handleFormChange}
                       placeholder="State"
-                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                        formErrors.state ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.state ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       required
                     />
                     {formErrors.state && <p className="text-red-500 text-xs mt-1">{formErrors.state}</p>}
@@ -968,9 +957,8 @@ const FreeListing = () => {
                     value={listingFormData.zipCode}
                     onChange={handleFormChange}
                     placeholder="Zip Code"
-                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                      formErrors.zipCode ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.zipCode ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     required
                   />
                   {formErrors.zipCode && <p className="text-red-500 text-xs mt-1">{formErrors.zipCode}</p>}
@@ -994,9 +982,8 @@ const FreeListing = () => {
                     name="category"
                     value={listingFormData.category}
                     onChange={handleFormChange}
-                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                      formErrors.category ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.category ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     required
                   >
                     <option value="">Select category</option>
@@ -1221,11 +1208,11 @@ const FreeListing = () => {
         isOpen={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false)
-          navigate('/register', { 
-            state: { 
-              companyName: registrationData.companyName, 
-              mobileNumber: registrationData.mobileNumber 
-            } 
+          navigate('/register', {
+            state: {
+              companyName: registrationData.companyName,
+              mobileNumber: registrationData.mobileNumber
+            }
           })
         }}
         title=""
@@ -1288,7 +1275,7 @@ const FreeListing = () => {
             </p>
             <div className="flex items-center justify-center gap-4 text-sm">
               <div className="flex items-center gap-2 text-primary-600">
-                <FaPhone />
+                <FaPhoneAlt />
                 <span className="font-semibold">+91-XXXXX-XXXXX</span>
               </div>
               <span className="text-gray-300">|</span>
@@ -1303,11 +1290,11 @@ const FreeListing = () => {
           <button
             onClick={() => {
               setShowSuccessModal(false)
-              navigate('/register', { 
-                state: { 
-                  companyName: registrationData.companyName, 
-                  mobileNumber: registrationData.mobileNumber 
-                } 
+              navigate('/register', {
+                state: {
+                  companyName: registrationData.companyName,
+                  mobileNumber: registrationData.mobileNumber
+                }
               })
             }}
             className="w-full px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-semibold hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaIdBadge,
   FaDollarSign,
@@ -111,7 +111,7 @@ const AddStaff = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       toast.error('Please fix the errors in the form')
       return
@@ -176,9 +176,8 @@ const AddStaff = () => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.name ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.name ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter full name"
                   />
                 </div>
@@ -191,16 +190,15 @@ const AddStaff = () => {
                   Phone Number <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaPhoneAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
                     maxLength={10}
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.phone ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter phone number"
                   />
                 </div>
@@ -217,9 +215,8 @@ const AddStaff = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter email (optional)"
                   />
                 </div>
@@ -287,9 +284,8 @@ const AddStaff = () => {
                     onChange={handleChange}
                     min="0"
                     step="0.5"
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.experience ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.experience ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="0"
                   />
                 </div>
@@ -308,9 +304,8 @@ const AddStaff = () => {
                     onChange={handleChange}
                     min="0"
                     step="0.01"
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.salary ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.salary ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter salary (optional)"
                   />
                 </div>
@@ -330,9 +325,8 @@ const AddStaff = () => {
                     min="0"
                     max="100"
                     step="0.1"
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.commission ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.commission ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="0"
                   />
                 </div>
@@ -358,9 +352,8 @@ const AddStaff = () => {
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.username ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.username ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter username (optional)"
                   />
                 </div>
@@ -379,9 +372,8 @@ const AddStaff = () => {
                     onChange={handleChange}
                     maxLength={4}
                     inputMode="numeric"
-                    className={`w-full pl-10 pr-4 py-2 border ${
-                      errors.pin ? 'border-red-500' : 'border-gray-300'
-                    }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    className={`w-full pl-10 pr-4 py-2 border ${errors.pin ? 'border-red-500' : 'border-gray-300'
+                      }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                     placeholder="Enter 4-digit PIN (optional)"
                   />
                 </div>

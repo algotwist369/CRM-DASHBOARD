@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   FaUser,
   FaEnvelope,
-  FaPhone,
+  FaPhoneAlt,
   FaMapMarkerAlt,
   FaBriefcase,
   FaStar,
@@ -103,19 +103,19 @@ const StaffProfile = () => {
 
   const validateForm = () => {
     const newErrors = {}
-    
+
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required'
     }
-    
+
     if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
     }
-    
+
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone is required'
     }
-    
+
     if (formData.experience < 0) {
       newErrors.experience = 'Experience cannot be negative'
     }
@@ -323,9 +323,8 @@ const StaffProfile = () => {
                           type="text"
                           value={formData.name}
                           onChange={(e) => handleInputChange('name', e.target.value)}
-                          className={`w-full pl-10 pr-4 py-2 text-base border ${
-                            errors.name ? 'border-red-500' : 'border-gray-300'
-                          }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                          className={`w-full pl-10 pr-4 py-2 text-base border ${errors.name ? 'border-red-500' : 'border-gray-300'
+                            }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                           placeholder="Enter full name"
                         />
                       </div>
@@ -340,9 +339,8 @@ const StaffProfile = () => {
                           type="email"
                           value={formData.email}
                           onChange={(e) => handleInputChange('email', e.target.value)}
-                          className={`w-full pl-10 pr-4 py-2 text-base border ${
-                            errors.email ? 'border-red-500' : 'border-gray-300'
-                          }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                          className={`w-full pl-10 pr-4 py-2 text-base border ${errors.email ? 'border-red-500' : 'border-gray-300'
+                            }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                           placeholder="Enter email"
                         />
                       </div>
@@ -354,14 +352,13 @@ const StaffProfile = () => {
                         Phone <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <FaPhoneAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
                           type="tel"
                           value={formData.phone}
                           onChange={(e) => handleInputChange('phone', e.target.value)}
-                          className={`w-full pl-10 pr-4 py-2 text-base border ${
-                            errors.phone ? 'border-red-500' : 'border-gray-300'
-                          }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                          className={`w-full pl-10 pr-4 py-2 text-base border ${errors.phone ? 'border-red-500' : 'border-gray-300'
+                            }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                           placeholder="Enter phone number"
                         />
                       </div>
@@ -409,9 +406,8 @@ const StaffProfile = () => {
                         min="0"
                         value={formData.experience}
                         onChange={(e) => handleInputChange('experience', parseInt(e.target.value) || 0)}
-                        className={`w-full px-4 py-2 text-base border ${
-                          errors.experience ? 'border-red-500' : 'border-gray-300'
-                        }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                        className={`w-full px-4 py-2 text-base border ${errors.experience ? 'border-red-500' : 'border-gray-300'
+                          }  focus:outline-none focus:ring-2 focus:ring-primary-500`}
                         placeholder="Years of experience"
                       />
                       {errors.experience && <p className="text-red-500 text-xs mt-1">{errors.experience}</p>}
@@ -458,11 +454,10 @@ const StaffProfile = () => {
                           key={day.value}
                           type="button"
                           onClick={() => handleDayToggle(day.value)}
-                          className={`px-3 sm:px-4 py-2 text-sm font-medium  transition-colors min-w-[80px] ${
-                            formData.workingHours.days.includes(day.value)
+                          className={`px-3 sm:px-4 py-2 text-sm font-medium  transition-colors min-w-[80px] ${formData.workingHours.days.includes(day.value)
                               ? 'bg-primary-600 text-white hover:bg-primary-700'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                          }`}
+                            }`}
                         >
                           {day.label}
                         </button>
@@ -481,7 +476,7 @@ const StaffProfile = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <InfoRow icon={FaUser} label="Full Name" value={profile.name || '—'} />
                     <InfoRow icon={FaEnvelope} label="Email" value={profile.email || '—'} />
-                    <InfoRow icon={FaPhone} label="Phone" value={profile.phone || '—'} />
+                    <InfoRow icon={FaPhoneAlt} label="Phone" value={profile.phone || '—'} />
                     <InfoRow icon={FaMapMarkerAlt} label="Address" value={profile.address || '—'} />
                   </div>
                 </div>
@@ -492,16 +487,16 @@ const StaffProfile = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <InfoRow icon={FaBriefcase} label="Role" value={formatRole(profile.role)} />
                     <InfoRow icon={FaBriefcase} label="Specialization" value={profile.specialization || '—'} />
-                    <InfoRow 
-                      icon={FaBriefcase} 
-                      label="Experience" 
-                      value={profile.experience ? `${profile.experience} years` : '—'} 
+                    <InfoRow
+                      icon={FaBriefcase}
+                      label="Experience"
+                      value={profile.experience ? `${profile.experience} years` : '—'}
                     />
                     {profile.commission && (
-                      <InfoRow 
-                        icon={FaBriefcase} 
-                        label="Commission" 
-                        value={`${profile.commission}%`} 
+                      <InfoRow
+                        icon={FaBriefcase}
+                        label="Commission"
+                        value={`${profile.commission}%`}
                       />
                     )}
                   </div>

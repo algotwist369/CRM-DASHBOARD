@@ -214,6 +214,13 @@ const getNotifications = async (req, res, next) => {
             }
 
             query.business = { $in: businessIds };
+
+            // Admin: Use cache for better performance
+            const cacheKey = `user:${userId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
+            const cachedData = await getCache(cacheKey);
+            if (cachedData) {
+                return res.json({ success: true, source: "cache", ...cachedData });
+            }
         } else if (userRole === 'manager') {
             // Manager sees notifications only from their business
             const manager = await Manager.findById(userId).populate('business');
@@ -224,17 +231,14 @@ const getNotifications = async (req, res, next) => {
                 });
             }
             query.business = manager.business._id;
+
+            // Manager: Skip cache for real-time notifications
+            // No cache check - always fetch fresh data
         } else {
             return res.status(403).json({
                 success: false,
                 message: "Unauthorized access"
             });
-        }
-
-        const cacheKey = `user:${userId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
         }
 
         if (status) query.status = status;
@@ -266,7 +270,12 @@ const getNotifications = async (req, res, next) => {
             }
         };
 
-        await setCache(cacheKey, response, 120);
+        // Only cache for admin role
+        if (userRole === 'admin') {
+            const cacheKey = `user:${userId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
+            await setCache(cacheKey, response, 120);
+        }
+
         return res.json(response);
     } catch (err) {
         next(err);

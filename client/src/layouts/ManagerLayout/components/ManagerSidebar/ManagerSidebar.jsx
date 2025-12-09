@@ -18,11 +18,33 @@ import { FaBullhorn } from 'react-icons/fa'
 import { FaUserCircle } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 import authService from '../../../../services/auth/authService';
+import managerService from '../../../../services/manager/managerService';
+import { useSocket } from '../../../../contexts/SocketContext'
+import { toast } from 'react-hot-toast'
 
 const ManagerSidebar = ({ isCollapsed, onToggle }) => {
   const location = useLocation()
   const [activeSubmenu, setActiveSubmenu] = useState(null)
   const [pendingSubmenu, setPendingSubmenu] = useState(null)
+  const [notificationCount, setNotificationCount] = useState(0)
+
+  // Fetch initial notification count
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const response = await managerService.getAlerts({ isRead: false, limit: 1 });
+        if (response.success && response.data) {
+          setNotificationCount(response.data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch sidebar notification count:", error);
+      }
+    };
+    fetchCount();
+  }, [])
+
+  // Socket integration for real-time notification count
+  const { socket } = useSocket() || {}
 
   const handleLogout = () => {
     authService.logout()
@@ -39,6 +61,34 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       console.error("Error fetching profile:", error);
     }
   }, [])
+
+  // Listen for appointment notifications
+  useEffect(() => {
+    if (!socket) return
+
+    const handleNewAppointment = (data) => {
+      setNotificationCount(prev => prev + 1)
+    }
+
+    const handleAppointmentUpdated = (data) => {
+      // Update notifications can also increment count if desired
+      setNotificationCount(prev => prev + 1)
+    }
+
+    const handleAppointmentCancelled = (data) => {
+      setNotificationCount(prev => prev + 1)
+    }
+
+    socket.on('new_appointment', handleNewAppointment)
+    socket.on('appointment_updated', handleAppointmentUpdated)
+    socket.on('appointment_cancelled', handleAppointmentCancelled)
+
+    return () => {
+      socket.off('new_appointment', handleNewAppointment)
+      socket.off('appointment_updated', handleAppointmentUpdated)
+      socket.off('appointment_cancelled', handleAppointmentCancelled)
+    }
+  }, [socket])
 
   // When sidebar expands and there's a pending submenu, open it
   useEffect(() => {
@@ -74,9 +124,9 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       submenu: [
         { name: 'All Customers', href: '/manager/customers' },
         { name: 'Customer Analytics', href: '/manager/customers/analytics' },
-        { name: 'Customer Segments', href: '/manager/customers/segments' },
+        // { name: 'Customer Segments', href: '/manager/customers/segments' },
         { name: 'Customer Insights', href: '/manager/customers/insights' },
-        { name: 'Customer Targeting', href: '/manager/customers/targeting' },
+        // { name: 'Customer Targeting', href: '/manager/customers/targeting' },
       ],
     },
     {
@@ -110,6 +160,7 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       name: 'Notifications',
       href: '/manager/notifications',
       icon: <HiOutlineBell className="w-5 h-5" />,
+      badge: notificationCount > 0 ? notificationCount : null,
     },
     {
       name: 'Campaigns',
@@ -172,7 +223,7 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
               <div className="w-8 h-8 bg-primary-600  flex items-center justify-center flex-shrink-0">
                 <HiOutlineHome className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold tracking-wide ml-3 truncate">CRM Manager</h1>
+              <h1 className="text-xl font-bold tracking-wide ml-3 truncate">Manager</h1>
             </div>
             <Button
               variant="ghost"
@@ -230,6 +281,11 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
               {!isCollapsed && (
                 <>
                   <span className="ml-3 flex-1 text-left">{item.name}</span>
+                  {item.badge && (
+                    <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
                   {item.submenu && (
                     <HiOutlineChevronDown
                       className={`ml-2 w-4 h-4 transition-transform duration-200 ${activeSubmenu === item.name ? 'rotate-180' : ''

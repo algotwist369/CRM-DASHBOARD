@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import {
   FaSpinner,
   FaMapMarkerAlt,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaGlobe,
   FaClock,
@@ -69,6 +69,7 @@ const BusinessInfo = () => {
   }, [businessLink])
 
   useEffect(() => {
+    window.scrollTo(0, 0)
     if (businessLink) {
       fetchBusinessInfo()
     } else {
@@ -207,7 +208,7 @@ const BusinessInfo = () => {
             href={`tel:${business.phone}`}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700  border border-blue-200 font-medium text-sm"
           >
-            <FaPhone className="text-sm" />
+            <FaPhoneAlt className="text-sm" />
             Call Now
           </a>
         )}
@@ -581,7 +582,7 @@ const BusinessInfo = () => {
                       href={`tel:${business.phone}`}
                       className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
-                      <FaPhone className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
+                      <FaPhoneAlt className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Phone</p>
                         <p className="text-sm sm:text-base text-primary-600 font-medium">{business.phone}</p>
@@ -801,7 +802,7 @@ const BusinessInfo = () => {
                       href={`tel:${business.phone}`}
                       className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
-                      <FaPhone className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
+                      <FaPhoneAlt className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Phone</p>
                         <p className="text-sm sm:text-base text-primary-600 font-medium">{business.phone}</p>
@@ -967,7 +968,7 @@ const BusinessInfo = () => {
                 href={`tel:${business.phone}`}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white  font-medium text-sm active:bg-blue-700"
               >
-                <FaPhone />
+                <FaPhoneAlt />
                 <span>Call</span>
               </a>
             )}
