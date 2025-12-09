@@ -1,23 +1,117 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
   FaUsers,
   FaSearch,
-  FaFilter,
   FaEye,
-  FaEdit,
   FaSpinner,
-  FaPhone,
-  FaEnvelope,
-  FaDollarSign,
-  FaCalendarAlt,
+  FaPhoneAlt,
   FaStar,
-  FaChartLine,
-  FaArrowUp,
-  FaArrowDown
+  FaChartLine
 } from 'react-icons/fa'
 import managerService from '../../../../services/manager/managerService'
+
+// Memoized Stat Card
+const StatCard = memo(({ title, value, color = "text-gray-900" }) => (
+  <div className="bg-white border border-gray-200 p-3">
+    <p className="text-xs text-gray-500">{title}</p>
+    <p className={`text-xl font-semibold ${color}`}>{value}</p>
+  </div>
+))
+
+// Memoized Customer Row - Updated to match backend response
+const CustomerRow = memo(({ customer, onView, formatCurrency, formatDate, getSegment }) => {
+  const segment = getSegment(customer)
+
+  return (
+    <tr className="border-b border-gray-100 hover:bg-gray-50">
+      <td className="px-3 py-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-primary-600 text-sm font-medium">
+              {customer.fullName?.charAt(0) || 'C'}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">{customer.fullName}</p>
+            <p className="text-xs text-gray-500 truncate hidden sm:block">{customer.email || '-'}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-3 hidden md:table-cell">
+        <div className="flex items-center gap-1 text-sm text-gray-600">
+          <FaPhoneAlt className="text-gray-400" size={10} />
+          {customer.phone}
+        </div>
+      </td>
+      <td className="px-3 py-3">
+        <span className={`px-2 py-0.5 rounded-full text-xs ${segment.color}`}>
+          {segment.label}
+        </span>
+      </td>
+      <td className="px-3 py-3 text-sm text-gray-900 hidden lg:table-cell">
+        {customer.totalVisits || 0}
+      </td>
+      <td className="px-3 py-3 text-sm font-medium text-gray-900">
+        {formatCurrency(customer.totalSpent || 0)}
+      </td>
+      <td className="px-3 py-3 text-sm text-gray-500 hidden lg:table-cell">
+        {formatDate(customer.lastVisit)}
+      </td>
+      <td className="px-3 py-3 hidden sm:table-cell">
+        <span className={`px-2 py-0.5 rounded-full text-xs ${customer.membershipTier === 'platinum' ? 'bg-purple-100 text-purple-700' :
+          customer.membershipTier === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+            customer.membershipTier === 'silver' ? 'bg-gray-100 text-gray-700' :
+              customer.membershipTier === 'bronze' ? 'bg-orange-100 text-orange-700' :
+                'bg-gray-100 text-gray-600'
+          }`}>
+          {customer.membershipTier || 'None'}
+        </span>
+      </td>
+      <td className="px-3 py-3 text-right">
+        <button
+          onClick={(e) => { e.stopPropagation(); onView(customer.id || customer._id) }}
+          className="p-1.5 text-primary-600 hover:bg-primary-50"
+        >
+          <FaEye size={14} />
+        </button>
+      </td>
+    </tr>
+  )
+})
+
+// Memoized Pagination
+const Pagination = memo(({ page, pages, total, limit, onPageChange }) => {
+  if (pages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-between p-3 border-t border-gray-200 text-sm">
+      <span className="text-gray-500 hidden sm:inline">
+        {((page - 1) * limit) + 1}-{Math.min(page * limit, total)} of {total}
+      </span>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+          className="px-3 py-1 border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Prev
+        </button>
+        <span className="px-3 py-1 bg-gray-100 border border-gray-200">
+          {page}/{pages}
+        </span>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= pages}
+          className="px-3 py-1 border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  )
+})
 
 const CustomerList = () => {
   const navigate = useNavigate()
@@ -25,27 +119,39 @@ const CustomerList = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [segmentFilter, setSegmentFilter] = useState('')
-  const [sortBy, setSortBy] = useState('createdAt')
+  const [typeFilter, setTypeFilter] = useState('')  // customerType: new, regular, vip, inactive
+  const [sortBy, setSortBy] = useState('lastVisit')
   const [sortOrder, setSortOrder] = useState('desc')
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 })
+  const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 0 })
+
+  // Refs for preventing duplicate calls
+  const fetchingRef = useRef(false)
+  const lastParamsRef = useRef('')
 
   const fetchCustomers = useCallback(async () => {
+    const params = {
+      page: pagination.page,
+      limit: pagination.limit,
+      sortBy,
+      sortOrder,
+      search: debouncedSearch || undefined,
+      customerType: typeFilter || undefined
+    }
+
+    // Prevent duplicate calls
+    const paramsKey = JSON.stringify(params)
+    if (paramsKey === lastParamsRef.current) return
+    if (fetchingRef.current) return
+
     try {
+      fetchingRef.current = true
+      lastParamsRef.current = paramsKey
       setLoading(true)
-      const params = {
-        page: pagination.page,
-        limit: pagination.limit,
-        sortBy,
-        sortOrder
-      }
-      
-      if (debouncedSearch) params.search = debouncedSearch
-      if (segmentFilter) params.segment = segmentFilter
 
       const result = await managerService.getCustomers(params)
-      
+
       if (result.success) {
+        // Backend returns data directly in result.data.data
         setCustomers(result.data.data || [])
         setPagination(prev => ({
           ...prev,
@@ -57,11 +163,11 @@ const CustomerList = () => {
       }
     } catch (error) {
       toast.error('Failed to fetch customers')
-      console.error(error)
     } finally {
       setLoading(false)
+      fetchingRef.current = false
     }
-  }, [pagination.page, pagination.limit, debouncedSearch, segmentFilter, sortBy, sortOrder])
+  }, [pagination.page, pagination.limit, debouncedSearch, typeFilter, sortBy, sortOrder])
 
   useEffect(() => {
     fetchCustomers()
@@ -72,107 +178,107 @@ const CustomerList = () => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm)
       setPagination(prev => ({ ...prev, page: 1 }))
-    }, 500)
+    }, 400)
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount || 0)
-  }
+  const formatCurrency = useCallback((amount) => {
+    return `₹${(amount || 0).toLocaleString('en-IN')}`
+  }, [])
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Never'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
+  const formatDate = useCallback((dateString) => {
+    if (!dateString) return '-'
+    return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+  }, [])
 
-  const getSegmentBadge = (customer) => {
-    const visits = customer.stats?.totalVisits || 0
-    const spent = customer.stats?.totalSpent || 0
-    const lastVisit = customer.stats?.lastVisit
-    
-    if (visits === 1) return { label: 'New', color: 'bg-blue-100 text-blue-800' }
-    if (visits >= 2 && visits <= 4) return { label: 'Returning', color: 'bg-green-100 text-green-800' }
-    if (visits >= 5) return { label: 'Loyal', color: 'bg-purple-100 text-purple-800' }
-    if (spent >= 5000) return { label: 'High Value', color: 'bg-yellow-100 text-yellow-800' }
-    if (lastVisit) {
-      const daysSince = Math.floor((new Date() - new Date(lastVisit)) / (1000 * 60 * 60 * 24))
-      if (daysSince > 90) return { label: 'Inactive', color: 'bg-red-100 text-red-800' }
+  // Segment based on backend customerType field
+  const getSegment = useCallback((customer) => {
+    const type = customer.customerType
+
+    // Use customerType from backend directly
+    if (type === 'vip') return { label: 'VIP', color: 'bg-yellow-100 text-yellow-700' }
+    if (type === 'regular') return { label: 'Regular', color: 'bg-blue-100 text-blue-700' }
+    if (type === 'inactive') return { label: 'Inactive', color: 'bg-red-100 text-red-700' }
+    if (type === 'new') return { label: 'New', color: 'bg-green-100 text-green-700' }
+
+    return { label: 'Active', color: 'bg-gray-100 text-gray-600' }
+  }, [])
+
+  const handlePageChange = useCallback((newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }))
+  }, [])
+
+  const handleView = useCallback((id) => {
+    navigate(`/manager/customers/${id}`)
+  }, [navigate])
+
+  // Memoized stats from backend data
+  const stats = useMemo(() => {
+    const totalSpent = customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0)
+    const activeCount = customers.filter(c => c.isActive !== false).length
+    return {
+      total: pagination.total,
+      active: activeCount,
+      revenue: formatCurrency(totalSpent),
+      avgSpend: formatCurrency(customers.length > 0 ? totalSpent / customers.length : 0)
     }
-    return { label: 'Active', color: 'bg-gray-100 text-gray-800' }
-  }
-
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortBy(field)
-      setSortOrder('desc')
-    }
-  }
-
-  const SortIcon = ({ field }) => {
-    if (sortBy !== field) return null
-    return sortOrder === 'asc' ? <FaArrowUp className="ml-1" /> : <FaArrowDown className="ml-1" />
-  }
+  }, [customers, pagination.total, formatCurrency])
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <FaUsers className="text-primary-600" />
             Customers
           </h1>
-          <p className="text-gray-600 mt-1">Manage and analyze your customer base</p>
+          <p className="text-sm text-gray-600">Manage your customer base</p>
         </div>
         <button
           onClick={() => navigate('/manager/customers/analytics')}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white text-sm hover:bg-primary-700"
         >
-          <FaChartLine />
-          View Analytics
+          <FaChartLine size={14} />
+          <span className="hidden sm:inline">Analytics</span>
         </button>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <StatCard title="Total" value={stats.total} />
+        <StatCard title="Active" value={stats.active} color="text-green-600" />
+        <StatCard title="Revenue" value={stats.revenue} color="text-blue-600" />
+        <StatCard title="Avg Spend" value={stats.avgSpend} color="text-purple-600" />
+      </div>
+
       {/* Filters */}
-      <div className="bg-white   border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative md:col-span-2">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      <div className="bg-white border border-gray-200 p-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
             <input
               type="text"
-              placeholder="Search by name, email, or phone..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-primary-500"
             />
           </div>
-
           <select
-            value={segmentFilter}
+            value={typeFilter}
             onChange={(e) => {
-              setSegmentFilter(e.target.value)
+              setTypeFilter(e.target.value)
               setPagination(prev => ({ ...prev, page: 1 }))
             }}
-            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-primary-500 bg-white"
           >
-            <option value="">All Segments</option>
-            <option value="new">New Customers</option>
-            <option value="returning">Returning Customers</option>
-            <option value="loyal">Loyal Customers</option>
-            <option value="inactive">Inactive Customers</option>
-            <option value="high_value">High Value Customers</option>
+            <option value="">All Types</option>
+            <option value="new">New</option>
+            <option value="regular">Regular</option>
+            <option value="vip">VIP</option>
+            <option value="inactive">Inactive</option>
           </select>
-
           <select
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => {
@@ -180,78 +286,26 @@ const CustomerList = () => {
               setSortBy(field)
               setSortOrder(order)
             }}
-            className="px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-primary-500 bg-white"
           >
-            <option value="createdAt-desc">Newest First</option>
-            <option value="createdAt-asc">Oldest First</option>
-            <option value="name-asc">Name (A-Z)</option>
-            <option value="name-desc">Name (Z-A)</option>
+            <option value="lastVisit-desc">Recent</option>
+            <option value="createdAt-desc">Newest</option>
+            <option value="totalSpent-desc">Top Spenders</option>
+            <option value="totalVisits-desc">Most Visits</option>
           </select>
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white   border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Customers</p>
-              <p className="text-2xl font-bold text-gray-900">{pagination.total}</p>
-            </div>
-            <FaUsers className="text-3xl text-primary-500" />
-          </div>
-        </div>
-
-        <div className="bg-white   border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active</p>
-              <p className="text-2xl font-bold text-green-600">
-                {customers.filter(c => c.status === 'active').length}
-              </p>
-            </div>
-            <FaUsers className="text-3xl text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-white   border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {formatCurrency(customers.reduce((sum, c) => sum + (c.stats?.totalSpent || 0), 0))}
-              </p>
-            </div>
-            <FaDollarSign className="text-3xl text-blue-500" />
-          </div>
-        </div>
-
-        <div className="bg-white   border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Avg. Spending</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {customers.length > 0
-                  ? formatCurrency(customers.reduce((sum, c) => sum + (c.stats?.totalSpent || 0), 0) / customers.length)
-                  : formatCurrency(0)}
-              </p>
-            </div>
-            <FaChartLine className="text-3xl text-purple-500" />
-          </div>
-        </div>
-      </div>
-
-      {/* Customers Table */}
-      <div className="bg-white   border border-gray-200 overflow-hidden">
+      {/* Table */}
+      <div className="bg-white border border-gray-200">
         {loading ? (
-          <div className="p-12 text-center">
-            <FaSpinner className="animate-spin mx-auto text-primary-600 text-3xl mb-4" />
-            <p className="text-gray-600">Loading customers...</p>
+          <div className="p-8 text-center">
+            <FaSpinner className="animate-spin mx-auto text-primary-600 text-2xl" />
           </div>
         ) : customers.length === 0 ? (
-          <div className="p-12 text-center">
-            <FaUsers className="mx-auto text-gray-400 text-4xl mb-4" />
-            <p className="text-gray-600">No customers found</p>
+          <div className="p-8 text-center">
+            <FaUsers className="mx-auto text-gray-300 text-3xl mb-2" />
+            <p className="text-sm text-gray-500">No customers found</p>
           </div>
         ) : (
           <>
@@ -259,142 +313,37 @@ const CustomerList = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('name')}
-                    >
-                      <div className="flex items-center">
-                        Customer
-                        <SortIcon field="name" />
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Segment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Visits
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Spent
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Visit
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Rating
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Customer</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 hidden md:table-cell">Phone</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Segment</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 hidden lg:table-cell">Visits</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Spent</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 hidden lg:table-cell">Last Visit</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 hidden sm:table-cell">Tier</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Action</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {customers.map((customer) => {
-                    const segment = getSegmentBadge(customer)
-                    return (
-                      <tr 
-                        key={customer._id} 
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/manager/customers/${customer._id}`)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                              <FaUsers className="text-primary-600" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                              <div className="text-xs text-gray-500">{customer.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 flex items-center gap-2">
-                            <FaPhone className="text-gray-400" />
-                            {customer.phone}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${segment.color}`}>
-                            {segment.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {customer.stats?.totalVisits || 0}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-gray-900">
-                            {formatCurrency(customer.stats?.totalSpent || 0)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {formatDate(customer.stats?.lastVisit)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1">
-                            <FaStar className="text-yellow-400" />
-                            <span className="text-sm text-gray-900">
-                              {(customer.stats?.averageRating || 0).toFixed(1)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                navigate(`/manager/customers/${customer._id}`)
-                              }}
-                              className="p-2 text-primary-600 hover:bg-primary-50  transition-colors"
-                              title="View Details"
-                            >
-                              <FaEye />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                <tbody>
+                  {customers.map((customer) => (
+                    <CustomerRow
+                      key={customer.id || customer._id}
+                      customer={customer}
+                      onView={handleView}
+                      formatCurrency={formatCurrency}
+                      formatDate={formatDate}
+                      getSegment={getSegment}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            {pagination.pages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                  {pagination.total} customers
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                    disabled={pagination.page === 1}
-                    className="px-4 py-2 border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="px-4 py-2 text-sm text-gray-700">
-                    Page {pagination.page} of {pagination.pages}
-                  </span>
-                  <button
-                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                    disabled={pagination.page >= pagination.pages}
-                    className="px-4 py-2 border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              page={pagination.page}
+              pages={pagination.pages}
+              total={pagination.total}
+              limit={pagination.limit}
+              onPageChange={handlePageChange}
+            />
           </>
         )}
       </div>
@@ -402,4 +351,4 @@ const CustomerList = () => {
   )
 }
 
-export default CustomerList
+export default memo(CustomerList)

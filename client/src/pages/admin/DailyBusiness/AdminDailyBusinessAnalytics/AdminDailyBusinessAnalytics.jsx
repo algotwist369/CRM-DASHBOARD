@@ -272,6 +272,7 @@ const AdminDailyBusinessAnalytics = () => {
             <option value="weekly">Last 7 Days</option>
             <option value="monthly">Last 30 Days</option>
             <option value="yearly">Last 12 Months</option>
+            <option value="all">All Time</option>
           </select>
         </div>
       </div>

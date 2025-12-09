@@ -12,13 +12,13 @@ import {
   FaCheckCircle,
   FaWhatsapp,
   FaLocationArrow,
-  FaMapPin,
   FaSync,
   FaChevronLeft,
   FaChevronRight
 } from 'react-icons/fa'
 import { IoMdCall } from 'react-icons/io'
 import apiClient from '../../../services/api/client'
+import { FaLocationCrosshairs } from "react-icons/fa6";
 
 // Constants
 const CACHE_KEYS = {
@@ -90,6 +90,7 @@ const Home = () => {
   const [nearbyLoading, setNearbyLoading] = useState(false)
   const [cardImageIndexes, setCardImageIndexes] = useState({})
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState('')
+  const locationRequestRef = React.useRef(false)
 
   // Animated placeholder
   useEffect(() => {
@@ -133,18 +134,64 @@ const Home = () => {
     return () => timeoutId && clearTimeout(timeoutId)
   }, [searchTerm])
 
-  // Get user location
-  const getUserLocation = useCallback(() => {
+  // Get user location with retry mechanism and IP fallback
+  const getUserLocation = useCallback((options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 }, isRetry = false) => {
+    // Prevent duplicate requests
+    if (locationRequestRef.current && !isRetry) {
+      console.log('Location request already in progress, skipping...')
+      return Promise.reject(new Error('Location request already in progress'))
+    }
+
+    if (!isRetry) {
+      locationRequestRef.current = true
+    }
+
     return new Promise((resolve, reject) => {
-      // Check cache first
-      const cachedLocation = getCachedData(CACHE_KEYS.LOCATION)
-      if (cachedLocation) {
-        resolve(cachedLocation)
-        return
+      const finish = (result, isSuccess) => {
+        locationRequestRef.current = false
+        if (isSuccess) resolve(result)
+        else reject(result)
+      }
+      // Check cache first (only on initial attempt)
+      if (!isRetry) {
+        const cachedLocation = getCachedData(CACHE_KEYS.LOCATION)
+        if (cachedLocation) {
+          finish(cachedLocation, true)
+          return
+        }
+      }
+
+      // IP Location Fallback
+      const getIpLocation = async () => {
+        try {
+          console.log('Fetching IP-based location...')
+          const response = await fetch('https://ipapi.co/json/')
+          const data = await response.json()
+
+          if (data.latitude && data.longitude) {
+            const location = {
+              lat: data.latitude,
+              lng: data.longitude,
+              accuracy: 5000, // IP location is less accurate
+              source: 'IP'
+            }
+            setCachedData(CACHE_KEYS.LOCATION, location)
+            setLocationLoading(false)
+            return location
+          }
+          return null
+        } catch (err) {
+          console.error('IP location failed:', err)
+          return false
+        }
       }
 
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported by your browser'))
+        // Try IP location if geolocation is not supported
+        getIpLocation().then(location => {
+          if (location) finish(location, true)
+          else finish(new Error('Geolocation is not supported and IP location failed'), false)
+        })
         return
       }
 
@@ -160,30 +207,45 @@ const Home = () => {
           }
           setCachedData(CACHE_KEYS.LOCATION, location)
           setLocationLoading(false)
-          resolve(location)
+          finish(location, true)
         },
-        (error) => {
+        async (error) => {
+          // If high accuracy failed and we haven't retried yet, try again with low accuracy
+          if (options.enableHighAccuracy && !isRetry && (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE)) {
+            console.log('High accuracy location failed, retrying with low accuracy and cached positions...')
+            getUserLocation({ ...options, enableHighAccuracy: false, timeout: 30000, maximumAge: Infinity }, true)
+              .then(res => finish(res, true))
+              .catch(err => finish(err, false))
+            return
+          }
+
+          // Final fallback: IP Location
+          console.log('Native geolocation failed, attempting IP fallback...')
+          const ipLocation = await getIpLocation()
+          if (ipLocation) {
+            finish(ipLocation, true)
+            return
+          }
+
           setLocationLoading(false)
           let errorMessage = 'Unable to get your location'
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage = 'Location permission denied. Please enable location access.'
+              errorMessage = 'Location permission denied. Please allow location access in your browser settings.'
               break
             case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Location information unavailable.'
+              errorMessage = 'Location information unavailable. Please check your device location settings.'
               break
             case error.TIMEOUT:
-              errorMessage = 'Location request timed out.'
+              errorMessage = 'Location request timed out. Please check your network connection.'
               break
+            default:
+              errorMessage = error.message || 'An unknown error occurred while getting location.'
           }
           setLocationError(errorMessage)
-          reject(new Error(errorMessage))
+          finish(new Error(errorMessage), false)
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        }
+        options
       )
     })
   }, [])
@@ -379,7 +441,7 @@ const Home = () => {
           await fetchNearbyBusinesses(location)
         } catch (err) {
           console.error('Location access error:', err)
-          toast.error('Unable to get location. Please enable location access.')
+          toast.error(err.message || 'Unable to get location. Please enable location access.')
           setViewMode('all')
           fetchBusinesses()
         }
@@ -458,12 +520,13 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white">
+      <div className="h-[600px] bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat text-white">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-10 sm:py-16 lg:py-24">
           <div className="text-center">
             <h1 className="text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 sm:mb-4 px-2">
               Book Your Appointment
             </h1>
+
             <p className="text-base sm:text-xl lg:text-2xl text-primary-100 mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
               Find and book appointments with your favorite businesses instantly
             </p>
@@ -478,15 +541,15 @@ const Home = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={searchTerm ? '' : animatedPlaceholder || PLACEHOLDERS[0]}
-                    className="w-full pl-12 pr-4 py-3.5 border text-gray-900 bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base placeholder:text-gray-400"
+                    className="w-full pl-12 pr-4 py-3.5 border text-gray-900 bg-white border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base placeholder:text-gray-400"
                   />
                 </div>
+
                 <button
                   type="submit"
-                  className="px-6 py-3.5 bg-primary-600 text-white border font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center gap-2 text-base whitespace-nowrap transition-colors"
+                  className="px-4 py-3 bg-primary-600"
                 >
-                  <FaSearch className="text-sm" />
-                  <span>Search</span>
+                  <FaLocationCrosshairs className="text-2xl" />
                 </button>
               </div>
             </form>

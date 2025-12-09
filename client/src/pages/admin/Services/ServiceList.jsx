@@ -9,11 +9,10 @@ import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
 import BackButton from '../../../components/common/Button/BackButton';
 
-const StatsCard = memo(({ title, value, description }) => (
-  <div className="border border-gray-200 bg-white p-4">
-    <p className="text-xs uppercase tracking-wide text-gray-500">{title}</p>
-    <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
-    {description && <p className="text-xs text-gray-400 mt-1">{description}</p>}
+const StatsCard = memo(({ title, value }) => (
+  <div className="border border-gray-200 bg-white p-3">
+    <p className="text-xs text-gray-500">{title}</p>
+    <p className="text-xl font-semibold text-gray-900">{value}</p>
   </div>
 ));
 
@@ -298,11 +297,11 @@ const ServiceList = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard title="Total Services" value={stats.total} description="All services under this business" />
-        <StatsCard title="Active" value={stats.active} description="Currently visible to clients" />
-        <StatsCard title="Categories" value={stats.categories} description="Unique service categories" />
-        <StatsCard title="Popular" value={stats.popular} description="Trending or most viewed" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard title="Total Services" value={stats.total} />
+        <StatsCard title="Active" value={stats.active} />
+        <StatsCard title="Categories" value={stats.categories} />
+        <StatsCard title="Popular" value={stats.popular} />
       </div>
 
       {/* Filter Toggle */}

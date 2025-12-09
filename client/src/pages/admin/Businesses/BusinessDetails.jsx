@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  FaArrowLeft, 
-  FaEdit, 
-  FaTrash, 
-  FaBuilding, 
-  FaPhone, 
-  FaEnvelope, 
+import {
+  FaArrowLeft,
+  FaEdit,
+  FaTrash,
+  FaBuilding,
+  FaPhoneAlt,
+  FaEnvelope,
   FaMapMarkerAlt,
   FaLink,
   FaCheckCircle,
@@ -138,11 +138,10 @@ const BusinessDetails = () => {
                     <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
                       {business.type}
                     </span>
-                    <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                      business.isActive 
+                    <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${business.isActive
                         ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
-                    }`}>
+                      }`}>
                       {business.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
@@ -253,13 +252,13 @@ const BusinessDetails = () => {
         {/* Contact Information */}
         <div className="bg-white  border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <FaPhone className="text-primary-600" />
+            <FaPhoneAlt className="text-primary-600" />
             Contact Information
           </h2>
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <FaPhone className="text-gray-400" />
+                <FaPhoneAlt className="text-gray-400" />
                 Phone
               </label>
               <p className="text-base font-semibold text-gray-900 mt-1">{business.phone || '—'}</p>

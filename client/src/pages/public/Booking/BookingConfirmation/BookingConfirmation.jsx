@@ -9,7 +9,7 @@ import {
   FaCalendarAlt,
   FaClock,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaDollarSign,
   FaPrint,
@@ -30,9 +30,17 @@ const BookingConfirmation = () => {
   const [submitting, setSubmitting] = useState(false)
   const [appointment, setAppointment] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('cash')
-  
+  const [showOTPModal, setShowOTPModal] = useState(false)
+  const [otp, setOtp] = useState(['', '', '', ''])
+  const [verifyingOTP, setVerifyingOTP] = useState(false)
+  const [phoneForOTP, setPhoneForOTP] = useState('')
+  const [otpTimeLeft, setOtpTimeLeft] = useState(0)
+  const [canResend, setCanResend] = useState(false)
+  const [lastBookingPayload, setLastBookingPayload] = useState(null)
+  const [resendingOTP, setResendingOTP] = useState(false)
+
   // Online payment discount configuration
-  const ONLINE_PAYMENT_DISCOUNT = 10 
+  const ONLINE_PAYMENT_DISCOUNT = 10
   const onlinePaymentMethods = ['upi', 'card', 'netbanking', 'wallet', 'online']
   const isOnlinePayment = onlinePaymentMethods.includes(paymentMethod)
 
@@ -43,6 +51,24 @@ const BookingConfirmation = () => {
     loadBookingData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessLink])
+
+  useEffect(() => {
+    let timer
+    if (showOTPModal && otpTimeLeft > 0) {
+      timer = setInterval(() => {
+        setOtpTimeLeft((prev) => prev - 1)
+      }, 1000)
+    } else if (otpTimeLeft === 0) {
+      setCanResend(true)
+    }
+    return () => clearInterval(timer)
+  }, [showOTPModal, otpTimeLeft])
+
+  const formatTimer = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   const loadBookingData = () => {
     const businessData = sessionStorage.getItem('bookingBusiness')
@@ -68,7 +94,7 @@ const BookingConfirmation = () => {
     try {
       const parsedBusiness = JSON.parse(businessData)
       setBusiness(parsedBusiness)
-      
+
       setBookingData({
         services: selectedServices,
         staff: selectedStaff,
@@ -102,7 +128,7 @@ const BookingConfirmation = () => {
       return total + price
     }, 0)
   }
-  
+
   const calculateDiscountedPrice = () => {
     const basePrice = calculateTotalPrice()
     if (isOnlinePayment) {
@@ -111,7 +137,7 @@ const BookingConfirmation = () => {
     }
     return basePrice
   }
-  
+
   const calculateDiscount = () => {
     if (!isOnlinePayment) return 0
     const basePrice = calculateTotalPrice()
@@ -151,11 +177,11 @@ const BookingConfirmation = () => {
       // Service Type Logic
       const getServiceType = (service, businessType) => {
         if (service.serviceType) return service.serviceType
-        
-        const serviceName = (typeof service === 'object' 
-          ? (service.name || service.serviceName || service.title || '') 
+
+        const serviceName = (typeof service === 'object'
+          ? (service.name || service.serviceName || service.title || '')
           : service).toLowerCase()
-        
+
         if (serviceName.match(/hair|cut|color|highlight/)) return 'hair'
         if (serviceName.match(/facial|skin/)) return 'facial'
         if (serviceName.match(/massage/)) return 'massage'
@@ -163,7 +189,7 @@ const BookingConfirmation = () => {
         if (serviceName.match(/spa/)) return 'spa'
         if (serviceName.match(/room/)) return 'room'
         if (serviceName.match(/food|meal/)) return 'food'
-        
+
         if (businessType) {
           const bt = businessType.toLowerCase()
           if (bt.includes('salon') || bt.includes('hair')) return 'hair'
@@ -190,14 +216,14 @@ const BookingConfirmation = () => {
       let timeStr = bookingData.time.trim()
       let isPM = /PM|pm/.test(timeStr)
       timeStr = timeStr.replace(/AM|PM|am|pm/gi, '').trim()
-      
+
       const [hourStr, minuteStr] = timeStr.split(':')
       let hours = parseInt(hourStr, 10) || 0
       const minutes = parseInt(minuteStr, 10) || 0
-      
+
       if (isPM && hours !== 12) hours += 12
       else if (!isPM && hours === 12) hours = 0
-      
+
       const totalMinutes = calculateTotalDuration()
       const endMinutes = (hours * 60 + minutes) + totalMinutes
       const finalHour = Math.floor(endMinutes / 60) % 24
@@ -223,20 +249,41 @@ const BookingConfirmation = () => {
 
       const result = await appointmentService.bookAppointment(businessLink, bookingPayload)
 
-      if (result.success && result.data?.success) {
-        const appointmentData = result.data.data?.appointment
-        const confirmationCode = result.data.data?.confirmationCode || appointmentData?.confirmationCode
+      if (result.success) {
+        if (result.data.requiresOTP) {
+          setPhoneForOTP(result.data.phone)
+          setLastBookingPayload(bookingPayload)
 
-        setAppointment({ ...appointmentData, confirmationCode })
-        
-        // Clear session
-        sessionStorage.removeItem('selectedServices')
-        sessionStorage.removeItem('selectedStaff')
-        sessionStorage.removeItem('selectedDate')
-        sessionStorage.removeItem('selectedTime')
-        sessionStorage.removeItem('customerInfo')
+          if (result.data.expiresAt) {
+            const expiresAt = new Date(result.data.expiresAt).getTime()
+            const now = new Date().getTime()
+            const diffSeconds = Math.max(0, Math.floor((expiresAt - now) / 1000))
+            setOtpTimeLeft(diffSeconds)
+            setCanResend(false)
+          } else {
+            // Fallback default
+            setOtpTimeLeft(600) // 10 mins
+            setCanResend(false)
+          }
 
-        toast.success('Appointment booked successfully!')
+          setShowOTPModal(true)
+          toast.success("OTP sent to your mobile number")
+        } else {
+          // Direct booking (fallback/legacy)
+          const appointmentData = result.data.data?.appointment
+          const confirmationCode = result.data.data?.confirmationCode || appointmentData?.confirmationCode
+
+          setAppointment({ ...appointmentData, confirmationCode })
+
+          // Clear session
+          sessionStorage.removeItem('selectedServices')
+          sessionStorage.removeItem('selectedStaff')
+          sessionStorage.removeItem('selectedDate')
+          sessionStorage.removeItem('selectedTime')
+          sessionStorage.removeItem('customerInfo')
+
+          toast.success('Appointment booked successfully!')
+        }
       } else {
         toast.error(result.error || result.data?.message || 'Failed to book appointment')
       }
@@ -258,6 +305,75 @@ const BookingConfirmation = () => {
   const handleViewAppointment = () => {
     if (appointment?.confirmationCode) {
       navigate(`/appointment/${appointment.confirmationCode}`)
+    }
+  }
+
+  const handleVerifyOTP = async () => {
+    const otpString = otp.join('')
+    if (otpString.length !== 4) return toast.error("Please enter valid 4-digit OTP")
+
+    setVerifyingOTP(true)
+    try {
+      const result = await appointmentService.verifyBookAppointment(businessLink, {
+        phone: phoneForOTP,
+        otp: otpString
+      })
+
+      if (result.success && result.data.success) {
+        const appointmentData = result.data.data?.appointment
+        const confirmationCode = result.data.data?.confirmationCode || appointmentData?.confirmationCode
+
+        setAppointment({ ...appointmentData, confirmationCode })
+        setShowOTPModal(false)
+
+        // Clear session
+        sessionStorage.removeItem('selectedServices')
+        sessionStorage.removeItem('selectedStaff')
+        sessionStorage.removeItem('selectedDate')
+        sessionStorage.removeItem('selectedTime')
+        sessionStorage.removeItem('customerInfo')
+
+        toast.success('Appointment confirmed!')
+      } else {
+        toast.error(result.error || result.data?.message || "Invalid OTP")
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error("Verification failed")
+    } finally {
+      setVerifyingOTP(false)
+    }
+  }
+
+
+
+  const handleResendOTP = async () => {
+    if (!lastBookingPayload) return
+
+    setResendingOTP(true)
+    try {
+      const result = await appointmentService.bookAppointment(businessLink, lastBookingPayload)
+
+      if (result.success && result.data.requiresOTP) {
+        toast.success("OTP Resent!")
+        setOtp(['', '', '', ''])
+
+        if (result.data.expiresAt) {
+          const expiresAt = new Date(result.data.expiresAt).getTime()
+          const now = new Date().getTime()
+          const diffSeconds = Math.max(0, Math.floor((expiresAt - now) / 1000))
+          setOtpTimeLeft(diffSeconds)
+        } else {
+          setOtpTimeLeft(600)
+        }
+        setCanResend(false)
+      } else {
+        toast.error("Failed to resend OTP")
+      }
+    } catch (err) {
+      toast.error("Error resending OTP")
+    } finally {
+      setResendingOTP(false)
     }
   }
 
@@ -303,10 +419,10 @@ const BookingConfirmation = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-5xl mx-auto">
-              
+
               {/* LEFT COLUMN: Details */}
               <div className="lg:col-span-7 space-y-6">
-                
+
                 {/* 1. Date & Time */}
                 <Card>
                   <SectionHeader title="Appointment Time" />
@@ -342,24 +458,24 @@ const BookingConfirmation = () => {
                   <Card>
                     <SectionHeader title="Selected Professional" />
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600">
-                            <FaUserTie size={20} />
+                      <div className="w-12 h-12 rounded-full bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600">
+                        <FaUserTie size={20} />
+                      </div>
+                      <div>
+                        <p className="text-gray-900 font-semibold text-lg leading-tight">
+                          {bookingData.staff.name}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-medium uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full">
+                            {bookingData.staff.role || 'Staff'}
+                          </span>
+                          {bookingData.staff.specialization && (
+                            <span className="text-sm text-gray-500">
+                              • {bookingData.staff.specialization}
+                            </span>
+                          )}
                         </div>
-                        <div>
-                            <p className="text-gray-900 font-semibold text-lg leading-tight">
-                                {bookingData.staff.name}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs font-medium uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full">
-                                    {bookingData.staff.role || 'Staff'}
-                                </span>
-                                {bookingData.staff.specialization && (
-                                    <span className="text-sm text-gray-500">
-                                        • {bookingData.staff.specialization}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                      </div>
                     </div>
                   </Card>
                 )}
@@ -388,7 +504,7 @@ const BookingConfirmation = () => {
                       <span className="text-gray-900 font-medium">{bookingData.customer.name}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <FaPhone className="text-gray-400" />
+                      <FaPhoneAlt className="text-gray-400" />
                       <span className="text-gray-900">{bookingData.customer.phone}</span>
                     </div>
                     <div className="flex items-center gap-3 md:col-span-2">
@@ -403,14 +519,14 @@ const BookingConfirmation = () => {
               <div className="lg:col-span-5 space-y-6">
                 <Card className="sticky top-6 border-primary-100 ring-4 ring-gray-50/50">
                   <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Summary</h2>
-                  
+
                   {/* Price Breakdown */}
                   <div className="space-y-3 mb-6 bg-gray-50  p-4">
                     <div className="flex justify-between text-gray-600">
                       <span>Subtotal</span>
                       <span>₹{basePrice.toLocaleString()}</span>
                     </div>
-                    
+
                     {isOnlinePayment && (
                       <div className="flex justify-between text-green-600 font-medium">
                         <span className="flex items-center gap-2">
@@ -449,8 +565,8 @@ const BookingConfirmation = () => {
                             onClick={() => setPaymentMethod(method.value)}
                             className={`
                               relative flex flex-col items-center justify-center gap-2 p-3  border transition-all duration-200 h-20
-                              ${isSelected 
-                                ? 'border-primary-600 bg-primary-50 text-primary-700 ring-1 ring-primary-600' 
+                              ${isSelected
+                                ? 'border-primary-600 bg-primary-50 text-primary-700 ring-1 ring-primary-600'
                                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600'
                               }
                             `}
@@ -458,7 +574,7 @@ const BookingConfirmation = () => {
                             <Icon className={isSelected ? 'text-primary-600' : 'text-gray-400'} size={20} />
                             <span className="text-xs font-semibold">{method.label}</span>
                             {method.isOnline && (
-                               <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                             )}
                           </button>
                         )
@@ -513,7 +629,7 @@ const BookingConfirmation = () => {
 
               {/* Details Body */}
               <div className="p-8 space-y-6">
-                
+
                 {/* Code Box */}
                 <div className="border-2 border-dashed border-gray-200  p-4 flex flex-col items-center bg-gray-50/50">
                   <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Confirmation Code</span>
@@ -521,7 +637,7 @@ const BookingConfirmation = () => {
                     <span className="text-3xl font-mono font-bold text-gray-900 tracking-wider">
                       {appointment.confirmationCode}
                     </span>
-                    <button 
+                    <button
                       onClick={handleCopyConfirmationCode}
                       className="text-gray-400 hover:text-primary-600 transition-colors p-2 hover:bg-white "
                       title="Copy Code"
@@ -545,13 +661,13 @@ const BookingConfirmation = () => {
                     <span className="text-gray-500">Time</span>
                     <span className="text-gray-900 font-medium">{formatTime(appointment.startTime)}</span>
                   </div>
-                  
+
                   {/* Staff in Success View */}
                   {bookingData.staff && (
-                      <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                        <span className="text-gray-500">Professional</span>
-                        <span className="text-gray-900 font-medium">{bookingData.staff.name}</span>
-                      </div>
+                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                      <span className="text-gray-500">Professional</span>
+                      <span className="text-gray-900 font-medium">{bookingData.staff.name}</span>
+                    </div>
                   )}
 
                   {appointment.business && (
@@ -577,6 +693,81 @@ const BookingConfirmation = () => {
                     Details <FaArrowRight size={12} />
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* OTP Modal */}
+        {showOTPModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-in fade-in zoom-in duration-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Verify Mobile Number</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Enter the OTP sent to <span className="font-semibold text-gray-700">{phoneForOTP}</span>
+              </p>
+
+              <div className="flex gap-4 justify-center mb-8">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    id={`otp-input-${index}`}
+                    type="text"
+                    value={digit}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!/^\d*$/.test(val)) return;
+
+                      const newOtp = [...otp];
+                      newOtp[index] = val.substring(val.length - 1);
+                      setOtp(newOtp);
+
+                      if (val && index < 3) {
+                        document.getElementById(`otp-input-${index + 1}`).focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !otp[index] && index > 0) {
+                        document.getElementById(`otp-input-${index - 1}`).focus();
+                      }
+                    }}
+                    className="w-14 h-14 text-center text-3xl font-bold border-2 border-gray-200 rounded-lg focus:border-primary-600 focus:ring-4 focus:ring-primary-100 outline-none transition-all shadow-sm"
+                    maxLength={1}
+                    autoFocus={index === 0}
+                  />
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleVerifyOTP}
+                  disabled={verifyingOTP}
+                  className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg disabled:opacity-70 flex items-center justify-center gap-2"
+                >
+                  {verifyingOTP ? <FaSpinner className="animate-spin" /> : "Verify Booking"}
+                </button>
+                {/* Resend Logic */}
+                <div className="text-center text-sm font-medium">
+                  {otpTimeLeft > 0 ? (
+                    <span className="text-gray-500">
+                      Resend OTP in <span className="text-primary-600 tabular-nums">{formatTimer(otpTimeLeft)}</span>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={handleResendOTP}
+                      disabled={resendingOTP}
+                      className="text-primary-600 hover:text-primary-700 hover:underline disabled:opacity-50"
+                    >
+                      {resendingOTP ? "Resending..." : "Resend OTP"}
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setShowOTPModal(false)}
+                  className="w-full py-3 text-gray-500 hover:text-gray-700 font-medium"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

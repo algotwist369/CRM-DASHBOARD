@@ -8,10 +8,47 @@ class ManagerService {
       const response = await apiClient.get(endpoints.manager.dashboard)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch dashboard data' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch dashboard data'
       }
+    }
+  }
+
+  // Get manager stats
+  async getStats(params = {}) {
+    try {
+      const response = await apiClient.get('/manager/stats', { params })
+
+      // Handle obfuscated data (Base64)
+      if (response.data && response.data.success && typeof response.data.data === 'string') {
+        try {
+          // Decode Base64 string
+          response.data.data = JSON.parse(atob(response.data.data));
+        } catch (e) {
+          console.error("Failed to decode stats:", e);
+        }
+      }
+
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch manager stats'
+      }
+    }
+  }
+
+  // Get manager appointment stats (filtered)
+  async getManagerAppointmentStats(params = {}) {
+    try {
+      const response = await apiClient.get('/manager/appointments/stats', { params });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment stats'
+      };
     }
   }
 
@@ -21,9 +58,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.manager.staff, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch staff' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch staff'
       }
     }
   }
@@ -34,9 +71,9 @@ class ManagerService {
       const response = await apiClient.post(endpoints.manager.addStaff, staffData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to add staff member' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add staff member'
       }
     }
   }
@@ -47,9 +84,9 @@ class ManagerService {
       const response = await apiClient.put(endpoints.manager.updateStaff(staffId), staffData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update staff member' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update staff member'
       }
     }
   }
@@ -60,9 +97,9 @@ class ManagerService {
       const response = await apiClient.delete(endpoints.manager.deleteStaff(staffId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to delete staff member' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete staff member'
       }
     }
   }
@@ -73,9 +110,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.manager.transactions, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch transactions' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch transactions'
       }
     }
   }
@@ -86,9 +123,9 @@ class ManagerService {
       const response = await apiClient.post(endpoints.manager.addTransaction, transactionData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to add transaction' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add transaction'
       }
     }
   }
@@ -99,9 +136,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.dailyBusiness.list, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch daily business records' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily business records'
       }
     }
   }
@@ -112,9 +149,9 @@ class ManagerService {
       const response = await apiClient.post(endpoints.dailyBusiness.create, dailyBusinessData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to add daily business record' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add daily business record'
       }
     }
   }
@@ -125,9 +162,9 @@ class ManagerService {
       const response = await apiClient.put(endpoints.dailyBusiness.update(recordId), dailyBusinessData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update daily business record' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update daily business record'
       }
     }
   }
@@ -138,9 +175,9 @@ class ManagerService {
       const response = await apiClient.delete(endpoints.dailyBusiness.delete(recordId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to delete daily business record' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete daily business record'
       }
     }
   }
@@ -151,9 +188,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.dailyBusiness.getSummary, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch daily summary' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch daily summary'
       }
     }
   }
@@ -164,9 +201,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.dailyBusiness.getAnalytics, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business analytics' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business analytics'
       }
     }
   }
@@ -179,9 +216,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.notifications.list, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch notifications' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch notifications'
       }
     }
   }
@@ -192,9 +229,66 @@ class ManagerService {
       const response = await apiClient.post(endpoints.notifications.create, notificationData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to create notification' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create notification'
+      }
+    }
+  }
+
+  // ================== Alert Methods (System Notifications) ==================
+
+  // Get alerts
+  async getAlerts(params = {}, config = {}) {
+    try {
+      const response = await apiClient.get('/manager/alerts', { params, ...config })
+      return { success: true, data: response.data }
+    } catch (error) {
+      if (error.name === 'CanceledError' || error.message === 'canceled') {
+        throw error; // Let the caller handle cancellation
+      }
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch alerts'
+      }
+    }
+  }
+
+  // Mark alert as read
+  async markAlertAsRead(id) {
+    try {
+      const response = await apiClient.put(`/manager/alerts/${id}/read`)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to mark alert as read'
+      }
+    }
+  }
+
+  // Mark all alerts as read
+  async markAllAlertsAsRead() {
+    try {
+      const response = await apiClient.post('/manager/alerts/mark-all-read')
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to mark alerts as read'
+      }
+    }
+  }
+
+  // Create Test Notification (Debug)
+  async createTestNotification() {
+    try {
+      const response = await apiClient.post('/manager/alerts/test')
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create test notification'
       }
     }
   }
@@ -205,9 +299,9 @@ class ManagerService {
       const response = await apiClient.post(endpoints.notifications.send(notificationId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to send notification' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to send notification'
       }
     }
   }
@@ -218,9 +312,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.notifications.getAnalytics(notificationId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch notification analytics' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch notification analytics'
       }
     }
   }
@@ -231,9 +325,9 @@ class ManagerService {
       const response = await apiClient.post(endpoints.notifications.createCampaign, campaignData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to create campaign' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to create campaign'
       }
     }
   }
@@ -244,9 +338,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.notifications.getCampaigns, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch campaigns' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch campaigns'
       }
     }
   }
@@ -257,9 +351,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.notifications.getCustomerAnalytics, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch customer analytics' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer analytics'
       }
     }
   }
@@ -272,9 +366,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.customers.list, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch customers' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customers'
       }
     }
   }
@@ -285,9 +379,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.customers.getById(customerId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch customer details' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer details'
       }
     }
   }
@@ -298,9 +392,9 @@ class ManagerService {
       const response = await apiClient.put(endpoints.customers.update(customerId), customerData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update customer' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update customer'
       }
     }
   }
@@ -311,9 +405,9 @@ class ManagerService {
       const response = await apiClient.post(endpoints.customers.addNote(customerId), noteData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to add customer note' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add customer note'
       }
     }
   }
@@ -324,25 +418,15 @@ class ManagerService {
       const response = await apiClient.get(endpoints.customers.getTimeline(customerId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch customer timeline' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer timeline'
       }
     }
   }
 
-  // Get customer segments
-  async getCustomerSegments() {
-    try {
-      const response = await apiClient.get(endpoints.customers.getSegments)
-      return { success: true, data: response.data }
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch customer segments' 
-      }
-    }
-  }
+
+
 
   // Get customer analytics overview
   async getCustomerAnalyticsOverview(params = {}) {
@@ -350,9 +434,9 @@ class ManagerService {
       const response = await apiClient.get(endpoints.customers.getAnalytics, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch customer analytics' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer analytics'
       }
     }
   }
@@ -363,37 +447,50 @@ class ManagerService {
       const response = await apiClient.get(endpoints.customers.getInsights)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch customer insights' 
-      }
-    }
-  }
-
-  // Get target customers
-  async getTargetCustomers(criteria) {
-    try {
-      const response = await apiClient.post(endpoints.customers.getTargetCustomers, { criteria })
-      return { success: true, data: response.data }
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch target customers' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch customer insights'
       }
     }
   }
 
   // ================== Appointment Methods ==================
 
+  // Get appointment statistics
+  async getAppointmentStats(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.appointments.stats, { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment statistics'
+      }
+    }
+  }
+
   // Get appointments
   async getAppointments(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.appointments.getAppointments, { params })
+      const response = await apiClient.get(endpoints.appointments.list, { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch appointments' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointments'
+      }
+    }
+  }
+
+  // Get appointment by ID
+  async getAppointmentById(appointmentId) {
+    try {
+      const response = await apiClient.get(endpoints.appointments.getById(appointmentId))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment details'
       }
     }
   }
@@ -401,15 +498,15 @@ class ManagerService {
   // Update appointment status
   async updateAppointmentStatus(appointmentId, status, notes = '') {
     try {
-      const response = await apiClient.put(endpoints.appointments.updateAppointmentStatus(appointmentId), {
+      const response = await apiClient.patch(endpoints.appointments.updateAppointmentStatus(appointmentId), {
         status,
         notes
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update appointment status' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update appointment status'
       }
     }
   }

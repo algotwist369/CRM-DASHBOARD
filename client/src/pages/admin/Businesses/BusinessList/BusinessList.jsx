@@ -8,7 +8,7 @@ import {
   FaUsers,
   FaBuilding,
   FaUserTie,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaGlobe,
   FaLink,
@@ -968,7 +968,7 @@ const BusinessList = () => {
               onChange={handleChange}
               error={formErrors.phone}
               placeholder="10-digit phone number"
-              icon={FaPhone}
+              icon={FaPhoneAlt}
             />
 
             <IconInputField
@@ -978,7 +978,7 @@ const BusinessList = () => {
               onChange={handleChange}
               error={formErrors.alternatePhone}
               placeholder="Alternate phone number"
-              icon={FaPhone}
+              icon={FaPhoneAlt}
             />
 
             <IconInputField
@@ -1115,7 +1115,7 @@ const BusinessList = () => {
               onChange={handleChange}
               error={formErrors.phone}
               placeholder="10-digit phone number"
-              icon={FaPhone}
+              icon={FaPhoneAlt}
             />
 
             <IconInputField
@@ -1125,7 +1125,7 @@ const BusinessList = () => {
               onChange={handleChange}
               error={formErrors.alternatePhone}
               placeholder="Alternate phone number"
-              icon={FaPhone}
+              icon={FaPhoneAlt}
             />
 
             <IconInputField

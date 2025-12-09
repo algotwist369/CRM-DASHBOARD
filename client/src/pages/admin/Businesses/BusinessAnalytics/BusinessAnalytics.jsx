@@ -139,6 +139,7 @@ const BusinessAnalytics = () => {
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
+            <option value="all">All Time</option>
           </select>
         </div>
       </div>

@@ -44,19 +44,16 @@ const StatsGrid = memo(({ stats }) => {
   ], [stats]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {statItems.map((item, index) => (
-        <div key={index} className="bg-white border border-gray-200 p-6">
+        <div key={index} className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">{item.title}</p>
-              <p className={`text-2xl font-bold mt-2 ${item.color}`}>{item.value}</p>
-              {item.trend && (
-                <p className="text-xs text-gray-500 mt-1">{item.trend}</p>
-              )}
+              <p className="text-xs font-medium text-gray-500">{item.title}</p>
+              <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
             </div>
-            <div className={`p-3 rounded-full ${item.bgColor}`}>
-              <item.icon className={`w-6 h-6 ${item.color}`} />
+            <div className={`p-2 rounded-full ${item.bgColor}`}>
+              <item.icon className={`w-5 h-5 ${item.color}`} />
             </div>
           </div>
         </div>
@@ -310,6 +307,8 @@ const CustomerList = () => {
 
   // Fetch businesses on mount
   useEffect(() => {
+    window.scrollTo(0, 0);
+
     const fetchBusinesses = async () => {
       try {
         const response = await adminService.getBusinesses({ limit: 1000 });

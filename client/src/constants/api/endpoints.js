@@ -78,6 +78,7 @@ export const endpoints = {
     availableSlots: (link) => `${API_BASE_URL}/appointments/business/${link}/slots`,
     availableSlotsById: (id) => `${API_BASE_URL}/appointments/business/${id}/slots`,
     bookAppointment: (link) => `${API_BASE_URL}/appointments/business/${link}/book`,
+    verifyBookAppointment: (link) => `${API_BASE_URL}/appointments/business/${link}/book/verify`,
     bookAppointmentById: `${API_BASE_URL}/appointments/book`,
     appointmentByCode: (code) => `${API_BASE_URL}/appointments/confirmation/${code}`,
     cancelAppointment: (code) => `${API_BASE_URL}/appointments/confirmation/${code}/cancel`,

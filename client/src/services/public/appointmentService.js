@@ -8,9 +8,9 @@ class AppointmentService {
       const response = await apiClient.get(endpoints.appointments.businessInfo(businessLink))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || error.message || 'Failed to fetch business information' 
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to fetch business information'
       }
     }
   }
@@ -21,9 +21,9 @@ class AppointmentService {
       const response = await apiClient.get(endpoints.appointments.businessInfoById(businessId))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business information' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business information'
       }
     }
   }
@@ -47,9 +47,9 @@ class AppointmentService {
       const response = await apiClient.get(endpoints.appointments.availableSlots(businessLink), { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch available slots' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch available slots'
       }
     }
   }
@@ -60,9 +60,9 @@ class AppointmentService {
       const response = await apiClient.get(endpoints.appointments.availableSlotsById(businessId), { params })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch available slots' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch available slots'
       }
     }
   }
@@ -73,9 +73,22 @@ class AppointmentService {
       const response = await apiClient.post(endpoints.appointments.bookAppointment(businessLink), bookingData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to book appointment' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to book appointment'
+      }
+    }
+  }
+
+  // Verify booking OTP
+  async verifyBookAppointment(businessLink, verifyData) {
+    try {
+      const response = await apiClient.post(endpoints.appointments.verifyBookAppointment(businessLink), verifyData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to verify OTP'
       }
     }
   }
@@ -86,9 +99,9 @@ class AppointmentService {
       const response = await apiClient.post(endpoints.appointments.bookAppointmentById, bookingData)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to book appointment' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to book appointment'
       }
     }
   }
@@ -99,9 +112,9 @@ class AppointmentService {
       const response = await apiClient.get(endpoints.appointments.appointmentByCode(confirmationCode))
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch appointment' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment'
       }
     }
   }
@@ -112,9 +125,9 @@ class AppointmentService {
       const response = await apiClient.post(endpoints.appointments.cancelAppointment(confirmationCode), { reason })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to cancel appointment' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to cancel appointment'
       }
     }
   }
