@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -12,6 +12,39 @@ import {
 } from 'react-icons/fa'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 
+const currencySymbols = {
+  INR: '₹',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AED: 'د.إ'
+}
+
+const formatPrice = (value = 0, currency = 'INR') => {
+  if (!value && value !== 0) return '--'
+  const symbol = currencySymbols[currency] || ''
+  const roundedValue = Math.round(Number(value))
+  return symbol ? `${symbol}${roundedValue.toLocaleString('en-IN')}` : `${currency} ${roundedValue.toLocaleString('en-IN')}`
+}
+
+const formatDuration = (minutes) => {
+  if (!minutes) return null
+  if (minutes < 60) return `${minutes} min`
+  const hrs = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (!mins) return `${hrs} hr${hrs > 1 ? 's' : ''}`
+  return `${hrs} hr${hrs > 1 ? 's' : ''} ${mins} min`
+}
+
+const formatTime = (time) => {
+  if (!time) return ''
+  const [hours, minutes] = time.split(':')
+  const hour = parseInt(hours)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const hour12 = hour % 12 || 12
+  return `${hour12}:${minutes} ${ampm}`
+}
+
 const CustomerInfo = () => {
   const navigate = useNavigate()
   const { businessLink } = useParams()
@@ -23,57 +56,82 @@ const CustomerInfo = () => {
     phone: '',
     dateOfBirth: '',
     gender: '',
-    address: '',
-    notes: '' || 'NA',
-    specialRequests: '' || 'NA',
+    notes: '',
+    specialRequests: '',
   })
   const [errors, setErrors] = useState({})
+  const [selectedServices, setSelectedServices] = useState([])
+  const [selectedStaff, setSelectedStaff] = useState(null)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
 
   // Update page title
   usePageTitle()
 
   useEffect(() => {
-    loadBusinessData()
-    loadCustomerData()
-  }, [businessLink])
-
-  const loadBusinessData = () => {
+    // Load business data
     const businessData = sessionStorage.getItem('bookingBusiness')
     if (businessData) {
       try {
-        const parsed = JSON.parse(businessData)
-        setBusiness(parsed)
+        setBusiness(JSON.parse(businessData))
         setLoading(false)
-      } catch (error) {
+      } catch {
         navigate(`/${businessLink}`)
+        return
       }
     } else {
       navigate(`/${businessLink}`)
+      return
     }
-  }
 
-  const loadCustomerData = () => {
+    // Load customer data
     const saved = sessionStorage.getItem('customerInfo')
     if (saved) {
       try {
-        const parsed = JSON.parse(saved)
-        setFormData(prev => ({ ...prev, ...parsed }))
-      } catch (error) {
-        console.error('Failed to load customer data')
+        setFormData(prev => ({ ...prev, ...JSON.parse(saved) }))
+      } catch {
+        // Failed to load - continue with default form
       }
     }
-  }
 
-  const handleChange = (e) => {
+    // Load previous steps data
+    const savedServices = sessionStorage.getItem('selectedServices')
+    if (savedServices) {
+      try {
+        const parsed = JSON.parse(savedServices)
+        setSelectedServices(Array.isArray(parsed) ? parsed : [])
+      } catch {
+        setSelectedServices([])
+      }
+    }
+
+    const savedStaff = sessionStorage.getItem('selectedStaff')
+    if (savedStaff) {
+      try {
+        setSelectedStaff(JSON.parse(savedStaff))
+      } catch {
+        setSelectedStaff(null)
+      }
+    }
+
+    const savedDate = sessionStorage.getItem('selectedDate')
+    const savedTime = sessionStorage.getItem('selectedTime')
+    if (savedDate) setSelectedDate(savedDate)
+    if (savedTime) setSelectedTime(savedTime)
+  }, [businessLink, navigate])
+
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
-    }
-  }
+    setErrors(prev => {
+      if (prev[name]) {
+        return { ...prev, [name]: '' }
+      }
+      return prev
+    })
+  }, [])
 
-  const validate = () => {
+  const validate = useCallback(() => {
     const newErrors = {}
 
     if (!formData.name.trim()) {
@@ -94,21 +152,54 @@ const CustomerInfo = () => {
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
+  }, [formData])
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     if (!validate()) {
       toast.error('Please fill in all required fields correctly')
       return
     }
 
     sessionStorage.setItem('customerInfo', JSON.stringify(formData))
-    navigate(`/book/${businessLink}/confirmation`) // Go to booking confirmation page
-  }
+    navigate(`/book/${businessLink}/confirmation`)
+  }, [formData, businessLink, navigate, validate])
 
-  const handleBack = () => {
-    navigate(`/book/${businessLink}/time`) // Go back to time selection page
-  }
+  const handleBack = useCallback(() => {
+    navigate(`/book/${businessLink}/time`)
+  }, [businessLink, navigate])
+
+  // Calculate totals from selected services
+  const totals = useMemo(() => {
+    const totalPrice = selectedServices.reduce((sum, service) => sum + (Number(service?.price) || 0), 0)
+    const totalDuration = selectedServices.reduce((sum, service) => sum + (Number(service?.duration) || 0), 0)
+    const currency = selectedServices[0]?.currency || business?.currency || 'INR'
+    
+    return {
+      price: totalPrice,
+      duration: totalDuration,
+      currency,
+      priceLabel: selectedServices.length ? formatPrice(totalPrice, currency) : null,
+      durationLabel: formatDuration(totalDuration)
+    }
+  }, [selectedServices, business?.currency])
+
+  // Format service details for display
+  const serviceDetails = useMemo(() => {
+    return selectedServices.map((service, index) => {
+      const serviceName = service?.serviceName || service?.name || `Service ${index + 1}`
+      const optionLabel = service?.optionLabel || service?.pricingOptionLabel || null
+      const duration = Number(service?.duration) || 0
+      const price = service?.price
+      const currency = service?.currency || business?.currency || 'INR'
+      
+      return {
+        name: serviceName,
+        optionLabel,
+        durationLabel: formatDuration(duration),
+        priceLabel: price !== undefined && price !== null ? formatPrice(price, currency) : null
+      }
+    })
+  }, [selectedServices, business?.currency])
 
   if (loading || !business) {
     return (
@@ -145,8 +236,6 @@ const CustomerInfo = () => {
               {/* Required Fields */}
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Required Information</h2>
-
-                {/* FIX: Changed from flex/justify-center to a responsive grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                   {/* Name */}
@@ -247,22 +336,6 @@ const CustomerInfo = () => {
                     </div>
                   </div>
 
-                  {/* Address */}
-                  {/* <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FaMapMarkerAlt className="inline mr-2" />
-            Address
-          </label>
-          <textarea
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Enter your address (optional)"
-          />
-        </div> */}
-
                   {/* Notes */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
@@ -295,67 +368,107 @@ const CustomerInfo = () => {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white   border border-gray-200 p-6 sticky top-[4.1rem]">
+            <div className="bg-white rounded-lg border border-gray-200 p-6 sticky top-[4.1rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
 
-              <div className="space-y-3 mb-4 text-sm">
+              <div className="space-y-4 mb-4 text-sm">
+                {/* Business */}
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Business</span>
                   <span className="text-gray-900 font-medium">{business.name}</span>
                 </div>
-                {(() => {
-                  const selectedServices = JSON.parse(sessionStorage.getItem('selectedServices') || '[]')
-                  return (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Services</span>
-                      <span className="text-gray-900 font-medium">{selectedServices.length}</span>
+
+                {/* Services */}
+                {selectedServices.length > 0 && (
+                  <div className="border-t border-gray-100 pt-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Services</p>
+                    <div className="space-y-2">
+                      {serviceDetails.map((service, index) => (
+                        <div key={index} className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">{service.name}</p>
+                            {service.optionLabel && (
+                              <p className="text-xs text-gray-500">{service.optionLabel}</p>
+                            )}
+                            {service.durationLabel && (
+                              <p className="text-xs text-gray-500">{service.durationLabel}</p>
+                            )}
+                          </div>
+                          {service.priceLabel && (
+                            <p className="text-sm font-semibold text-gray-900 ml-2">{service.priceLabel}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )
-                })()}
-                {(() => {
-                  const selectedDate = sessionStorage.getItem('selectedDate')
-                  const selectedTime = sessionStorage.getItem('selectedTime')
-                  return (
-                    <>
-                      {selectedDate && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-600">Date</span>
-                          <span className="text-gray-900 font-medium">
-                            {new Date(selectedDate).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </span>
-                        </div>
-                      )}
-                      {selectedTime && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-600">Time</span>
-                          <span className="text-gray-900 font-medium">
-                            {selectedTime.includes('AM') || selectedTime.includes('PM')
-                              ? selectedTime
-                              : (() => {
-                                const [hours, minutes] = selectedTime.split(':')
-                                const hour = parseInt(hours)
-                                const ampm = hour >= 12 ? 'PM' : 'AM'
-                                const hour12 = hour % 12 || 12
-                                return `${hour12}:${minutes} ${ampm}`
-                              })()}
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
+                  </div>
+                )}
+
+                {/* Staff */}
+                <div className="border-t border-gray-100 pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Staff</span>
+                    <span className="text-gray-900 font-medium">
+                      {selectedStaff?.name || 'Any Available'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Date & Time */}
+                {(selectedDate || selectedTime) && (
+                  <div className="border-t border-gray-100 pt-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Appointment</p>
+                    {selectedDate && (
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-gray-600">Date</span>
+                        <span className="text-gray-900 font-medium">
+                          {new Date(selectedDate).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {selectedTime && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Time</span>
+                        <span className="text-gray-900 font-medium">{formatTime(selectedTime)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Totals */}
+                {(totals.durationLabel || totals.priceLabel) && (
+                  <div className="border-t border-gray-200 pt-3">
+                    <div className="flex items-center justify-between font-semibold text-gray-900">
+                      <span>Total</span>
+                      <div className="text-right">
+                        {totals.durationLabel && <p className="text-sm">{totals.durationLabel}</p>}
+                        {totals.priceLabel && <p className="text-lg">{totals.priceLabel}</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <button
-                onClick={handleContinue}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 transition-colors font-medium"
-              >
-                Continue
-                <FaArrowRight />
-              </button>
+              <div className="flex flex-col gap-3 mt-6">
+                <button
+                  onClick={handleBack}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  <FaArrowLeft />
+                  Back
+                </button>
+                <button
+                  onClick={handleContinue}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                >
+                  Continue
+                  <FaArrowRight />
+                </button>
+              </div>
             </div>
           </div>
         </div>

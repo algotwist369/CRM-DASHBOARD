@@ -11,6 +11,7 @@ const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { emitToUser } = require("../config/socket");
 const Otp = require("../models/OTP");
 const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
+const { sendTemplateSMS, sendTemplateWhatsApp } = require("../utils/sendSMS");
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
@@ -1039,7 +1040,6 @@ const getBusinessInfoForBooking = async (req, res, next) => {
 
         const business = await Business.findOne({ businessLink, isActive: true })
             .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags _id')
-            .populate('staff', 'name role specialization isActive')
             .lean();
 
         if (!business) {
@@ -1072,7 +1072,6 @@ const getBusinessInfoForBooking = async (req, res, next) => {
             data: {
                 ...business,
                 services: services || [],
-                staff: business.staff || [],
                 workingHours: business.settings?.workingHours,
                 appointmentSettings: business.settings?.appointmentSettings
             }
@@ -1532,6 +1531,46 @@ const verifyBookingOTP = async (req, res, next) => {
         }
 
         await Otp.findByIdAndDelete(otpRecord._id);
+
+        // Send confirmation notifications (Async)
+        try {
+            const appointment = result.data.appointment;
+            if (appointment) {
+                const notificationData = {
+                    customerName: appointment.customer.firstName,
+                    businessName: appointment.business.name,
+                    appointmentDate: new Date(appointment.appointmentDate).toLocaleDateString('en-IN'),
+                    startTime: appointment.startTime,
+                    endTime: appointment.endTime,
+                    services: appointment.service.name,
+                    confirmationCode: appointment.bookingNumber
+                };
+
+                const phone = appointment.customer.phone;
+
+                // Send WhatsApp
+                console.log(`[Notification] Sending WhatsApp to ${phone}...`);
+                sendTemplateWhatsApp({
+                    to: phone,
+                    template: 'appointment_confirmation',
+                    data: notificationData
+                })
+                    .then(res => console.log(`[Notification] WhatsApp sent details:`, JSON.stringify(res)))
+                    .catch(err => console.error('[Notification] WhatsApp confirmation failed:', err.message));
+
+                // Send SMS
+                console.log(`[Notification] Sending SMS to ${phone}...`);
+                sendTemplateSMS({
+                    to: phone,
+                    template: 'appointment_confirmation',
+                    data: notificationData
+                })
+                    .then(res => console.log(`[Notification] SMS sent details:`, JSON.stringify(res)))
+                    .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
+            }
+        } catch (notifyErr) {
+            console.error('Notification error:', notifyErr);
+        }
 
         return res.status(201).json(result);
 

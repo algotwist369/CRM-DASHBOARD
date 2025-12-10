@@ -5,17 +5,21 @@ const {
     verifyOtp,
     createFreeListing,
     getAllFreeListings,
+    getFreeListingById,
+    updateFreeListing,
     deleteFreeListing
-} = require("../controllers/freeListing.controller");
+} = require("../controller/freeListing.controller");
+const { uploadMultiple, handleUploadError } = require("../utils/uploadFiles");
 
+// OTP Routes
 router.post("/send-otp", sendOtp);
-
 router.post("/verify-otp", verifyOtp);
 
-router.post("/create", createFreeListing);
-
+// Listing Routes
+router.post("/create", uploadMultiple("documents", 10), handleUploadError, createFreeListing);
 router.get("/", getAllFreeListings);
-
+router.get("/:id", getFreeListingById);
+router.put("/:id", uploadMultiple("documents", 10), handleUploadError, updateFreeListing);
 router.delete("/:id", deleteFreeListing);
 
 module.exports = router;

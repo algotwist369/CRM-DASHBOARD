@@ -8,7 +8,7 @@ const FreeListingSchema = new mongoose.Schema(
             trim: true,
         },
         phoneNumber: {
-            type: String, // use String to avoid losing leading zeros & formatting issues
+            type: String,  
             required: true,
             trim: true,
             match: [/^\d{7,15}$/, "Invalid phone number"],

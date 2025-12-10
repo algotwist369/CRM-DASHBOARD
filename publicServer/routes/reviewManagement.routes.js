@@ -2,14 +2,20 @@ const express = require("express");
 const router = express.Router();
 
 const {
+  sendOtp,
+  verifyOtp,
   createReviewRequest,
     getReviewRequests,
     getReviewRequestById,
     updateReviewRequest,
     deleteReviewRequest,
-} = require("../controllers/reviewManagement.controller");
+} = require("../controller/reviewManagement.controller");
 
+// OTP Routes
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
 
+// Review Management Routes
 router.post("/", createReviewRequest);
 
 router.get("/", getReviewRequests);

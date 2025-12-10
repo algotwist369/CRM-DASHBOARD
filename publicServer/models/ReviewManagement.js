@@ -52,7 +52,6 @@ const ReviewManagementSchema = new mongoose.Schema(
         terms: {
             type: Boolean,
             required: true,
-            trim: true,
         }
     },
     {
