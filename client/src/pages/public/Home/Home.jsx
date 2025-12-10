@@ -70,18 +70,18 @@ const DISTANCE_OPTIONS = [
 const FEATURES_DATA = [
   {
     icon: FaCalendarAlt,
-    title: 'Easy Booking',
-    description: 'Book appointments in just a few clicks with our simple and intuitive interface'
+    title: 'Online Booking System',
+    description: 'Appointment Scheduling System - Book appointments instantly with our location-based CRM platform for spas, salons, hotels & gyms'
   },
   {
     icon: FaClock,
-    title: 'Real-Time Availability',
-    description: 'See available time slots in real-time and book instantly'
+    title: 'Nearby Search & Business Finder',
+    description: 'Location-Based Service with real-time availability. Find local businesses near you and schedule visits in seconds'
   },
   {
     icon: FaUsers,
-    title: 'Verified Businesses',
-    description: 'Connect with trusted and verified businesses in your area'
+    title: 'Business Management CRM',
+    description: 'Comprehensive CRM Dashboard for Spa Management, Salon Management, Hotel Management & Gym Management Software'
   }
 ]
 
@@ -135,7 +135,7 @@ const Home = () => {
   const [cardImageIndexes, setCardImageIndexes] = useState({})
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState('')
   const [showLocationPrompt, setShowLocationPrompt] = useState(false)
-  
+
   // Refs to prevent duplicate API calls
   const locationRequestRef = useRef(false)
   const abortControllerRef = useRef(null)
@@ -147,20 +147,20 @@ const Home = () => {
     const checkLocationPermission = async () => {
       // Check if prompt was already shown
       const promptShown = localStorage.getItem(CACHE_KEYS.LOCATION_PROMPT_SHOWN)
-      
+
       // Check if user already has location cached (means they've granted permission before)
       const hasCachedLocation = getCachedData(CACHE_KEYS.LOCATION)
-      
+
       // If prompt was shown or location is cached, don't show again
       if (promptShown || hasCachedLocation) {
         return
       }
-      
+
       // Check if browser supports geolocation
       if (!navigator.geolocation) {
         return
       }
-      
+
       // Check if permission was already granted (using Permissions API if available)
       try {
         if ('permissions' in navigator) {
@@ -174,15 +174,15 @@ const Home = () => {
         // Permissions API not supported or failed, continue with prompt
         console.log('Permissions API not available:', err)
       }
-      
+
       // Small delay to let page load first
       const timer = setTimeout(() => {
         setShowLocationPrompt(true)
       }, 1000)
-      
+
       return () => clearTimeout(timer)
     }
-    
+
     checkLocationPermission()
   }, [])
 
@@ -384,7 +384,7 @@ const Home = () => {
       }
       lastFetchParamsRef.current = paramsKey
 
-      const response = await apiClient.get('/business/public/list', { 
+      const response = await apiClient.get('/business/public/list', {
         params,
         signal: abortControllerRef.current.signal
       })
@@ -456,7 +456,7 @@ const Home = () => {
       }
       lastFetchParamsRef.current = paramsKey
 
-      const response = await apiClient.get('/business/public/nearby', { 
+      const response = await apiClient.get('/business/public/nearby', {
         params,
         signal: abortControllerRef.current.signal
       })
@@ -495,7 +495,7 @@ const Home = () => {
       if (error.name === 'AbortError') {
         return
       }
-      
+
       console.error('Failed to fetch nearby businesses:', error)
       setBusinesses([])
 
@@ -525,15 +525,15 @@ const Home = () => {
 
     const searchLower = debouncedSearchTerm.toLowerCase().trim()
     const searchFields = ['name', 'branch', 'city', 'address', 'category']
-    
+
     return businesses.filter(business => {
       // Check string fields
-      const stringMatch = searchFields.some(field => 
+      const stringMatch = searchFields.some(field =>
         business[field]?.toLowerCase().includes(searchLower)
       )
-      
+
       // Check tags array
-      const tagsMatch = business.tags?.some(tag => 
+      const tagsMatch = business.tags?.some(tag =>
         tag.toLowerCase().includes(searchLower)
       )
 
@@ -568,7 +568,7 @@ const Home = () => {
   useEffect(() => {
     // Cleanup function to cancel pending requests
     const abortController = abortControllerRef.current
-    
+
     return () => {
       if (abortController) {
         abortController.abort()
@@ -607,13 +607,13 @@ const Home = () => {
   const handleAllowLocation = useCallback(async () => {
     setShowLocationPrompt(false)
     localStorage.setItem(CACHE_KEYS.LOCATION_PROMPT_SHOWN, 'true')
-    
+
     try {
       setLocationLoading(true)
       const location = await getUserLocation()
       setUserLocation(location)
       toast.success('Location enabled! You can now see nearby businesses.')
-      
+
       // Optionally switch to nearby mode
       setViewMode('nearby')
     } catch (err) {
@@ -643,12 +643,12 @@ const Home = () => {
           localStorage.removeItem(key)
         }
       })
-      
+
       setLocationLoading(true)
       setLocationError(null)
       const location = await getUserLocation()
       setUserLocation(location)
-      
+
       if (viewMode === 'nearby' && location) {
         await fetchNearbyBusinesses(location, maxDistance)
       }
@@ -682,16 +682,16 @@ const Home = () => {
 
   const collectBusinessImages = useCallback((business) => {
     if (!business?.images) return []
-    
+
     const imageFields = ['banner', 'thumbnail', 'logo']
     const images = imageFields
       .map(field => business.images[field])
       .filter(Boolean)
-    
+
     const galleryImages = Array.isArray(business.images.gallery)
       ? business.images.gallery.filter(Boolean)
       : []
-    
+
     return [...images, ...galleryImages]
   }, [])
 
@@ -700,7 +700,7 @@ const Home = () => {
     setCardImageIndexes((prev) => {
       const current = prev[businessKey] ?? 0
       let nextIndex
-      
+
       // If directionOrIndex is a number, use it directly; otherwise treat as direction
       if (typeof directionOrIndex === 'number') {
         nextIndex = directionOrIndex
@@ -710,10 +710,10 @@ const Home = () => {
             ? (current - 1 + total) % total
             : (current + 1) % total
       }
-      
+
       // Ensure index is within bounds
       nextIndex = Math.max(0, Math.min(nextIndex, total - 1))
-      
+
       return {
         ...prev,
         [businessKey]: nextIndex
@@ -756,7 +756,7 @@ const Home = () => {
           e.stopPropagation()
           handleBookAppointment(business.businessLink)
         },
-        className: 'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-2 bg-primary-600 text-white font-semibold border text-xs transition-colors duration-200 hover:bg-primary-700',
+        className: 'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 xs:px-2.5 py-2.5 xs:py-2.5 bg-primary-600 text-white font-semibold border-0 rounded-md text-xs xs:text-xs transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-95 min-h-[40px] touch-manipulation',
         icon: FaCalendarAlt,
         label: 'Book',
         iconSize: 'text-xs'
@@ -767,10 +767,10 @@ const Home = () => {
       buttons.push({
         type: 'link',
         href: `tel:${business.phone}`,
-        className: 'flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-blue-50 text-blue-700 border border-blue-200 font-medium text-[10px] transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300',
+        className: 'flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 xs:px-2 py-2.5 xs:py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md font-medium text-[10px] xs:text-xs transition-all duration-200 hover:bg-blue-100 hover:border-blue-300 active:bg-blue-200 active:scale-95 min-h-[40px] touch-manipulation',
         icon: IoMdCall,
         label: 'Call',
-        iconSize: 'text-[10px]',
+        iconSize: 'text-[10px] xs:text-xs',
         title: 'Call'
       })
     }
@@ -781,10 +781,10 @@ const Home = () => {
         href: whatsappUrl,
         target: '_blank',
         rel: 'noopener noreferrer',
-        className: 'flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 py-2 bg-green-50 text-green-700 border border-green-200 font-medium text-[10px] transition-colors duration-200 hover:bg-green-100 hover:border-green-300',
+        className: 'flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 xs:px-2 py-2.5 xs:py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-md font-medium text-[10px] xs:text-xs transition-all duration-200 hover:bg-green-100 hover:border-green-300 active:bg-green-200 active:scale-95 min-h-[40px] touch-manipulation',
         icon: FaWhatsapp,
         label: 'WA',
-        iconSize: 'text-[10px]'
+        iconSize: 'text-[10px] xs:text-xs'
       })
     }
 
@@ -823,38 +823,43 @@ const Home = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       {/* Hero Section */}
-      <div className="h-[600px] bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat text-white">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-10 sm:py-16 lg:py-24">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 sm:mb-4 px-2">
-              Book Your Appointment
+      <div className="relative h-[450px] xs:h-[500px] sm:h-[600px] lg:h-[700px] bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat">
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 h-full flex items-center">
+          <div className="text-center w-full py-6 xs:py-8 sm:py-12">
+            <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-3 xs:mb-4 sm:mb-6 leading-tight px-2">
+              Business Finder & Booking System<br className="hidden xs:block" />
+              <span className="text-primary-400 text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl block xs:inline mt-1 xs:mt-0">Spa CRM | Salon CRM | Hotel CRM | Gym CRM</span>
             </h1>
 
-            <p className="text-base sm:text-xl lg:text-2xl text-primary-100 mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
-              Find and book appointments with your favorite businesses instantly
+            <p className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl text-gray-100 mb-6 xs:mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed px-3 xs:px-4">
+              Find Nearby Spas, Salons, Hotels & Gyms with Location-Based Service. Online Booking System & Appointment Scheduling - Book Instantly
             </p>
 
             {/* Direct Booking Input */}
-            <form onSubmit={handleDirectBooking} className="max-w-2xl mx-auto px-2">
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <form onSubmit={handleDirectBooking} className="max-w-2xl mx-auto px-3 xs:px-4">
+              <div className="flex flex-col sm:flex-row gap-2.5 xs:gap-3 sm:gap-4">
                 <div className="flex-1 relative">
-                  <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-base" />
+                  <FaSearch className="absolute left-3 xs:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-base xs:text-lg z-10" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={searchTerm ? '' : animatedPlaceholder || PLACEHOLDERS[0]}
-                    className="w-full pl-12 pr-4 py-3.5 border text-gray-900 bg-white border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base placeholder:text-gray-400"
+                    className="w-full pl-10 xs:pl-12 pr-3 xs:pr-4 py-3 xs:py-3.5 sm:py-4 text-gray-900 bg-white border-0 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 text-sm xs:text-base sm:text-lg placeholder:text-gray-400 transition-all duration-200 min-h-[44px]"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="px-4 py-3 bg-primary-600"
+                  className="px-5 xs:px-6 sm:px-8 py-3 xs:py-3.5 sm:py-4 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl flex items-center justify-center gap-2 font-semibold text-sm xs:text-base sm:text-lg min-h-[44px] touch-manipulation"
                 >
-                  <FaLocationCrosshairs className="text-2xl" />
+                  <FaLocationCrosshairs className="text-lg xs:text-xl sm:text-2xl flex-shrink-0" />
+                  <span className="hidden xs:inline">Search</span>
                 </button>
               </div>
             </form>
@@ -863,31 +868,31 @@ const Home = () => {
       </div>
 
       {/* Businesses Section */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8 sm:py-12">
-        <div className="mb-6 sm:mb-8">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-6 xs:py-8 sm:py-12">
+        <div className="mb-5 xs:mb-6 sm:mb-8">
           {/* View Mode Toggle */}
-          <div className="flex flex-col gap-4 mb-4 sm:mb-6">
+          <div className="flex flex-col gap-3 xs:gap-4 mb-4 sm:mb-6">
             <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
-                {viewMode === 'nearby' ? 'Nearby Businesses' : 'All Businesses'}
+              <h2 className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1.5 xs:mb-2 leading-tight">
+                {viewMode === 'nearby' ? 'Nearby Search - Find Local Businesses' : 'Business Finder - All Local Businesses'}
               </h2>
-              <p className="text-sm sm:text-base text-gray-600">
+              <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed">
                 {viewMode === 'nearby'
                   ? userLocation
-                    ? `Businesses within ${(maxDistance / 1000).toFixed(0)}km of your location`
-                    : 'Enable location to see nearby businesses'
-                  : 'Browse and book appointments with available businesses'}
+                    ? `Location-Based Service - Find businesses within ${(maxDistance / 1000).toFixed(0)}km using Nearby Search`
+                    : 'Enable location to find nearby spas, salons, hotels & gyms'
+                  : 'Business Finder - Browse and book appointments with Spa CRM, Salon CRM, Hotel CRM & Gym CRM'}
               </p>
             </div>
 
             {/* View Mode Buttons */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-1 sm:gap-2 bg-gray-100 border p-0.5 sm:p-1">
+            <div className="flex flex-wrap items-center gap-2 xs:gap-2.5 sm:gap-3">
+              <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 bg-gray-100 border border-gray-200 rounded-lg p-0.5 sm:p-1 w-full xs:w-auto">
                 <button
                   onClick={() => handleViewModeChange('all')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 border text-xs sm:text-sm font-medium transition-colors ${viewMode === 'all'
-                    ? 'bg-white text-primary-600 border'
-                    : 'text-gray-600 hover:text-gray-900'
+                  className={`flex-1 xs:flex-none px-3 xs:px-3.5 sm:px-4 py-2 xs:py-2 sm:py-2.5 border-0 rounded-md text-xs xs:text-sm sm:text-sm font-medium transition-all duration-200 min-h-[44px] touch-manipulation ${viewMode === 'all'
+                    ? 'bg-white text-primary-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 active:bg-gray-50'
                     }`}
                 >
                   All
@@ -895,15 +900,15 @@ const Home = () => {
                 <button
                   onClick={() => handleViewModeChange('nearby')}
                   disabled={locationLoading}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 border text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${viewMode === 'nearby'
-                    ? 'bg-white text-primary-600 border'
-                    : 'text-gray-600 hover:text-gray-900'
+                  className={`flex-1 xs:flex-none px-3 xs:px-3.5 sm:px-4 py-2 xs:py-2 sm:py-2.5 border-0 rounded-md text-xs xs:text-sm sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 xs:gap-2 min-h-[44px] touch-manipulation ${viewMode === 'nearby'
+                    ? 'bg-white text-primary-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 active:bg-gray-50'
                     } ${locationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <FaMapMarkerAlt className="text-xs sm:text-sm" />
+                  <FaMapMarkerAlt className="text-xs xs:text-sm flex-shrink-0" />
+                  <span className="hidden xs:inline sm:hidden">Near</span>
                   <span className="hidden sm:inline">Nearby</span>
-                  <span className="sm:hidden">Near</span>
-                  {locationLoading && <FaSpinner className="animate-spin text-xs" />}
+                  {locationLoading && <FaSpinner className="animate-spin text-xs flex-shrink-0" />}
                 </button>
               </div>
 
@@ -913,9 +918,8 @@ const Home = () => {
                   value={maxDistance}
                   onChange={(e) => {
                     setMaxDistance(Number(e.target.value))
-                    // The useEffect will handle fetching when maxDistance changes
                   }}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-xs sm:text-sm"
+                  className="flex-1 xs:flex-none px-3 xs:px-3.5 sm:px-4 py-2 xs:py-2.5 sm:py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-xs xs:text-sm sm:text-sm min-h-[44px] touch-manipulation"
                 >
                   {DISTANCE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -929,29 +933,30 @@ const Home = () => {
               {viewMode === 'nearby' && userLocation && (
                 <button
                   onClick={handleRefreshLocation}
-                  className="p-1.5 sm:p-2 border border-gray-300 hover:bg-gray-50 transition-colors"
+                  className="p-2.5 xs:p-2.5 sm:p-2 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                   title="Refresh location"
+                  aria-label="Refresh location"
                 >
-                  <FaSync className="text-gray-600 text-sm sm:text-base" />
+                  <FaSync className="text-gray-600 text-sm xs:text-base sm:text-base" />
                 </button>
               )}
             </div>
           </div>
 
           {/* Filter and Search */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 xs:gap-3 sm:gap-4">
             <div className="flex-1 w-full sm:w-auto">
               {locationError && viewMode === 'nearby' && (
-                <div className="mb-3 p-2 sm:p-3 bg-yellow-50   border-yellow-200 border text-xs sm:text-sm text-yellow-800">
-                  <FaMapMarkerAlt className="inline mr-2" />
-                  {locationError}
+                <div className="mb-3 p-2.5 xs:p-3 sm:p-3 bg-yellow-50 border-yellow-200 border rounded-lg text-xs xs:text-sm sm:text-sm text-yellow-800">
+                  <FaMapMarkerAlt className="inline mr-2 flex-shrink-0" />
+                  <span className="break-words">{locationError}</span>
                 </div>
               )}
             </div>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="w-full sm:w-auto px-3 sm:px-4 py-2   border-gray-300 border focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+              className="w-full sm:w-auto px-3 xs:px-4 sm:px-4 py-2.5 xs:py-2.5 sm:py-2 border-gray-300 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm xs:text-sm sm:text-sm min-h-[44px] touch-manipulation"
             >
               <option value="">All Types</option>
               {BUSINESS_TYPES.map((type) => (
@@ -964,10 +969,10 @@ const Home = () => {
         </div>
 
         {(loading || nearbyLoading) ? (
-          <div className="flex items-center justify-center py-8 sm:py-12">
-            <div className="text-center">
-              <FaSpinner className="animate-spin text-primary-600 text-3xl sm:text-4xl mx-auto mb-3 sm:mb-4" />
-              <p className="text-gray-600 text-sm sm:text-base">
+          <div className="flex items-center justify-center py-8 xs:py-10 sm:py-12">
+            <div className="text-center px-4">
+              <FaSpinner className="animate-spin text-primary-600 text-3xl xs:text-3xl sm:text-4xl mx-auto mb-3 xs:mb-3 sm:mb-4" />
+              <p className="text-gray-600 text-sm xs:text-sm sm:text-base">
                 {viewMode === 'nearby' && locationLoading
                   ? 'Getting your location...'
                   : 'Loading businesses...'}
@@ -975,10 +980,10 @@ const Home = () => {
             </div>
           </div>
         ) : filteredBusinesses.length === 0 ? (
-          <div className="text-center py-8 sm:py-12 bg-white   border border-gray-200 px-4">
-            <FaSearch className="mx-auto text-gray-400 text-3xl sm:text-4xl mb-3 sm:mb-4" />
-            <p className="text-gray-600 text-base sm:text-lg mb-2">No businesses found</p>
-            <p className="text-gray-500 text-xs sm:text-sm">
+          <div className="text-center py-8 xs:py-10 sm:py-12 bg-white border border-gray-200 rounded-lg px-4 xs:px-6">
+            <FaSearch className="mx-auto text-gray-400 text-3xl xs:text-3xl sm:text-4xl mb-3 xs:mb-3 sm:mb-4" />
+            <p className="text-gray-600 text-base xs:text-base sm:text-lg mb-2 font-semibold">No businesses found</p>
+            <p className="text-gray-500 text-xs xs:text-sm sm:text-sm leading-relaxed max-w-md mx-auto">
               {searchTerm
                 ? `No businesses match "${searchTerm}". Try a different search term or clear filters.`
                 : viewMode === 'nearby'
@@ -986,14 +991,14 @@ const Home = () => {
                   : 'No businesses are currently available for online booking'}
             </p>
             {(searchTerm || (viewMode === 'nearby' && businesses.length === 0)) && (
-              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+              <div className="mt-5 xs:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 xs:gap-3 sm:gap-3 max-w-md mx-auto">
                 {searchTerm && (
                   <button
                     onClick={() => {
                       setSearchTerm('')
                       setFilterType('')
                     }}
-                    className="w-full sm:w-auto px-4 py-2 text-primary-600 hover:text-primary-700 border-primary-200 border hover:bg-primary-50 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 xs:px-5 py-2.5 xs:py-3 text-primary-600 hover:text-primary-700 border-primary-200 border rounded-lg hover:bg-primary-50 active:bg-primary-100 text-sm xs:text-sm sm:text-base font-medium min-h-[44px] touch-manipulation transition-all duration-200"
                   >
                     Clear Search
                   </button>
@@ -1001,7 +1006,7 @@ const Home = () => {
                 {viewMode === 'nearby' && businesses.length === 0 && (
                   <button
                     onClick={() => handleViewModeChange('all')}
-                    className="w-full sm:w-auto px-4 py-2 bg-primary-600 text-white border hover:bg-primary-700 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 xs:px-5 py-2.5 xs:py-3 bg-primary-600 text-white border-0 rounded-lg hover:bg-primary-700 active:bg-primary-800 text-sm xs:text-sm sm:text-base font-medium min-h-[44px] touch-manipulation transition-all duration-200"
                   >
                     View All Businesses
                   </button>
@@ -1013,12 +1018,12 @@ const Home = () => {
           <>
             {/* Results Count */}
             {searchTerm && (
-              <div className="mb-3 sm:mb-4 text-xs sm:text-sm text-gray-600 px-1">
+              <div className="mb-3 xs:mb-4 sm:mb-4 text-xs xs:text-sm sm:text-sm text-gray-600 px-1">
                 Found {filteredBusinesses.length} {filteredBusinesses.length === 1 ? 'business' : 'businesses'}
                 {businesses.length !== filteredBusinesses.length && ` (filtered from ${businesses.length} total)`}
               </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-4 lg:gap-6">
               {filteredBusinesses.map((business) => {
                 // Format phone number for WhatsApp
                 const whatsappNumber = business.phone?.replace(/[^0-9]/g, '') || business.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
@@ -1037,14 +1042,14 @@ const Home = () => {
                 return (
                   <div
                     key={business.id || business._id}
-                    className="bg-white border sm:border border-gray-100 overflow-hidden cursor-pointer"
+                    className="bg-white border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200 active:scale-[0.98]"
                     style={{ minHeight: 'auto', maxHeight: 'none' }}
                     onClick={() => navigate(`/${business.businessLink}`)}
                   >
                     {/* Mobile Layout */}
                     <div className="flex sm:hidden">
                       {/* Business Image */}
-                      <div className="relative w-[40%] aspect-square bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
+                      <div className="relative w-[35%] xs:w-[40%] aspect-square bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden flex-shrink-0">
                         {currentImage ? (
                           <img
                             src={currentImage}
@@ -1089,31 +1094,33 @@ const Home = () => {
                         )}
 
                         {cardImages.length > 1 && (
-                          <div className="absolute inset-0 flex items-center justify-between px-2">
+                          <div className="absolute inset-0 flex items-center justify-between px-1.5 xs:px-2 pointer-events-none">
                             <button
                               type="button"
-                              className="text-white"
+                              className="text-white bg-black/30 hover:bg-black/50 rounded-full p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center touch-manipulation pointer-events-auto transition-all duration-200"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleCardImageChange(businessKey, 'prev', cardImages.length)
                               }}
+                              aria-label="Previous image"
                             >
-                              <FaChevronLeft className="text-base drop-shadow" />
+                              <FaChevronLeft className="text-sm xs:text-base drop-shadow-lg" />
                             </button>
                             <button
                               type="button"
-                              className="text-white"
+                              className="text-white bg-black/30 hover:bg-black/50 rounded-full p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center touch-manipulation pointer-events-auto transition-all duration-200"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleCardImageChange(businessKey, 'next', cardImages.length)
                               }}
+                              aria-label="Next image"
                             >
-                              <FaChevronRight className="text-base drop-shadow" />
+                              <FaChevronRight className="text-sm xs:text-base drop-shadow-lg" />
                             </button>
                           </div>
                         )}
                         {totalImages > 1 && (
-                          <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1.5">
+                          <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1.5 xs:gap-2 px-2">
                             {cardImages.map((_, idx) => (
                               <button
                                 key={idx}
@@ -1122,7 +1129,8 @@ const Home = () => {
                                   e.stopPropagation()
                                   handleCardImageChange(businessKey, idx, cardImages.length)
                                 }}
-                                className={`h-1.5 w-1.5 rounded-full ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                                className={`h-2 w-2 xs:h-2.5 xs:w-2.5 rounded-full transition-all duration-200 touch-manipulation min-w-[8px] min-h-[8px] ${idx === currentImageIndex ? 'bg-white shadow-md scale-110' : 'bg-white/50 hover:bg-white/70'}`}
+                                aria-label={`Go to image ${idx + 1}`}
                               />
                             ))}
                           </div>
@@ -1130,11 +1138,11 @@ const Home = () => {
                       </div>
 
                       {/* Business Info */}
-                      <div className="flex-1 min-w-0 p-3 flex flex-col justify-between">
-                        <div className="space-y-1.5">
+                      <div className="flex-1 min-w-0 p-2.5 xs:p-3 flex flex-col justify-between">
+                        <div className="space-y-1.5 xs:space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <h3 className="text-sm font-bold text-gray-900">
+                              <h3 className="text-sm xs:text-sm font-bold text-gray-900 leading-tight line-clamp-2">
                                 {business.name}
                               </h3>
                               {business.ratings?.average > 0 && (
@@ -1149,9 +1157,10 @@ const Home = () => {
                                     </span>
                                   )}
                                   {business.ratings.average >= 4.5 && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full whitespace-nowrap ml-auto">
-                                      <FaStar className="text-amber-500 text-[10px]" />
-                                      Top Rated
+                                    <span className="inline-flex items-center gap-0.5 xs:gap-1 px-1.5 xs:px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] xs:text-[10px] font-semibold rounded-full whitespace-nowrap ml-auto">
+                                      <FaStar className="text-amber-500 text-[9px] xs:text-[10px] flex-shrink-0" />
+                                      <span className="hidden xs:inline">Top Rated</span>
+                                      <span className="xs:hidden">Top</span>
                                     </span>
                                   )}
                                 </div>
@@ -1160,33 +1169,33 @@ const Home = () => {
                           </div>
 
                           {locationText && (
-                            <div className="flex items-center gap-1 text-gray-600">
-                              <FaMapMarkerAlt className="text-primary-500 text-[10px] flex-shrink-0" />
-                              <span className="text-xs line-clamp-1">
+                            <div className="flex items-center gap-1 xs:gap-1.5 text-gray-600 min-w-0">
+                              <FaMapMarkerAlt className="text-primary-500 text-[10px] xs:text-xs flex-shrink-0" />
+                              <span className="text-xs xs:text-xs line-clamp-1 truncate min-w-0 flex-1">
                                 {locationText}
                               </span>
                               {viewMode === 'nearby' && business.distanceKm && (
-                                <span className="text-[10px] text-gray-400 ml-0.5">• {business.distanceKm} km</span>
+                                <span className="text-[9px] xs:text-[10px] text-gray-400 ml-0.5 flex-shrink-0">• {business.distanceKm} km</span>
                               )}
                             </div>
                           )}
 
                           {business.services?.length > 0 && (
-                            <div className="mt-1.5">
-                              <div className="text-[11px] font-semibold text-gray-700 mb-1">
+                            <div className="mt-1.5 xs:mt-2">
+                              <div className="text-[10px] xs:text-[11px] font-semibold text-gray-700 mb-1">
                                 Popular Services
                               </div>
-                              <div className="flex flex-wrap gap-1.5">
+                              <div className="flex flex-wrap gap-1 xs:gap-1.5">
                                 {business.services.slice(0, 3).map((service, idx) => (
                                   <span
                                     key={idx}
-                                    className="inline-flex items-center px-2 py-1 bg-primary-50 text-primary-700 text-[10px] rounded-full border border-primary-100"
+                                    className="inline-flex items-center px-1.5 xs:px-2 py-0.5 xs:py-1 bg-primary-50 text-primary-700 text-[9px] xs:text-[10px] rounded-full border border-primary-100 line-clamp-1 max-w-full"
                                   >
                                     {service.name || service}
                                   </span>
                                 ))}
                                 {business.services.length > 3 && (
-                                  <span className="text-[10px] text-gray-500">
+                                  <span className="text-[9px] xs:text-[10px] text-gray-500 self-center">
                                     +{business.services.length - 3} more
                                   </span>
                                 )}
@@ -1195,8 +1204,8 @@ const Home = () => {
                           )}
                         </div>
 
-                        <div className="pt-2 border-t border-gray-100">
-                          <div className="flex gap-1.5">
+                        <div className="pt-2 xs:pt-2.5 border-t border-gray-100 mt-auto">
+                          <div className="flex gap-1.5 xs:gap-2">
                             {getMobileActionButtons(business, whatsappUrl).map((btn, idx) => {
                               const Icon = btn.icon
                               const commonProps = {
@@ -1327,7 +1336,7 @@ const Home = () => {
                           const features = business.features || []
                           const hasServices = services.length > 0
                           const hasFeatures = features.length > 0
-                          
+
                           // Don't show section if neither has data
                           if (!hasServices && !hasFeatures) return null
 
@@ -1380,19 +1389,19 @@ const Home = () => {
                           )
                         })()}
 
-                        <div className="mt-auto space-y-1.5 pt-2 border-t border-gray-100">
+                        <div className="mt-auto space-y-2 xs:space-y-2 pt-2 xs:pt-2.5 border-t border-gray-100">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleBookAppointment(business.businessLink)
                             }}
-                            className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 text-white   font-semibold border text-sm transition-colors duration-200 hover:bg-primary-700"
+                            className="w-full flex items-center justify-center gap-1.5 xs:gap-2 px-4 xs:px-4 py-2.5 xs:py-2.5 bg-primary-600 text-white font-semibold border-0 rounded-lg text-sm xs:text-sm transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] min-h-[44px] touch-manipulation"
                           >
-                            <FaCalendarAlt className="text-sm" />
+                            <FaCalendarAlt className="text-sm xs:text-sm flex-shrink-0" />
                             <span>Book Appointment</span>
                           </button>
 
-                          <div className="grid grid-cols-2 gap-1.5">
+                          <div className="grid grid-cols-2 gap-2 xs:gap-2">
                             {getDesktopActionButtons(business, whatsappUrl).map((btn, idx) => {
                               const Icon = btn.icon
                               return (
@@ -1400,12 +1409,12 @@ const Home = () => {
                                   key={idx}
                                   href={btn.href}
                                   onClick={(e) => e.stopPropagation()}
-                                  className={btn.className}
+                                  className={`${btn.className} min-h-[40px] touch-manipulation active:scale-95 transition-transform duration-150`}
                                   {...(btn.target && { target: btn.target })}
                                   {...(btn.rel && { rel: btn.rel })}
                                 >
                                   <Icon className={btn.iconSize} />
-                                  <span>{btn.label}</span>
+                                  <span className="truncate">{btn.label}</span>
                                 </a>
                               )
                             })}
@@ -1422,18 +1431,18 @@ const Home = () => {
       </div>
 
       {/* Features Section */}
-      <div className="bg-white border-t border-gray-200 py-8 sm:py-10 lg:py-12">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
+      <div className="bg-white border-t border-gray-200 py-8 xs:py-10 sm:py-10 lg:py-12">
+        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 xs:gap-6 sm:gap-8 text-center">
             {FEATURES_DATA.map((feature, idx) => {
               const Icon = feature.icon
               return (
-                <div key={idx} className="px-2">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                    <Icon className="text-primary-600 text-xl sm:text-2xl" />
+                <div key={idx} className="px-2 xs:px-3">
+                  <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 xs:mb-4 sm:mb-4">
+                    <Icon className="text-primary-600 text-xl xs:text-2xl sm:text-2xl" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">{feature.title}</h3>
-                  <p className="text-sm sm:text-base text-gray-600">{feature.description}</p>
+                  <h3 className="text-base xs:text-lg sm:text-xl font-semibold text-gray-900 mb-1.5 xs:mb-2 sm:mb-2 leading-tight">{feature.title}</h3>
+                  <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed px-2">{feature.description}</p>
                 </div>
               )
             })}
@@ -1443,55 +1452,55 @@ const Home = () => {
 
       {/* Location Permission Prompt Modal */}
       {showLocationPrompt && (
-        <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 xs:p-4 sm:p-4"
           onClick={handleDenyLocation}
         >
-          <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8"
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-5 xs:p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaMapMarkerAlt className="text-primary-600 text-2xl" />
+            <div className="text-center mb-5 xs:mb-6">
+              <div className="w-14 h-14 xs:w-16 xs:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 xs:mb-4">
+                <FaMapMarkerAlt className="text-primary-600 text-xl xs:text-2xl" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+              <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 mb-2 leading-tight">
                 Enable Location Access
               </h3>
-              <p className="text-sm sm:text-base text-gray-600">
+              <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed px-2">
                 Allow us to access your location to show nearby businesses and help you find the best services in your area.
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5 xs:space-y-3">
               <button
                 onClick={handleAllowLocation}
                 disabled={locationLoading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white font-semibold rounded-lg transition-colors duration-200 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-4 xs:px-4 py-3 xs:py-3 bg-primary-600 text-white font-semibold rounded-lg transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
               >
                 {locationLoading ? (
                   <>
-                    <FaSpinner className="animate-spin" />
-                    <span>Getting location...</span>
+                    <FaSpinner className="animate-spin text-base xs:text-base" />
+                    <span className="text-sm xs:text-sm sm:text-base">Getting location...</span>
                   </>
                 ) : (
                   <>
-                    <FaMapMarkerAlt />
-                    <span>Allow Location Access</span>
+                    <FaMapMarkerAlt className="text-base xs:text-base flex-shrink-0" />
+                    <span className="text-sm xs:text-sm sm:text-base">Allow Location Access</span>
                   </>
                 )}
               </button>
-              
+
               <button
                 onClick={handleDenyLocation}
                 disabled={locationLoading}
-                className="w-full px-4 py-3 text-gray-700 font-medium border border-gray-300 rounded-lg transition-colors duration-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 xs:px-4 py-3 xs:py-3 text-gray-700 font-medium border border-gray-300 rounded-lg transition-all duration-200 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
               >
-                Not Now
+                <span className="text-sm xs:text-sm sm:text-base">Not Now</span>
               </button>
             </div>
 
-            <p className="text-xs text-gray-500 text-center mt-4">
+            <p className="text-xs xs:text-xs text-gray-500 text-center mt-4 xs:mt-4 px-2">
               You can enable this later from your browser settings
             </p>
           </div>
