@@ -265,12 +265,12 @@ function App() {
                     <Route path="resources/yelp-playbook" element={<YelpPlaybook />} />
                     <Route path="check-appointment" element={<CheckAppointment />} />
                     <Route path="appointment/:confirmationCode" element={<AppointmentStatus />} />
+                    <Route path=":businessLink" element={<BusinessInfo />} />
                     <Route path="book/:businessLink/services" element={<ServiceSelection />} />
                     <Route path="book/:businessLink/staff" element={<StaffSelection />} />
                     <Route path="book/:businessLink/time" element={<TimeSelection />} />
                     <Route path="book/:businessLink/customer" element={<CustomerInfo />} />
                     <Route path="book/:businessLink/confirmation" element={<BookingConfirmation />} />
-                    <Route path=":businessLink" element={<BusinessInfo />} />
                   </Route>
 
                   {/* Shared Routes */}

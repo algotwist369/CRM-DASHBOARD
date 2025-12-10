@@ -24,7 +24,8 @@ const currencySymbols = {
 const formatPrice = (value = 0, currency = 'INR') => {
   if (!value && value !== 0) return '--'
   const symbol = currencySymbols[currency] || ''
-  return symbol ? `${symbol}${Number(value).toLocaleString('en-IN')}` : `${currency} ${Number(value).toLocaleString('en-IN')}`
+  const roundedValue = Math.round(Number(value))
+  return symbol ? `${symbol}${roundedValue.toLocaleString('en-IN')}` : `${currency} ${roundedValue.toLocaleString('en-IN')}`
 }
 
 const getServiceId = (service) => {
@@ -138,6 +139,7 @@ const ServiceSelection = () => {
   }, [businessLink])
 
   useEffect(() => {
+    window.scrollTo(0, 0)
     const businessData = sessionStorage.getItem('bookingBusiness')
     const storedCustomer = sessionStorage.getItem('customerInfo')
     const storedDate = sessionStorage.getItem('selectedDate')
@@ -185,6 +187,7 @@ const ServiceSelection = () => {
   }, [fetchBusinessServices])
 
   useEffect(() => {
+
     if (!business?.services) return
     setSelectedOptions(prev => {
       const next = { ...prev }
@@ -367,7 +370,9 @@ const ServiceSelection = () => {
     }
 
     sessionStorage.setItem('selectedServices', JSON.stringify(selectedServices))
-    navigate(`/book/${businessLink}/staff`) // Go to staff selection page
+    // Automatically select "any available staff" and skip staff selection page
+    sessionStorage.setItem('selectedStaff', JSON.stringify(null))
+    navigate(`/book/${businessLink}/time`) // Go directly to time selection page
   }
 
   const handleBack = () => {
@@ -402,45 +407,40 @@ const ServiceSelection = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="mb-6 text-center sm:text-left space-y-2">
+        <div className="mb-6 flex items-center justify-between">
           <button
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            className="flex items-center gap-2 text-gray-600"
           >
             <FaArrowLeft />
-            Back
+            <span>Back</span>
           </button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Select Services</h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">Choose the services you'd like to book</p>
+          <div className="text-right">
+            <h1 className="text-xl font-bold text-gray-900">Select Services</h1>
+            <p className="text-sm text-gray-500">{business.name}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Services List */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white  border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-600">
-              <div className="text-center sm:text-left space-y-1">
-                <p className="font-medium text-gray-900">{business.name}</p>
-                <p>{serviceCount} {serviceCount === 1 ? 'service' : 'services'}</p>
+          <div className="lg:col-span-2 space-y-2">
+            {servicesLoading && (
+              <div className="bg-white rounded-lg p-3 border border-gray-200 flex items-center gap-2 text-sm text-gray-500">
+                <FaSpinner className="animate-spin" />
+                <span>Loading services...</span>
               </div>
-              {servicesLoading && (
-                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                  <FaSpinner className="animate-spin" />
-                  Updating…
-                </div>
-              )}
-            </div>
+            )}
 
             {services.length === 0 ? (
-              <div className="bg-white  border border-gray-200 p-10 text-center">
+              <div className="bg-white rounded-lg p-12 text-center border border-gray-200">
                 <p className="text-gray-500">This business has not published any bookable services yet.</p>
               </div>
             ) : (
-              services.map((service, index) => {
+              <div className="space-y-2">
+                {services.map((service, index) => {
                   const serviceId = getServiceId(service) || `service-${index}`
                   const options = getServiceOptions(service)
                   const hasOptions = options.length > 0
@@ -450,112 +450,110 @@ const ServiceSelection = () => {
                   const isExpanded = expandedServiceId === serviceId
                   const priceValues = options.map(option => option.price)
                   const minPrice = priceValues.length ? Math.min(...priceValues) : 0
-                  const maxPrice = priceValues.length ? Math.max(...priceValues) : 0
                   const currency = selectedOption?.currency || service?.currency || business?.currency || 'INR'
-                  const priceSummary = hasOptions
-                    ? (minPrice === maxPrice
-                      ? formatPrice(minPrice, currency)
-                      : `${formatPrice(minPrice, currency)} - ${formatPrice(maxPrice, currency)}`)
-                    : 'Price unavailable'
-                  const durationValues = options.map(option => option.duration).filter(Boolean)
-                  const minDuration = durationValues.length ? Math.min(...durationValues) : null
-                  const maxDuration = durationValues.length ? Math.max(...durationValues) : null
-                  const durationSummary = durationValues.length
-                    ? (minDuration === maxDuration ? `${minDuration} min` : `${minDuration}-${maxDuration} min`)
-                    : null
+                  // Backend price is already after 40% discount, calculate original price
+                  const originalMinPrice = minPrice / 0.6
+                  const startingPrice = hasOptions ? formatPrice(minPrice, currency) : 'Price unavailable'
+                  const actualStartingPrice = hasOptions ? formatPrice(originalMinPrice, currency) : 'Price unavailable'
 
                   return (
                     <div
                       key={serviceId}
-                      className={`bg-white  border ${isSelected ? 'border-gray-900 ' : 'border-gray-200'} p-4 sm:p-5 transition`}
+                      className={`bg-white rounded-lg border ${isSelected ? 'border-gray-300' : 'border-gray-200'
+                        }`}
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      {/* Service Card Header - Clickable */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
+                        className="w-full p-4 flex items-center justify-between"
+                      >
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            onClick={() => toggleService(service)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleService(service)
+                            }}
                             disabled={!hasOptions}
-                            className={`w-8 h-8 rounded-full border flex items-center justify-center transition ${
-                              isSelected ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-500'
-                            } ${!hasOptions ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`w-6 h-6 rounded border flex items-center justify-center flex-shrink-0 ${
+                              isSelected
+                                ? 'border-gray-500 bg-gray-900 text-white'
+                                : 'border-gray-300'
+                            } ${!hasOptions ? 'opacity-40 cursor-not-allowed' : ''}`}
                           >
-                            {isSelected ? <FiCheck className="text-sm" /> : <FiPlus className="text-sm" />}
+                            {isSelected && <FiCheck className="text-xs" />}
                           </button>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wide flex-wrap">
-                              <span>{service.category || 'Service'}</span>
-                              <span>•</span>
-                              <span>{service.serviceType || 'General'}</span>
+                          <span className="text-base font-medium text-gray-900 text-left">
+                            {getRawServiceName(service)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="text-xs text-green-500 font-medium mb-1">Starting at</p>
+                            <div className="flex items-center gap-2 justify-end mb-1">
+                              <span className="text-sm text-gray-500 line-through">
+                                {actualStartingPrice}
+                              </span>
+                              <span className="text-base font-semibold text-gray-900">
+                                {startingPrice}
+                              </span>
                             </div>
-                            <button
-                              type="button"
-                              className="flex items-center gap-2 text-left"
-                              onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
-                            >
-                              <p className="text-lg font-medium text-gray-900">{getRawServiceName(service)}</p>
-                              <FaChevronDown
-                                className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                              />
-                            </button>
+                            <p className="text-xs text-red-500 font-medium">40% OFF</p>
                           </div>
+                          <FaChevronDown
+                            className={`text-gray-400 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                          />
                         </div>
-                        <div className="sm:text-right">
-                          <p className="text-sm text-gray-500">From</p>
-                          <p className="text-lg font-semibold text-gray-900">{priceSummary}</p>
-                          {durationSummary && (
-                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1 justify-start sm:justify-end">
-                              <FaClock />
-                              {durationSummary}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      </button>
 
-                      {service?.description && (
-                        <p className="text-sm text-gray-500 mt-3">
-                          {service.description}
-                        </p>
-                      )}
-
-                      {isExpanded && (
-                        <div className="mt-4 border-t border-gray-100 pt-4 space-y-3">
-                          {hasOptions ? (
-                            options.map(option => {
-                              const optionSelected = selectedOptionId === option.id && isSelected
-                              return (
-                                <button
-                                  key={option.id}
-                                  type="button"
-                                  onClick={() => handleOptionChange(service, option.id, true)}
-                                  className={`w-full text-left px-4 py-3  border flex items-center justify-between ${
-                                    optionSelected ? 'border-gray-900 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:border-gray-400'
+                      {/* Dropdown Options */}
+                      {isExpanded && hasOptions && (
+                        <div className="border-t border-gray-100 p-4 space-y-2">
+                          {options.map(option => {
+                            const optionSelected = selectedOptionId === option.id && isSelected
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() => handleOptionChange(service, option.id, true)}
+                                className={`w-full p-3 rounded border text-left ${optionSelected
+                                    ? 'border-gray-900 bg-gray-50'
+                                    : 'border-gray-200 bg-white'
                                   }`}
-                                >
+                              >
+                                <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm font-medium">
-                                      {option.label}
-                                      {option.name && option.name !== option.label && ` • ${option.name}`}
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {option.label || option.name || 'Option'}
                                     </p>
-                                    <p className="text-xs text-gray-500">
-                                      {option.duration ? `${option.duration} min` : 'Custom duration'}
-                                    </p>
+                                    {option.duration && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {option.duration} min
+                                      </p>
+                                    )}
                                   </div>
-                                  <p className="text-sm font-semibold">
-                                    {formatPrice(option.price, option.currency)}
-                                  </p>
-                                </button>
-                              )
-                            })
-                          ) : (
-                            <p className="text-sm text-red-600">
-                              This service is currently unavailable.
-                            </p>
-                          )}
+                                  <div className="text-right">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm text-gray-500 line-through">
+                                        {formatPrice(option.price / 0.6, option.currency)}
+                                      </span>
+                                      <span className="text-sm font-semibold text-gray-900">
+                                        {formatPrice(option.price, option.currency)}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-red-500 font-medium mt-0.5">40% OFF</p>
+                                  </div>
+                                </div>
+                              </button>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
                   )
-                })
+                })}
+              </div>
             )}
           </div>
 

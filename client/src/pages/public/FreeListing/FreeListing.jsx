@@ -3,36 +3,21 @@ import { useNavigate } from 'react-router-dom'
 import {
   FaSpinner,
   FaCheckCircle,
-  FaPhoneAlt,
-  FaBuilding,
-  FaUsers,
-  FaChartLine,
-  FaShieldAlt,
-  FaStar,
-  FaClock,
-  FaHeadset,
-  FaLock,
-  FaMobileAlt,
-  FaEnvelope,
-  FaMapMarkerAlt,
-  FaGlobe,
-  FaTag,
-  FaList,
   FaArrowLeft,
   FaArrowRight,
-  FaTimes,
   FaFileUpload,
   FaFile,
-  FaCheck,
   FaTimesCircle
 } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import { Modal } from '../../../components'
+import { useFreeListing } from '../../../hooks/public/useFreeListing'
 
 const FreeListing = () => {
   usePageTitle('Free Listing - Booking App')
   const navigate = useNavigate()
+  const { sendOtp: sendOtpApi, verifyOtp: verifyOtpApi, createFreeListing: createFreeListingApi } = useFreeListing()
   const [step, setStep] = useState(1) // 1: Registration, 2: OTP Verification
   const [registrationData, setRegistrationData] = useState({
     companyName: '',
@@ -109,15 +94,13 @@ const FreeListing = () => {
 
     try {
       setIsSubmitting(true)
-      // TODO: Replace with actual API call
-      // await apiClient.post('/auth/send-otp', { mobileNumber: cleanMobile })
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      await sendOtpApi(cleanMobile, registrationData.companyName.trim())
 
       setStep(2)
       setCountdown(60) // 60 seconds countdown
       toast.success('OTP sent to your mobile number')
-    } catch {
-      toast.error('Failed to send OTP. Please try again.')
+    } catch (error) {
+      toast.error(error.message || 'Failed to send OTP. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -155,9 +138,8 @@ const FreeListing = () => {
 
     try {
       setIsVerifying(true)
-      // TODO: Replace with actual API call
-      // await apiClient.post('/auth/verify-otp', { mobileNumber: registrationData.mobileNumber, otp: otpValue })
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const cleanMobile = registrationData.mobileNumber.replace(/[^0-9]/g, '')
+      await verifyOtpApi(cleanMobile, otpValue)
 
       toast.success('OTP verified successfully!')
 
@@ -170,10 +152,10 @@ const FreeListing = () => {
       setListingFormData(prev => ({
         ...prev,
         name: registrationData.companyName,
-        phone: registrationData.mobileNumber.replace(/[^0-9]/g, '')
+        phone: cleanMobile
       }))
-    } catch {
-      toast.error('Invalid OTP. Please try again.')
+    } catch (error) {
+      toast.error(error.message || 'Invalid OTP. Please try again.')
       setOtp(['', '', '', '', '', ''])
       document.getElementById('otp-0')?.focus()
     } finally {
@@ -185,17 +167,15 @@ const FreeListing = () => {
     if (countdown > 0) return
 
     try {
-      // TODO: Replace with actual API call
-      // const cleanMobile = registrationData.mobileNumber.replace(/[^0-9]/g, '')
-      // await apiClient.post('/auth/resend-otp', { mobileNumber: cleanMobile })
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const cleanMobile = registrationData.mobileNumber.replace(/[^0-9]/g, '')
+      await sendOtpApi(cleanMobile, registrationData.companyName.trim())
 
       toast.success('OTP resent to your mobile number')
       setOtp(['', '', '', '', '', ''])
       setCountdown(60)
       document.getElementById('otp-0')?.focus()
-    } catch {
-      toast.error('Failed to resend OTP. Please try again.')
+    } catch (error) {
+      toast.error(error.message || 'Failed to resend OTP. Please try again.')
     }
   }
 
@@ -290,23 +270,43 @@ const FreeListing = () => {
 
       // Prepare form data with files
       const formDataToSubmit = new FormData()
-      Object.keys(listingFormData).forEach(key => {
-        if (listingFormData[key]) {
-          formDataToSubmit.append(key, listingFormData[key])
-        }
-      })
-      formDataToSubmit.append('phone', registrationData.mobileNumber.replace(/[^0-9]/g, ''))
+      const cleanMobile = registrationData.mobileNumber.replace(/[^0-9]/g, '')
+      
+      // Map frontend fields to backend model fields
+      formDataToSubmit.append('phoneNumber', cleanMobile)
+      formDataToSubmit.append('companyName', registrationData.companyName.trim())
+      formDataToSubmit.append('fullName', registrationData.companyName.trim()) // Using company name as full name
+      formDataToSubmit.append('businessName', listingFormData.name.trim())
+      formDataToSubmit.append('businessType', listingFormData.type)
+      formDataToSubmit.append('email', listingFormData.email.trim())
+      formDataToSubmit.append('website', listingFormData.website || 'https://example.com') // Required field, provide default if empty
+      formDataToSubmit.append('branch', listingFormData.branch || 'Main Branch') // Required field, provide default if empty
+      formDataToSubmit.append('description', listingFormData.description || '') // Required field
+      formDataToSubmit.append('address', listingFormData.address.trim())
+      formDataToSubmit.append('city', listingFormData.city.trim())
+      formDataToSubmit.append('state', listingFormData.state.trim())
+      formDataToSubmit.append('country', listingFormData.country || 'India')
+      formDataToSubmit.append('zipCode', listingFormData.zipCode.trim())
+      formDataToSubmit.append('category', listingFormData.category)
+      
+      // Convert tags string to array
+      if (listingFormData.tags) {
+        const tagsArray = listingFormData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        tagsArray.forEach(tag => formDataToSubmit.append('tags', tag))
+      }
+      
+      // Convert services string to array (split by newline)
+      if (listingFormData.services) {
+        const servicesArray = listingFormData.services.split('\n').map(service => service.trim()).filter(service => service)
+        servicesArray.forEach(service => formDataToSubmit.append('services', service))
+      }
 
       // Append documents
       uploadedDocuments.forEach((doc) => {
-        formDataToSubmit.append(`documents`, doc.file)
+        formDataToSubmit.append('documents', doc.file)
       })
 
-      // TODO: Replace with actual API call
-      // await apiClient.post('/business/free-listing', formDataToSubmit, {
-      //   headers: { 'Content-Type': 'multipart/form-data' }
-      // })
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await createFreeListingApi(formDataToSubmit)
 
       // Close form modal and show success modal
       setShowListingForm(false)
@@ -332,8 +332,8 @@ const FreeListing = () => {
         services: ''
       })
       setUploadedDocuments([])
-    } catch {
-      toast.error('Failed to create listing. Please try again.')
+    } catch (error) {
+      toast.error(error.message || 'Failed to create listing. Please try again.')
       setIsSubmittingForm(false)
     }
   }
@@ -350,179 +350,110 @@ const FreeListing = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section with Stats */}
-      <div className="bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-          <div className="text-center mb-12">
-            <div className="inline-block bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
-              <span className="text-sm font-semibold">100% FREE • NO CREDIT CARD REQUIRED</span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+      {/* Simple Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
               List Your Business for Free
             </h1>
-            <p className="text-xl sm:text-2xl text-primary-100 max-w-3xl mx-auto mb-8 font-light">
-              Join <span className="font-bold">50,000+</span> businesses already using our platform to grow their customer base
+            <p className="text-gray-600">
+              Join thousands of businesses already using our platform
             </p>
-          </div>
-
-          {/* Statistics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
-              <div className="text-3xl sm:text-4xl font-bold mb-2">50K+</div>
-              <div className="text-sm sm:text-base text-primary-100">Active Businesses</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
-              <div className="text-3xl sm:text-4xl font-bold mb-2">2M+</div>
-              <div className="text-sm sm:text-base text-primary-100">Monthly Bookings</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
-              <div className="text-3xl sm:text-4xl font-bold mb-2">4.8★</div>
-              <div className="text-sm sm:text-base text-primary-100">Customer Rating</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm  p-6 text-center border border-white/20">
-              <div className="text-3xl sm:text-4xl font-bold mb-2">24/7</div>
-              <div className="text-sm sm:text-base text-primary-100">Support Available</div>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 sm:-mt-12 lg:-mt-16 relative z-10">
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Column - Form */}
           <div className="lg:col-span-2">
-            {/* Progress Steps */}
-            <div className="mb-6 bg-white   p-4">
+            {/* Simple Progress Steps */}
+            <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-center gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 1
-                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/50'
-                      : 'bg-gray-200 text-gray-500'
-                    }`}>
-                    {step > 1 ? <FaCheckCircle className="text-lg" /> : '1'}
+                <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary-600' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 1 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                    {step > 1 ? <FaCheckCircle /> : '1'}
                   </div>
-                  <span className={`text-sm font-semibold hidden sm:block ${step >= 1 ? 'text-primary-600' : 'text-gray-500'}`}>
-                    Registration
-                  </span>
+                  <span className="text-sm font-medium">Registration</span>
                 </div>
-                <div className={`w-20 h-1 rounded-full transition-all ${step >= 2 ? 'bg-primary-600' : 'bg-gray-200'}`}></div>
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 2
-                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/50'
-                      : 'bg-gray-200 text-gray-500'
-                    }`}>
-                    {step > 2 ? <FaCheckCircle className="text-lg" /> : '2'}
+                <div className={`w-16 h-0.5 ${step >= 2 ? 'bg-primary-600' : 'bg-gray-200'}`}></div>
+                <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary-600' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 2 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                    {step > 2 ? <FaCheckCircle /> : '2'}
                   </div>
-                  <span className={`text-sm font-semibold hidden sm:block ${step >= 2 ? 'text-primary-600' : 'text-gray-500'}`}>
-                    Verify OTP
-                  </span>
+                  <span className="text-sm font-medium">Verify OTP</span>
                 </div>
               </div>
             </div>
 
             {/* Registration Form */}
             {step === 1 && (
-              <div className="bg-white  shadow-xl border border-gray-200 overflow-hidden">
-                {/* <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <FaBuilding className="text-2xl" />
-                    Business Registration
-                  </h2>
-                  <p className="text-primary-100 text-sm mt-1">Get started in just 2 simple steps</p>
-                </div> */}
-
-                <form onSubmit={handleRegistrationSubmit} className="p-6 sm:p-8 space-y-6">
+              <div className="bg-white rounded-lg border border-gray-200">
+                <form onSubmit={handleRegistrationSubmit} className="p-6 space-y-5">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      <FaBuilding className="inline mr-2 text-primary-600 text-lg" />
-                      Company / Business Name
-                      <span className="text-red-500 ml-1">*</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company / Business Name <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={registrationData.companyName}
-                        onChange={(e) => setRegistrationData(prev => ({ ...prev, companyName: e.target.value }))}
-                        placeholder="e.g., ABC Services Pvt Ltd"
-                        required
-                        className="w-full px-4 py-3.5 pl-12 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base transition-all"
-                        autoFocus
-                      />
-                      <FaBuilding className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    </div>
+                    <input
+                      type="text"
+                      value={registrationData.companyName}
+                      onChange={(e) => setRegistrationData(prev => ({ ...prev, companyName: e.target.value }))}
+                      placeholder="Enter company name"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      autoFocus
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      <FaMobileAlt className="inline mr-2 text-primary-600 text-lg" />
-                      Mobile Number
-                      <span className="text-red-500 ml-1">*</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mobile Number <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <input
-                        type="tel"
-                        value={registrationData.mobileNumber}
-                        onChange={(e) => setRegistrationData(prev => ({ ...prev, mobileNumber: e.target.value }))}
-                        placeholder="Enter 10-digit mobile number"
-                        required
-                        className="w-full px-4 py-3.5 pl-12 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base transition-all"
-                      />
-                      <FaMobileAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    </div>
-                    <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
-                      <FaShieldAlt className="text-primary-600 mt-0.5 flex-shrink-0" />
-                      <span>We'll send a 6-digit OTP to verify your number. Your data is secure with us.</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-4">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full px-6 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-bold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <FaSpinner className="animate-spin" />
-                          <span>Sending OTP...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Get Started Now</span>
-                          <FaCheckCircle />
-                        </>
-                      )}
-                    </button>
-                    <p className="text-center text-xs text-gray-500 mt-3">
-                      By continuing, you agree to our Terms & Conditions
+                    <input
+                      type="tel"
+                      value={registrationData.mobileNumber}
+                      onChange={(e) => setRegistrationData(prev => ({ ...prev, mobileNumber: e.target.value }))}
+                      placeholder="Enter 10-digit mobile number"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      We'll send a 6-digit OTP to verify your number
                     </p>
                   </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        <span>Sending OTP...</span>
+                      </>
+                    ) : (
+                      <span>Get Started</span>
+                    )}
+                  </button>
+                  <p className="text-center text-xs text-gray-500">
+                    By continuing, you agree to our Terms & Conditions
+                  </p>
                 </form>
               </div>
             )}
 
             {/* OTP Verification Form */}
             {step === 2 && (
-              <div className="bg-white  shadow-xl border border-gray-200 overflow-hidden">
-                {/* <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <FaShieldAlt className="text-2xl" />
-                    Verify Mobile Number
-                  </h2>
-                  <p className="text-primary-100 text-sm mt-1">Enter the OTP sent to your mobile</p>
-                </div> */}
-
-                <div className="p-6 sm:p-8">
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-                      <FaPhoneAlt className="text-3xl text-primary-600" />
-                    </div>
-                    <p className="text-gray-600 mb-2 text-base">
+              <div className="bg-white rounded-lg border border-gray-200">
+                <div className="p-6">
+                  <div className="text-center mb-6">
+                    <p className="text-gray-600 mb-1">
                       We've sent a 6-digit OTP to
                     </p>
-                    <p className="text-xl font-bold text-gray-900 flex items-center justify-center gap-2">
-                      <FaMobileAlt className="text-primary-600" />
+                    <p className="text-lg font-semibold text-gray-900">
                       {registrationData.mobileNumber}
                     </p>
                     <p className="text-sm text-gray-500 mt-2">
@@ -530,8 +461,8 @@ const FreeListing = () => {
                     </p>
                   </div>
 
-                  <form onSubmit={handleOTPVerify} className="space-y-6">
-                    <div className="flex justify-center gap-3 sm:gap-4">
+                  <form onSubmit={handleOTPVerify} className="space-y-5">
+                    <div className="flex justify-center gap-3">
                       {otp.map((digit, index) => (
                         <input
                           key={index}
@@ -542,60 +473,54 @@ const FreeListing = () => {
                           value={digit}
                           onChange={(e) => handleOTPChange(index, e.target.value)}
                           onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                          className="w-14 h-14 sm:w-16 sm:h-16 text-center text-2xl sm:text-3xl font-bold border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all "
+                          className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                         />
                       ))}
                     </div>
 
-                    <div className="space-y-4 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isVerifying || otp.join('').length !== 6}
+                      className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                    >
+                      {isVerifying ? (
+                        <>
+                          <FaSpinner className="animate-spin" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <span>Verify & Continue</span>
+                      )}
+                    </button>
+
+                    <div className="text-center space-y-2">
                       <button
-                        type="submit"
-                        disabled={isVerifying || otp.join('').length !== 6}
-                        className="w-full px-6 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-bold text-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+                        type="button"
+                        onClick={handleResendOTP}
+                        disabled={countdown > 0}
+                        className={`text-sm font-medium transition-all duration-200 ${countdown > 0
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-primary-600 hover:text-primary-700 active:text-primary-800'
+                          }`}
                       >
-                        {isVerifying ? (
-                          <>
-                            <FaSpinner className="animate-spin" />
-                            <span>Verifying OTP...</span>
-                          </>
+                        {countdown > 0 ? (
+                          <span>Resend OTP in {countdown}s</span>
                         ) : (
-                          <>
-                            <span>Verify & Continue</span>
-                            <FaCheckCircle />
-                          </>
+                          <span>Didn't receive OTP? Resend</span>
                         )}
                       </button>
 
-                      <div className="text-center space-y-2">
-                        <button
-                          type="button"
-                          onClick={handleResendOTP}
-                          disabled={countdown > 0}
-                          className={`text-sm font-semibold transition-colors flex items-center justify-center gap-2 mx-auto ${countdown > 0
-                              ? 'text-gray-400 cursor-not-allowed'
-                              : 'text-primary-600 hover:text-primary-700'
-                            }`}
-                        >
-                          <FaEnvelope className={countdown > 0 ? 'opacity-50' : ''} />
-                          {countdown > 0 ? (
-                            <span>Resend OTP in {countdown}s</span>
-                          ) : (
-                            <span>Didn't receive OTP? Resend</span>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setStep(1)
-                            setOtp(['', '', '', '', '', ''])
-                            setCountdown(0)
-                          }}
-                          className="block w-full text-sm text-gray-600 hover:text-primary-600 font-medium py-2 transition-colors"
-                        >
-                          ← Change Mobile Number
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStep(1)
+                          setOtp(['', '', '', '', '', ''])
+                          setCountdown(0)
+                        }}
+                        className="block w-full text-sm text-gray-600 hover:text-primary-600 active:text-primary-700 transition-colors duration-200"
+                      >
+                        ← Change Mobile Number
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -603,121 +528,41 @@ const FreeListing = () => {
             )}
           </div>
 
-          {/* Right Column - Benefits & Trust */}
-          <div className="lg:col-span-1 space-y-6">
-
-            {/* Why Choose Us */}
-            <div className="bg-white  shadow-lg border border-gray-200 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <FaStar className="text-yellow-500" />
+          {/* Right Column - Benefits */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Why Choose Us?
               </h3>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
-                    <FaCheckCircle className="text-primary-600 text-lg" />
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <FaCheckCircle className="text-primary-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">100% Free Forever</h4>
-                    <p className="text-sm text-gray-600">No hidden charges, no credit card required</p>
+                    <h4 className="font-medium text-gray-900">100% Free Forever</h4>
+                    <p className="text-sm text-gray-600">No hidden charges</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
-                    <FaClock className="text-primary-600 text-lg" />
-                  </div>
+                <div className="flex items-start gap-3">
+                  <FaCheckCircle className="text-primary-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">Quick Setup</h4>
-                    <p className="text-sm text-gray-600">Get started in under 5 minutes</p>
+                    <h4 className="font-medium text-gray-900">Quick Setup</h4>
+                    <p className="text-sm text-gray-600">Get started in minutes</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
-                    <FaChartLine className="text-primary-600 text-lg" />
-                  </div>
+                <div className="flex items-start gap-3">
+                  <FaCheckCircle className="text-primary-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">Unlimited Bookings</h4>
+                    <h4 className="font-medium text-gray-900">Unlimited Bookings</h4>
                     <p className="text-sm text-gray-600">Accept unlimited appointments</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3  hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-primary-100  flex items-center justify-center flex-shrink-0">
-                    <FaHeadset className="text-primary-600 text-lg" />
-                  </div>
+                <div className="flex items-start gap-3">
+                  <FaCheckCircle className="text-primary-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">24/7 Support</h4>
-                    <p className="text-sm text-gray-600">Dedicated support team always ready</p>
+                    <h4 className="font-medium text-gray-900">24/7 Support</h4>
+                    <p className="text-sm text-gray-600">Always here to help</p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Trust Badges */}
-            <div className="bg-gradient-to-br from-primary-50 to-primary-100  shadow-lg border border-primary-200 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <FaLock className="text-primary-600" />
-                Secure & Trusted
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm text-gray-700">
-                  <FaShieldAlt className="text-primary-600 flex-shrink-0" />
-                  <span>SSL Encrypted</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-700">
-                  <FaUsers className="text-primary-600 flex-shrink-0" />
-                  <span>50,000+ Verified Businesses</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-700">
-                  <FaStar className="text-yellow-500 flex-shrink-0" />
-                  <span>4.8/5 Customer Rating</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonial */}
-            <div className="bg-white  shadow-lg border border-gray-200 p-6">
-              <div className="flex items-center gap-1 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} className="text-yellow-400 text-sm" />
-                ))}
-              </div>
-              <p className="text-gray-700 text-sm mb-4 italic">
-                "Listing our business was super easy and free! We got our first booking within 24 hours. Highly recommended!"
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold">
-                  R
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900 text-sm">Rajesh Kumar</div>
-                  <div className="text-xs text-gray-500">Business Owner, Mumbai</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom CTA Section */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-700  shadow-xl p-8 sm:p-12 text-center text-white">
-            <h3 className="text-2xl sm:text-3xl font-bold mb-4">
-              Ready to Grow Your Business?
-            </h3>
-            <p className="text-lg text-primary-100 mb-6 max-w-2xl mx-auto">
-              Join thousands of successful businesses already using our platform
-            </p>
-            <div className="flex flex-wrap justify-center gap-4 text-sm">
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 ">
-                <FaCheckCircle />
-                <span>No Setup Fees</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 ">
-                <FaCheckCircle />
-                <span>No Monthly Charges</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 ">
-                <FaCheckCircle />
-                <span>Cancel Anytime</span>
               </div>
             </div>
           </div>
@@ -739,29 +584,26 @@ const FreeListing = () => {
         closeOnOverlayClick={!isSubmittingForm}
       >
         <div className="space-y-6">
-          {/* Progress Steps */}
+          {/* Simple Progress Steps */}
           <div className="flex items-center justify-between mb-6">
             {[1, 2, 3, 4].map((step) => (
               <React.Fragment key={step}>
-                <div className="flex items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${formStep >= step
-                      ? 'bg-primary-600 text-white shadow-lg'
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${formStep >= step
+                      ? 'bg-primary-600 text-white'
                       : 'bg-gray-200 text-gray-500'
                     }`}>
                     {formStep > step ? <FaCheckCircle /> : step}
                   </div>
-                  <div className="ml-2 hidden sm:block">
-                    <div className={`text-xs font-semibold ${formStep >= step ? 'text-primary-600' : 'text-gray-500'}`}>
-                      {step === 1 && 'Basic Info'}
-                      {step === 2 && 'Contact'}
-                      {step === 3 && 'Details'}
-                      {step === 4 && 'Review'}
-                    </div>
-                  </div>
+                  <span className={`text-xs font-medium hidden sm:block ${formStep >= step ? 'text-primary-600' : 'text-gray-500'}`}>
+                    {step === 1 && 'Basic'}
+                    {step === 2 && 'Contact'}
+                    {step === 3 && 'Details'}
+                    {step === 4 && 'Review'}
+                  </span>
                 </div>
                 {step < 4 && (
-                  <div className={`flex-1 h-1 mx-2 rounded-full transition-all ${formStep > step ? 'bg-primary-600' : 'bg-gray-200'
-                    }`}></div>
+                  <div className={`flex-1 h-0.5 mx-2 ${formStep > step ? 'bg-primary-600' : 'bg-gray-200'}`}></div>
                 )}
               </React.Fragment>
             ))}
@@ -771,21 +613,19 @@ const FreeListing = () => {
             {/* Step 1: Basic Information */}
             {formStep === 1 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <FaBuilding className="text-primary-600" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Basic Information
                 </h3>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Business Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     name="type"
                     value={listingFormData.type}
                     onChange={handleFormChange}
-                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.type ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.type ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   >
                     <option value="">Select business type</option>
@@ -797,27 +637,23 @@ const FreeListing = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Business Name <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      name="name"
-                      value={listingFormData.name}
-                      onChange={handleFormChange}
-                      placeholder="Enter your business name"
-                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.name ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      required
-                    />
-                    <FaBuilding className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  </div>
+                  <input
+                    type="text"
+                    name="name"
+                    value={listingFormData.name}
+                    onChange={handleFormChange}
+                    placeholder="Enter your business name"
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.name ? 'border-red-500' : 'border-gray-300'}`}
+                    required
+                  />
                   {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Branch (Optional)
                   </label>
                   <input
@@ -825,13 +661,13 @@ const FreeListing = () => {
                     name="branch"
                     value={listingFormData.branch}
                     onChange={handleFormChange}
-                    placeholder="e.g., Main Branch, Downtown Branch"
-                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="e.g., Main Branch"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Description
                   </label>
                   <textarea
@@ -840,7 +676,7 @@ const FreeListing = () => {
                     onChange={handleFormChange}
                     placeholder="Describe your business..."
                     rows={4}
-                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -849,71 +685,59 @@ const FreeListing = () => {
             {/* Step 2: Contact Details */}
             {formStep === 2 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <FaPhoneAlt className="text-primary-600" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Contact Details
                 </h3>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      name="email"
-                      value={listingFormData.email}
-                      onChange={handleFormChange}
-                      placeholder="business@example.com"
-                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.email ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      required
-                    />
-                    <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  </div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={listingFormData.email}
+                    onChange={handleFormChange}
+                    placeholder="business@example.com"
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`}
+                    required
+                  />
                   {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Website (Optional)
                   </label>
-                  <div className="relative">
-                    <input
-                      type="url"
-                      name="website"
-                      value={listingFormData.website}
-                      onChange={handleFormChange}
-                      placeholder="https://www.example.com"
-                      className="w-full px-4 py-3 pl-12 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <FaGlobe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  </div>
+                  <input
+                    type="url"
+                    name="website"
+                    value={listingFormData.website}
+                    onChange={handleFormChange}
+                    placeholder="https://www.example.com"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Address <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <textarea
-                      name="address"
-                      value={listingFormData.address}
-                      onChange={handleFormChange}
-                      placeholder="Enter complete address"
-                      rows={3}
-                      className={`w-full px-4 py-3 pl-12 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.address ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      required
-                    />
-                    <FaMapMarkerAlt className="absolute left-4 top-3 text-gray-400" />
-                  </div>
+                  <textarea
+                    name="address"
+                    value={listingFormData.address}
+                    onChange={handleFormChange}
+                    placeholder="Enter complete address"
+                    rows={3}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.address ? 'border-red-500' : 'border-gray-300'}`}
+                    required
+                  />
                   {formErrors.address && <p className="text-red-500 text-xs mt-1">{formErrors.address}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       City <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -922,15 +746,14 @@ const FreeListing = () => {
                       value={listingFormData.city}
                       onChange={handleFormChange}
                       placeholder="City"
-                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.city ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.city ? 'border-red-500' : 'border-gray-300'}`}
                       required
                     />
                     {formErrors.city && <p className="text-red-500 text-xs mt-1">{formErrors.city}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       State <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -939,8 +762,7 @@ const FreeListing = () => {
                       value={listingFormData.state}
                       onChange={handleFormChange}
                       placeholder="State"
-                      className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.state ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.state ? 'border-red-500' : 'border-gray-300'}`}
                       required
                     />
                     {formErrors.state && <p className="text-red-500 text-xs mt-1">{formErrors.state}</p>}
@@ -948,7 +770,7 @@ const FreeListing = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Zip Code <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -957,8 +779,7 @@ const FreeListing = () => {
                     value={listingFormData.zipCode}
                     onChange={handleFormChange}
                     placeholder="Zip Code"
-                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.zipCode ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.zipCode ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
                   {formErrors.zipCode && <p className="text-red-500 text-xs mt-1">{formErrors.zipCode}</p>}
@@ -969,21 +790,19 @@ const FreeListing = () => {
             {/* Step 3: Business Details */}
             {formStep === 3 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <FaTag className="text-primary-600" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Business Details
                 </h3>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category <span className="text-red-500">*</span>
                   </label>
                   <select
                     name="category"
                     value={listingFormData.category}
                     onChange={handleFormChange}
-                    className={`w-full px-4 py-3 border-2  focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.category ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${formErrors.category ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   >
                     <option value="">Select category</option>
@@ -995,7 +814,7 @@ const FreeListing = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tags (Optional)
                   </label>
                   <input
@@ -1003,14 +822,14 @@ const FreeListing = () => {
                     name="tags"
                     value={listingFormData.tags}
                     onChange={handleFormChange}
-                    placeholder="e.g., premium, affordable, eco-friendly (comma separated)"
-                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="e.g., premium, affordable (comma separated)"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Separate tags with commas</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Services (Optional)
                   </label>
                   <textarea
@@ -1019,16 +838,16 @@ const FreeListing = () => {
                     onChange={handleFormChange}
                     placeholder="List your main services (one per line)"
                     rows={4}
-                    className="w-full px-4 py-3 border-2 border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Enter one service per line</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Documents (Optional)
                   </label>
-                  <div className="border-2 border-dashed border-gray-300  p-6 text-center hover:border-primary-500 transition-colors">
+                  <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 hover:bg-primary-50/50 transition-all duration-200">
                     <input
                       type="file"
                       id="document-upload"
@@ -1041,7 +860,7 @@ const FreeListing = () => {
                       htmlFor="document-upload"
                       className="cursor-pointer flex flex-col items-center gap-2"
                     >
-                      <FaFileUpload className="text-4xl text-primary-600" />
+                      <FaFileUpload className="text-3xl text-primary-600" />
                       <span className="text-sm font-medium text-gray-700">
                         Click to upload documents
                       </span>
@@ -1054,14 +873,14 @@ const FreeListing = () => {
                   {/* Uploaded Documents List */}
                   {uploadedDocuments.length > 0 && (
                     <div className="mt-4 space-y-2">
-                      <p className="text-sm font-semibold text-gray-700">
+                      <p className="text-sm font-medium text-gray-700">
                         Uploaded Documents ({uploadedDocuments.length})
                       </p>
                       <div className="space-y-2 max-h-40 overflow-y-auto">
                         {uploadedDocuments.map((doc) => (
                           <div
                             key={doc.id}
-                            className="flex items-center justify-between bg-gray-50 border border-gray-200  p-3"
+                            className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <FaFile className="text-primary-600 flex-shrink-0" />
@@ -1077,7 +896,7 @@ const FreeListing = () => {
                             <button
                               type="button"
                               onClick={() => handleRemoveDocument(doc.id)}
-                              className="text-red-500 hover:text-red-700 transition-colors p-1"
+                              className="text-red-500 hover:text-red-700 active:text-red-800 transition-all duration-200 p-1.5 rounded-md hover:bg-red-50"
                               aria-label="Remove document"
                             >
                               <FaTimesCircle />
@@ -1094,12 +913,11 @@ const FreeListing = () => {
             {/* Step 4: Review */}
             {formStep === 4 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <FaCheckCircle className="text-primary-600" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Review Your Information
                 </h3>
 
-                <div className="bg-gray-50  p-4 space-y-3">
+                <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-3">
                   <div>
                     <span className="text-sm font-semibold text-gray-600">Business Type:</span>
                     <p className="text-gray-900 capitalize">{listingFormData.type || 'Not provided'}</p>
@@ -1148,7 +966,7 @@ const FreeListing = () => {
                   )}
                 </div>
 
-                <div className="bg-primary-50 border border-primary-200  p-4">
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <p className="text-sm text-gray-700">
                     <FaCheckCircle className="inline text-primary-600 mr-2" />
                     By submitting, you agree to our Terms & Conditions and Privacy Policy
@@ -1163,41 +981,36 @@ const FreeListing = () => {
                 type="button"
                 onClick={handlePrevStep}
                 disabled={formStep === 1 || isSubmittingForm}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-400 active:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
                 <FaArrowLeft />
                 <span>Previous</span>
               </button>
 
-              <div className="flex items-center gap-2">
-                {formStep < 4 ? (
-                  <button
-                    type="submit"
-                    className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white  font-semibold hover:bg-primary-700 transition-colors"
-                  >
-                    <span>Next</span>
-                    <FaArrowRight />
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={isSubmittingForm}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-semibold hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-                  >
-                    {isSubmittingForm ? (
-                      <>
-                        <FaSpinner className="animate-spin" />
-                        <span>Submitting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Submit Listing</span>
-                        <FaCheckCircle />
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              {formStep < 4 ? (
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 transition-all duration-200 shadow-sm hover:shadow-md"
+                >
+                  <span>Next</span>
+                  <FaArrowRight />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmittingForm}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                >
+                  {isSubmittingForm ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <span>Submit Listing</span>
+                  )}
+                </button>
+              )}
             </div>
           </form>
         </div>
@@ -1223,67 +1036,40 @@ const FreeListing = () => {
       >
         <div className="text-center py-6">
           {/* Success Icon */}
-          <div className="mx-auto flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
-            <FaCheckCircle className="text-5xl text-green-600" />
+          <div className="mx-auto flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+            <FaCheckCircle className="text-4xl text-green-600" />
           </div>
 
           {/* Success Message */}
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
             Listing Submitted Successfully!
           </h2>
           <p className="text-gray-600 mb-6">
             Thank you for choosing our platform. Your business listing has been received.
           </p>
 
-          {/* Professional Note */}
-          <div className="bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200  p-6 mb-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center">
-                  <FaHeadset className="text-white text-xl" />
-                </div>
-              </div>
-              <div className="flex-1 text-left">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  What's Next?
-                </h3>
-                <p className="text-gray-700 mb-3">
-                  Our dedicated team will review your listing and connect with you within <span className="font-bold text-primary-600">24 hours</span> to:
-                </p>
-                <ul className="space-y-2 text-sm text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <FaCheckCircle className="text-primary-600 mt-0.5 flex-shrink-0" />
-                    <span>Verify your business details</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <FaCheckCircle className="text-primary-600 mt-0.5 flex-shrink-0" />
-                    <span>Complete your profile setup</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <FaCheckCircle className="text-primary-600 mt-0.5 flex-shrink-0" />
-                    <span>Activate your listing</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Info */}
-          <div className="bg-gray-50  p-4 mb-6">
-            <p className="text-sm text-gray-600 mb-2">
-              Need immediate assistance?
+          {/* Simple Note */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              What's Next?
+            </h3>
+            <p className="text-sm text-gray-700 mb-3">
+              Our team will review your listing and connect with you within <span className="font-semibold text-primary-600">24 hours</span>.
             </p>
-            <div className="flex items-center justify-center gap-4 text-sm">
-              <div className="flex items-center gap-2 text-primary-600">
-                <FaPhoneAlt />
-                <span className="font-semibold">+91-XXXXX-XXXXX</span>
-              </div>
-              <span className="text-gray-300">|</span>
-              <div className="flex items-center gap-2 text-primary-600">
-                <FaEnvelope />
-                <span className="font-semibold">support@bookingapp.com</span>
-              </div>
-            </div>
+            <ul className="space-y-1 text-sm text-gray-700">
+              <li className="flex items-start gap-2">
+                <FaCheckCircle className="text-primary-600 mt-0.5 text-xs" />
+                <span>Verify your business details</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <FaCheckCircle className="text-primary-600 mt-0.5 text-xs" />
+                <span>Complete your profile setup</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <FaCheckCircle className="text-primary-600 mt-0.5 text-xs" />
+                <span>Activate your listing</span>
+              </li>
+            </ul>
           </div>
 
           {/* Action Button */}
@@ -1297,7 +1083,7 @@ const FreeListing = () => {
                 }
               })
             }}
-            className="w-full px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white  font-semibold hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
           >
             <span>Continue to Dashboard</span>
             <FaArrowRight />
@@ -1309,4 +1095,6 @@ const FreeListing = () => {
 }
 
 export default FreeListing
+
+
 

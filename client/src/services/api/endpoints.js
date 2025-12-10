@@ -244,6 +244,50 @@ const API_ENDPOINTS = {
     APPOINTMENT_STATUS: '/public/appointment-status'
   },
 
+  // Free Listing endpoints
+  FREE_LISTING: {
+    SEND_OTP: '/free-listing/send-otp',
+    VERIFY_OTP: '/free-listing/verify-otp',
+    CREATE: '/free-listing/create',
+    LIST: '/free-listing',
+    GET: (id) => `/free-listing/${id}`,
+    UPDATE: (id) => `/free-listing/${id}`,
+    DELETE: (id) => `/free-listing/${id}`
+  },
+
+  // Book Demo endpoints
+  BOOK_DEMO: {
+    SEND_OTP: '/book-demo/send-otp',
+    VERIFY_OTP: '/book-demo/verify-otp',
+    CREATE: '/book-demo',
+    LIST: '/book-demo',
+    GET: (id) => `/book-demo/${id}`,
+    UPDATE_STATUS: (id) => `/book-demo/${id}`,
+    DELETE: (id) => `/book-demo/${id}`
+  },
+
+  // Review Management endpoints
+  REVIEW_MANAGEMENT: {
+    SEND_OTP: '/review-management/send-otp',
+    VERIFY_OTP: '/review-management/verify-otp',
+    CREATE: '/review-management',
+    LIST: '/review-management',
+    GET: (id) => `/review-management/${id}`,
+    UPDATE: (id) => `/review-management/${id}`,
+    DELETE: (id) => `/review-management/${id}`
+  },
+
+  // Advertise endpoints
+  ADVERTISE: {
+    SEND_OTP: '/advertise/send-otp',
+    VERIFY_OTP: '/advertise/verify-otp',
+    CREATE: '/advertise',
+    LIST: '/advertise',
+    GET: (id) => `/advertise/${id}`,
+    UPDATE: (id) => `/advertise/${id}`,
+    DELETE: (id) => `/advertise/${id}`
+  },
+
   // Upload endpoints
   UPLOAD: {
     IMAGE: '/upload/image',

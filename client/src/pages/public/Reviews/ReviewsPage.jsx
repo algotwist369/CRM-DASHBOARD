@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   FaGoogle,
@@ -15,9 +15,12 @@ import {
   FaBullhorn,
   FaClipboardCheck,
   FaComments,
-  FaCheckCircle
+  FaCheckCircle,
+  FaSpinner
 } from 'react-icons/fa'
+import { toast } from 'react-hot-toast'
 import { usePageTitle } from '../../../hooks/usePageTitle'
+import { useReviewManagement } from '../../../hooks/public/useReviewManagement'
 
 const REVIEW_PAGES = {
   'google-my-business-reviews': {
@@ -373,9 +376,20 @@ const REVIEW_PAGES = {
 
 const DEFAULT_VARIANT = 'reviews-management'
 
+// Mobile number validation helper
+const validatePhoneNumber = (phone) => {
+  if (!phone) return { valid: false, error: 'Phone number is required' }
+  const cleanPhone = phone.replace(/[^0-9]/g, '')
+  if (cleanPhone.length < 7 || cleanPhone.length > 15) {
+    return { valid: false, error: 'Phone number must be between 7 and 15 digits' }
+  }
+  return { valid: true, cleanPhone }
+}
+
 const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
   const config = useMemo(() => REVIEW_PAGES[variant] ?? REVIEW_PAGES[DEFAULT_VARIANT], [variant])
   const navigate = useNavigate()
+  const { sendOtp, verifyOtp, createReviewRequest, loading: apiLoading } = useReviewManagement()
   usePageTitle(`${config.title} - Booking App`)
 
   const [formValues, setFormValues] = useState({
@@ -390,22 +404,243 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
   })
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [submissionState, setSubmissionState] = useState({ status: 'idle', message: '' })
+  const [step, setStep] = useState(1) // 1: Form, 2: OTP Verification
+  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [countdown])
+
+  // Auto-focus first OTP input when OTP step opens
+  useEffect(() => {
+    if (step === 2) {
+      setTimeout(() => {
+        document.getElementById('otp-0')?.focus()
+      }, 100)
+    }
+  }, [step])
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
     setFormValues((prev) => ({ ...prev, [name]: value }))
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+    
+    // Clear general error
+    if (submissionState.message) {
+      setSubmissionState({ status: 'idle', message: '' })
+    }
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    if (!agreeToTerms) {
-      setSubmissionState({ status: 'error', message: 'कृपया सेवा शर्तों को स्वीकार करें।' })
+  const validateForm = () => {
+    const errors = {}
+    
+    if (!formValues.businessName.trim()) {
+      errors.businessName = 'Business name is required'
+    }
+    
+    if (!formValues.contactPerson.trim()) {
+      errors.contactPerson = 'Contact person name is required'
+    } else if (formValues.contactPerson.trim().length < 2) {
+      errors.contactPerson = 'Name must be at least 2 characters'
+    }
+    
+    if (!formValues.email.trim()) {
+      errors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formValues.email)) {
+      errors.email = 'Invalid email address'
+    }
+    
+    const phoneValidation = validatePhoneNumber(formValues.phone)
+    if (!phoneValidation.valid) {
+      errors.phone = phoneValidation.error
+    }
+    
+    if (!formValues.website.trim()) {
+      errors.website = 'Website/Business link is required'
+    }
+    
+    if (!formValues.notes.trim()) {
+      errors.notes = 'Additional context is required'
+    } else if (formValues.notes.trim().length < 5) {
+      errors.notes = 'Please provide more details (at least 5 characters)'
+    }
+    
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleOTPChange = (index, value) => {
+    if (value.length > 1) return
+
+    const newOtp = [...otp]
+    newOtp[index] = value.replace(/[^0-9]/g, '')
+    setOtp(newOtp)
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`)
+      if (nextInput) nextInput.focus()
+    }
+  }
+
+  const handleOTPKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`)
+      if (prevInput) prevInput.focus()
+    }
+  }
+
+  const handleSendOtp = async () => {
+    setSubmissionState({ status: 'idle', message: '' })
+    setFieldErrors({})
+    
+    // Validate form first
+    if (!validateForm()) {
+      setSubmissionState({ status: 'error', message: 'Please correct the errors below' })
       return
     }
-    setSubmissionState({ status: 'success', message: 'धन्यवाद! हमारी टीम 24 घंटे के अंदर आपसे सम्पर्क करेगी।' })
-    setTimeout(() => {
-      navigate('/contact', { state: { intent: 'reviews-service', payload: formValues } })
-    }, 800)
+
+    if (!agreeToTerms) {
+      setSubmissionState({ status: 'error', message: 'Please agree to the terms and conditions' })
+      return
+    }
+
+    try {
+      setIsSendingOtp(true)
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      await sendOtp(phoneValidation.cleanPhone, formValues.contactPerson.trim())
+
+      setStep(2)
+      setCountdown(60) // 60 seconds countdown
+      toast.success('OTP sent to your mobile number')
+    } catch (err) {
+      toast.error(err.message || 'Failed to send OTP. Please try again.')
+    } finally {
+      setIsSendingOtp(false)
+    }
+  }
+
+  const handleResendOTP = async () => {
+    if (countdown > 0) return
+
+    try {
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      await sendOtp(phoneValidation.cleanPhone, formValues.contactPerson.trim())
+
+      toast.success('OTP resent to your mobile number')
+      setOtp(['', '', '', '', '', ''])
+      setCountdown(60)
+      document.getElementById('otp-0')?.focus()
+    } catch (err) {
+      toast.error(err.message || 'Failed to resend OTP. Please try again.')
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    const otpValue = otp.join('')
+
+    if (otpValue.length !== 6) {
+      toast.error('Please enter complete OTP')
+      return
+    }
+
+    try {
+      setIsVerifying(true)
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      await verifyOtp(phoneValidation.cleanPhone, otpValue)
+
+      setIsPhoneVerified(true)
+      toast.success('Phone number verified successfully!')
+      
+      // Automatically submit the form after OTP verification
+      await handleSubmitForm()
+    } catch (err) {
+      toast.error(err.message || 'Invalid OTP. Please try again.')
+      setOtp(['', '', '', '', '', ''])
+      document.getElementById('otp-0')?.focus()
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleSubmitForm = async () => {
+    try {
+      setSubmissionState({ status: 'loading', message: 'Submitting your request...' })
+      
+      // Prepare data for API (map frontend fields to backend fields)
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      const apiData = {
+        businessName: formValues.businessName.trim(),
+        fullName: formValues.contactPerson.trim(),
+        email: formValues.email.trim().toLowerCase(),
+        phoneNumber: phoneValidation.cleanPhone,
+        reviewPlatform: formValues.platform,
+        targetReviewCount: formValues.reviewTarget.toString(),
+        businessLink: formValues.website.trim(),
+        message: formValues.notes.trim(),
+        terms: agreeToTerms
+      }
+
+      await createReviewRequest(apiData)
+      
+      setSubmissionState({ status: 'success', message: 'Thank you! Our team will contact you within 24 hours.' })
+      toast.success('Review management request submitted successfully!')
+      
+      // Reset form after success
+      setTimeout(() => {
+        setFormValues({
+          businessName: '',
+          contactPerson: '',
+          email: '',
+          phone: '',
+          website: '',
+          platform: 'Google',
+          reviewTarget: '1000',
+          notes: ''
+        })
+        setOtp(['', '', '', '', '', ''])
+        setStep(1)
+        setIsPhoneVerified(false)
+        setAgreeToTerms(false)
+        setSubmissionState({ status: 'idle', message: '' })
+      }, 2000)
+    } catch (err) {
+      setSubmissionState({ status: 'error', message: err.message || 'Failed to submit request. Please try again.' })
+      toast.error(err.message || 'Failed to submit request. Please try again.')
+    }
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    
+    // If phone is not verified, send OTP first
+    if (!isPhoneVerified && step === 1) {
+      await handleSendOtp()
+      return
+    }
+    
+    // If on OTP step, verify OTP
+    if (step === 2) {
+      await handleVerifyOtp()
+      return
+    }
   }
 
   return (
@@ -517,8 +752,112 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
               </div>
             </div>
             <div id="business-details">
-              <div className="bg-white border border-gray-200  shadow-lg p-6 sm:p-8">
+              <div className="bg-white border border-gray-200 shadow-lg p-6 sm:p-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Share Your Business Details</h3>
+                
+                {/* Progress Steps */}
+                <div className="mb-6 flex items-center justify-center gap-4">
+                  <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                      step >= 1 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {step > 1 ? <FaCheckCircle /> : '1'}
+                    </div>
+                    <span className="text-sm font-medium hidden sm:block">Details</span>
+                  </div>
+                  <div className={`w-16 h-0.5 ${step >= 2 ? 'bg-primary-600' : 'bg-gray-200'}`}></div>
+                  <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                      step >= 2 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {step > 2 ? <FaCheckCircle /> : '2'}
+                    </div>
+                    <span className="text-sm font-medium hidden sm:block">Verify</span>
+                  </div>
+                </div>
+
+                {/* OTP Verification Step */}
+                {step === 2 && (
+                  <div className="space-y-4 mb-6">
+                    <div className="text-center mb-6">
+                      <p className="text-gray-600 mb-1">
+                        We've sent a 6-digit OTP to
+                      </p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {formValues.phone}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Please check your SMS inbox
+                      </p>
+                    </div>
+
+                    <div className="flex justify-center gap-3 mb-4">
+                      {otp.map((digit, index) => (
+                        <input
+                          key={index}
+                          id={`otp-${index}`}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOTPChange(index, e.target.value)}
+                          onKeyDown={(e) => handleOTPKeyDown(index, e)}
+                          className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                        />
+                      ))}
+                    </div>
+
+                    <div className="text-center space-y-2">
+                      <button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={isVerifying || otp.join('').length !== 6}
+                        className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                      >
+                        {isVerifying ? (
+                          <>
+                            <FaSpinner className="animate-spin" />
+                            <span>Verifying...</span>
+                          </>
+                        ) : (
+                          <span>Verify & Submit</span>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleResendOTP}
+                        disabled={countdown > 0}
+                        className={`text-sm font-medium transition-all duration-200 ${
+                          countdown > 0
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-primary-600 hover:text-primary-700'
+                        }`}
+                      >
+                        {countdown > 0 ? (
+                          <span>Resend OTP in {countdown}s</span>
+                        ) : (
+                          <span>Didn't receive OTP? Resend</span>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStep(1)
+                          setOtp(['', '', '', '', '', ''])
+                          setCountdown(0)
+                        }}
+                        className="block w-full text-sm text-gray-600 hover:text-primary-600 transition-colors duration-200"
+                      >
+                        ← Change Phone Number
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Step */}
+                {step === 1 && (
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div className="space-y-1">
                     <label className="block text-sm font-semibold text-gray-700" htmlFor="businessName">
@@ -532,8 +871,15 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       value={formValues.businessName}
                       onChange={handleInputChange}
                       placeholder="e.g. Urban Glow Salon"
-                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                        fieldErrors.businessName 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:border-primary-500'
+                      }`}
                     />
+                    {fieldErrors.businessName && (
+                      <p className="text-xs text-red-600 mt-1">{fieldErrors.businessName}</p>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
@@ -548,8 +894,15 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                         value={formValues.contactPerson}
                         onChange={handleInputChange}
                         placeholder="Your full name"
-                        className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                        className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                          fieldErrors.contactPerson 
+                            ? 'border-red-500 focus:border-red-500' 
+                            : 'border-gray-300 focus:border-primary-500'
+                        }`}
                       />
+                      {fieldErrors.contactPerson && (
+                        <p className="text-xs text-red-600 mt-1">{fieldErrors.contactPerson}</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="block text-sm font-semibold text-gray-700" htmlFor="phone">
@@ -562,9 +915,17 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                         required
                         value={formValues.phone}
                         onChange={handleInputChange}
-                        placeholder="+91 98xxxxxx90"
-                        className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                        placeholder="+91 9876543210 or 9876543210"
+                        className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                          fieldErrors.phone 
+                            ? 'border-red-500 focus:border-red-500' 
+                            : 'border-gray-300 focus:border-primary-500'
+                        }`}
                       />
+                      {fieldErrors.phone && (
+                        <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Enter 7-15 digits (spaces and special characters will be removed)</p>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -579,8 +940,15 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       value={formValues.email}
                       onChange={handleInputChange}
                       placeholder="you@business.com"
-                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                        fieldErrors.email 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:border-primary-500'
+                      }`}
                     />
+                    {fieldErrors.email && (
+                      <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <label className="block text-sm font-semibold text-gray-700" htmlFor="website">
@@ -590,11 +958,19 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       id="website"
                       name="website"
                       type="url"
+                      required
                       value={formValues.website}
                       onChange={handleInputChange}
                       placeholder="https://g.page/yourbusiness"
-                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                        fieldErrors.website 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:border-primary-500'
+                      }`}
                     />
+                    {fieldErrors.website && (
+                      <p className="text-xs text-red-600 mt-1">{fieldErrors.website}</p>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
@@ -639,11 +1015,19 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       id="notes"
                       name="notes"
                       rows={4}
+                      required
                       value={formValues.notes}
                       onChange={handleInputChange}
                       placeholder="Share your current rating, target locations, or any specific instructions."
-                      className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                        fieldErrors.notes 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:border-primary-500'
+                      }`}
                     />
+                    {fieldErrors.notes && (
+                      <p className="text-xs text-red-600 mt-1">{fieldErrors.notes}</p>
+                    )}
                   </div>
                   <div className="flex items-start gap-3">
                     <input
@@ -672,15 +1056,25 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                   )}
                   <button
                     type="submit"
-                    disabled={submissionState.status === 'success'}
-                    className="w-full inline-flex items-center justify-center gap-2  bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed transition-colors"
+                    disabled={submissionState.status === 'success' || isSendingOtp || apiLoading}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed transition-colors rounded"
                   >
-                    {submissionState.status === 'success' ? 'Request submitted' : 'Schedule a free consultation'}
+                    {isSendingOtp ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        <span>Sending OTP...</span>
+                      </>
+                    ) : submissionState.status === 'success' ? (
+                      'Request submitted'
+                    ) : (
+                      'Verify Phone & Continue'
+                    )}
                   </button>
                   <p className="text-xs text-gray-500 text-center">
-                    Your information stays secure with us. We never share it with third parties.
+                    We'll verify your phone number with OTP to ensure we can reach you.
                   </p>
                 </form>
+                )}
               </div>
             </div>
           </div>

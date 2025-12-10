@@ -1,6 +1,10 @@
-const FreeListing = require("../models/FreeListing.model");
+const mongoose = require("mongoose");
+const FreeListing = require("../models/FreeListing");
 const VerifiedUser = require("../models/VerifiedUser.model");
+const Otp = require("../models/Otp.model");
 const { sendOtpToUser, verifyOtpCode } = require("../utils/sendOTP");
+const { uploadMultiple, processUploadedFiles, handleUploadError } = require("../utils/uploadFiles");
+const { sendNotificationEmail } = require("../utils/sendMail");
 
 // =============================
 // STEP 1: SEND OTP
@@ -41,25 +45,42 @@ exports.verifyOtp = async (req, res) => {
         if (!phoneNumber || !otp) {
             return res.status(400).json({
                 success: false,
-                message: "Phone and OTP required",
+                message: "Phone number and OTP are required",
             });
         }
 
-        const isValid = await verifyOtpCode(phoneNumber, otp);
+        // Get OTP record to retrieve businessName
+        const otpRecord = await Otp.findOne({ phoneNumber, otp });
 
-        if (!isValid) {
+        if (!otpRecord) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid or expired OTP",
             });
         }
 
-        // Save verified status
+        // Check if OTP has expired
+        if (otpRecord.expiresAt < new Date()) {
+            await Otp.deleteOne({ _id: otpRecord._id });
+            return res.status(400).json({
+                success: false,
+                message: "OTP has expired. Please request a new one.",
+            });
+        }
+
+        // Save verified status with businessName
         await VerifiedUser.updateOne(
             { phoneNumber },
-            { phoneNumber, isVerified: true },
+            { 
+                phoneNumber, 
+                businessName: otpRecord.businessName,
+                isVerified: true 
+            },
             { upsert: true }
         );
+
+        // Delete used OTP
+        await Otp.deleteOne({ _id: otpRecord._id });
 
         return res.status(200).json({
             success: true,
@@ -70,6 +91,7 @@ exports.verifyOtp = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to verify OTP",
+            error: error.message,
         });
     }
 };
@@ -81,16 +103,46 @@ exports.createFreeListing = async (req, res) => {
     try {
         const { phoneNumber } = req.body;
 
+        // Check if phone number is verified
         const verified = await VerifiedUser.findOne({ phoneNumber });
 
         if (!verified || !verified.isVerified) {
             return res.status(403).json({
                 success: false,
-                message: "Phone number not verified",
+                message: "Phone number not verified. Please verify your phone number first.",
             });
         }
 
-        const entry = await FreeListing.create(req.body);
+        // Process uploaded files if any
+        let documentUrls = [];
+        if (req.files && req.files.length > 0) {
+            const uploadedFiles = processUploadedFiles(req);
+            documentUrls = uploadedFiles.map(file => file.url);
+        }
+
+        // Prepare listing data
+        const listingData = {
+            ...req.body,
+            documents: documentUrls.length > 0 ? documentUrls : (req.body.documents || [])
+        };
+
+        // Create listing
+        const entry = await FreeListing.create(listingData);
+
+        // Send notification email (optional, won't fail if email fails)
+        if (entry.email && process.env.ENABLE_EMAIL_NOTIFICATIONS !== "false") {
+            try {
+                await sendNotificationEmail(
+                    entry.email,
+                    "Free Listing Created Successfully",
+                    `Hello ${entry.fullName}, your free listing for ${entry.businessName} has been created successfully.`,
+                    `${process.env.FRONTEND_URL || "http://localhost:3000"}/listings/${entry._id}`
+                );
+            } catch (emailError) {
+                console.error("Failed to send confirmation email:", emailError);
+                // Don't fail the request if email fails
+            }
+        }
 
         res.status(201).json({
             success: true,
@@ -99,33 +151,82 @@ exports.createFreeListing = async (req, res) => {
         });
     } catch (error) {
         console.error("Create Free Listing Error:", error);
+        
+        // Handle validation errors
+        if (error.name === "ValidationError") {
+            const errors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: "Validation failed",
+                errors: errors,
+            });
+        }
+
+        // Handle duplicate key errors
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: "Duplicate entry. This listing already exists.",
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: "Failed to create listing",
+            error: process.env.DEBUG_MODE === "true" ? error.message : undefined,
         });
     }
 };
 
 
 // =============================
-// GET ALL FREE LISTINGS
+// GET ALL FREE LISTINGS (with search and filters)
 // =============================
 exports.getAllFreeListings = async (req, res) => {
     try {
-        // Get page & limit from query, default page=1, limit=10
-        let { page = 1, limit = 10 } = req.query;
+        // Get query parameters
+        let { page = 1, limit = 10, search = "", category = "", city = "", state = "" } = req.query;
 
         page = parseInt(page);
         limit = parseInt(limit);
+        
+        // Validate pagination
+        if (page < 1) page = 1;
+        if (limit < 1 || limit > 100) limit = 10;
 
         // Calculate skip
         const skip = (page - 1) * limit;
 
+        // Build search query
+        const query = {};
+        
+        if (search.trim()) {
+            query.$or = [
+                { companyName: { $regex: search, $options: "i" } },
+                { businessName: { $regex: search, $options: "i" } },
+                { description: { $regex: search, $options: "i" } },
+                { city: { $regex: search, $options: "i" } },
+                { category: { $regex: search, $options: "i" } },
+            ];
+        }
+
+        if (category.trim()) {
+            query.category = { $regex: category, $options: "i" };
+        }
+
+        if (city.trim()) {
+            query.city = { $regex: city, $options: "i" };
+        }
+
+        if (state.trim()) {
+            query.state = { $regex: state, $options: "i" };
+        }
+
         // Get total count for pagination
-        const totalListings = await FreeListing.countDocuments();
+        const totalListings = await FreeListing.countDocuments(query);
 
         // Fetch listings with pagination
-        const listings = await FreeListing.find()
+        const listings = await FreeListing.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -144,6 +245,118 @@ exports.getAllFreeListings = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to retrieve listings",
+            error: process.env.DEBUG_MODE === "true" ? error.message : undefined,
+        });
+    }
+};
+
+// =============================
+// GET SINGLE FREE LISTING BY ID
+// =============================
+exports.getFreeListingById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate MongoDB ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid listing ID format",
+            });
+        }
+
+        const listing = await FreeListing.findById(id);
+
+        if (!listing) {
+            return res.status(404).json({
+                success: false,
+                message: "Free listing not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: listing,
+        });
+    } catch (error) {
+        console.error("Get Free Listing By ID Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve listing",
+            error: process.env.DEBUG_MODE === "true" ? error.message : undefined,
+        });
+    }
+};
+
+// =============================
+// UPDATE FREE LISTING
+// =============================
+exports.updateFreeListing = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate MongoDB ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid listing ID format",
+            });
+        }
+
+        // Process uploaded files if any
+        let documentUrls = [];
+        if (req.files && req.files.length > 0) {
+            const uploadedFiles = processUploadedFiles(req);
+            documentUrls = uploadedFiles.map(file => file.url);
+        }
+
+        // Prepare update data
+        const updateData = { ...req.body };
+        if (documentUrls.length > 0) {
+            // Merge new documents with existing ones or replace
+            const existingListing = await FreeListing.findById(id);
+            if (existingListing && existingListing.documents) {
+                updateData.documents = [...existingListing.documents, ...documentUrls];
+            } else {
+                updateData.documents = documentUrls;
+            }
+        }
+
+        const updatedListing = await FreeListing.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedListing) {
+            return res.status(404).json({
+                success: false,
+                message: "Free listing not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Free listing updated successfully",
+            data: updatedListing,
+        });
+    } catch (error) {
+        console.error("Update Free Listing Error:", error);
+        
+        // Handle validation errors
+        if (error.name === "ValidationError") {
+            const errors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: "Validation failed",
+                errors: errors,
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update listing",
+            error: process.env.DEBUG_MODE === "true" ? error.message : undefined,
         });
     }
 };
@@ -156,10 +369,10 @@ exports.deleteFreeListing = async (req, res) => {
         const { id } = req.params;
 
         // Validate MongoDB ID
-        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid listing ID",
+                message: "Invalid listing ID format",
             });
         }
 
@@ -168,7 +381,7 @@ exports.deleteFreeListing = async (req, res) => {
         if (!deletedListing) {
             return res.status(404).json({
                 success: false,
-                message: "Listing not found",
+                message: "Free listing not found",
             });
         }
 
@@ -182,6 +395,7 @@ exports.deleteFreeListing = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to delete listing",
+            error: process.env.DEBUG_MODE === "true" ? error.message : undefined,
         });
     }
 };
