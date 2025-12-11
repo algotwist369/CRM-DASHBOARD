@@ -144,6 +144,7 @@ const Home = () => {
 
   // Check if location prompt should be shown on first visit
   useEffect(() => {
+    window.scrollTo(0, 0);
     const checkLocationPermission = async () => {
       // Check if prompt was already shown
       const promptShown = localStorage.getItem(CACHE_KEYS.LOCATION_PROMPT_SHOWN)
@@ -799,10 +800,10 @@ const Home = () => {
       buttons.push({
         type: 'link',
         href: `tel:${business.phone}`,
-        className: 'flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 font-medium text-xs transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300',
+        className: 'flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 font-medium text-md transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300',
         icon: IoMdCall,
         label: 'Call',
-        iconSize: 'text-xs'
+        iconSize: 'text-lg'
       })
     }
 
@@ -812,10 +813,10 @@ const Home = () => {
         href: whatsappUrl,
         target: '_blank',
         rel: 'noopener noreferrer',
-        className: 'flex items-center justify-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 font-medium text-xs transition-colors duration-200 hover:bg-green-100 hover:border-green-300',
+        className: 'flex items-center justify-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 font-medium text-md transition-colors duration-200 hover:bg-green-100 hover:border-green-300',
         icon: FaWhatsapp,
         label: 'WhatsApp',
-        iconSize: 'text-xs'
+        iconSize: 'text-lg'
       })
     }
 
@@ -828,7 +829,7 @@ const Home = () => {
       <div className="relative h-[450px] xs:h-[500px] sm:h-[600px] lg:h-[700px] bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat">
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70"></div>
-        
+
         <div className="relative max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="text-center w-full py-6 xs:py-8 sm:py-12">
             <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-3 xs:mb-4 sm:mb-6 leading-tight px-2">
@@ -1049,12 +1050,12 @@ const Home = () => {
                     {/* Mobile Layout */}
                     <div className="flex sm:hidden">
                       {/* Business Image */}
-                      <div className="relative w-[35%] xs:w-[40%] aspect-square bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden flex-shrink-0">
+                      <div className="relative w-[35%] xs:w-[40%] aspect-square overflow-hidden flex-shrink-0">
                         {currentImage ? (
                           <img
                             src={currentImage}
                             alt={business.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                             loading="lazy"
                             onError={(e) => {
                               e.target.style.display = 'none'
@@ -1247,7 +1248,7 @@ const Home = () => {
                           <img
                             src={desktopImage}
                             alt={business.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                             loading="lazy"
                             onError={(e) => {
                               e.target.style.display = 'none'
@@ -1255,6 +1256,7 @@ const Home = () => {
                             }}
                           />
                         ) : null}
+
                         <div
                           className={`w-full h-full flex items-center justify-center ${desktopImage ? 'hidden' : 'flex'}`}
                         >
@@ -1281,7 +1283,7 @@ const Home = () => {
 
                         {viewMode === 'nearby' && business.distanceKm && (
                           <div className="absolute bottom-2 right-2">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 text-gray-900 rounded text-xs font-semibold   border border-gray-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 text-gray-900 rounded text-xs font-semibold border border-gray-200">
                               <FaLocationArrow className="text-primary-600 text-xs" />
                               {business.distanceKm} km
                             </span>
@@ -1298,9 +1300,13 @@ const Home = () => {
                             {business.ratings?.average > 0 && (
                               <div className="flex items-center gap-0.5 flex-shrink-0">
                                 <FaStar className="text-yellow-500 text-sm" />
-                                <span className="text-gray-900 font-bold text-sm">{business.ratings.average.toFixed(1)}</span>
+                                <span className="text-gray-900 font-bold text-sm">
+                                  {business.ratings.average.toFixed(1)}
+                                </span>
                                 {business.ratings.totalReviews > 0 && (
-                                  <span className="text-gray-500 text-xs ml-0.5">({business.ratings.totalReviews})</span>
+                                  <span className="text-gray-500 text-xs ml-0.5">
+                                    ({business.ratings.totalReviews})
+                                  </span>
                                 )}
                                 {business.ratings.average >= 4.5 && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] font-semibold rounded-full whitespace-nowrap ml-auto">
@@ -1321,79 +1327,54 @@ const Home = () => {
                           {locationText && (
                             <div className="flex items-center gap-1 text-gray-600 mb-1.5">
                               <FaMapMarkerAlt className="text-primary-500 text-xs flex-shrink-0" />
-                              <span className="text-sm line-clamp-1">
-                                {locationText}
-                              </span>
+                              <span className="text-sm line-clamp-1">{locationText}</span>
                               {viewMode === 'nearby' && business.distanceKm && (
-                                <span className="text-xs text-gray-400 ml-0.5">• {business.distanceKm} km</span>
+                                <span className="text-xs text-gray-400 ml-0.5">
+                                  • {business.distanceKm} km
+                                </span>
                               )}
                             </div>
                           )}
                         </div>
 
                         {(() => {
-                          const services = business.services || []
-                          const features = business.features || []
-                          const hasServices = services.length > 0
-                          const hasFeatures = features.length > 0
+                          const services = business.services || [];
+                          const features = business.features || [];
+                          const hasServices = services.length > 0;
+                          const hasFeatures = features.length > 0;
 
-                          // Don't show section if neither has data
-                          if (!hasServices && !hasFeatures) return null
+                          if (!hasServices && !hasFeatures) return null;
 
                           const sections = [
                             {
-                              title: 'Services',
+                              title: "Services",
                               items: services.slice(0, 3),
-                              icon: '•',
-                              iconClass: 'text-primary-500',
-                              emptyText: 'No services listed',
-                              hasData: hasServices
+                              icon: "•",
+                              iconClass: "text-primary-500",
+                              emptyText: "No services listed",
+                              hasData: hasServices,
                             },
                             {
-                              title: 'Features',
+                              title: "Features",
                               items: features.slice(0, 3),
                               icon: FaCheckCircle,
-                              iconClass: 'text-green-500',
-                              emptyText: 'No features listed',
+                              iconClass: "text-green-500",
+                              emptyText: "No features listed",
                               isComponent: true,
-                              hasData: hasFeatures
-                            }
-                          ].filter(section => section.hasData) // Only show sections with data
+                              hasData: hasFeatures,
+                            },
+                          ].filter((section) => section.hasData);
 
-                          if (sections.length === 0) return null
+                          if (sections.length === 0) return null;
 
-                          return (
-                            <div className={`grid ${sections.length === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 md:gap-4 mb-2`}>
-                              {sections.map((section, sectionIdx) => (
-                                <div key={sectionIdx} className="flex flex-col min-w-0">
-                                  <div className="text-xs font-semibold text-gray-700 mb-1">{section.title}:</div>
-                                  {section.items.length > 0 ? (
-                                    <ul className="space-y-1">
-                                      {section.items.map((item, idx) => (
-                                        <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-600 leading-tight">
-                                          {section.isComponent ? (
-                                            <section.icon className={`${section.iconClass} text-[11px] mt-0.5 flex-shrink-0`} />
-                                          ) : (
-                                            <span className={`${section.iconClass} mt-0.5 flex-shrink-0 text-xs`}>{section.icon}</span>
-                                          )}
-                                          <span className="break-words flex-1">{item.name || item}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <p className="text-xs text-gray-400 italic">{section.emptyText}</p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )
+                          return <></>;
                         })()}
 
                         <div className="mt-auto space-y-2 xs:space-y-2 pt-2 xs:pt-2.5 border-t border-gray-100">
                           <button
                             onClick={(e) => {
-                              e.stopPropagation()
-                              handleBookAppointment(business.businessLink)
+                              e.stopPropagation();
+                              handleBookAppointment(business.businessLink);
                             }}
                             className="w-full flex items-center justify-center gap-1.5 xs:gap-2 px-4 xs:px-4 py-2.5 xs:py-2.5 bg-primary-600 text-white font-semibold border-0 rounded-lg text-sm xs:text-sm transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] min-h-[44px] touch-manipulation"
                           >
@@ -1403,7 +1384,7 @@ const Home = () => {
 
                           <div className="grid grid-cols-2 gap-2 xs:gap-2">
                             {getDesktopActionButtons(business, whatsappUrl).map((btn, idx) => {
-                              const Icon = btn.icon
+                              const Icon = btn.icon;
                               return (
                                 <a
                                   key={idx}
@@ -1416,12 +1397,13 @@ const Home = () => {
                                   <Icon className={btn.iconSize} />
                                   <span className="truncate">{btn.label}</span>
                                 </a>
-                              )
+                              );
                             })}
                           </div>
                         </div>
                       </div>
                     </div>
+
                   </div>
                 )
               })}

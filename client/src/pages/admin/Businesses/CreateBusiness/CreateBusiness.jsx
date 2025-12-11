@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FaStore,
   FaPhoneAlt,
@@ -166,6 +166,10 @@ const CreateBusiness = () => {
   const [featureInput, setFeatureInput] = useState("");
   const [amenityInput, setAmenityInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -1469,10 +1473,10 @@ const CreateBusiness = () => {
                   >
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isActive
-                          ? "border-primary-600 bg-primary-50"
-                          : isCompleted
-                            ? "border-green-600 bg-green-50"
-                            : "border-gray-300 bg-gray-50"
+                        ? "border-primary-600 bg-primary-50"
+                        : isCompleted
+                          ? "border-green-600 bg-green-50"
+                          : "border-gray-300 bg-gray-50"
                         }`}
                     >
                       {isCompleted ? (
@@ -1499,8 +1503,8 @@ const CreateBusiness = () => {
                 onClick={handlePrevious}
                 disabled={currentStep === 1}
                 className={`flex items-center gap-2 px-6 py-2.5  font-medium transition-all ${currentStep === 1
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                   }`}
               >
                 <FaChevronLeft /> Previous

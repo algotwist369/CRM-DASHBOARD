@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../../../../components'
-import { HiMenu, HiX } from 'react-icons/hi'
+import { HiMenu, HiX, HiPlus } from 'react-icons/hi'
 import AdminNotificationBell from '../../../../components/notifications/AdminNotificationBell'
 import adminService from '../../../../services/admin/adminService'
 import authService from '../../../../services/auth/authService'
@@ -194,6 +194,17 @@ const AdminHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               </svg>
             </div>
           </div> */}
+
+          {/* Add Business Button */}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/admin/businesses/create')}
+            className="hidden sm:flex items-center gap-2"
+          >
+            <HiPlus className="w-4 h-4" />
+            <span>Add Business</span>
+          </Button>
 
           {/* Notifications */}
           <AdminNotificationBell />

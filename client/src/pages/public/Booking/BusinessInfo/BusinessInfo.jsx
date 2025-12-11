@@ -728,7 +728,7 @@ const BusinessInfo = () => {
           {(fullAddress || business.ratings) && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 flex-wrap">
               {fullAddress && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="max-w-[400px] flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300">
                   <FaMapMarkerAlt className="text-white text-base sm:text-lg flex-shrink-0" />
                   <span className="text-sm sm:text-base text-white font-medium max-w-xs truncate sm:max-w-none">
                     {fullAddress}
@@ -1121,26 +1121,57 @@ const BusinessInfo = () => {
               {business.services && business.services.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     {business.services.map((service, index) => {
                       const isObject = typeof service === 'object' && service !== null
                       const serviceKey = isObject && service?._id ? service._id : `service-${index}`
                       const name =
                         (isObject && (service.name || service.serviceName || service.title)) ||
                         (typeof service === 'string' ? service : `Service ${index + 1}`)
-                      const price = isObject && service.price ? `₹${service.price}` : ''
                       const duration = isObject && service.duration ? `${service.duration} min` : ''
-                      const meta = [price, duration].filter(Boolean).join(' • ')
+                      const category = isObject && service.category ? service.category : ''
+                      const serviceImages = isObject && Array.isArray(service.images) ? service.images.filter(Boolean) : []
+                      const hasImage = serviceImages.length > 0
+                      const mainImage = hasImage ? serviceImages[0] : null
 
                       return (
                         <div
                           key={serviceKey}
-                          className="flex items-start gap-2 px-2.5 py-1.5 bg-green-50 text-green-700  text-xs border border-green-100"
+                          className="bg-white border border-gray-200 overflow-hidden"
                         >
-                          <FaCheckCircle className="text-[10px] mt-0.5" />
-                          <div className="flex flex-col leading-tight">
-                            <span className="font-medium text-green-700">{name}</span>
-                            {meta && <span className="text-[10px] text-gray-500">{meta}</span>}
+                          {hasImage && (
+                            <div className="w-full h-24 sm:h-28 bg-gray-100 overflow-hidden">
+                              <img
+                                src={mainImage}
+                                alt={name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none'
+                                }}
+                              />
+                            </div>
+                          )}
+                          <div className="p-2 sm:p-2.5">
+                            <div className="flex items-start gap-1.5">
+                              <FaCheckCircle className="text-green-600 text-xs mt-0.5 flex-shrink-0" />
+                              <div className="flex flex-col flex-1 min-w-0">
+                                <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-0.5">{name}</h3>
+                                <div className="flex flex-wrap gap-1.5 text-[10px] text-gray-600">
+                                  {duration && (
+                                    <span className="flex items-center gap-0.5">
+                                      <FaClock className="text-[9px]" />
+                                      {duration}-120 min
+                                    </span>
+                                  )}
+                                  {category && (
+                                    <span className="flex items-center gap-0.5">
+                                      <FaTag className="text-[9px]" />
+                                      {category}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )
