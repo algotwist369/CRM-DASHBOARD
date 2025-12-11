@@ -1579,7 +1579,6 @@ const verifyBookingOTP = async (req, res, next) => {
     }
 };
 
-
 // Get appointment by confirmation code (public)
 const getAppointmentByConfirmationCode = async (req, res, next) => {
     try {
