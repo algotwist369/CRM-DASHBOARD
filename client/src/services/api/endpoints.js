@@ -241,7 +241,8 @@ const API_ENDPOINTS = {
     STAFF: '/public/staff',
     AVAILABLE_SLOTS: '/public/available-slots',
     BOOKING: '/public/booking',
-    APPOINTMENT_STATUS: '/public/appointment-status'
+    APPOINTMENT_STATUS: '/public/appointment-status',
+    SEARCH: '/business/public/search'
   },
 
   // Free Listing endpoints
@@ -338,7 +339,7 @@ const API_ENDPOINTS = {
 // Helper function to build query strings
 export const buildQueryString = (params) => {
   const searchParams = new URLSearchParams()
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== null && value !== undefined && value !== '') {
       if (Array.isArray(value)) {
@@ -348,7 +349,7 @@ export const buildQueryString = (params) => {
       }
     }
   })
-  
+
   return searchParams.toString()
 }
 

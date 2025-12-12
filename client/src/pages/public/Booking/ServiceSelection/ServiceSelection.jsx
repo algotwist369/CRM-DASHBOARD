@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import { useQuery } from '@tanstack/react-query'
 import {
   FaSpinner,
   FaArrowLeft,
   FaArrowRight,
   FaCheckCircle,
-  FaClock,
   FaChevronDown
 } from 'react-icons/fa'
-import { FiCheck, FiPlus } from 'react-icons/fi'
+import { FiCheck } from 'react-icons/fi'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import appointmentService from '../../../../services/public/appointmentService'
 
@@ -90,75 +90,72 @@ const buildSelectionPayload = (service, option) => {
 const ServiceSelection = () => {
   const navigate = useNavigate()
   const { businessLink } = useParams()
-  const [loading, setLoading] = useState(true)
-  const [business, setBusiness] = useState(null)
+
+  // Fetch business services using React Query
+  const {
+    data: business,
+    isLoading: loading,
+    isFetching: servicesLoading,
+    error: queryError
+  } = useQuery({
+    queryKey: ['businessServices', businessLink],
+    queryFn: async () => {
+      if (!businessLink) throw new Error('Invalid business link')
+
+      const result = await appointmentService.getBusinessServices(businessLink)
+      if (result.success && result.data?.success) {
+        const payload = result.data.data
+
+        // Merge with existing data if possible
+        const currentStored = sessionStorage.getItem('bookingBusiness')
+        const prev = currentStored ? JSON.parse(currentStored) : {}
+
+        const nextBusiness = {
+          ...prev,
+          ...(payload.business || {}),
+          services: payload.services || []
+        }
+
+        sessionStorage.setItem('bookingBusiness', JSON.stringify(nextBusiness))
+        return nextBusiness
+      } else {
+        throw new Error(result.error || result.data?.message || 'Failed to load services')
+      }
+    },
+    enabled: !!businessLink,
+    initialData: () => {
+      const stored = sessionStorage.getItem('bookingBusiness')
+      return stored ? JSON.parse(stored) : undefined
+    },
+    staleTime: 5 * 60 * 1000 // 5 minutes
+  })
+
+  // Local State
   const [selectedServices, setSelectedServices] = useState([])
   const [selectedOptions, setSelectedOptions] = useState({})
   const [expandedServiceId, setExpandedServiceId] = useState(null)
-  const [servicesLoading, setServicesLoading] = useState(false)
   const [customerInfo, setCustomerInfo] = useState(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [selectedStaffSummary, setSelectedStaffSummary] = useState(null)
-  const [error, setError] = useState(null)
+
+  // Derived error
+  const error = queryError?.message || null
+
+  const services = useMemo(() => business?.services || [], [business])
 
   // Update page title
   usePageTitle();
 
-  const fetchBusinessServices = useCallback(async (initialLoad = false) => {
-    if (!businessLink) return
-    try {
-      if (initialLoad) setLoading(true)
-      setServicesLoading(true)
-      const result = await appointmentService.getBusinessServices(businessLink)
-      if (result.success && result.data?.success) {
-        const payload = result.data.data
-        setBusiness(prev => {
-          const nextBusiness = {
-            ...(prev || {}),
-            ...(payload.business || {}),
-            services: payload.services || []
-          }
-          sessionStorage.setItem('bookingBusiness', JSON.stringify(nextBusiness))
-          return nextBusiness
-        })
-        setError(null)
-      } else {
-        const message = result.error || result.data?.message || 'Failed to load services'
-        if (initialLoad) setError(message)
-        toast.error(message)
-      }
-    } catch (error) {
-      console.error('Failed to load business services', error)
-      if (initialLoad) setError('Failed to load services')
-      toast.error('Failed to load services')
-    } finally {
-      if (initialLoad) setLoading(false)
-      setServicesLoading(false)
-    }
-  }, [businessLink])
-
   useEffect(() => {
     window.scrollTo(0, 0)
-    const businessData = sessionStorage.getItem('bookingBusiness')
+
+    // Restore other booking state
     const storedCustomer = sessionStorage.getItem('customerInfo')
     const storedDate = sessionStorage.getItem('selectedDate')
     const storedTime = sessionStorage.getItem('selectedTime')
     const storedStaff = sessionStorage.getItem('selectedStaff')
-    let parsedBusiness = null
-    if (businessData) {
-      try {
-        parsedBusiness = JSON.parse(businessData)
-        setBusiness(parsedBusiness)
-      } catch (error) {
-        console.error('Failed to parse stored business data', error)
-        sessionStorage.removeItem('bookingBusiness')
-      } finally {
-        setLoading(false)
-      }
-    } else {
-      setLoading(false)
-    }
+
     if (storedCustomer) {
       try {
         setCustomerInfo(JSON.parse(storedCustomer))
@@ -182,9 +179,11 @@ const ServiceSelection = () => {
         sessionStorage.removeItem('selectedStaff')
       }
     }
+  }, [])
 
-    fetchBusinessServices(!parsedBusiness)
-  }, [fetchBusinessServices])
+  useEffect(() => {
+    if (error) toast.error(error)
+  }, [error])
 
   useEffect(() => {
 
@@ -360,7 +359,6 @@ const ServiceSelection = () => {
     [selectedServices]
   )
 
-  const services = useMemo(() => business?.services || [], [business])
   const serviceCount = services.length
 
   const handleContinue = () => {
@@ -463,10 +461,16 @@ const ServiceSelection = () => {
                         }`}
                     >
                       {/* Service Card Header - Clickable */}
-                      <button
-                        type="button"
+                      <div
                         onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
-                        className="w-full p-4 flex items-center justify-between"
+                        className="w-full p-4 flex items-center justify-between cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setExpandedServiceId(isExpanded ? null : serviceId)
+                          }
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <button
@@ -476,11 +480,10 @@ const ServiceSelection = () => {
                               toggleService(service)
                             }}
                             disabled={!hasOptions}
-                            className={`w-6 h-6 rounded border flex items-center justify-center flex-shrink-0 ${
-                              isSelected
-                                ? 'border-gray-500 bg-gray-900 text-white'
-                                : 'border-gray-300'
-                            } ${!hasOptions ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            className={`w-6 h-6 rounded border flex items-center justify-center flex-shrink-0 ${isSelected
+                              ? 'border-gray-500 bg-gray-900 text-white'
+                              : 'border-gray-300'
+                              } ${!hasOptions ? 'opacity-40 cursor-not-allowed' : ''}`}
                           >
                             {isSelected && <FiCheck className="text-xs" />}
                           </button>
@@ -505,7 +508,7 @@ const ServiceSelection = () => {
                             className={`text-gray-400 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
                           />
                         </div>
-                      </button>
+                      </div>
 
                       {/* Dropdown Options */}
                       {isExpanded && hasOptions && (
@@ -518,8 +521,8 @@ const ServiceSelection = () => {
                                 type="button"
                                 onClick={() => handleOptionChange(service, option.id, true)}
                                 className={`w-full p-3 rounded border text-left ${optionSelected
-                                    ? 'border-gray-900 bg-gray-50'
-                                    : 'border-gray-200 bg-white'
+                                  ? 'border-gray-900 bg-gray-50'
+                                  : 'border-gray-200 bg-white'
                                   }`}
                               >
                                 <div className="flex items-center justify-between">
@@ -655,7 +658,7 @@ const ServiceSelection = () => {
               <button
                 onClick={handleContinue}
                 disabled={selectedServices.length === 0}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white  hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Continue
                 <FaArrowRight />

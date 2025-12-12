@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://crm-dashboard.com/sitemap.xml

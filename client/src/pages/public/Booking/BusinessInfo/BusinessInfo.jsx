@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -25,24 +25,53 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaTimes
-} from 'react-icons/fa'
+} from 'react-icons/fa';
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import Map from '../../../../components/common/Map/Map'
+import BusinessInfoReviews from './BusinessInfoReviews'
+
+import { useQuery } from '@tanstack/react-query'
 
 const BusinessInfo = () => {
   const navigate = useNavigate()
   const { businessLink } = useParams()
-  const [loading, setLoading] = useState(true)
-  const [business, setBusiness] = useState(null)
-  const [error, setError] = useState(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
-  
-  // Refs to prevent duplicate API calls
-  const abortControllerRef = useRef(null)
-  const fetchingRef = useRef(false)
+
+  // Fetch business info using React Query
+  const {
+    data: business,
+    isLoading: loading,
+    error: queryError
+  } = useQuery({
+    queryKey: ['businessInfo', businessLink],
+    queryFn: async () => {
+      if (!businessLink) throw new Error('Invalid business link')
+
+      const result = await appointmentService.getBusinessInfo(businessLink)
+      if (!result.success) {
+        throw new Error(result.error || result.data?.message || result.message || 'Failed to fetch business information')
+      }
+
+      const businessData = result.data.data || result.data
+      sessionStorage.setItem('bookingBusiness', JSON.stringify(businessData))
+      return businessData
+    },
+    enabled: !!businessLink,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1
+  })
+
+  // Handle errors
+  const error = queryError?.message
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error)
+    }
+  }, [error])
 
   // Update page title based on business name
   const pageTitle = useMemo(() => {
@@ -50,73 +79,9 @@ const BusinessInfo = () => {
   }, [business])
   usePageTitle(pageTitle)
 
-  const fetchBusinessInfo = useCallback(async () => {
-    // Prevent duplicate calls
-    if (fetchingRef.current) {
-      return
-    }
-
-    if (!businessLink) {
-      setError('Invalid business link')
-      setLoading(false)
-
-      return
-    }
-
-    try {
-      // Cancel previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-
-      // Create new abort controller
-      abortControllerRef.current = new AbortController()
-      fetchingRef.current = true
-      setLoading(true)
-      setError(null)
-
-      const result = await appointmentService.getBusinessInfo(businessLink)
-
-      // Check if request was aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return
-      }
-
-      if (result.success && result.data) {
-        // Handle both nested data structure (result.data.data) and direct structure (result.data)
-        const businessData = result.data.data || result.data
-        setBusiness(businessData)
-        sessionStorage.setItem('bookingBusiness', JSON.stringify(businessData))
-      } else {
-        const errorMessage = result.error || result.data?.message || result.message || 'Failed to fetch business information'
-        setError(errorMessage)
-        toast.error(errorMessage)
-      }
-    } catch (error) {
-      // Ignore abort errors
-      if (error.name === 'AbortError') {
-        return
-      }
-      const errorMessage = 'Failed to load business information'
-      setError(errorMessage)
-      toast.error(errorMessage)
-      console.error(error)
-    } finally {
-      setLoading(false)
-      fetchingRef.current = false
-    }
-  }, [businessLink])
-
   useEffect(() => {
     window.scrollTo(0, 0)
-    fetchBusinessInfo()
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-      fetchingRef.current = false
-    }
-  }, [businessLink, fetchBusinessInfo])
+  }, [businessLink])
 
   const handleBookNow = useCallback(() => {
     if (business && business.services && business.services.length > 0) {
@@ -159,7 +124,7 @@ const BusinessInfo = () => {
   // Memoize WhatsApp URL
   const whatsappUrl = useMemo(() => {
     if (!business) return null
-    
+
     // Check if socialMedia.whatsapp is already a URL
     const socialWhatsapp = business.socialMedia?.whatsapp
     if (socialWhatsapp) {
@@ -173,7 +138,7 @@ const BusinessInfo = () => {
         return `https://wa.me/${phoneFromSocial}`
       }
     }
-    
+
     // Fallback to business phone number
     const phoneNumber = business.phone?.replace(/[^0-9]/g, '')
     return phoneNumber ? `https://wa.me/${phoneNumber}` : null
@@ -316,7 +281,7 @@ const BusinessInfo = () => {
             href={`tel:${business.phone}`}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700  border border-blue-200 font-medium text-sm"
           >
-            <FaPhoneAlt className="text-sm" />
+            <FaPhoneAlt className="text-lg" />
             Call Now
           </a>
         )}
@@ -327,7 +292,7 @@ const BusinessInfo = () => {
             rel="noopener noreferrer"
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-700  border border-green-200 font-medium text-sm"
           >
-            <FaWhatsapp className="text-sm" />
+            <FaWhatsapp className="text-lg" />
             WhatsApp
           </a>
         )}
@@ -491,8 +456,8 @@ const BusinessInfo = () => {
                       isFilled
                         ? 'text-yellow-400'
                         : isHalf
-                        ? 'text-yellow-400 opacity-50'
-                        : 'text-gray-300'
+                          ? 'text-yellow-400 opacity-50'
+                          : 'text-gray-300'
                     }
                     size={18}
                   />
@@ -628,7 +593,7 @@ const BusinessInfo = () => {
       {allImages.length > 0 ? (
         <>
           {/* Image Container with Smooth Transition */}
-          <div 
+          <div
             className="relative w-full h-full cursor-pointer"
             onClick={() => openImageModal(currentImageIndex)}
           >
@@ -637,9 +602,8 @@ const BusinessInfo = () => {
                 key={`${image.src}-${index}`}
                 src={image.src}
                 alt={`${business.name} - ${image.type}`}
-                className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-700 ease-in-out ${
-                  index === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                }`}
+                className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                  }`}
                 loading={index === 0 ? 'eager' : 'lazy'}
               />
             ))}
@@ -658,11 +622,10 @@ const BusinessInfo = () => {
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
-                  className={`transition-all duration-300 rounded-full ${
-                    index === currentImageIndex
-                      ? 'w-8 h-2 bg-white'
-                      : 'w-2 h-2 bg-white/50 hover:bg-white/75'
-                  }`}
+                  className={`transition-all duration-300 rounded-full ${index === currentImageIndex
+                    ? 'w-8 h-2 bg-white'
+                    : 'w-2 h-2 bg-white/50 hover:bg-white/75'
+                    }`}
                   aria-label={`Go to image ${index + 1}`}
                 />
               ))}
@@ -837,11 +800,10 @@ const BusinessInfo = () => {
                     e.stopPropagation()
                     setModalImageIndex(index)
                   }}
-                  className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                    index === modalImageIndex
-                      ? 'border-white scale-110 shadow-lg'
-                      : 'border-white/30 hover:border-white/60'
-                  }`}
+                  className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all duration-300 ${index === modalImageIndex
+                    ? 'border-white scale-110 shadow-lg'
+                    : 'border-white/30 hover:border-white/60'
+                    }`}
                 >
                   <img
                     src={image.src}
@@ -1216,20 +1178,21 @@ const BusinessInfo = () => {
                 </div>
               )}
 
-              {/* Working Hours */}
-              {workingHoursList.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                    <FaClock className="text-primary-600 text-base sm:text-lg" />
-                    <span>Working Hours</span>
-                  </h2>
-                  <div className="space-y-1.5 sm:space-y-2">
-                    {workingHoursList.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                        <span className="text-xs sm:text-sm font-medium text-gray-700">{item.day}</span>
-                        <span className="text-xs sm:text-sm text-gray-600">{item.hours}</span>
-                      </div>
-                    ))}
+
+              {(mapCoordinates || business.googleMapsUrl) && (
+                <div className="mt-6 sm:mt-8">
+                  <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                      <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
+                      <span>Location</span>
+                    </h2>
+                    <Map
+                      coordinates={mapCoordinates}
+                      googleMapsUrl={business.googleMapsUrl}
+                      zoom={mapZoom}
+                      height="400px"
+                      showLink={true}
+                    />
                   </div>
                 </div>
               )}
@@ -1266,28 +1229,30 @@ const BusinessInfo = () => {
               {renderFollowUsCard()}
               {renderBookingInfoCard()}
               {renderContactInfoCard()}
+
+              {/* Working Hours */}
+              {workingHoursList.length > 0 && (
+                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <FaClock className="text-primary-600 text-base sm:text-lg" />
+                    <span>Working Hours</span>
+                  </h2>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    {workingHoursList.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                        <span className="text-xs sm:text-sm font-medium text-gray-700">{item.day}</span>
+                        <span className="text-xs sm:text-sm text-gray-600">{item.hours}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Location - Full Width */}
-        {(mapCoordinates || business.googleMapsUrl) && (
-          <div className="hidden lg:block mt-6 sm:mt-8">
-            <div className="bg-white   border border-gray-200 p-4 sm:p-6">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
-                <span>Location</span>
-              </h2>
-              <Map
-                coordinates={mapCoordinates}
-                googleMapsUrl={business.googleMapsUrl}
-                zoom={mapZoom}
-                height="400px"
-                showLink={true}
-              />
-            </div>
-          </div>
-        )}
+        {/* Ratings and reviews */}
+        <BusinessInfoReviews business={business} />
 
         {/* Quick Actions - Mobile Sticky Bottom */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 p-4">

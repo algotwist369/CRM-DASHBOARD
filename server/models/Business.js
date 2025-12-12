@@ -220,6 +220,22 @@ businessSchema.index({ "ratings.average": -1 }); // For sorting by rating
 businessSchema.index({ createdAt: -1 }); // For recent businesses
 businessSchema.index({ tags: 1 }); // For tag-based search
 businessSchema.index({ category: 1, subCategory: 1 }); // For category filtering
+businessSchema.index({
+    name: "text",
+    category: "text",
+    subCategory: "text",
+    tags: "text",
+    description: "text"
+}, {
+    weights: {
+        name: 10,
+        category: 5,
+        subCategory: 5,
+        tags: 3,
+        description: 1
+    },
+    name: "TextIndex"
+});
 
 /**
  * Extract latitude and longitude from Google Maps URL

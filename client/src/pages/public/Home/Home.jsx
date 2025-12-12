@@ -826,7 +826,14 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       {/* Hero Section */}
-      <div className="relative h-[450px] xs:h-[500px] sm:h-[600px] lg:h-[700px] bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat">
+      <div className="relative h-[450px] xs:h-[500px] sm:h-[600px] lg:h-[700px]">
+        <img
+          src="/hero-placeholder.svg"
+          alt="Business Finder Background"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          fetchPriority="high"
+          loading="eager"
+        />
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70"></div>
 
@@ -1210,7 +1217,6 @@ const Home = () => {
                             {getMobileActionButtons(business, whatsappUrl).map((btn, idx) => {
                               const Icon = btn.icon
                               const commonProps = {
-                                key: idx,
                                 className: btn.className,
                                 onClick: (e) => {
                                   e.stopPropagation()
@@ -1221,6 +1227,7 @@ const Home = () => {
 
                               return btn.type === 'link' ? (
                                 <a
+                                  key={idx}
                                   {...commonProps}
                                   href={btn.href}
                                   {...(btn.target && { target: btn.target })}
@@ -1230,7 +1237,7 @@ const Home = () => {
                                   <span className="truncate">{btn.label}</span>
                                 </a>
                               ) : (
-                                <button {...commonProps}>
+                                <button key={idx} {...commonProps}>
                                   <Icon className={`${btn.iconSize} flex-shrink-0`} />
                                   <span className="truncate">{btn.label}</span>
                                 </button>
