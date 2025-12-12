@@ -16,6 +16,10 @@ router.get("/public/locations/india", businessController.getIndiaLocations);
 // Query params: lat, lng, maxDistance (in meters, default 5000), type, page, limit
 router.get("/public/nearby", businessController.getBusinessesNearby);
 
+// Advanced Search (Location + Text)
+// Query params: lat, lng, q, category, radius, sort, page, limit
+router.get("/public/search", businessController.searchBusinesses);
+
 // Get business info by business link (public for appointment booking)
 router.get("/info/:businessLink", businessController.getBusinessInfoByLink);
 
@@ -24,37 +28,37 @@ router.get("/info/:businessLink", businessController.getBusinessInfoByLink);
 // Update business (Admin + Manager)
 // Admin can update any of their businesses by ID
 // Manager can update their own business (use 'mine' or their business ID)
-router.put("/:id", 
+router.put("/:id",
     authMiddleware,
-    roleMiddleware(["admin", "manager"]), 
+    roleMiddleware(["admin", "manager"]),
     businessController.updateBusiness
 );
 
 // Get business details (Admin + Manager)
-router.get("/:id", 
+router.get("/:id",
     authMiddleware,
-    roleMiddleware(["admin", "manager"]), 
+    roleMiddleware(["admin", "manager"]),
     businessController.getBusinessById
 );
 
 // Get business staff (Admin + Manager)
-router.get("/:id/staff", 
+router.get("/:id/staff",
     authMiddleware,
-    roleMiddleware(["admin", "manager"]), 
+    roleMiddleware(["admin", "manager"]),
     businessController.getBusinessStaff
 );
 
 // Get business daily records (Admin + Manager)
-router.get("/:id/daily-business", 
+router.get("/:id/daily-business",
     authMiddleware,
-    roleMiddleware(["admin", "manager"]), 
+    roleMiddleware(["admin", "manager"]),
     businessController.getBusinessDailyRecords
 );
 
 // Get business analytics (Admin + Manager)
-router.get("/:id/analytics", 
+router.get("/:id/analytics",
     authMiddleware,
-    roleMiddleware(["admin", "manager"]), 
+    roleMiddleware(["admin", "manager"]),
     businessController.getBusinessAnalytics
 );
 
