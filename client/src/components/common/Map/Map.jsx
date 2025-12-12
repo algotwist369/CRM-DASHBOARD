@@ -43,28 +43,34 @@ const Map = ({
 
     // Priority 2: Parse from googleMapsUrl
     if ((lat === null || lng === null) && googleMapsUrl) {
-      // Extract coordinates from ll= parameter (lat,lng format)
-      const llMatch = googleMapsUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/)
-      if (llMatch) {
-        lat = parseFloat(llMatch[1])
-        lng = parseFloat(llMatch[2])
-        // Extract zoom level if available
-        const zMatch = googleMapsUrl.match(/[?&]z=(\d+)/)
-        if (zMatch) {
-          finalZoom = parseInt(zMatch[1], 10)
-        }
-      } else {
-        // Extract coordinates from @lat,lng format
-        const coordsMatch = googleMapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-        if (coordsMatch) {
-          lat = parseFloat(coordsMatch[1])
-          lng = parseFloat(coordsMatch[2])
-          // Extract zoom if available (format: @lat,lng,z)
-          const zoomMatch = googleMapsUrl.match(/@-?\d+\.\d+,-?\d+\.\d+,(\d+)/)
-          if (zoomMatch) {
-            finalZoom = parseInt(zoomMatch[1], 10)
+      try {
+        const decodedUrl = decodeURIComponent(googleMapsUrl)
+
+        // Extract coordinates from ll= parameter (lat,lng format)
+        const llMatch = decodedUrl.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+        if (llMatch) {
+          lat = parseFloat(llMatch[1])
+          lng = parseFloat(llMatch[2])
+          // Extract zoom level if available
+          const zMatch = decodedUrl.match(/[?&]z=(\d+)/)
+          if (zMatch) {
+            finalZoom = parseInt(zMatch[1], 10)
+          }
+        } else {
+          // Extract coordinates from @lat,lng format
+          const coordsMatch = decodedUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+          if (coordsMatch) {
+            lat = parseFloat(coordsMatch[1])
+            lng = parseFloat(coordsMatch[2])
+            // Extract zoom if available (format: @lat,lng,z)
+            const zoomMatch = decodedUrl.match(/@-?\d+\.?\d*,-?\d+\.?\d*,(\d+)/)
+            if (zoomMatch) {
+              finalZoom = parseInt(zoomMatch[1], 10)
+            }
           }
         }
+      } catch (e) {
+        console.error('Error parsing Google Maps URL:', e)
       }
     }
 

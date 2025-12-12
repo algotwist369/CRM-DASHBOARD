@@ -599,7 +599,7 @@ const BookingConfirmation = () => {
                   <button
                     onClick={handleConfirmBooking}
                     disabled={submitting}
-                    className="w-full py-4 bg-gray-900 text-white  hover:bg-black disabled:opacity-70 disabled:cursor-not-allowed transition-all font-semibold text-lg  hover: flex items-center justify-center gap-3 transform active:scale-[0.99]"
+                    className="w-full py-4 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed transition-all font-semibold text-lg  hover: flex items-center justify-center gap-3 transform active:scale-[0.99]"
                   >
                     {submitting ? (
                       <><FaSpinner className="animate-spin" /> Processing...</>
@@ -700,7 +700,7 @@ const BookingConfirmation = () => {
         {/* OTP Modal */}
         {showOTPModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-lg p-6 max-w-sm w-full">
               <h3 className="text-xl font-bold text-gray-900 mb-2">Verify Mobile Number</h3>
               <p className="text-sm text-gray-500 mb-6">
                 Enter the OTP sent to <span className="font-semibold text-gray-700">{phoneForOTP}</span>
@@ -730,7 +730,7 @@ const BookingConfirmation = () => {
                         document.getElementById(`otp-input-${index - 1}`).focus();
                       }
                     }}
-                    className="w-14 h-14 text-center text-3xl font-bold border-2 border-gray-200 rounded-lg focus:border-primary-600 focus:ring-4 focus:ring-primary-100 outline-none transition-all shadow-sm"
+                    className="w-12 h-12 text-center text-2xl border border-gray-300 rounded focus:border-primary-600 focus:outline-none transition-colors"
                     maxLength={1}
                     autoFocus={index === 0}
                   />

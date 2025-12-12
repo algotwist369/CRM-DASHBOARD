@@ -7,9 +7,9 @@ class PublicService {
       const response = await apiClient.get(`${API_ENDPOINTS.PUBLIC.BUSINESS_INFO}/${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business info' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business info'
       }
     }
   }
@@ -20,9 +20,9 @@ class PublicService {
       const response = await apiClient.get(`${API_ENDPOINTS.PUBLIC.SERVICES}?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch services' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch services'
       }
     }
   }
@@ -33,9 +33,9 @@ class PublicService {
       const response = await apiClient.get(`${API_ENDPOINTS.PUBLIC.STAFF}?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch staff' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch staff'
       }
     }
   }
@@ -47,9 +47,9 @@ class PublicService {
       const response = await apiClient.get(endpoint)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch available slots' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch available slots'
       }
     }
   }
@@ -60,9 +60,9 @@ class PublicService {
       const response = await apiClient.get(`${API_ENDPOINTS.PUBLIC.APPOINTMENT_STATUS}?confirmationNumber=${confirmationNumber}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch appointment status' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch appointment status'
       }
     }
   }
@@ -73,9 +73,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-hours?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business hours' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business hours'
       }
     }
   }
@@ -87,9 +87,9 @@ class PublicService {
       const response = await apiClient.get(endpoint)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business reviews' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business reviews'
       }
     }
   }
@@ -100,9 +100,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-gallery?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business gallery' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business gallery'
       }
     }
   }
@@ -113,9 +113,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-location?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business location' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business location'
       }
     }
   }
@@ -126,9 +126,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-contact?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business contact info' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business contact info'
       }
     }
   }
@@ -139,9 +139,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-policies?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business policies' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business policies'
       }
     }
   }
@@ -152,9 +152,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-faq?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business FAQ' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business FAQ'
       }
     }
   }
@@ -165,9 +165,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-testimonials?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business testimonials' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business testimonials'
       }
     }
   }
@@ -178,9 +178,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-promotions?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business promotions' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business promotions'
       }
     }
   }
@@ -191,9 +191,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-news?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business news' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business news'
       }
     }
   }
@@ -204,9 +204,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-events?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business events' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business events'
       }
     }
   }
@@ -217,9 +217,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-social-media?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business social media' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business social media'
       }
     }
   }
@@ -230,9 +230,9 @@ class PublicService {
       const response = await apiClient.get(`/public/business-newsletter?businessId=${businessId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business newsletter' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business newsletter'
       }
     }
   }
@@ -246,9 +246,9 @@ class PublicService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to subscribe to newsletter' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to subscribe to newsletter'
       }
     }
   }
@@ -262,9 +262,9 @@ class PublicService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to unsubscribe from newsletter' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to unsubscribe from newsletter'
       }
     }
   }
@@ -278,9 +278,9 @@ class PublicService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to send contact message' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to send contact message'
       }
     }
   }
@@ -294,9 +294,9 @@ class PublicService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to submit feedback' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to submit feedback'
       }
     }
   }
@@ -310,9 +310,9 @@ class PublicService {
       })
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to submit review' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to submit review'
       }
     }
   }
@@ -320,13 +320,13 @@ class PublicService {
   // Get business search results
   async searchBusinesses(searchParams) {
     try {
-      const endpoint = buildEndpoint('/public/search-businesses', searchParams)
+      const endpoint = buildEndpoint(API_ENDPOINTS.PUBLIC.SEARCH, searchParams)
       const response = await apiClient.get(endpoint)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to search businesses' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to search businesses'
       }
     }
   }
@@ -337,9 +337,9 @@ class PublicService {
       const response = await apiClient.get('/public/featured-businesses')
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch featured businesses' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch featured businesses'
       }
     }
   }
@@ -350,9 +350,9 @@ class PublicService {
       const response = await apiClient.get('/public/popular-businesses')
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch popular businesses' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch popular businesses'
       }
     }
   }
@@ -363,9 +363,9 @@ class PublicService {
       const response = await apiClient.get(`/public/nearby-businesses?latitude=${latitude}&longitude=${longitude}&radius=${radius}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch nearby businesses' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch nearby businesses'
       }
     }
   }
@@ -376,9 +376,9 @@ class PublicService {
       const response = await apiClient.get('/public/business-categories')
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch business categories' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch business categories'
       }
     }
   }
@@ -389,9 +389,9 @@ class PublicService {
       const response = await apiClient.get(`/public/businesses-by-category?categoryId=${categoryId}`)
       return { success: true, data: response.data }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to fetch businesses by category' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch businesses by category'
       }
     }
   }
