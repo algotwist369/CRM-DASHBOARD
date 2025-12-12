@@ -115,7 +115,6 @@ const CreateBusiness = () => {
     amenities: [],
 
     // Business Hours & Days Off
-    businessHours: {},
     daysOff: [],
     holidays: [],
 
@@ -166,6 +165,10 @@ const CreateBusiness = () => {
   const [featureInput, setFeatureInput] = useState("");
   const [amenityInput, setAmenityInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
+  const [galleryInput, setGalleryInput] = useState("");
+  const [daysOffInput, setDaysOffInput] = useState("");
+  const [holidayInput, setHolidayInput] = useState({ name: "", date: "", reason: "" });
+  const [customFieldInput, setCustomFieldInput] = useState({ key: "", value: "", type: "text" });
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -203,6 +206,63 @@ const CreateBusiness = () => {
     setFormData((prev) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddGalleryImage = () => {
+    if (galleryInput.trim()) {
+      setFormData((prev) => ({
+        ...prev,
+        images: {
+          ...prev.images,
+          gallery: [...prev.images.gallery, galleryInput.trim()],
+        },
+      }));
+      setGalleryInput("");
+    }
+  };
+
+  const handleRemoveGalleryImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: {
+        ...prev.images,
+        gallery: prev.images.gallery.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const handleAddHoliday = () => {
+    if (holidayInput.name && holidayInput.date) {
+      setFormData((prev) => ({
+        ...prev,
+        holidays: [...prev.holidays, holidayInput],
+      }));
+      setHolidayInput({ name: "", date: "", reason: "" });
+    }
+  };
+
+  const handleRemoveHoliday = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      holidays: prev.holidays.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddCustomField = () => {
+    if (customFieldInput.key && customFieldInput.value) {
+      setFormData((prev) => ({
+        ...prev,
+        customFields: [...prev.customFields, customFieldInput],
+      }));
+      setCustomFieldInput({ key: "", value: "", type: "text" });
+    }
+  };
+
+  const handleRemoveCustomField = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      customFields: prev.customFields.filter((_, i) => i !== index),
     }));
   };
 
@@ -250,6 +310,34 @@ const CreateBusiness = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
+  // Helper to recursively clean empty values
+  const cleanFormData = (data) => {
+    if (typeof data !== "object" || data === null) {
+      return data;
+    }
+
+    if (Array.isArray(data)) {
+      const cleanedArray = data
+        .map(cleanFormData)
+        .filter((item) => item !== "" && item !== null && item !== undefined);
+      return cleanedArray.length > 0 ? cleanedArray : undefined;
+    }
+
+    const cleanedObj = {};
+    Object.keys(data).forEach((key) => {
+      const value = cleanFormData(data[key]);
+      if (value !== "" && value !== null && value !== undefined) {
+        if (typeof value === "object" && Object.keys(value).length === 0) {
+          // Skip empty objects
+          return;
+        }
+        cleanedObj[key] = value;
+      }
+    });
+
+    return Object.keys(cleanedObj).length > 0 ? cleanedObj : undefined;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateStep(1)) {
@@ -259,22 +347,13 @@ const CreateBusiness = () => {
 
     try {
       setLoading(true);
-      // Clean up empty objects and arrays before sending
-      const cleanedData = { ...formData };
 
-      // Remove empty nested objects
-      Object.keys(cleanedData).forEach((key) => {
-        if (typeof cleanedData[key] === "object" && !Array.isArray(cleanedData[key])) {
-          const isEmpty = Object.values(cleanedData[key]).every(
-            (v) => v === "" || v === false || (Array.isArray(v) && v.length === 0)
-          );
-          if (isEmpty && key !== "settings" && key !== "paymentMethods") {
-            delete cleanedData[key];
-          }
-        } else if (Array.isArray(cleanedData[key]) && cleanedData[key].length === 0) {
-          delete cleanedData[key];
-        }
-      });
+      // Deep clean the form data
+      const cleanedData = cleanFormData(formData) || {};
+
+      // Ensure required objects exist even if empty (though backend might handle it, safer to send structure if needed)
+      // Actually, cleaner is better. If backend requires "settings", we should ensure defaults are there.
+      // But formData.settings is prepopulated with defaults, so it shouldn't be empty.
 
       const res = await businessService.createBusiness(cleanedData);
       if (res.success) {
@@ -725,6 +804,51 @@ const CreateBusiness = () => {
                   className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <label className="block text-gray-700 font-medium mb-1">Gallery Images</label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={galleryInput}
+                  onChange={(e) => setGalleryInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddGalleryImage();
+                    }
+                  }}
+                  placeholder="Add image URL and press Enter"
+                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddGalleryImage}
+                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
+                >
+                  Add
+                </button>
+              </div>
+              {formData.images.gallery && formData.images.gallery.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.images.gallery.map((img, index) => (
+                    <div
+                      key={index}
+                      className="relative w-24 h-24 border border-gray-200 rounded overflow-hidden group"
+                    >
+                      <img src={img} alt={`Gallery ${index}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGalleryImage(index)}
+                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="border-t pt-4">
@@ -1195,6 +1319,94 @@ const CreateBusiness = () => {
               </div>
             </div>
 
+            <div className="border-b pb-4 pt-4">
+              <h4 className="text-lg font-medium text-gray-700 mb-3">Days Off & Holidays</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Days Off (Closed Dates)</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="date"
+                      value={daysOffInput}
+                      onChange={(e) => setDaysOffInput(e.target.value)}
+                      className="flex-1 border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleArrayAdd("daysOff", daysOffInput, setDaysOffInput)}
+                      className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.daysOff.map((date, index) => (
+                      <span key={index} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm flex items-center gap-2">
+                        {date}
+                        <button
+                          type="button"
+                          onClick={() => handleArrayRemove("daysOff", index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Holidays</label>
+                  <div className="space-y-2 mb-2 border border-gray-200 p-3 rounded bg-gray-50">
+                    <input
+                      type="text"
+                      placeholder="Holiday Name"
+                      value={holidayInput.name}
+                      onChange={(e) => setHolidayInput(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full border border-gray-300 p-2 text-sm mb-2"
+                    />
+                    <input
+                      type="date"
+                      value={holidayInput.date}
+                      onChange={(e) => setHolidayInput(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full border border-gray-300 p-2 text-sm mb-2"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Reason (Optional)"
+                      value={holidayInput.reason}
+                      onChange={(e) => setHolidayInput(prev => ({ ...prev, reason: e.target.value }))}
+                      className="w-full border border-gray-300 p-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddHoliday}
+                      className="w-full py-2 bg-primary-600 text-white text-sm mt-1 hover:bg-primary-700"
+                    >
+                      Add Holiday
+                    </button>
+                  </div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {formData.holidays.map((h, index) => (
+                      <div key={index} className="flex justify-between items-center bg-gray-100 p-2 rounded text-sm">
+                        <div>
+                          <p className="font-semibold">{h.name}</p>
+                          <p className="text-gray-500 text-xs">{h.date} {h.reason && `- ${h.reason}`}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHoliday(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t pt-4">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Currency</label>
@@ -1376,6 +1588,73 @@ const CreateBusiness = () => {
                     </span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-700 mb-3">Custom Fields</h4>
+              <div className="space-y-3">
+                 <div className="flex flex-col sm:flex-row gap-2 items-end border border-gray-200 p-3 rounded bg-gray-50">
+                    <div className="w-full sm:w-1/3">
+                        <label className="text-xs text-gray-500">Key (Label)</label>
+                        <input
+                            type="text"
+                            value={customFieldInput.key}
+                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, key: e.target.value }))}
+                            placeholder="e.g. GST Enabled"
+                            className="w-full border border-gray-300 p-2 text-sm"
+                        />
+                    </div>
+                    <div className="w-full sm:w-1/3">
+                        <label className="text-xs text-gray-500">Value</label>
+                        <input
+                            type="text"
+                            value={customFieldInput.value}
+                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, value: e.target.value }))}
+                            placeholder="e.g. Yes"
+                            className="w-full border border-gray-300 p-2 text-sm"
+                        />
+                    </div>
+                    <div className="w-full sm:w-1/4">
+                        <label className="text-xs text-gray-500">Type</label>
+                        <select
+                            value={customFieldInput.type}
+                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, type: e.target.value }))}
+                            className="w-full border border-gray-300 p-2 text-sm"
+                        >
+                            <option value="text">Text</option>
+                            <option value="number">Number</option>
+                            <option value="boolean">Boolean</option>
+                            <option value="date">Date</option>
+                        </select>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleAddCustomField}
+                        className="px-4 py-2 bg-primary-600 text-white text-sm hover:bg-primary-700 w-full sm:w-auto h-[38px]"
+                    >
+                        Add
+                    </button>
+                 </div>
+
+                 <div className="space-y-2">
+                    {formData.customFields.map((field, index) => (
+                        <div key={index} className="flex justify-between items-center bg-gray-100 p-2 px-3 rounded text-sm border border-gray-200">
+                             <div className="flex gap-4">
+                                 <span className="font-semibold text-gray-700">{field.key}:</span>
+                                 <span>{field.value.toString()}</span>
+                                 <span className="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-500 self-center">{field.type}</span>
+                             </div>
+                             <button
+                                type="button"
+                                onClick={() => handleRemoveCustomField(index)}
+                                className="text-red-500 hover:text-red-700"
+                             >
+                                ×
+                             </button>
+                        </div>
+                    ))}
+                 </div>
               </div>
             </div>
 
