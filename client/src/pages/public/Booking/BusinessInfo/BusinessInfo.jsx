@@ -451,7 +451,7 @@ const BusinessInfo = () => {
     ]
 
     return (
-      <div className="p-4 sm:p-5 border border-gray-200 bg-gray-50 rounded-lg space-y-5">
+      <div className="hidden md:block p-4 sm:p-5 border border-gray-200 bg-gray-50 rounded-lg space-y-5">
         {/* Header */}
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900">Ratings & Reviews</h2>

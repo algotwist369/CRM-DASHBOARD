@@ -1062,7 +1062,7 @@ const Home = () => {
                           <img
                             src={currentImage}
                             alt={business.name}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-cover object-center"
                             loading="lazy"
                             onError={(e) => {
                               e.target.style.display = 'none'
@@ -1077,7 +1077,7 @@ const Home = () => {
                             <img
                               src={business.images.logo}
                               alt={business.name}
-                              className="max-w-[65%] max-h-[65%] object-contain"
+                              className="max-w-[65%] max-h-[65%] object-cover object-center"
                             />
                           ) : (
                             <FaCalendarAlt className="text-primary-400 text-3xl" />
@@ -1255,7 +1255,7 @@ const Home = () => {
                           <img
                             src={desktopImage}
                             alt={business.name}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-cover object-center"
                             loading="lazy"
                             onError={(e) => {
                               e.target.style.display = 'none'

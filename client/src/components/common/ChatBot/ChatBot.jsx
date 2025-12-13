@@ -6,6 +6,7 @@ import {
   FaPaperPlane,
   FaUser,
   FaSpinner,
+  FaRobot
 } from 'react-icons/fa'
 
 const ChatBot = () => {
@@ -349,17 +350,18 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center group"
+          className="fixed md:bottom-6 bottom-20 right-6 z-50 w-16 h-16 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center group"
           aria-label="Open chat"
         >
-          <FaComments className="text-2xl" />
+          {/* <FaRobot  className="text-2xl" /> */}
+          <img src="https://reductress.com/wp-content/uploads/2019/06/petite-woman-1-820x500.jpg" className="w-full h-full object-cover rounded-full p-[2px]" alt="" />
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
         </button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white  shadow-2xl flex flex-col h-[600px] max-h-[calc(100vh-8rem)]">
+        <div className="fixed md:bottom-6 bottom-20 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white  shadow-2xl flex flex-col h-[600px] max-h-[calc(100vh-8rem)]">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -401,8 +403,8 @@ const ChatBot = () => {
                   </div>
                   <div className="flex flex-col">
                     <div className={` px-4 py-2 ${message.sender === 'user'
-                        ? 'bg-primary-600 text-white rounded-tr-sm'
-                        : 'bg-white text-gray-900 rounded-tl-sm '
+                      ? 'bg-primary-600 text-white rounded-tr-sm'
+                      : 'bg-white text-gray-900 rounded-tl-sm '
                       }`}>
                       <p className="text-sm whitespace-pre-line">{message.text}</p>
                     </div>
