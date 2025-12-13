@@ -30,13 +30,15 @@ import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import Map from '../../../../components/common/Map/Map'
 import BusinessInfoReviews from './BusinessInfoReviews'
+import HeroSection from './HeroSection'
+import MediaRenderer from './MediaRenderer'
 
 import { useQuery } from '@tanstack/react-query'
 
 const BusinessInfo = () => {
   const navigate = useNavigate()
   const { businessLink } = useParams()
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  // currentImageIndex state moved to HeroSection to optimize re-renders
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
 
@@ -209,7 +211,12 @@ const BusinessInfo = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isImageModalOpen, closeImageModal, prevModalImage, nextModalImage])
 
-  // Memoize map coordinates and zoom
+  // Function to determine if we should render hero
+  const shouldRenderHero = allImages.length > 0
+
+  // Clean nextImage/prevImage as they are now internal to HeroSection or Modal specific
+  // The logic for Modal navigation remains here as BusinessInfo controls the modal state
+  // ... (keeping modal logic if needed or relying on simple state updates)dinates and zoom
   const mapCoordinates = useMemo(() => {
     if (business?.location?.coordinates) {
       return business.location.coordinates // [lng, lat] format
@@ -588,137 +595,11 @@ const BusinessInfo = () => {
     )
   }, [business])
 
-  const renderHeroSlider = useCallback(() => (
-    <div className="relative h-[45vh] sm:h-[50vh] lg:h-[55vh] rounded-3xl overflow-hidden bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 shadow-2xl group">
-      {allImages.length > 0 ? (
-        <>
-          {/* Image Container with Smooth Transition */}
-          <div
-            className="relative w-full h-full cursor-pointer"
-            onClick={() => openImageModal(currentImageIndex)}
-          >
-            {allImages.map((image, index) => (
-              <img
-                key={`${image.src}-${index}`}
-                src={image.src}
-                alt={`${business.name} - ${image.type}`}
-                className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                  }`}
-                loading={index === 0 ? 'eager' : 'lazy'}
-              />
-            ))}
-            {/* Click hint overlay */}
-            <div className="absolute inset-0 z-15 flex items-center justify-center bg-black/0 hover:bg-black/5 transition-colors duration-300">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white text-sm font-medium">
-                Tap to view fullscreen
-              </div>
-            </div>
-          </div>
+  // renderMedia and renderHeroSlider Logic moved to separate components
+  // to avoid re-rendering the entire page on auto-slide interval
+  // which was causing performance issues and image flickering
 
-          {/* Image Indicators */}
-          {allImages.length > 1 && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full">
-              {allImages.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`transition-all duration-300 rounded-full ${index === currentImageIndex
-                    ? 'w-8 h-2 bg-white'
-                    : 'w-2 h-2 bg-white/50 hover:bg-white/75'
-                    }`}
-                  aria-label={`Go to image ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Navigation Buttons */}
-          {allImages.length > 1 && (
-            <>
-              <button
-                onClick={prevImage}
-                className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 bg-white/95 hover:bg-white backdrop-blur-md p-3 sm:p-4 rounded-full shadow-2xl text-gray-800 border border-white/20 transition-all duration-300 hover:scale-110 active:scale-95 hover:shadow-white/20 group/btn"
-                aria-label="Previous image"
-              >
-                <FaChevronLeft className="text-base sm:text-lg transition-transform group-hover/btn:-translate-x-0.5" />
-              </button>
-              <button
-                onClick={nextImage}
-                className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 bg-white/95 hover:bg-white backdrop-blur-md p-3 sm:p-4 rounded-full shadow-2xl text-gray-800 border border-white/20 transition-all duration-300 hover:scale-110 active:scale-95 hover:shadow-white/20 group/btn"
-                aria-label="Next image"
-              >
-                <FaChevronRight className="text-base sm:text-lg transition-transform group-hover/btn:translate-x-0.5" />
-              </button>
-            </>
-          )}
-
-          {/* Image Counter */}
-          {allImages.length > 1 && (
-            <div className="absolute top-4 right-4 z-30 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-white text-xs sm:text-sm font-medium">
-              {currentImageIndex + 1} / {allImages.length}
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-          <div className="text-center">
-            <FaCalendarAlt className="text-primary-400 text-6xl sm:text-8xl opacity-30 mx-auto mb-4 animate-pulse" />
-            <p className="text-gray-400 text-sm sm:text-base">No images available</p>
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20 pointer-events-none z-20"></div>
-      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30 pointer-events-none z-20"></div>
-
-      {/* Content Overlay */}
-      <div className="absolute inset-0 px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8 lg:pb-10 flex items-end pointer-events-none z-20">
-        <div className="max-w-4xl w-full mx-auto text-center space-y-4 pointer-events-auto transform transition-all duration-500 ease-out">
-          {/* Business Name */}
-          <div className="space-y-2">
-            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-extrabold text-white leading-tight drop-shadow-2xl">
-              {business.name}
-            </h1>
-            {business.branch && (
-              <p className="text-lg sm:text-xl lg:text-2xl text-white/90 font-medium">
-                {business.branch}
-              </p>
-            )}
-          </div>
-
-          {/* Meta Information */}
-          {(fullAddress || business.ratings) && (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 flex-wrap">
-              {fullAddress && (
-                <div className="max-w-[400px] flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300">
-                  <FaMapMarkerAlt className="text-white text-base sm:text-lg flex-shrink-0" />
-                  <span className="text-sm sm:text-base text-white font-medium max-w-xs truncate sm:max-w-none">
-                    {fullAddress}
-                  </span>
-                </div>
-              )}
-              {business.ratings && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300">
-                  <FaStar className="text-yellow-400 text-base sm:text-lg flex-shrink-0 animate-pulse" />
-                  <span className="text-sm sm:text-base text-white font-semibold">
-                    {business.ratings.average.toFixed(1)}
-                  </span>
-                  {business.ratings.totalReviews > 0 ? (
-                    <span className="text-sm sm:text-base text-white/80">
-                      ({business.ratings.totalReviews} {business.ratings.totalReviews === 1 ? 'review' : 'reviews'})
-                    </span>
-                  ) : (
-                    <span className="text-sm sm:text-base text-white/80">(No reviews yet)</span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  ), [allImages, currentImageIndex, business, fullAddress, nextImage, prevImage, openImageModal])
+  // Auto-slide logic removed from here and moved to HeroSection
 
   // Image Modal/Lightbox Component
   const renderImageModal = useCallback(() => {
@@ -756,10 +637,10 @@ const BusinessInfo = () => {
 
           {/* Image */}
           <div className="relative w-full h-full flex items-center justify-center">
-            <img
-              src={allImages[modalImageIndex].src}
-              alt={`${business.name} - ${allImages[modalImageIndex].type} - Image ${modalImageIndex + 1}`}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            <MediaRenderer
+              item={allImages[modalImageIndex]}
+              className="max-w-full max-h-[90vh] object-contain select-none rounded-lg shadow-2xl"
+              alt={`${business?.name} - Full screen`}
             />
           </div>
 
@@ -805,10 +686,11 @@ const BusinessInfo = () => {
                     : 'border-white/30 hover:border-white/60'
                     }`}
                 >
-                  <img
-                    src={image.src}
-                    alt={`Thumbnail ${index + 1}`}
+                  <MediaRenderer
+                    item={image}
                     className="w-full h-full object-cover"
+                    isActive={false}
+                    alt={`Thumbnail ${index + 1}`}
                   />
                 </button>
               ))}
@@ -869,7 +751,15 @@ const BusinessInfo = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 lg:gap-10 lg:items-start">
           <div className="space-y-6">
-            {renderHeroSlider()}
+            {/* Hero Section */}
+            {shouldRenderHero && (
+              <HeroSection
+                business={business}
+                allImages={allImages}
+                openImageModal={openImageModal}
+                fullAddress={fullAddress}
+              />
+            )}
 
             <div className="lg:hidden space-y-4 sm:space-y-6">
               {/* Ratings Section */}
