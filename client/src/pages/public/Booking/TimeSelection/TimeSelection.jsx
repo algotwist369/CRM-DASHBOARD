@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
+import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 
 const currencySymbols = {
   INR: '₹',
@@ -52,9 +53,12 @@ const TimeSelection = () => {
   // Update page title
   usePageTitle()
 
+  // Track page view
+  useLeadTracking(business?._id, !!business);
+
   useEffect(() => {
     window.scrollTo(0, 0)
-    
+
     // Load business data
     const businessData = sessionStorage.getItem('bookingBusiness')
     if (businessData) {
@@ -129,7 +133,7 @@ const TimeSelection = () => {
         const responseData = result.data.data
         const slotsData = responseData?.slots || []
         const availableSlotsData = responseData?.availableSlots || []
-        
+
         // Use slots array if available (has more info), otherwise convert availableSlots
         if (slotsData.length > 0) {
           setSlots(slotsData)
@@ -169,22 +173,22 @@ const TimeSelection = () => {
   // Backend requires minAdvanceBookingHours (default 2 hours) advance booking
   const isSlotInPast = useCallback((slotTime, date) => {
     if (!slotTime || !date) return false
-    
+
     const today = new Date().toISOString().split('T')[0]
     if (date !== today) return false
-    
+
     const now = new Date()
     const [hours, minutes] = slotTime.split(':')
     const slotDateTime = new Date()
     slotDateTime.setHours(parseInt(hours), parseInt(minutes || 0), 0, 0)
-    
+
     // Use business setting for min advance booking hours (default 2 hours = 120 minutes)
     const minAdvanceHours = business?.appointmentSettings?.minAdvanceBookingHours || 2
     const minAdvanceMinutes = minAdvanceHours * 60
-    
+
     // Subtract the minimum advance booking time from slot time
     slotDateTime.setMinutes(slotDateTime.getMinutes() - minAdvanceMinutes)
-    
+
     return slotDateTime < now
   }, [business?.appointmentSettings?.minAdvanceBookingHours])
 
@@ -221,7 +225,7 @@ const TimeSelection = () => {
   }, [businessLink, navigate])
 
   const minDate = useMemo(() => new Date().toISOString().split('T')[0], [])
-  
+
   const maxDate = useMemo(() => {
     const maxDays = business?.appointmentSettings?.advanceBookingDays || 30
     const date = new Date()
@@ -243,7 +247,7 @@ const TimeSelection = () => {
     const totalPrice = selectedServices.reduce((sum, service) => sum + (Number(service?.price) || 0), 0)
     const totalDuration = selectedServices.reduce((sum, service) => sum + (Number(service?.duration) || 0), 0)
     const currency = selectedServices[0]?.currency || business?.currency || 'INR'
-    
+
     return {
       price: totalPrice,
       duration: totalDuration,
@@ -261,7 +265,7 @@ const TimeSelection = () => {
       const duration = Number(service?.duration) || 0
       const price = service?.price
       const currency = service?.currency || business?.currency || 'INR'
-      
+
       return {
         name: serviceName,
         optionLabel,
@@ -354,13 +358,12 @@ const TimeSelection = () => {
                           key={slotTime}
                           onClick={() => !isDisabled && selectTime(slotTime)}
                           disabled={isDisabled}
-                          className={`p-3 rounded-lg border-2 transition-all ${
-                            isSelected
+                          className={`p-3 rounded-lg border-2 transition-all ${isSelected
                               ? 'border-green-600 bg-green-600 text-white shadow-md font-semibold'
                               : isDisabled
                                 ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
                                 : 'border-green-300 bg-green-50 text-green-700 hover:border-green-500 hover:bg-green-100 font-medium cursor-pointer'
-                          }`}
+                            }`}
                           title={isDisabled ? 'This time slot is not available' : ''}
                         >
                           {formatTime(slotTime)}

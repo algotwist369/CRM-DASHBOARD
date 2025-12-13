@@ -21,6 +21,7 @@ import {
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
+import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 
 const BookingConfirmation = () => {
     const navigate = useNavigate()
@@ -46,6 +47,9 @@ const BookingConfirmation = () => {
 
     // Update page title
     usePageTitle()
+
+    // Track page view
+    useLeadTracking(business?._id, !!business);
 
     useEffect(() => {
         loadBookingData()

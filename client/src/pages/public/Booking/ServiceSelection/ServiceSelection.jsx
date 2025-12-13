@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fa'
 import { FiCheck } from 'react-icons/fi'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
+import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 import appointmentService from '../../../../services/public/appointmentService'
 
 const currencySymbols = {
@@ -146,6 +147,9 @@ const ServiceSelection = () => {
 
   // Update page title
   usePageTitle();
+
+  // Track page view
+  useLeadTracking(business?._id, !!business);
 
   useEffect(() => {
     window.scrollTo(0, 0)

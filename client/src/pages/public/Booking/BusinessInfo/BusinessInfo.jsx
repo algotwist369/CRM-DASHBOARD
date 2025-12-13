@@ -28,10 +28,12 @@ import {
 } from 'react-icons/fa';
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
+import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 import Map from '../../../../components/common/Map/Map'
 import BusinessInfoReviews from './BusinessInfoReviews'
 import HeroSection from './HeroSection'
 import MediaRenderer from './MediaRenderer'
+import { trackLeadClick } from '../../../../utils/analytics'
 
 import { useQuery } from '@tanstack/react-query'
 
@@ -81,12 +83,18 @@ const BusinessInfo = () => {
   }, [business])
   usePageTitle(pageTitle)
 
+  // Track page view
+  useLeadTracking(business?._id, !!business);
+
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [businessLink])
 
   const handleBookNow = useCallback(() => {
     if (business && business.services && business.services.length > 0) {
+      // Track the click
+      trackLeadClick(business._id, 'booking')
+
       // Clear previous booking data when starting a new booking
       sessionStorage.removeItem('selectedServices')
       sessionStorage.removeItem('selectedStaff')
@@ -286,6 +294,7 @@ const BusinessInfo = () => {
         {business.phone && (
           <a
             href={`tel:${business.phone}`}
+            onClick={() => trackLeadClick(business._id, 'call')}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700  border border-blue-200 font-medium text-sm"
           >
             <FaPhoneAlt className="text-lg" />
@@ -297,6 +306,7 @@ const BusinessInfo = () => {
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackLeadClick(business._id, 'whatsapp')}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-700  border border-green-200 font-medium text-sm"
           >
             <FaWhatsapp className="text-lg" />
@@ -374,6 +384,9 @@ const BusinessInfo = () => {
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  if (key === 'whatsapp') trackLeadClick(business._id, 'whatsapp')
+                }}
                 className={`w-12 h-12 flex items-center justify-center ${bg} text-white   hover:opacity-90 transition`}
                 aria-label={label}
               >
