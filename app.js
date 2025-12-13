@@ -28,6 +28,7 @@ const campaignSchedulerRoutes = require("./routes/campaignSchedulerRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 const businessSettingsRoutes = require("./routes/businessSettingsRoutes");
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
+const leadRoutes = require("./routes/leadRoutes");
 
 const app = express();
 
@@ -158,6 +159,7 @@ app.use("/api/campaign-scheduler", campaignSchedulerRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/settings", businessSettingsRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
+app.use("/api/leads", leadRoutes);
 
 // === PHASE 2 ENHANCEMENT: New Routes ===
 app.use("/api/expenses", require("./routes/expenseRoutes"));
