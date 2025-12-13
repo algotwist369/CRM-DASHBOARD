@@ -272,6 +272,16 @@ export const endpoints = {
     staff: `${API_BASE_URL}/analytics/staff`,
     trends: `${API_BASE_URL}/analytics/trends`,
   },
+
+  // Lead Tracking & Analytics
+  leads: {
+    track: `${API_BASE_URL}/leads/track`,
+    analytics: {
+      summary: `${API_BASE_URL}/leads/analytics/summary`,
+      businessBreakdown: `${API_BASE_URL}/leads/analytics/business-breakdown`,
+      ipJourneys: `${API_BASE_URL}/leads/analytics/ip-journeys`,
+    }
+  }
 }
 
 export default endpoints

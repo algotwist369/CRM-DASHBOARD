@@ -97,6 +97,7 @@ const LoyaltySubscriptions = lazy(() => import('./pages/admin/Loyalty').then(mod
 // Admin - Analytics & Reports
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics').then(module => ({ default: module.AdminAnalytics })))
 const ProfitabilityAnalysis = lazy(() => import('./pages/admin/Analytics/ProfitabilityAnalysis'))
+const LeadAnalytics = lazy(() => import('./pages/admin/LeadAnalytics/LeadAnalytics'))
 const AdminReports = lazy(() => import('./pages/admin/Reports/AdminReports'))
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings/AdminSettings'))
 const AdminProfile = lazy(() => import('./pages/admin/Profile/AdminProfile'))
@@ -303,6 +304,10 @@ function App() {
                       <Route path="managers/permissions" element={<ManagerPermissions />} />
                       <Route path="analytics/profitability" element={<ProfitabilityAnalysis />} />
                       {/* reports routes */}
+
+                      {/* Lead Analytics Route */}
+                      <Route path="lead-analytics" element={<LeadAnalytics />} />
+
                       <Route path="reports" element={<AdminReports />} />
                       {/* settings routes */}
                       <Route path="settings" element={<AdminSettings />} />

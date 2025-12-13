@@ -11,6 +11,7 @@ import {
   FaCalendarAlt,
 } from 'react-icons/fa'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
+import { useLeadTracking } from '../../../../hooks/useLeadTracking'
 
 const currencySymbols = {
   INR: '₹',
@@ -124,6 +125,9 @@ const CustomerInfo = () => {
 
   // Update page title
   usePageTitle()
+
+  // Track page view
+  useLeadTracking(business?._id, !!business);
 
   useEffect(() => {
     window.scrollTo(0, 0)

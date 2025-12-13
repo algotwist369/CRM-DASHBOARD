@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fa'
 import { FiCheck } from 'react-icons/fi'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
+import { useLeadTracking } from '../../../../hooks/useLeadTracking'
 
 const currencySymbols = {
   INR: '₹',
@@ -49,6 +50,9 @@ const StaffSelection = () => {
 
   // Update page title
   usePageTitle()
+
+  // Track page view
+  useLeadTracking(business?._id, !!business);
 
   useEffect(() => {
     const businessData = sessionStorage.getItem('bookingBusiness')
@@ -213,15 +217,13 @@ const StaffSelection = () => {
             <button
               type="button"
               onClick={handleAnyAvailable}
-              className={`w-full  border p-5 text-left transition ${
-                !selectedStaff ? 'border-gray-900 bg-gray-50 ' : '  border-gray-200 hover:border-gray-300'
-              }`}
+              className={`w-full  border p-5 text-left transition ${!selectedStaff ? 'border-gray-900 bg-gray-50 ' : '  border-gray-200 hover:border-gray-300'
+                }`}
             >
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-9 h-9 rounded-full border flex items-center justify-center ${
-                    !selectedStaff ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500'
-                  }`}
+                  className={`w-9 h-9 rounded-full border flex items-center justify-center ${!selectedStaff ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500'
+                    }`}
                 >
                   {!selectedStaff ? <FiCheck /> : <FaUser />}
                 </div>
@@ -248,16 +250,14 @@ const StaffSelection = () => {
                     type="button"
                     key={staffId || index}
                     onClick={() => selectStaff(staff)}
-                    className={`w-full  border p-5 text-left transition ${
-                      isSelected ? 'border-gray-900 bg-gray-50 ' : '  border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`w-full  border p-5 text-left transition ${isSelected ? 'border-gray-900 bg-gray-50 ' : '  border-gray-200 hover:border-gray-300'
+                      }`}
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-3">
                         <div
-                          className={`w-9 h-9 rounded-full border flex items-center justify-center ${
-                            isSelected ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500'
-                          }`}
+                          className={`w-9 h-9 rounded-full border flex items-center justify-center ${isSelected ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500'
+                            }`}
                         >
                           {isSelected ? <FiCheck /> : <FaUser />}
                         </div>
@@ -273,9 +273,8 @@ const StaffSelection = () => {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <div
-                          className={`w-14 h-14 rounded-full flex items-center justify-center ${
-                            isSelected ? 'bg-gray-900 text-white' : 'bg-gray-100'
-                          }`}
+                          className={`w-14 h-14 rounded-full flex items-center justify-center ${isSelected ? 'bg-gray-900 text-white' : 'bg-gray-100'
+                            }`}
                         >
                           <FaUserTie className="text-lg" />
                         </div>
@@ -291,7 +290,7 @@ const StaffSelection = () => {
           <div className="space-y-6">
             <div className="   border border-gray-200 p-6 lg:sticky lg:top-[4rem]">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
-              
+
               <div className="space-y-4 mb-4 text-sm text-gray-700">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Business</span>
