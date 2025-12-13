@@ -20,7 +20,7 @@ const invoiceSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Appointment"
         },
-        
+
         // Invoice Number
         invoiceNumber: {
             type: String,
@@ -28,7 +28,7 @@ const invoiceSchema = new mongoose.Schema(
             required: true,
             index: true
         },
-        
+
         // Invoice Date
         invoiceDate: {
             type: Date,
@@ -38,7 +38,7 @@ const invoiceSchema = new mongoose.Schema(
         dueDate: {
             type: Date
         },
-        
+
         // Items
         items: [{
             itemType: {
@@ -83,7 +83,7 @@ const invoiceSchema = new mongoose.Schema(
                 required: true
             }
         }],
-        
+
         // Pricing Breakdown
         subtotal: {
             type: Number,
@@ -112,7 +112,7 @@ const invoiceSchema = new mongoose.Schema(
             required: true,
             min: 0
         },
-        
+
         // Discount Details
         discountCode: {
             type: String
@@ -124,7 +124,7 @@ const invoiceSchema = new mongoose.Schema(
         discountValue: {
             type: Number
         },
-        
+
         // Tax Details
         taxRate: {
             type: Number,
@@ -135,7 +135,7 @@ const invoiceSchema = new mongoose.Schema(
             taxRate: { type: Number },
             taxAmount: { type: Number }
         }],
-        
+
         // Payment Status
         paymentStatus: {
             type: String,
@@ -143,7 +143,7 @@ const invoiceSchema = new mongoose.Schema(
             default: "unpaid",
             index: true
         },
-        
+
         // Payment Details
         payments: [{
             paymentDate: {
@@ -182,13 +182,13 @@ const invoiceSchema = new mongoose.Schema(
                 enum: ['Staff', 'Manager', 'Admin']
             }
         }],
-        
+
         paidAmount: {
             type: Number,
             default: 0,
             min: 0
         },
-        
+
         // Refund Details
         refunds: [{
             refundDate: {
@@ -217,13 +217,13 @@ const invoiceSchema = new mongoose.Schema(
                 enum: ['Staff', 'Manager', 'Admin']
             }
         }],
-        
+
         refundedAmount: {
             type: Number,
             default: 0,
             min: 0
         },
-        
+
         // Customer Details (snapshot at time of invoice)
         customerSnapshot: {
             name: { type: String },
@@ -237,7 +237,7 @@ const invoiceSchema = new mongoose.Schema(
                 country: { type: String }
             }
         },
-        
+
         // Business Details (snapshot at time of invoice)
         businessSnapshot: {
             name: { type: String },
@@ -247,7 +247,7 @@ const invoiceSchema = new mongoose.Schema(
             gstNumber: { type: String },
             panNumber: { type: String }
         },
-        
+
         // Notes
         notes: {
             type: String
@@ -258,7 +258,7 @@ const invoiceSchema = new mongoose.Schema(
         termsAndConditions: {
             type: String
         },
-        
+
         // Status
         status: {
             type: String,
@@ -266,7 +266,7 @@ const invoiceSchema = new mongoose.Schema(
             default: "draft",
             index: true
         },
-        
+
         // Email/SMS Tracking
         sentDate: {
             type: Date
@@ -281,7 +281,7 @@ const invoiceSchema = new mongoose.Schema(
         lastReminderDate: {
             type: Date
         },
-        
+
         // Loyalty Points
         loyaltyPointsEarned: {
             type: Number,
@@ -291,20 +291,20 @@ const invoiceSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-        
+
         // Invoice Type
         invoiceType: {
             type: String,
             enum: ["regular", "proforma", "credit_note", "debit_note"],
             default: "regular"
         },
-        
+
         // Related Invoices
         parentInvoice: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Invoice"
         },
-        
+
         // Metadata
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
@@ -335,20 +335,19 @@ invoiceSchema.index({ business: 1, invoiceDate: -1 });
 invoiceSchema.index({ business: 1, customer: 1 });
 invoiceSchema.index({ business: 1, paymentStatus: 1 });
 invoiceSchema.index({ business: 1, status: 1 });
-invoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
 
 // Virtual for balance due
-invoiceSchema.virtual('balanceDue').get(function() {
+invoiceSchema.virtual('balanceDue').get(function () {
     return this.total - this.paidAmount + this.refundedAmount;
 });
 
 // Virtual for is paid
-invoiceSchema.virtual('isPaid').get(function() {
+invoiceSchema.virtual('isPaid').get(function () {
     return this.paymentStatus === 'paid';
 });
 
 // Virtual for is overdue
-invoiceSchema.virtual('isOverdue').get(function() {
+invoiceSchema.virtual('isOverdue').get(function () {
     if (this.dueDate && this.paymentStatus !== 'paid') {
         return new Date() > new Date(this.dueDate);
     }
@@ -356,7 +355,7 @@ invoiceSchema.virtual('isOverdue').get(function() {
 });
 
 // Virtual for days overdue
-invoiceSchema.virtual('daysOverdue').get(function() {
+invoiceSchema.virtual('daysOverdue').get(function () {
     if (this.isOverdue) {
         const today = new Date();
         const due = new Date(this.dueDate);
@@ -367,7 +366,7 @@ invoiceSchema.virtual('daysOverdue').get(function() {
 });
 
 // Pre-save middleware to generate invoice number
-invoiceSchema.pre('save', async function(next) {
+invoiceSchema.pre('save', async function (next) {
     if (!this.invoiceNumber) {
         // Generate unique invoice number: INV-YYYYMMDD-XXXX
         const date = new Date();
@@ -375,7 +374,7 @@ invoiceSchema.pre('save', async function(next) {
         const random = Math.floor(1000 + Math.random() * 9000);
         this.invoiceNumber = `INV-${dateStr}-${random}`;
     }
-    
+
     // Update payment status based on paid amount
     if (this.paidAmount >= this.total) {
         this.paymentStatus = 'paid';
@@ -384,53 +383,53 @@ invoiceSchema.pre('save', async function(next) {
     } else {
         this.paymentStatus = 'unpaid';
     }
-    
+
     // Check if overdue
     if (this.dueDate && new Date() > new Date(this.dueDate) && this.paymentStatus !== 'paid') {
         this.paymentStatus = 'overdue';
     }
-    
+
     next();
 });
 
 // Method to add payment
-invoiceSchema.methods.addPayment = async function(paymentData) {
+invoiceSchema.methods.addPayment = async function (paymentData) {
     this.payments.push(paymentData);
     this.paidAmount += paymentData.amount;
-    
+
     if (this.paidAmount >= this.total) {
         this.paymentStatus = 'paid';
         this.status = 'paid';
     } else if (this.paidAmount > 0) {
         this.paymentStatus = 'partial';
     }
-    
+
     await this.save();
     return this;
 };
 
 // Method to add refund
-invoiceSchema.methods.addRefund = async function(refundData) {
+invoiceSchema.methods.addRefund = async function (refundData) {
     this.refunds.push(refundData);
     this.refundedAmount += refundData.amount;
-    
+
     if (this.refundedAmount >= this.paidAmount) {
         this.paymentStatus = 'refunded';
     }
-    
+
     await this.save();
     return this;
 };
 
 // Method to mark as sent
-invoiceSchema.methods.markAsSent = async function() {
+invoiceSchema.methods.markAsSent = async function () {
     this.status = 'sent';
     this.sentDate = new Date();
     await this.save();
 };
 
 // Method to mark as viewed
-invoiceSchema.methods.markAsViewed = async function() {
+invoiceSchema.methods.markAsViewed = async function () {
     if (this.status === 'sent') {
         this.status = 'viewed';
     }
@@ -439,33 +438,33 @@ invoiceSchema.methods.markAsViewed = async function() {
 };
 
 // Method to send reminder
-invoiceSchema.methods.sendReminder = async function() {
+invoiceSchema.methods.sendReminder = async function () {
     this.remindersSent += 1;
     this.lastReminderDate = new Date();
     await this.save();
 };
 
 // Method to cancel invoice
-invoiceSchema.methods.cancel = async function() {
+invoiceSchema.methods.cancel = async function () {
     this.status = 'cancelled';
     this.paymentStatus = 'cancelled';
     await this.save();
 };
 
 // Static method to get overdue invoices
-invoiceSchema.statics.getOverdue = async function(businessId) {
+invoiceSchema.statics.getOverdue = async function (businessId) {
     const today = new Date();
     return await this.find({
         business: businessId,
         dueDate: { $lt: today },
         paymentStatus: { $in: ['unpaid', 'partial', 'overdue'] }
     })
-    .populate('customer', 'firstName lastName phone email')
-    .sort({ dueDate: 1 });
+        .populate('customer', 'firstName lastName phone email')
+        .sort({ dueDate: 1 });
 };
 
 // Static method to calculate revenue
-invoiceSchema.statics.calculateRevenue = async function(businessId, startDate, endDate) {
+invoiceSchema.statics.calculateRevenue = async function (businessId, startDate, endDate) {
     const result = await this.aggregate([
         {
             $match: {
@@ -487,7 +486,7 @@ invoiceSchema.statics.calculateRevenue = async function(businessId, startDate, e
             }
         }
     ]);
-    
+
     return result[0] || {
         totalRevenue: 0,
         paidRevenue: 0,

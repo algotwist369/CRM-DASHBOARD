@@ -10,7 +10,7 @@ const dripCampaignSchema = new mongoose.Schema(
             required: true,
             index: true
         },
-        
+
         // Campaign Details
         name: {
             type: String,
@@ -20,14 +20,14 @@ const dripCampaignSchema = new mongoose.Schema(
         description: {
             type: String
         },
-        
+
         // Campaign Type
         type: {
             type: String,
             enum: ["onboarding", "nurture", "reengagement", "education", "promotion", "retention", "custom"],
             required: true
         },
-        
+
         // Trigger - How customers enter this drip
         entryTrigger: {
             type: {
@@ -42,7 +42,7 @@ const dripCampaignSchema = new mongoose.Schema(
                 tags: [{ type: String }]
             }
         },
-        
+
         // Exit Conditions
         exitConditions: {
             // Customer exits if they match any of these
@@ -52,12 +52,12 @@ const dripCampaignSchema = new mongoose.Schema(
             afterDays: { type: Number }, // Auto-exit after X days
             onGoalComplete: { type: Boolean, default: false }
         },
-        
+
         // Drip Steps
         steps: [{
             stepNumber: { type: Number, required: true },
             name: { type: String, required: true },
-            
+
             // Delay before sending (from previous step or entry)
             delay: {
                 value: { type: Number, required: true }, // e.g., 2
@@ -67,27 +67,27 @@ const dripCampaignSchema = new mongoose.Schema(
                     default: "days"
                 }
             },
-            
+
             // Message Content
             useTemplate: { type: Boolean, default: false },
             template: { type: mongoose.Schema.Types.ObjectId, ref: "CampaignTemplate" },
-            
+
             message: {
                 subject: { type: String },
                 body: { type: String },
                 variables: { type: Map, of: String }
             },
-            
+
             emailContent: {
                 htmlBody: { type: String }
             },
-            
+
             // Channels
             channels: [{
                 type: String,
                 enum: ["email", "sms", "whatsapp", "push_notification"]
             }],
-            
+
             // Offer
             offer: {
                 hasOffer: { type: Boolean, default: false },
@@ -95,24 +95,24 @@ const dripCampaignSchema = new mongoose.Schema(
                 offerValue: { type: Number },
                 promoCode: { type: String }
             },
-            
+
             // Conditional Logic - Send this step only if...
             conditions: {
                 enabled: { type: Boolean, default: false },
-                
+
                 // Send if previous step was opened
                 previousStepOpened: { type: Boolean },
-                
+
                 // Send if previous step was clicked
                 previousStepClicked: { type: Boolean },
-                
+
                 // Send if customer has specific tag
                 hasTags: [{ type: String }],
-                
+
                 // Send if customer spent minimum amount
                 minTotalSpent: { type: Number }
             },
-            
+
             // Alternative Step (if conditions not met)
             alternativeStep: {
                 enabled: { type: Boolean, default: false },
@@ -121,7 +121,7 @@ const dripCampaignSchema = new mongoose.Schema(
                     body: { type: String }
                 }
             },
-            
+
             // Statistics for this step
             stats: {
                 sent: { type: Number, default: 0 },
@@ -131,7 +131,7 @@ const dripCampaignSchema = new mongoose.Schema(
                 converted: { type: Number, default: 0 }
             }
         }],
-        
+
         // Goal Tracking
         goal: {
             type: {
@@ -141,14 +141,14 @@ const dripCampaignSchema = new mongoose.Schema(
             targetValue: { type: Number },
             achieved: { type: Number, default: 0 }
         },
-        
+
         // Status
         isActive: {
             type: Boolean,
             default: true,
             index: true
         },
-        
+
         // Statistics
         stats: {
             totalEntered: { type: Number, default: 0 },
@@ -159,7 +159,7 @@ const dripCampaignSchema = new mongoose.Schema(
             avgCompletionRate: { type: Number, default: 0 },
             avgTimeToComplete: { type: Number, default: 0 } // in days
         },
-        
+
         // Customer Journey Tracking
         enrollments: [{
             customer: {
@@ -179,7 +179,7 @@ const dripCampaignSchema = new mongoose.Schema(
             exitReason: { type: String },
             completedAt: { type: Date },
             converted: { type: Boolean, default: false },
-            
+
             // Step history
             stepHistory: [{
                 stepNumber: { type: Number },
@@ -191,7 +191,7 @@ const dripCampaignSchema = new mongoose.Schema(
                 campaignId: { type: mongoose.Schema.Types.ObjectId, ref: "Campaign" }
             }]
         }],
-        
+
         // Created By
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
@@ -211,57 +211,56 @@ const dripCampaignSchema = new mongoose.Schema(
 
 // Indexes
 dripCampaignSchema.index({ business: 1, isActive: 1 });
-dripCampaignSchema.index({ 'enrollments.customer': 1 });
 dripCampaignSchema.index({ 'enrollments.status': 1 });
 dripCampaignSchema.index({ 'enrollments.currentStep': 1 });
 
 // Virtual for completion rate
-dripCampaignSchema.virtual('completionRate').get(function() {
+dripCampaignSchema.virtual('completionRate').get(function () {
     if (this.stats.totalEntered === 0) return 0;
     return Math.round((this.stats.totalCompleted / this.stats.totalEntered) * 100);
 });
 
 // Method to enroll customer
-dripCampaignSchema.methods.enrollCustomer = async function(customerId) {
+dripCampaignSchema.methods.enrollCustomer = async function (customerId) {
     // Check if customer already enrolled
-    const existing = this.enrollments.find(e => 
-        e.customer.toString() === customerId.toString() && 
+    const existing = this.enrollments.find(e =>
+        e.customer.toString() === customerId.toString() &&
         e.status === 'active'
     );
-    
+
     if (existing) {
         throw new Error('Customer already enrolled in this drip campaign');
     }
-    
+
     this.enrollments.push({
         customer: customerId,
         enrolledAt: new Date(),
         currentStep: 0,
         status: 'active'
     });
-    
+
     this.stats.totalEntered += 1;
     this.stats.currentActive += 1;
-    
+
     await this.save();
-    
+
     return this.enrollments[this.enrollments.length - 1];
 };
 
 // Method to move customer to next step
-dripCampaignSchema.methods.moveToNextStep = async function(customerId) {
-    const enrollment = this.enrollments.find(e => 
-        e.customer.toString() === customerId.toString() && 
+dripCampaignSchema.methods.moveToNextStep = async function (customerId) {
+    const enrollment = this.enrollments.find(e =>
+        e.customer.toString() === customerId.toString() &&
         e.status === 'active'
     );
-    
+
     if (!enrollment) {
         throw new Error('Customer not enrolled or already completed');
     }
-    
+
     enrollment.currentStep += 1;
     enrollment.completedSteps.push(enrollment.currentStep - 1);
-    
+
     // Check if campaign completed
     if (enrollment.currentStep >= this.steps.length) {
         enrollment.status = 'completed';
@@ -269,59 +268,59 @@ dripCampaignSchema.methods.moveToNextStep = async function(customerId) {
         this.stats.totalCompleted += 1;
         this.stats.currentActive -= 1;
     }
-    
+
     await this.save();
 };
 
 // Method to exit customer
-dripCampaignSchema.methods.exitCustomer = async function(customerId, reason) {
-    const enrollment = this.enrollments.find(e => 
-        e.customer.toString() === customerId.toString() && 
+dripCampaignSchema.methods.exitCustomer = async function (customerId, reason) {
+    const enrollment = this.enrollments.find(e =>
+        e.customer.toString() === customerId.toString() &&
         e.status === 'active'
     );
-    
+
     if (!enrollment) {
         return;
     }
-    
+
     enrollment.status = 'exited';
     enrollment.exitedAt = new Date();
     enrollment.exitReason = reason;
-    
+
     this.stats.totalExited += 1;
     this.stats.currentActive -= 1;
-    
+
     await this.save();
 };
 
 // Method to mark conversion
-dripCampaignSchema.methods.markConversion = async function(customerId) {
-    const enrollment = this.enrollments.find(e => 
+dripCampaignSchema.methods.markConversion = async function (customerId) {
+    const enrollment = this.enrollments.find(e =>
         e.customer.toString() === customerId.toString()
     );
-    
+
     if (enrollment && !enrollment.converted) {
         enrollment.converted = true;
         this.stats.totalConverted += 1;
-        
+
         if (this.goal?.type) {
             this.goal.achieved += 1;
         }
-        
+
         await this.save();
     }
 };
 
 // Method to record step action
-dripCampaignSchema.methods.recordStepAction = async function(customerId, stepNumber, action, campaignId) {
-    const enrollment = this.enrollments.find(e => 
+dripCampaignSchema.methods.recordStepAction = async function (customerId, stepNumber, action, campaignId) {
+    const enrollment = this.enrollments.find(e =>
         e.customer.toString() === customerId.toString()
     );
-    
+
     if (!enrollment) return;
-    
+
     let stepHistory = enrollment.stepHistory.find(h => h.stepNumber === stepNumber);
-    
+
     if (!stepHistory) {
         stepHistory = {
             stepNumber,
@@ -330,7 +329,7 @@ dripCampaignSchema.methods.recordStepAction = async function(customerId, stepNum
         };
         enrollment.stepHistory.push(stepHistory);
     }
-    
+
     if (action === 'opened') {
         stepHistory.opened = true;
         stepHistory.openedAt = new Date();
@@ -338,42 +337,42 @@ dripCampaignSchema.methods.recordStepAction = async function(customerId, stepNum
         stepHistory.clicked = true;
         stepHistory.clickedAt = new Date();
     }
-    
+
     await this.save();
 };
 
 // Static method to get pending steps (steps that need to be sent)
-dripCampaignSchema.statics.getPendingSteps = async function(businessId) {
+dripCampaignSchema.statics.getPendingSteps = async function (businessId) {
     const now = new Date();
-    
+
     const campaigns = await this.find({
         business: businessId,
         isActive: true,
         'enrollments.status': 'active'
     }).populate('enrollments.customer');
-    
+
     const pendingSteps = [];
-    
+
     for (const campaign of campaigns) {
         for (const enrollment of campaign.enrollments) {
             if (enrollment.status !== 'active') continue;
-            
+
             const currentStep = campaign.steps[enrollment.currentStep];
             if (!currentStep) continue;
-            
+
             // Calculate when this step should be sent
             const lastStepTime = enrollment.stepHistory.length > 0
                 ? enrollment.stepHistory[enrollment.stepHistory.length - 1].sentAt
                 : enrollment.enrolledAt;
-            
+
             const delayMs = currentStep.delay.value * (
                 currentStep.delay.unit === 'hours' ? 60 * 60 * 1000 :
-                currentStep.delay.unit === 'days' ? 24 * 60 * 60 * 1000 :
-                7 * 24 * 60 * 60 * 1000 // weeks
+                    currentStep.delay.unit === 'days' ? 24 * 60 * 60 * 1000 :
+                        7 * 24 * 60 * 60 * 1000 // weeks
             );
-            
+
             const sendTime = new Date(lastStepTime.getTime() + delayMs);
-            
+
             if (now >= sendTime) {
                 pendingSteps.push({
                     campaign,
@@ -384,7 +383,7 @@ dripCampaignSchema.statics.getPendingSteps = async function(businessId) {
             }
         }
     }
-    
+
     return pendingSteps;
 };
 

@@ -25,14 +25,14 @@ const appointmentSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Staff"
         },
-        
+
         // Booking Number
         bookingNumber: {
             type: String,
             unique: true,
             index: true
         },
-        
+
         // Date & Time
         appointmentDate: {
             type: Date,
@@ -51,7 +51,7 @@ const appointmentSchema = new mongoose.Schema(
             type: Number, // in minutes
             required: true
         },
-        
+
         // Status
         status: {
             type: String,
@@ -59,7 +59,7 @@ const appointmentSchema = new mongoose.Schema(
             default: "pending",
             index: true
         },
-        
+
         // Pricing
         servicePrice: {
             type: Number,
@@ -81,7 +81,7 @@ const appointmentSchema = new mongoose.Schema(
             type: Number,
             required: true
         },
-        
+
         // Payment
         paymentStatus: {
             type: String,
@@ -102,7 +102,7 @@ const appointmentSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-        
+
         // Booking Details
         bookingSource: {
             type: String,
@@ -114,7 +114,7 @@ const appointmentSchema = new mongoose.Schema(
             enum: ["regular", "package", "membership"],
             default: "regular"
         },
-        
+
         // Customer Notes
         customerNotes: {
             type: String
@@ -122,7 +122,7 @@ const appointmentSchema = new mongoose.Schema(
         specialRequests: {
             type: String
         },
-        
+
         // Internal Notes
         staffNotes: {
             type: String
@@ -130,7 +130,7 @@ const appointmentSchema = new mongoose.Schema(
         internalNotes: {
             type: String
         },
-        
+
         // Reminders
         reminderSent: {
             type: Boolean,
@@ -146,7 +146,7 @@ const appointmentSchema = new mongoose.Schema(
         confirmationSentAt: {
             type: Date
         },
-        
+
         // Cancellation
         cancellationReason: {
             type: String
@@ -166,7 +166,7 @@ const appointmentSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-        
+
         // Rescheduling
         originalAppointmentDate: {
             type: Date
@@ -185,7 +185,7 @@ const appointmentSchema = new mongoose.Schema(
         rescheduledAt: {
             type: Date
         },
-        
+
         // Completion
         completedAt: {
             type: Date
@@ -199,7 +199,7 @@ const appointmentSchema = new mongoose.Schema(
         actualDuration: {
             type: Number // in minutes
         },
-        
+
         // Feedback
         rating: {
             type: Number,
@@ -212,7 +212,7 @@ const appointmentSchema = new mongoose.Schema(
         reviewDate: {
             type: Date
         },
-        
+
         // Follow-up
         followUpRequired: {
             type: Boolean,
@@ -228,7 +228,7 @@ const appointmentSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
-        
+
         // Package/Membership
         packageId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -238,7 +238,7 @@ const appointmentSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "CustomerMembership"
         },
-        
+
         // Loyalty Points
         loyaltyPointsEarned: {
             type: Number,
@@ -248,7 +248,7 @@ const appointmentSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-        
+
         // Metadata
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
@@ -280,34 +280,33 @@ appointmentSchema.index({ business: 1, status: 1 });
 appointmentSchema.index({ business: 1, customer: 1 });
 appointmentSchema.index({ business: 1, staff: 1, appointmentDate: 1 });
 appointmentSchema.index({ business: 1, service: 1 });
-appointmentSchema.index({ bookingNumber: 1 }, { unique: true });
 appointmentSchema.index({ createdAt: -1 });
 
 // Virtual for formatted booking number
-appointmentSchema.virtual('formattedBookingNumber').get(function() {
+appointmentSchema.virtual('formattedBookingNumber').get(function () {
     return `BK${this.bookingNumber}`;
 });
 
 // Virtual for appointment day
-appointmentSchema.virtual('appointmentDay').get(function() {
+appointmentSchema.virtual('appointmentDay').get(function () {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return days[new Date(this.appointmentDate).getDay()];
 });
 
 // Virtual for remaining amount
-appointmentSchema.virtual('remainingAmount').get(function() {
+appointmentSchema.virtual('remainingAmount').get(function () {
     return this.totalAmount - this.paidAmount;
 });
 
 // Virtual for is upcoming
-appointmentSchema.virtual('isUpcoming').get(function() {
+appointmentSchema.virtual('isUpcoming').get(function () {
     const now = new Date();
     const appointmentDateTime = new Date(this.appointmentDate);
     return appointmentDateTime > now && ['pending', 'confirmed'].includes(this.status);
 });
 
 // Pre-save middleware to generate booking number
-appointmentSchema.pre('save', async function(next) {
+appointmentSchema.pre('save', async function (next) {
     if (!this.bookingNumber) {
         // Generate unique booking number: YYYYMMDD + random 4 digits
         const date = new Date();
@@ -319,7 +318,7 @@ appointmentSchema.pre('save', async function(next) {
 });
 
 // Method to confirm appointment
-appointmentSchema.methods.confirm = async function() {
+appointmentSchema.methods.confirm = async function () {
     this.status = 'confirmed';
     this.confirmationSent = true;
     this.confirmationSentAt = new Date();
@@ -327,28 +326,28 @@ appointmentSchema.methods.confirm = async function() {
 };
 
 // Method to start appointment (customer checked in)
-appointmentSchema.methods.start = async function() {
+appointmentSchema.methods.start = async function () {
     this.status = 'in_progress';
     this.checkInTime = new Date();
     await this.save();
 };
 
 // Method to complete appointment
-appointmentSchema.methods.complete = async function() {
+appointmentSchema.methods.complete = async function () {
     this.status = 'completed';
     this.completedAt = new Date();
     this.checkOutTime = new Date();
-    
+
     if (this.checkInTime) {
         const duration = (this.checkOutTime - this.checkInTime) / (1000 * 60);
         this.actualDuration = Math.round(duration);
     }
-    
+
     await this.save();
 };
 
 // Method to cancel appointment
-appointmentSchema.methods.cancel = async function(reason, cancelledBy, cancelledByModel, fee = 0) {
+appointmentSchema.methods.cancel = async function (reason, cancelledBy, cancelledByModel, fee = 0) {
     this.status = 'cancelled';
     this.cancellationReason = reason;
     this.cancelledBy = cancelledBy;
@@ -359,7 +358,7 @@ appointmentSchema.methods.cancel = async function(reason, cancelledBy, cancelled
 };
 
 // Method to reschedule appointment
-appointmentSchema.methods.reschedule = async function(newDate, newStartTime, newEndTime, reason, rescheduledBy, rescheduledByModel) {
+appointmentSchema.methods.reschedule = async function (newDate, newStartTime, newEndTime, reason, rescheduledBy, rescheduledByModel) {
     this.originalAppointmentDate = this.appointmentDate;
     this.appointmentDate = newDate;
     this.startTime = newStartTime;
@@ -373,20 +372,20 @@ appointmentSchema.methods.reschedule = async function(newDate, newStartTime, new
 };
 
 // Method to mark as no-show
-appointmentSchema.methods.markNoShow = async function() {
+appointmentSchema.methods.markNoShow = async function () {
     this.status = 'no_show';
     await this.save();
 };
 
 // Method to send reminder
-appointmentSchema.methods.sendReminder = async function() {
+appointmentSchema.methods.sendReminder = async function () {
     this.reminderSent = true;
     this.reminderSentAt = new Date();
     await this.save();
 };
 
 // Method to add review
-appointmentSchema.methods.addReview = async function(rating, review) {
+appointmentSchema.methods.addReview = async function (rating, review) {
     this.rating = rating;
     this.review = review;
     this.reviewDate = new Date();
@@ -394,7 +393,7 @@ appointmentSchema.methods.addReview = async function(rating, review) {
 };
 
 // Static method to get upcoming appointments
-appointmentSchema.statics.getUpcoming = async function(businessId, startDate, endDate) {
+appointmentSchema.statics.getUpcoming = async function (businessId, startDate, endDate) {
     return await this.find({
         business: businessId,
         appointmentDate: {
@@ -403,14 +402,14 @@ appointmentSchema.statics.getUpcoming = async function(businessId, startDate, en
         },
         status: { $in: ['pending', 'confirmed'] }
     })
-    .populate('customer', 'firstName lastName phone email')
-    .populate('service', 'name duration price')
-    .populate('staff', 'name role')
-    .sort({ appointmentDate: 1, startTime: 1 });
+        .populate('customer', 'firstName lastName phone email')
+        .populate('service', 'name duration price')
+        .populate('staff', 'name role')
+        .sort({ appointmentDate: 1, startTime: 1 });
 };
 
 // Static method to check availability
-appointmentSchema.statics.checkAvailability = async function(businessId, staffId, date, startTime, endTime) {
+appointmentSchema.statics.checkAvailability = async function (businessId, staffId, date, startTime, endTime) {
     const conflictingAppointments = await this.find({
         business: businessId,
         staff: staffId,
@@ -431,7 +430,7 @@ appointmentSchema.statics.checkAvailability = async function(businessId, staffId
             }
         ]
     });
-    
+
     return conflictingAppointments.length === 0;
 };
 
