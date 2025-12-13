@@ -16,7 +16,7 @@ const loyaltyTransactionSchema = new mongoose.Schema(
             required: true,
             index: true
         },
-        
+
         // Transaction Type
         type: {
             type: String,
@@ -24,7 +24,7 @@ const loyaltyTransactionSchema = new mongoose.Schema(
             required: true,
             index: true
         },
-        
+
         // Points
         points: {
             type: Number,
@@ -38,7 +38,7 @@ const loyaltyTransactionSchema = new mongoose.Schema(
             type: Number,
             required: true
         },
-        
+
         // Related References
         invoice: {
             type: mongoose.Schema.Types.ObjectId,
@@ -52,7 +52,7 @@ const loyaltyTransactionSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "LoyaltyReward"
         },
-        
+
         // Description
         description: {
             type: String,
@@ -61,27 +61,27 @@ const loyaltyTransactionSchema = new mongoose.Schema(
         notes: {
             type: String
         },
-        
+
         // Earning Details (for earned type)
         earningDetails: {
             amountSpent: { type: Number },
             pointsRate: { type: Number }, // Points per rupee
             multiplier: { type: Number, default: 1 } // 2x, 3x events
         },
-        
+
         // Redemption Details (for redeemed type)
         redemptionDetails: {
             rewardName: { type: String },
             rewardValue: { type: Number },
             discountApplied: { type: Number }
         },
-        
+
         // Expiry Details (for expired type)
         expiryDetails: {
             originalEarnedDate: { type: Date },
             expiryReason: { type: String }
         },
-        
+
         // Status
         status: {
             type: String,
@@ -89,13 +89,13 @@ const loyaltyTransactionSchema = new mongoose.Schema(
             default: "completed",
             index: true
         },
-        
+
         // Expiry Date (for earned points)
         expiresAt: {
             type: Date,
             index: true
         },
-        
+
         // Metadata
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
@@ -114,17 +114,15 @@ const loyaltyTransactionSchema = new mongoose.Schema(
 // Indexes for better performance
 loyaltyTransactionSchema.index({ business: 1, customer: 1, createdAt: -1 });
 loyaltyTransactionSchema.index({ business: 1, type: 1 });
-loyaltyTransactionSchema.index({ expiresAt: 1 });
-loyaltyTransactionSchema.index({ status: 1 });
 
 // Static method to create earned points transaction
-loyaltyTransactionSchema.statics.createEarnedTransaction = async function(data) {
+loyaltyTransactionSchema.statics.createEarnedTransaction = async function (data) {
     const { business, customer, points, amountSpent, pointsRate, multiplier, invoice, appointment, description } = data;
-    
+
     // Calculate expiry date (1 year from now)
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    
+
     const transaction = await this.create({
         business,
         customer: customer._id,
@@ -145,14 +143,14 @@ loyaltyTransactionSchema.statics.createEarnedTransaction = async function(data) 
         createdBy: 'System',
         createdByModel: 'System'
     });
-    
+
     return transaction;
 };
 
 // Static method to create redeemed points transaction
-loyaltyTransactionSchema.statics.createRedeemedTransaction = async function(data) {
+loyaltyTransactionSchema.statics.createRedeemedTransaction = async function (data) {
     const { business, customer, points, reward, rewardName, rewardValue, discountApplied, description } = data;
-    
+
     const transaction = await this.create({
         business,
         customer: customer._id,
@@ -171,26 +169,26 @@ loyaltyTransactionSchema.statics.createRedeemedTransaction = async function(data
         createdBy: 'System',
         createdByModel: 'System'
     });
-    
+
     return transaction;
 };
 
 // Static method to expire points
-loyaltyTransactionSchema.statics.expirePoints = async function() {
+loyaltyTransactionSchema.statics.expirePoints = async function () {
     const now = new Date();
-    
+
     // Find all earned points that have expired
     const expiredTransactions = await this.find({
         type: 'earned',
         status: 'completed',
         expiresAt: { $lte: now }
     }).populate('customer');
-    
+
     const expiryRecords = [];
-    
+
     for (const transaction of expiredTransactions) {
         const customer = transaction.customer;
-        
+
         // Create expiry transaction
         const expiryTransaction = await this.create({
             business: transaction.business,
@@ -208,24 +206,24 @@ loyaltyTransactionSchema.statics.expirePoints = async function() {
             createdBy: 'System',
             createdByModel: 'System'
         });
-        
+
         // Update customer points
         customer.loyaltyPoints -= transaction.points;
         if (customer.loyaltyPoints < 0) customer.loyaltyPoints = 0;
         await customer.save();
-        
+
         // Mark original transaction as expired
         transaction.status = 'expired';
         await transaction.save();
-        
+
         expiryRecords.push(expiryTransaction);
     }
-    
+
     return expiryRecords;
 };
 
 // Static method to get customer transaction history
-loyaltyTransactionSchema.statics.getCustomerHistory = async function(customerId, limit = 50) {
+loyaltyTransactionSchema.statics.getCustomerHistory = async function (customerId, limit = 50) {
     return await this.find({ customer: customerId })
         .populate('invoice', 'invoiceNumber total')
         .populate('appointment', 'bookingNumber appointmentDate')

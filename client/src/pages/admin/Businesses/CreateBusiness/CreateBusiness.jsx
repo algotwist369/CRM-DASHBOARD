@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FaStore,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaGlobe,
   FaMapMarkerAlt,
@@ -115,7 +115,6 @@ const CreateBusiness = () => {
     amenities: [],
 
     // Business Hours & Days Off
-    businessHours: {},
     daysOff: [],
     holidays: [],
 
@@ -166,10 +165,18 @@ const CreateBusiness = () => {
   const [featureInput, setFeatureInput] = useState("");
   const [amenityInput, setAmenityInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
+  const [galleryInput, setGalleryInput] = useState("");
+  const [daysOffInput, setDaysOffInput] = useState("");
+  const [holidayInput, setHolidayInput] = useState({ name: "", date: "", reason: "" });
+  const [customFieldInput, setCustomFieldInput] = useState({ key: "", value: "", type: "text" });
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
       setFormData((prev) => ({
@@ -180,7 +187,7 @@ const CreateBusiness = () => {
         },
       }));
     } else {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
     validateField(name, type === "checkbox" ? checked : value);
   };
@@ -199,6 +206,63 @@ const CreateBusiness = () => {
     setFormData((prev) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddGalleryImage = () => {
+    if (galleryInput.trim()) {
+      setFormData((prev) => ({
+        ...prev,
+        images: {
+          ...prev.images,
+          gallery: [...prev.images.gallery, galleryInput.trim()],
+        },
+      }));
+      setGalleryInput("");
+    }
+  };
+
+  const handleRemoveGalleryImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: {
+        ...prev.images,
+        gallery: prev.images.gallery.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const handleAddHoliday = () => {
+    if (holidayInput.name && holidayInput.date) {
+      setFormData((prev) => ({
+        ...prev,
+        holidays: [...prev.holidays, holidayInput],
+      }));
+      setHolidayInput({ name: "", date: "", reason: "" });
+    }
+  };
+
+  const handleRemoveHoliday = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      holidays: prev.holidays.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddCustomField = () => {
+    if (customFieldInput.key && customFieldInput.value) {
+      setFormData((prev) => ({
+        ...prev,
+        customFields: [...prev.customFields, customFieldInput],
+      }));
+      setCustomFieldInput({ key: "", value: "", type: "text" });
+    }
+  };
+
+  const handleRemoveCustomField = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      customFields: prev.customFields.filter((_, i) => i !== index),
     }));
   };
 
@@ -246,6 +310,34 @@ const CreateBusiness = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
+  // Helper to recursively clean empty values
+  const cleanFormData = (data) => {
+    if (typeof data !== "object" || data === null) {
+      return data;
+    }
+
+    if (Array.isArray(data)) {
+      const cleanedArray = data
+        .map(cleanFormData)
+        .filter((item) => item !== "" && item !== null && item !== undefined);
+      return cleanedArray.length > 0 ? cleanedArray : undefined;
+    }
+
+    const cleanedObj = {};
+    Object.keys(data).forEach((key) => {
+      const value = cleanFormData(data[key]);
+      if (value !== "" && value !== null && value !== undefined) {
+        if (typeof value === "object" && Object.keys(value).length === 0) {
+          // Skip empty objects
+          return;
+        }
+        cleanedObj[key] = value;
+      }
+    });
+
+    return Object.keys(cleanedObj).length > 0 ? cleanedObj : undefined;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateStep(1)) {
@@ -255,22 +347,13 @@ const CreateBusiness = () => {
 
     try {
       setLoading(true);
-      // Clean up empty objects and arrays before sending
-      const cleanedData = { ...formData };
-      
-      // Remove empty nested objects
-      Object.keys(cleanedData).forEach((key) => {
-        if (typeof cleanedData[key] === "object" && !Array.isArray(cleanedData[key])) {
-          const isEmpty = Object.values(cleanedData[key]).every(
-            (v) => v === "" || v === false || (Array.isArray(v) && v.length === 0)
-          );
-          if (isEmpty && key !== "settings" && key !== "paymentMethods") {
-            delete cleanedData[key];
-          }
-        } else if (Array.isArray(cleanedData[key]) && cleanedData[key].length === 0) {
-          delete cleanedData[key];
-        }
-      });
+
+      // Deep clean the form data
+      const cleanedData = cleanFormData(formData) || {};
+
+      // Ensure required objects exist even if empty (though backend might handle it, safer to send structure if needed)
+      // Actually, cleaner is better. If backend requires "settings", we should ensure defaults are there.
+      // But formData.settings is prepopulated with defaults, so it shouldn't be empty.
 
       const res = await businessService.createBusiness(cleanedData);
       if (res.success) {
@@ -313,26 +396,25 @@ const CreateBusiness = () => {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-  return (
+        return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Basic Information</h3>
-            
-          <div>
+
+            <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Business Type <span className="text-red-500">*</span>
               </label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-                className={`w-full border ${
-                  errors.type ? "border-red-500" : "border-gray-300"
-                }  p-2.5 focus:ring-primary-500 focus:border-primary-500`}
-            >
-              <option value="">Select Type</option>
-              <option value="salon">Salon</option>
-              <option value="spa">Spa</option>
-              <option value="hotel">Hotel</option>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                className={`w-full border ${errors.type ? "border-red-500" : "border-gray-300"
+                  }  p-2.5 focus:ring-primary-500 focus:border-primary-500`}
+              >
+                <option value="">Select Type</option>
+                <option value="salon">Salon</option>
+                <option value="spa">Spa</option>
+                <option value="hotel">Hotel</option>
                 <option value="restaurant">Restaurant</option>
                 <option value="retail">Retail</option>
                 <option value="gym">Gym</option>
@@ -342,43 +424,43 @@ const CreateBusiness = () => {
                 <option value="education">Education</option>
                 <option value="automotive">Automotive</option>
                 <option value="others">Others</option>
-            </select>
-            {errors.type && <p className="text-red-500 text-sm mt-1">{errors.type}</p>}
-          </div>
+              </select>
+              {errors.type && <p className="text-red-500 text-sm mt-1">{errors.type}</p>}
+            </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Business Name <span className="text-red-500">*</span>
               </label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaBuilding className="text-gray-400 mr-2" />
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter business name"
-                className="w-full focus:outline-none"
-              />
+                <FaBuilding className="text-gray-400 mr-2" />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Enter business name"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-          </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Branch <span className="text-red-500">*</span>
               </label>
-            <input
-              type="text"
-              name="branch"
-              value={formData.branch}
-              onChange={handleChange}
-              placeholder="e.g., Main Branch"
+              <input
+                type="text"
+                name="branch"
+                value={formData.branch}
+                onChange={handleChange}
+                placeholder="e.g., Main Branch"
                 className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
+              />
+            </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">Description</label>
               <textarea
                 name="description"
@@ -396,41 +478,41 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Location & Contact</h3>
-            
+
             <div>
               <label className="block text-gray-700 font-medium mb-1">
                 Address <span className="text-red-500">*</span>
               </label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
                 placeholder="Enter full address"
-              rows={2}
+                rows={2}
                 className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-            ></textarea>
-          </div>
+              ></textarea>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {["city", "state", "country"].map((field) => (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {["city", "state", "country"].map((field) => (
                 <div key={field}>
                   <label className="block text-gray-700 font-medium mb-1">
                     {field.charAt(0).toUpperCase() + field.slice(1)}
                     {field !== "country" && <span className="text-red-500">*</span>}
                   </label>
-              <input
-                type="text"
-                name={field}
-                value={formData[field]}
-                onChange={handleChange}
-                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                  <input
+                    type="text"
+                    name={field}
+                    value={formData[field]}
+                    onChange={handleChange}
+                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                     className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-              />
+                  />
                 </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">Zip Code</label>
               <input
                 type="text"
@@ -447,18 +529,18 @@ const CreateBusiness = () => {
                 Phone <span className="text-red-500">*</span>
               </label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaPhone className="text-gray-400 mr-2" />
-              <input
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="10-digit phone number"
-                className="w-full focus:outline-none"
-              />
+                <FaPhoneAlt className="text-gray-400 mr-2" />
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="10-digit phone number"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
             </div>
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-          </div>
 
             <div>
               <label className="block text-gray-700 font-medium mb-1">Alternate Phone</label>
@@ -472,39 +554,39 @@ const CreateBusiness = () => {
               />
             </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Email</label>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Email</label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaEnvelope className="text-gray-400 mr-2" />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Business email"
-                className="w-full focus:outline-none"
-              />
+                <FaEnvelope className="text-gray-400 mr-2" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Business email"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
             </div>
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Website</label>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Website</label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-              <FaGlobe className="text-gray-400 mr-2" />
-              <input
-                type="text"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                placeholder="https://example.com"
-                className="w-full focus:outline-none"
-              />
+                <FaGlobe className="text-gray-400 mr-2" />
+                <input
+                  type="text"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  placeholder="https://example.com"
+                  className="w-full focus:outline-none"
+                />
+              </div>
+              {errors.website && <p className="text-red-500 text-sm mt-1">{errors.website}</p>}
             </div>
-            {errors.website && <p className="text-red-500 text-sm mt-1">{errors.website}</p>}
-          </div>
 
-          <div>
+            <div>
               <label className="block text-gray-700 font-medium mb-1">Google Maps URL</label>
               <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
                 <FaMapMarkerAlt className="text-gray-400 mr-2" />
@@ -526,7 +608,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Category & Tags</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Category</label>
@@ -687,7 +769,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Images & Social Media</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Logo URL</label>
@@ -725,6 +807,51 @@ const CreateBusiness = () => {
             </div>
 
             <div className="border-t pt-4">
+              <label className="block text-gray-700 font-medium mb-1">Gallery Images</label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={galleryInput}
+                  onChange={(e) => setGalleryInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddGalleryImage();
+                    }
+                  }}
+                  placeholder="Add image URL and press Enter"
+                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddGalleryImage}
+                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
+                >
+                  Add
+                </button>
+              </div>
+              {formData.images.gallery && formData.images.gallery.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.images.gallery.map((img, index) => (
+                    <div
+                      key={index}
+                      className="relative w-24 h-24 border border-gray-200 rounded overflow-hidden group"
+                    >
+                      <img src={img} alt={`Gallery ${index}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGalleryImage(index)}
+                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Social Media Links</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
@@ -759,7 +886,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Registration & Legal</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">GST Number</label>
@@ -844,7 +971,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Payment & Banking</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Payment Methods Accepted</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -952,7 +1079,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Capacity & Features</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Business Capacity</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1106,7 +1233,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Business Hours & Settings</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Working Hours</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1192,6 +1319,94 @@ const CreateBusiness = () => {
               </div>
             </div>
 
+            <div className="border-b pb-4 pt-4">
+              <h4 className="text-lg font-medium text-gray-700 mb-3">Days Off & Holidays</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Days Off (Closed Dates)</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="date"
+                      value={daysOffInput}
+                      onChange={(e) => setDaysOffInput(e.target.value)}
+                      className="flex-1 border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleArrayAdd("daysOff", daysOffInput, setDaysOffInput)}
+                      className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.daysOff.map((date, index) => (
+                      <span key={index} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm flex items-center gap-2">
+                        {date}
+                        <button
+                          type="button"
+                          onClick={() => handleArrayRemove("daysOff", index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Holidays</label>
+                  <div className="space-y-2 mb-2 border border-gray-200 p-3 rounded bg-gray-50">
+                    <input
+                      type="text"
+                      placeholder="Holiday Name"
+                      value={holidayInput.name}
+                      onChange={(e) => setHolidayInput(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full border border-gray-300 p-2 text-sm mb-2"
+                    />
+                    <input
+                      type="date"
+                      value={holidayInput.date}
+                      onChange={(e) => setHolidayInput(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full border border-gray-300 p-2 text-sm mb-2"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Reason (Optional)"
+                      value={holidayInput.reason}
+                      onChange={(e) => setHolidayInput(prev => ({ ...prev, reason: e.target.value }))}
+                      className="w-full border border-gray-300 p-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddHoliday}
+                      className="w-full py-2 bg-primary-600 text-white text-sm mt-1 hover:bg-primary-700"
+                    >
+                      Add Holiday
+                    </button>
+                  </div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {formData.holidays.map((h, index) => (
+                      <div key={index} className="flex justify-between items-center bg-gray-100 p-2 rounded text-sm">
+                        <div>
+                          <p className="font-semibold">{h.name}</p>
+                          <p className="text-gray-500 text-xs">{h.date} {h.reason && `- ${h.reason}`}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHoliday(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t pt-4">
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Currency</label>
@@ -1241,7 +1456,7 @@ const CreateBusiness = () => {
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Additional Settings</h3>
-            
+
             <div className="border-b pb-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">SEO Settings</h4>
               <div className="space-y-3">
@@ -1258,14 +1473,14 @@ const CreateBusiness = () => {
                 </div>
                 <div>
                   <label className="block text-gray-700 font-medium mb-1">Meta Description</label>
-            <textarea
+                  <textarea
                     name="seo.metaDescription"
                     value={formData.seo.metaDescription}
-              onChange={handleChange}
+                    onChange={handleChange}
                     placeholder="SEO Meta Description"
-              rows={3}
+                    rows={3}
                     className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-            ></textarea>
+                  ></textarea>
                 </div>
                 <div>
                   <label className="block text-gray-700 font-medium mb-1">Keywords</label>
@@ -1349,7 +1564,7 @@ const CreateBusiness = () => {
                   />
                 </div>
               </div>
-          </div>
+            </div>
 
             <div className="border-t pt-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Notification Preferences</h4>
@@ -1373,6 +1588,73 @@ const CreateBusiness = () => {
                     </span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-700 mb-3">Custom Fields</h4>
+              <div className="space-y-3">
+                 <div className="flex flex-col sm:flex-row gap-2 items-end border border-gray-200 p-3 rounded bg-gray-50">
+                    <div className="w-full sm:w-1/3">
+                        <label className="text-xs text-gray-500">Key (Label)</label>
+                        <input
+                            type="text"
+                            value={customFieldInput.key}
+                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, key: e.target.value }))}
+                            placeholder="e.g. GST Enabled"
+                            className="w-full border border-gray-300 p-2 text-sm"
+                        />
+                    </div>
+                    <div className="w-full sm:w-1/3">
+                        <label className="text-xs text-gray-500">Value</label>
+                        <input
+                            type="text"
+                            value={customFieldInput.value}
+                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, value: e.target.value }))}
+                            placeholder="e.g. Yes"
+                            className="w-full border border-gray-300 p-2 text-sm"
+                        />
+                    </div>
+                    <div className="w-full sm:w-1/4">
+                        <label className="text-xs text-gray-500">Type</label>
+                        <select
+                            value={customFieldInput.type}
+                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, type: e.target.value }))}
+                            className="w-full border border-gray-300 p-2 text-sm"
+                        >
+                            <option value="text">Text</option>
+                            <option value="number">Number</option>
+                            <option value="boolean">Boolean</option>
+                            <option value="date">Date</option>
+                        </select>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleAddCustomField}
+                        className="px-4 py-2 bg-primary-600 text-white text-sm hover:bg-primary-700 w-full sm:w-auto h-[38px]"
+                    >
+                        Add
+                    </button>
+                 </div>
+
+                 <div className="space-y-2">
+                    {formData.customFields.map((field, index) => (
+                        <div key={index} className="flex justify-between items-center bg-gray-100 p-2 px-3 rounded text-sm border border-gray-200">
+                             <div className="flex gap-4">
+                                 <span className="font-semibold text-gray-700">{field.key}:</span>
+                                 <span>{field.value.toString()}</span>
+                                 <span className="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-500 self-center">{field.type}</span>
+                             </div>
+                             <button
+                                type="button"
+                                onClick={() => handleRemoveCustomField(index)}
+                                className="text-red-500 hover:text-red-700"
+                             >
+                                ×
+                             </button>
+                        </div>
+                    ))}
+                 </div>
               </div>
             </div>
 
@@ -1465,18 +1747,16 @@ const CreateBusiness = () => {
                 return (
                   <div
                     key={stepNum}
-                    className={`flex flex-col items-center min-w-[80px] ${
-                      isActive ? "text-primary-600" : isCompleted ? "text-green-600" : "text-gray-400"
-                    }`}
+                    className={`flex flex-col items-center min-w-[80px] ${isActive ? "text-primary-600" : isCompleted ? "text-green-600" : "text-gray-400"
+                      }`}
                   >
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                        isActive
-                          ? "border-primary-600 bg-primary-50"
-                          : isCompleted
+                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isActive
+                        ? "border-primary-600 bg-primary-50"
+                        : isCompleted
                           ? "border-green-600 bg-green-50"
                           : "border-gray-300 bg-gray-50"
-                      }`}
+                        }`}
                     >
                       {isCompleted ? (
                         <FaCheckCircle className="text-green-600" />
@@ -1501,11 +1781,10 @@ const CreateBusiness = () => {
                 type="button"
                 onClick={handlePrevious}
                 disabled={currentStep === 1}
-                className={`flex items-center gap-2 px-6 py-2.5  font-medium transition-all ${
-                  currentStep === 1
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
+                className={`flex items-center gap-2 px-6 py-2.5  font-medium transition-all ${currentStep === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
               >
                 <FaChevronLeft /> Previous
               </button>
@@ -1519,16 +1798,16 @@ const CreateBusiness = () => {
                   Next <FaChevronRight />
                 </button>
               ) : (
-          <button
-            type="submit"
-            disabled={loading}
+                <button
+                  type="submit"
+                  disabled={loading}
                   className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white  font-medium transition-all disabled:opacity-60"
-          >
+                >
                   {loading ? "Creating..." : "Create Business"}
-          </button>
+                </button>
               )}
             </div>
-        </form>
+          </form>
         </div>
       </div>
     </div>

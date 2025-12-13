@@ -2,6 +2,10 @@
 const Business = require("../models/Business");
 const mongoose = require("mongoose");
 
+// Fetch services for all businesses
+const Service = require("../models/Service");
+
+
 // Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
     if (!id || id === 'undefined' || id === 'null') {
@@ -14,6 +18,11 @@ const DailyBusiness = require("../models/DailyBusiness");
 const { setCache, getCache } = require("../utils/cache");
 const { generateBusinessAnalytics } = require("../utils/businessUtils");
 const indiaLocations = require("../data/indiaLocations");
+
+
+// ===========================================
+// ============ PUBLIC CONTROLLERS ===========
+// ===========================================
 
 // ================== Get All Public Businesses (Public) ==================
 const getPublicBusinesses = async (req, res, next) => {
@@ -257,237 +266,6 @@ const getBusinessInfoByLink = async (req, res, next) => {
         };
 
         return res.json({ success: true, data: businessInfo });
-    } catch (err) {
-        next(err);
-    }
-};
-
-// ================== Get Business by ID ==================
-const getBusinessById = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user.id;
-        const userRole = req.user.role;
-
-        // Validate ID
-        if (!id || !isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "Valid Business ID is required"
-            });
-        }
-
-        let query = { _id: id, isActive: true };
-
-        // If user is manager, check if they belong to this business
-        if (userRole === 'manager') {
-            const manager = await require("../models/Manager").findById(userId);
-            if (!manager || manager.business.toString() !== id) {
-                return res.status(403).json({ success: false, message: "Access denied" });
-            }
-        } else if (userRole === 'admin') {
-            query.admin = userId;
-        }
-
-        const business = await Business.findOne(query)
-            .populate('managers', 'name username email phone isActive lastLogin')
-            .populate('staff', 'name role phone email isActive')
-            .populate('admin', 'name companyName email');
-
-        if (!business) {
-            return res.status(404).json({ success: false, message: "Business not found" });
-        }
-
-        return res.json({ success: true, data: business });
-    } catch (err) {
-        next(err);
-    }
-};
-
-// ================== Get Business Staff ==================
-const getBusinessStaff = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user.id;
-        const userRole = req.user.role;
-        const { page = 1, limit = 10, role, search } = req.query;
-
-        // Verify access
-        let hasAccess = false;
-        if (userRole === 'admin') {
-            const business = await Business.findOne({ _id: id, admin: userId });
-            hasAccess = !!business;
-        } else if (userRole === 'manager') {
-            const manager = await require("../models/Manager").findById(userId);
-            hasAccess = manager && manager.business.toString() === id;
-        }
-
-        if (!hasAccess) {
-            return res.status(403).json({ success: false, message: "Access denied" });
-        }
-
-        const cacheKey = `business:${id}:staff:${role}:${search}:${page}:${limit}`;
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
-        }
-
-        let query = { business: id, isActive: true };
-
-        if (role) {
-            query.role = role;
-        }
-
-        if (search) {
-            query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } }
-            ];
-        }
-
-        const staff = await Staff.find(query)
-            .populate('manager', 'name username')
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
-            .sort({ createdAt: -1 });
-
-        const total = await Staff.countDocuments(query);
-
-        const response = {
-            success: true,
-            data: staff.map(s => s.toObject()),
-            pagination: {
-                total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit)
-            }
-        };
-
-        await setCache(cacheKey, response, 120);
-        return res.json(response);
-    } catch (err) {
-        next(err);
-    }
-};
-
-// ================== Get Business Daily Records ==================
-const getBusinessDailyRecords = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user.id;
-        const userRole = req.user.role;
-        const { startDate, endDate, page = 1, limit = 10 } = req.query;
-
-        // Verify access
-        let hasAccess = false;
-        if (userRole === 'admin') {
-            const business = await Business.findOne({ _id: id, admin: userId });
-            hasAccess = !!business;
-        } else if (userRole === 'manager') {
-            const manager = await require("../models/Manager").findById(userId);
-            hasAccess = manager && manager.business.toString() === id;
-        }
-
-        if (!hasAccess) {
-            return res.status(403).json({ success: false, message: "Access denied" });
-        }
-
-        const cacheKey = `business:${id}:daily:${startDate}:${endDate}:${page}:${limit}`;
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
-        }
-
-        let query = { business: id };
-
-        if (startDate && endDate) {
-            query.date = {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate)
-            };
-        }
-
-        const records = await DailyBusiness.find(query)
-            .populate('manager', 'name username')
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
-            .sort({ date: -1 });
-
-        const total = await DailyBusiness.countDocuments(query);
-
-        const response = {
-            success: true,
-            data: records.map(r => r.toObject()),
-            pagination: {
-                total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit)
-            }
-        };
-
-        await setCache(cacheKey, response, 300);
-        return res.json(response);
-    } catch (err) {
-        next(err);
-    }
-};
-
-// ================== Get Business Analytics ==================
-const getBusinessAnalytics = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user.id;
-        const userRole = req.user.role;
-        const { period = 'monthly' } = req.query;
-
-        // Verify access
-        let hasAccess = false;
-        if (userRole === 'admin') {
-            const business = await Business.findOne({ _id: id, admin: userId });
-            hasAccess = !!business;
-        } else if (userRole === 'manager') {
-            const manager = await require("../models/Manager").findById(userId);
-            hasAccess = manager && manager.business.toString() === id;
-        }
-
-        if (!hasAccess) {
-            return res.status(403).json({ success: false, message: "Access denied" });
-        }
-
-        // Set date range based on period
-        const endDate = new Date();
-        const startDate = new Date();
-
-        switch (period) {
-            case 'daily':
-                startDate.setDate(endDate.getDate() - 1);
-                break;
-            case 'weekly':
-                startDate.setDate(endDate.getDate() - 7);
-                break;
-            case 'monthly':
-                startDate.setMonth(endDate.getMonth() - 1);
-                break;
-            case 'yearly':
-                startDate.setFullYear(endDate.getFullYear() - 1);
-                break;
-            default:
-                startDate.setMonth(endDate.getMonth() - 1);
-        }
-
-        const dailyRecords = await DailyBusiness.find({
-            business: id,
-            date: { $gte: startDate, $lte: endDate }
-        }).sort({ date: -1 });
-
-        const analytics = generateBusinessAnalytics(dailyRecords, period);
-
-        return res.json({
-            success: true,
-            data: analytics
-        });
     } catch (err) {
         next(err);
     }
@@ -840,6 +618,308 @@ const getBusinessesNearby = async (req, res, next) => {
     }
 };
 
+// ================== Search Businesses (Public - Advanced) ==================
+// TODO: Required Indexes:
+// 1. db.businesses.createIndex({ location: "2dsphere" })
+// 2. db.businesses.createIndex({ name: "text", category: "text", subCategory: "text", tags: "text", description: "text" })
+
+// TODO: Geocoding Stub
+// function geocodeAddress(address) {
+//     // Integration with Google Maps Geocoding API or similar would go here
+//     // return { lat, lng };
+//     console.log("Geocoding not implemented yet");
+//     return null;
+// }
+
+/**
+ * Advanced Location-Based Search API
+ * 
+ * Supports:
+ * - "best hotel near me" (via q + lat/lng)
+ * - "spa in vashi" (via q - currently requires lat/lng of "vashi" to be passed from frontend Geocoding)
+ * - Category filtering
+ * - Sorting
+ * 
+ * Test Outlines:
+ * 1. Missing Coords -> 400 Bad Request
+ *    curl "http://localhost:5000/api/business/public/search?q=hotel"
+ * 2. Valid Search -> Success with Results
+ *    curl "http://localhost:5000/api/business/public/search?lat=19.0760&lng=72.8777&q=spa&radius=5000"
+ */
+const searchBusinesses = async (req, res, next) => {
+    try {
+        const {
+            lat,
+            lng,
+            q,
+            category,
+            minRating,
+            radius = 5000,
+            sort,
+            page = 1,
+            limit = 20
+        } = req.query;
+
+        // 1. Validation & Setup
+        // lat/lng are optional now to support "All Locations" default view.
+        // const hasLocation = lat && lng;
+        let hasLocation = false;
+        let latitude, longitude;
+
+        if (lat && lng) {
+            latitude = parseFloat(lat);
+            longitude = parseFloat(lng);
+            if (!isNaN(latitude) && !isNaN(longitude)) {
+                hasLocation = true;
+            }
+        }
+
+        const maxDistance = parseInt(radius) || 5000;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(Math.max(parseInt(limit), 1), 50);
+
+        // 2. Build Pipeline
+        const pipeline = [];
+
+        // Base match criteria (always required)
+        const baseMatch = {
+            isActive: true,
+            'settings.appointmentSettings.allowOnlineBooking': true
+        };
+
+        // Handle q (Text Search vs Regex)
+        // If Geo Search ($geoNear) is used, we CANNOT use $text in a subsequent stage.
+        // So we must use Regex for 'q' if doing Geo Search.
+        // If Global Search (No Geo), we can use $text as part of the first stage.
+
+        if (hasLocation) {
+            // Stage 1: GeoNear
+            pipeline.push({
+                $geoNear: {
+                    near: { type: "Point", coordinates: [longitude, latitude] },
+                    distanceField: "distance",
+                    maxDistance: maxDistance,
+                    spherical: true,
+                    query: baseMatch // $text cannot be here
+                }
+            });
+
+            // Stage 2: Match (Smart Regex for q: supports "spa london" etc.)
+            const matchStage = {};
+            if (q) {
+                // Split query into terms to allow "Spa London" (Category + City)
+                const terms = q.trim().split(/\s+/);
+                const termConditions = terms.map(term => {
+                    const regex = new RegExp(term, 'i');
+                    return {
+                        $or: [
+                            { name: regex },
+                            { category: regex },
+                            { "tags": regex },
+                            { description: regex },
+                            { address: regex },
+                            { city: regex },
+                            { state: regex },
+                            { zipCode: regex }
+                        ]
+                    };
+                });
+
+                if (termConditions.length > 0) {
+                    matchStage.$and = termConditions;
+                }
+            }
+
+            // Add Category filter
+            if (category) {
+                matchStage.type = { $regex: category, $options: 'i' };
+            }
+
+            // Add Min Rating
+            if (minRating) {
+                matchStage['ratings.average'] = { $gte: parseFloat(minRating) };
+            }
+
+            if (Object.keys(matchStage).length > 0) {
+                pipeline.push({ $match: matchStage });
+            }
+
+        } else {
+            // Global Search (No Location)
+            // We can use $text here, but it MUST be in the first stage combined with basic filters.
+
+            if (q) {
+                // Smart Regex Search Implementation
+                const terms = q.trim().split(/\s+/);
+                const termConditions = terms.map(term => {
+                    const regex = new RegExp(term, 'i');
+                    return {
+                        $or: [
+                            { name: regex },
+                            { category: regex },
+                            { "tags": regex },
+                            { description: regex },
+                            { address: regex },
+                            { city: regex },
+                            { state: regex },
+                            { zipCode: regex }
+                        ]
+                    };
+                });
+
+                if (termConditions.length > 0) {
+                    baseMatch.$and = termConditions;
+                }
+            }
+
+            pipeline.push({ $match: baseMatch });
+
+            // Subsequent Match Stage for other filters (Category, Rating)
+            // Note: $text results are not sorted by score unless we project metadata.
+
+            const secondaryMatch = {};
+            if (category) {
+                secondaryMatch.type = { $regex: category, $options: 'i' };
+            }
+            if (minRating) {
+                secondaryMatch['ratings.average'] = { $gte: parseFloat(minRating) };
+            }
+
+            if (Object.keys(secondaryMatch).length > 0) {
+                pipeline.push({ $match: secondaryMatch });
+            }
+        }
+
+        // Stage 3: Project (Format & Snippet)
+        pipeline.push({
+            $project: {
+                name: 1,
+                type: 1,
+                branch: 1,
+                address: 1,
+                location: 1,
+                images: 1,
+                image: { $ifNull: ["$images.thumbnail", { $ifNull: ["$images.logo", { $ifNull: ["$images.banner", null] }] }] },
+                ratings: 1,
+                category: 1,
+                tags: 1,
+                description: 1,
+                phone: 1,
+                socialMedia: 1,
+                businessLink: 1,
+                distance: { $ifNull: ["$distance", null] },
+                // Create a snippet
+                snippet: {
+                    $concat: [
+                        { $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] },
+                        "..."
+                    ]
+                }
+            }
+        });
+
+        // Stage 4: Sort
+        if (sort === 'rating') {
+            pipeline.push({ $sort: { "ratings.average": -1 } });
+        } else if (!hasLocation && !q) {
+            // Default sort for non-geo, non-text search: Newest first
+            pipeline.push({ $sort: { createdAt: -1 } });
+        }
+        // If geo search, default sort is by distance (handled by $geoNear)
+        // If text search, default is relevance (unless sorting overridden)
+        // If sorting by relevance (text score), we would need to project { score: { $meta: "textScore" } } earlier.
+        // For now, supporting requested sort params.
+
+        // Stage 5: Pagination Facet
+        pipeline.push({
+            $facet: {
+                results: [
+                    { $skip: (pageNum - 1) * limitNum },
+                    { $limit: limitNum }
+                ],
+                totalCount: [
+                    { $count: "count" }
+                ]
+            }
+        });
+
+        // 3. Execute
+        const result = await Business.aggregate(pipeline);
+
+        const businesses = result[0].results;
+        const totalResults = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
+        const businessIds = businesses.map(b => b._id);
+        const servicesMap = {};
+
+        if (businessIds.length > 0) {
+            const services = await Service.find({
+                business: { $in: businessIds },
+                isActive: true
+            })
+                .select('name business')
+                .lean();
+
+            services.forEach(service => {
+                if (!servicesMap[service.business]) {
+                    servicesMap[service.business] = [];
+                }
+                // Limit to 5 services per business for listing
+                if (servicesMap[service.business].length < 5) {
+                    servicesMap[service.business].push({
+                        name: service.name
+                    });
+                }
+            });
+        }
+
+        // 4. Format Output
+        const formattedResults = businesses.map(b => {
+            // Calculate human readable distance
+            let distanceText = "";
+            if (b.distance !== null && b.distance !== undefined) {
+                if (b.distance < 1000) {
+                    distanceText = `${Math.round(b.distance)} m`;
+                } else {
+                    distanceText = `${(b.distance / 1000).toFixed(1)} km`;
+                }
+            }
+
+            return {
+                id: b._id,
+                name: b.name,
+                type: b.type,
+                branch: b.branch,
+                address: b.address,
+                category: b.category,
+                tags: b.tags,
+                ratings: b.ratings,
+                image: b.image || b.images?.thumbnail || b.images?.logo,
+                gallery: b.images?.gallery || [],
+                distance: b.distance,
+                distanceText: distanceText,
+                snippet: b.snippet,
+                location: b.location,
+                phone: b.phone,
+                socialMedia: b.socialMedia,
+                services: servicesMap[b._id] || [],
+                businessLink: b.businessLink
+            };
+        });
+
+        return res.json({
+            success: true,
+            page: pageNum,
+            limit: limitNum,
+            totalResults: totalResults,
+            results: formattedResults
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+
 const getIndiaLocations = async (req, res, next) => {
     try {
         const { search = "", state = "" } = req.query;
@@ -894,6 +974,334 @@ const getIndiaLocations = async (req, res, next) => {
         });
     } catch (error) {
         next(error);
+    }
+};
+
+// ===========================================
+// ============ ADMIN & MANAGER ==============
+// ===========================================
+
+// ================== Get Business by ID ==================
+const getBusinessById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Validate ID
+        if (!id || !isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid Business ID is required"
+            });
+        }
+
+        let query = { _id: id, isActive: true };
+
+        // If user is manager, check if they belong to this business
+        if (userRole === 'manager') {
+            const manager = await require("../models/Manager").findById(userId);
+            if (!manager || manager.business.toString() !== id) {
+                return res.status(403).json({ success: false, message: "Access denied" });
+            }
+        } else if (userRole === 'admin') {
+            query.admin = userId;
+        }
+
+        const business = await Business.findOne(query)
+            .populate('managers', 'name username email phone isActive lastLogin')
+            .populate('staff', 'name role phone email isActive')
+            .populate('admin', 'name companyName email');
+
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+
+        return res.json({ success: true, data: business });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Business Staff ==================
+const getBusinessStaff = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { page = 1, limit = 10, role, search } = req.query;
+
+        // Verify access
+        let hasAccess = false;
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: id, admin: userId });
+            hasAccess = !!business;
+        } else if (userRole === 'manager') {
+            const manager = await require("../models/Manager").findById(userId);
+            hasAccess = manager && manager.business.toString() === id;
+        }
+
+        if (!hasAccess) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        const cacheKey = `business:${id}:staff:${role}:${search}:${page}:${limit}`;
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", ...cachedData });
+        }
+
+        let query = { business: id, isActive: true };
+
+        if (role) {
+            query.role = role;
+        }
+
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const staff = await Staff.find(query)
+            .populate('manager', 'name username')
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .sort({ createdAt: -1 });
+
+        const total = await Staff.countDocuments(query);
+
+        const response = {
+            success: true,
+            data: staff.map(s => s.toObject()),
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        };
+
+        await setCache(cacheKey, response, 120);
+        return res.json(response);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Business Daily Records ==================
+const getBusinessDailyRecords = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { startDate, endDate, page = 1, limit = 10 } = req.query;
+
+        // Verify access
+        let hasAccess = false;
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: id, admin: userId });
+            hasAccess = !!business;
+        } else if (userRole === 'manager') {
+            const manager = await require("../models/Manager").findById(userId);
+            hasAccess = manager && manager.business.toString() === id;
+        }
+
+        if (!hasAccess) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        const cacheKey = `business:${id}:daily:${startDate}:${endDate}:${page}:${limit}`;
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", ...cachedData });
+        }
+
+        let query = { business: id };
+
+        if (startDate && endDate) {
+            query.date = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
+        const records = await DailyBusiness.find(query)
+            .populate('manager', 'name username')
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .sort({ date: -1 });
+
+        const total = await DailyBusiness.countDocuments(query);
+
+        const response = {
+            success: true,
+            data: records.map(r => r.toObject()),
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        };
+
+        await setCache(cacheKey, response, 300);
+        return res.json(response);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Business Analytics ==================
+const getBusinessAnalytics = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { period = 'monthly' } = req.query;
+
+        // Import Models locally if not top-level to avoid circular dependency risks or just ensuring availability
+        const Transaction = require("../models/Transaction");
+        const Appointment = require("../models/Appointment");
+
+        // Verify access
+        let hasAccess = false;
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: id, admin: userId });
+            hasAccess = !!business;
+        } else if (userRole === 'manager') {
+            const manager = await require("../models/Manager").findById(userId);
+            hasAccess = manager && manager.business.toString() === id;
+        }
+
+        if (!hasAccess) {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        // Set date range based on period
+        const endDate = new Date();
+        const startDate = new Date();
+
+        // Adjust dates to cover full days
+        endDate.setHours(23, 59, 59, 999);
+        startDate.setHours(0, 0, 0, 0);
+
+        let daysInPeriod = 30; // Default
+
+        switch (period) {
+            case 'daily':
+                startDate.setDate(endDate.getDate() - 1); // Last 24h effectively? Or today? Usually means "Today" or "Yesterday"
+                // User logic was -1 day. Let's keep consistent but ensure ranges.
+                daysInPeriod = 1;
+                break;
+            case 'weekly':
+                startDate.setDate(endDate.getDate() - 7);
+                daysInPeriod = 7;
+                break;
+            case 'monthly':
+                startDate.setMonth(endDate.getMonth() - 1);
+                daysInPeriod = 30;
+                break;
+            case 'yearly':
+                startDate.setFullYear(endDate.getFullYear() - 1);
+                daysInPeriod = 365;
+                break;
+            case 'all':
+                startDate.setTime(0); // Beginning of time
+                // Calculate days since business creation for accurate averages
+                const biz = await Business.findById(id).select('createdAt');
+                if (biz && biz.createdAt) {
+                    const diffTime = Math.abs(endDate - new Date(biz.createdAt));
+                    daysInPeriod = Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)), 1);
+                } else {
+                    daysInPeriod = 365; // Fallback
+                }
+                break;
+            default:
+                startDate.setMonth(endDate.getMonth() - 1);
+        }
+
+        // Get Daily Records (for granular trends if available)
+        const dailyRecords = await DailyBusiness.find({
+            business: id,
+            date: { $gte: startDate, $lte: endDate }
+        }).sort({ date: -1 });
+
+        // Generate Base Analytics
+        const analytics = generateBusinessAnalytics(dailyRecords, period);
+
+        // =========================================================================
+        // OVERRIDE WITH HYBRID REAL-TIME STATS (To Match Manager Dashboard)
+        // =========================================================================
+
+        // Construct Match Queries
+        const txnMatch = {
+            business: new mongoose.Types.ObjectId(id),
+            paymentStatus: 'completed',
+            isRefunded: false
+        };
+
+        const apptMatch = {
+            business: new mongoose.Types.ObjectId(id),
+            status: 'completed'
+        };
+
+        // Apply Date Filter ONLY if NOT 'all' time
+        if (period !== 'all') {
+            txnMatch.transactionDate = { $gte: startDate, $lte: endDate };
+            apptMatch.appointmentDate = { $gte: startDate, $lte: endDate };
+        }
+
+        // 1. Transactions Revenue & Count
+        const txnStats = await Transaction.aggregate([
+            { $match: txnMatch },
+            { $group: { _id: null, total: { $sum: "$finalPrice" }, count: { $sum: 1 }, customers: { $sum: 1 } } } // Approx customers count
+        ]);
+
+        const txnRevenue = txnStats[0]?.total || 0;
+        const txnCount = txnStats[0]?.count || 0;
+        // txnCustomers is approximation, we usually just sum counts for "Total Customers" metric in this hybrid model
+
+        // 2. Missing Appointments (Ghost Revenue)
+        const apptStats = await Appointment.aggregate([
+            { $match: apptMatch },
+            {
+                $lookup: {
+                    from: "transactions",
+                    localField: "_id",
+                    foreignField: "appointment",
+                    as: "existingTxn"
+                }
+            },
+            { $match: { existingTxn: { $size: 0 } } },
+            { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
+        ]);
+
+        const apptRevenue = apptStats[0]?.total || 0;
+        const apptCount = apptStats[0]?.count || 0;
+
+        // 3. Update Analytics Object
+        const totalHybridRevenue = txnRevenue + apptRevenue;
+        const totalHybridCustomers = txnCount + apptCount; // Matches "Total Customers" logic in manager dashboard (Total Interactions)
+
+        analytics.totalRevenue = totalHybridRevenue;
+        analytics.totalCustomers = totalHybridCustomers;
+
+        // Recalculate Averages
+        analytics.averageDailyRevenue = analytics.totalRevenue / Math.max(daysInPeriod, 1);
+        analytics.averageDailyCustomers = analytics.totalCustomers / Math.max(daysInPeriod, 1);
+
+        // Update Net Profit (assuming expenses from DailyBusiness are still best source for expenses)
+        // Profit = Hybrid Revenue - Reported Expenses
+        analytics.netProfit = analytics.totalRevenue - analytics.totalExpenses;
+
+        return res.json({
+            success: true,
+            data: analytics
+        });
+    } catch (err) {
+        next(err);
     }
 };
 
@@ -1032,6 +1440,7 @@ module.exports = {
     getBusinessDailyRecords,
     getBusinessAnalytics,
     getBusinessesNearby,
+    searchBusinesses, // Added new API
     getIndiaLocations,
     updateBusiness
 };

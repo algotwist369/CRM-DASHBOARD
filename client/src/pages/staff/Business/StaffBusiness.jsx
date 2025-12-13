@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   FaBuilding,
   FaMapMarkerAlt,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaGlobe,
   FaIdCard,
@@ -127,7 +127,7 @@ const StaffBusiness = () => {
               )}
               {business.phone && (
                 <InfoItem
-                  icon={FaPhone}
+                  icon={FaPhoneAlt}
                   label="Phone"
                   value={business.phone}
                 />
@@ -237,7 +237,7 @@ const StaffBusiness = () => {
               )}
               {business.phone && (
                 <InfoRow
-                  icon={FaPhone}
+                  icon={FaPhoneAlt}
                   label="Phone"
                   value={business.phone}
                 />

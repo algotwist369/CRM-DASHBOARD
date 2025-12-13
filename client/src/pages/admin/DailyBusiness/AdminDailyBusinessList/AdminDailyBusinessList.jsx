@@ -34,7 +34,6 @@ const Header = memo(({ onRefresh, refreshing, onBack }) => (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Daily Business Records</h1>
-        <p className="text-gray-600 mt-1">View all daily business records across businesses</p>
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <button

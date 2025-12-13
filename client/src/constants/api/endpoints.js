@@ -78,6 +78,7 @@ export const endpoints = {
     availableSlots: (link) => `${API_BASE_URL}/appointments/business/${link}/slots`,
     availableSlotsById: (id) => `${API_BASE_URL}/appointments/business/${id}/slots`,
     bookAppointment: (link) => `${API_BASE_URL}/appointments/business/${link}/book`,
+    verifyBookAppointment: (link) => `${API_BASE_URL}/appointments/business/${link}/book/verify`,
     bookAppointmentById: `${API_BASE_URL}/appointments/book`,
     appointmentByCode: (code) => `${API_BASE_URL}/appointments/confirmation/${code}`,
     cancelAppointment: (code) => `${API_BASE_URL}/appointments/confirmation/${code}/cancel`,
@@ -271,6 +272,16 @@ export const endpoints = {
     staff: `${API_BASE_URL}/analytics/staff`,
     trends: `${API_BASE_URL}/analytics/trends`,
   },
+
+  // Lead Tracking & Analytics
+  leads: {
+    track: `${API_BASE_URL}/leads/track`,
+    analytics: {
+      summary: `${API_BASE_URL}/leads/analytics/summary`,
+      businessBreakdown: `${API_BASE_URL}/leads/analytics/business-breakdown`,
+      ipJourneys: `${API_BASE_URL}/leads/analytics/ip-journeys`,
+    }
+  }
 }
 
 export default endpoints

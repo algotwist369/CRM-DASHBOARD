@@ -40,6 +40,11 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
+    // Remove Content-Type header for FormData - axios will set it automatically with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+
     // Add request timestamp for debugging
     config.metadata = { startTime: new Date() }
 

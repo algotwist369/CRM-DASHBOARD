@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -7,73 +7,144 @@ import {
   FaArrowRight,
   FaUser,
   FaEnvelope,
-  FaPhone,
+  FaPhoneAlt,
   FaCalendarAlt,
 } from 'react-icons/fa'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
+import { useLeadTracking } from '../../../../hooks/useLeadTracking'
+
+const currencySymbols = {
+  INR: '₹',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AED: 'د.إ'
+}
+
+const formatPrice = (value = 0, currency = 'INR') => {
+  if (!value && value !== 0) return '--'
+  const symbol = currencySymbols[currency] || ''
+  const roundedValue = Math.round(Number(value))
+  return symbol ? `${symbol}${roundedValue.toLocaleString('en-IN')}` : `${currency} ${roundedValue.toLocaleString('en-IN')}`
+}
+
+const formatDuration = (minutes) => {
+  if (!minutes) return null
+  if (minutes < 60) return `${minutes} min`
+  const hrs = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (!mins) return `${hrs} hr${hrs > 1 ? 's' : ''}`
+  return `${hrs} hr${hrs > 1 ? 's' : ''} ${mins} min`
+}
+
+const formatTime = (time) => {
+  if (!time) return ''
+  const [hours, minutes] = time.split(':')
+  const hour = parseInt(hours)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const hour12 = hour % 12 || 12
+  return `${hour12}:${minutes} ${ampm}`
+}
 
 const CustomerInfo = () => {
   const navigate = useNavigate()
   const { businessLink } = useParams()
-  const [business, setBusiness] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: '',
-    address: '',
-    notes: '' || 'NA',
-    specialRequests: '' || 'NA',
+
+  // Lazy initialize state from sessionStorage to avoid layout shifts
+  const [business, setBusiness] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('bookingBusiness')
+      return stored ? JSON.parse(stored) : null
+    } catch {
+      return null
+    }
   })
+
+  // Redirect if no business data found
+  useEffect(() => {
+    if (!business) {
+      navigate(`/${businessLink}`)
+    }
+  }, [business, businessLink, navigate])
+
+  const [loading, setLoading] = useState(false)
+
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('customerInfo')
+      return saved ? { ...JSON.parse(saved) } : {
+        name: '',
+        email: '',
+        phone: '',
+        dateOfBirth: '',
+        gender: '',
+        notes: '',
+        specialRequests: '',
+      }
+    } catch {
+      return {
+        name: '',
+        email: '',
+        phone: '',
+        dateOfBirth: '',
+        gender: '',
+        notes: '',
+        specialRequests: '',
+      }
+    }
+  })
+
   const [errors, setErrors] = useState({})
+
+  const [selectedServices, setSelectedServices] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('selectedServices')
+      const parsed = saved ? JSON.parse(saved) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
+
+  const [selectedStaff, setSelectedStaff] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('selectedStaff')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+
+  const [selectedDate, setSelectedDate] = useState(() => {
+    return sessionStorage.getItem('selectedDate') || ''
+  })
+
+  const [selectedTime, setSelectedTime] = useState(() => {
+    return sessionStorage.getItem('selectedTime') || ''
+  })
 
   // Update page title
   usePageTitle()
 
+  // Track page view
+  useLeadTracking(business?._id, !!business);
+
   useEffect(() => {
-    loadBusinessData()
-    loadCustomerData()
-  }, [businessLink])
+    window.scrollTo(0, 0)
+  }, [])
 
-  const loadBusinessData = () => {
-    const businessData = sessionStorage.getItem('bookingBusiness')
-    if (businessData) {
-      try {
-        const parsed = JSON.parse(businessData)
-        setBusiness(parsed)
-        setLoading(false)
-      } catch (error) {
-        navigate(`/${businessLink}`)
-      }
-    } else {
-      navigate(`/${businessLink}`)
-    }
-  }
-
-  const loadCustomerData = () => {
-    const saved = sessionStorage.getItem('customerInfo')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setFormData(prev => ({ ...prev, ...parsed }))
-      } catch (error) {
-        console.error('Failed to load customer data')
-      }
-    }
-  }
-
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
-    }
-  }
+    setErrors(prev => {
+      if (prev[name]) {
+        return { ...prev, [name]: '' }
+      }
+      return prev
+    })
+  }, [])
 
-  const validate = () => {
+  const validate = useCallback(() => {
     const newErrors = {}
 
     if (!formData.name.trim()) {
@@ -94,21 +165,54 @@ const CustomerInfo = () => {
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
+  }, [formData])
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     if (!validate()) {
       toast.error('Please fill in all required fields correctly')
       return
     }
 
     sessionStorage.setItem('customerInfo', JSON.stringify(formData))
-    navigate(`/book/${businessLink}/confirmation`) // Go to booking confirmation page
-  }
+    navigate(`/book/${businessLink}/confirmation`)
+  }, [formData, businessLink, navigate, validate])
 
-  const handleBack = () => {
-    navigate(`/book/${businessLink}/time`) // Go back to time selection page
-  }
+  const handleBack = useCallback(() => {
+    navigate(`/book/${businessLink}/time`)
+  }, [businessLink, navigate])
+
+  // Calculate totals from selected services
+  const totals = useMemo(() => {
+    const totalPrice = selectedServices.reduce((sum, service) => sum + (Number(service?.price) || 0), 0)
+    const totalDuration = selectedServices.reduce((sum, service) => sum + (Number(service?.duration) || 0), 0)
+    const currency = selectedServices[0]?.currency || business?.currency || 'INR'
+
+    return {
+      price: totalPrice,
+      duration: totalDuration,
+      currency,
+      priceLabel: selectedServices.length ? formatPrice(totalPrice, currency) : null,
+      durationLabel: formatDuration(totalDuration)
+    }
+  }, [selectedServices, business?.currency])
+
+  // Format service details for display
+  const serviceDetails = useMemo(() => {
+    return selectedServices.map((service, index) => {
+      const serviceName = service?.serviceName || service?.name || `Service ${index + 1}`
+      const optionLabel = service?.optionLabel || service?.pricingOptionLabel || null
+      const duration = Number(service?.duration) || 0
+      const price = service?.price
+      const currency = service?.currency || business?.currency || 'INR'
+
+      return {
+        name: serviceName,
+        optionLabel,
+        durationLabel: formatDuration(duration),
+        priceLabel: price !== undefined && price !== null ? formatPrice(price, currency) : null
+      }
+    })
+  }, [selectedServices, business?.currency])
 
   if (loading || !business) {
     return (
@@ -122,7 +226,7 @@ const CustomerInfo = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-4 px-3 sm:py-8 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -133,232 +237,279 @@ const CustomerInfo = () => {
             <FaArrowLeft />
             Back
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Your Information</h1>
-          <p className="text-gray-600 mt-2">Please provide your details to complete the booking</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Your Information</h1>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Please provide your details to complete the booking</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form */}
-         <div className="lg:col-span-2">
-  <div className="bg-white   border border-gray-200 p-6 space-y-6">
-    
-    {/* Required Fields */}
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Required Information</h2>
-      
-      {/* FIX: Changed from flex/justify-center to a responsive grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FaUser className="inline mr-2" />
-            Full Name *
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className={`w-full px-4 py-2 border  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-              errors.name ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="Full name"
-          />
-          {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-        </div>
+          <div className="lg:col-span-2">
+            <div className="bg-white  border border-gray-200 p-4 sm:p-6 space-y-6 ">
 
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FaEnvelope className="inline mr-2" />
-            Email Address *
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className={`w-full px-4 py-2 border  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-              errors.email ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="your.email@example.com"
-          />
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-        </div>
+              {/* Required Fields */}
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-1 h-6 bg-primary-600 rounded-full"></span>
+                  Required Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* Phone */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FaPhone className="inline mr-2" />
-            Phone Number *
-          </label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            className={`w-full px-4 py-2 border  focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-              errors.phone ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="10-digit phone number"
-            maxLength={10}
-          />
-          {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
-        </div>
-      </div>
-    </div>
+                  {/* Name */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Full Name *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaUser className="text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        autoComplete="name"
+                        className={`w-full pl-10 pr-4 py-2.5 border  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                          }`}
+                        placeholder="e.g. John Doe"
+                      />
+                    </div>
+                    {errors.name && <p className="mt-1 text-sm text-red-600 fade-in">{errors.name}</p>}
+                  </div>
 
-    {/* Optional Fields */}
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Optional Information</h2>
-      <div className="space-y-4">
-        
-        {/* DOB and Gender Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Date of Birth */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <FaCalendarAlt className="inline mr-2" />
-              Date of Birth
-            </label>
-            <input
-              type="date"
-              name="dateOfBirth"
-              value={formData.dateOfBirth}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
-              max={new Date().toISOString().split('T')[0]}
-            />
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaEnvelope className="text-gray-400" />
+                      </div>
+                      <input
+                        type="email"
+                        inputMode="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        autoComplete="email"
+                        className={`w-full pl-10 pr-4 py-2.5 border  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                          }`}
+                        placeholder="john@example.com"
+                      />
+                    </div>
+                    {errors.email && <p className="mt-1 text-sm text-red-600 fade-in">{errors.email}</p>}
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FaPhoneAlt className="text-gray-400" />
+                      </div>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        autoComplete="tel"
+                        className={`w-full pl-10 pr-4 py-2.5 border  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors ${errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                          }`}
+                        placeholder="10-digit number"
+                        maxLength={10}
+                      />
+                    </div>
+                    {errors.phone && <p className="mt-1 text-sm text-red-600 fade-in">{errors.phone}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional Fields */}
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-1 h-6 bg-gray-300 rounded-full"></span>
+                  Optional Information
+                </h2>
+                <div className="space-y-4">
+
+                  {/* DOB and Gender Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Date of Birth */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Date of Birth (optional)
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <FaCalendarAlt className="text-gray-400" />
+                        </div>
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          value={formData.dateOfBirth}
+                          onChange={handleChange}
+                          className="w-full pl-10 pr-4 py-2.5 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                          max={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Gender */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                      <select
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors bg-white"
+                      >
+                        <option value="">Select gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                        <option value="prefer_not_to_say">Prefer not to say</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes (optional)</label>
+                    <textarea
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                      placeholder="Any additional information..."
+                    />
+                  </div>
+
+                  {/* Special Requests */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests (optional)</label>
+                    <textarea
+                      name="specialRequests"
+                      value={formData.specialRequests}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                      placeholder="Any special requests or preferences..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-
-          {/* Gender */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">Select gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer_not_to_say">Prefer not to say</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Address */}
-        {/* <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FaMapMarkerAlt className="inline mr-2" />
-            Address
-          </label>
-          <textarea
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Enter your address (optional)"
-          />
-        </div> */}
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Any additional information..."
-          />
-        </div>
-
-        {/* Special Requests */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests</label>
-          <textarea
-            name="specialRequests"
-            value={formData.specialRequests}
-            onChange={handleChange}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-300  focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Any special requests or preferences..."
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white   border border-gray-200 p-6 sticky top-[4.1rem]">
+            <div className="bg-white  border border-gray-200 p-6 sticky top-6 ">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
 
-              <div className="space-y-3 mb-4 text-sm">
+              <div className="space-y-4 mb-4 text-sm">
+                {/* Business */}
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Business</span>
+                  {/* <span className="text-gray-600">Business</span> */}
                   <span className="text-gray-900 font-medium">{business.name}</span>
                 </div>
-                {(() => {
-                  const selectedServices = JSON.parse(sessionStorage.getItem('selectedServices') || '[]')
-                  return (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Services</span>
-                      <span className="text-gray-900 font-medium">{selectedServices.length}</span>
+
+                {/* Services */}
+                {selectedServices.length > 0 && (
+                  <div className="border-t border-gray-100 pt-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-2 font-semibold">Services</p>
+                    <div className="space-y-2">
+                      {serviceDetails.map((service, index) => (
+                        <div key={index} className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0 pr-2">
+                            <p className="text-sm font-medium text-gray-900 truncate">{service.name}</p>
+                            {service.optionLabel && (
+                              <p className="text-xs text-gray-500">{service.optionLabel}</p>
+                            )}
+                            {service.durationLabel && (
+                              <p className="text-xs text-gray-500">{service.durationLabel}</p>
+                            )}
+                          </div>
+                          {service.priceLabel && (
+                            <p className="text-sm font-semibold text-gray-900 ml-2 whitespace-nowrap">{service.priceLabel}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )
-                })()}
-                {(() => {
-                  const selectedDate = sessionStorage.getItem('selectedDate')
-                  const selectedTime = sessionStorage.getItem('selectedTime')
-                  return (
-                    <>
-                      {selectedDate && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-600">Date</span>
-                          <span className="text-gray-900 font-medium">
-                            {new Date(selectedDate).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </span>
-                        </div>
-                      )}
-                      {selectedTime && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-600">Time</span>
-                          <span className="text-gray-900 font-medium">
-                            {selectedTime.includes('AM') || selectedTime.includes('PM')
-                              ? selectedTime
-                              : (() => {
-                                const [hours, minutes] = selectedTime.split(':')
-                                const hour = parseInt(hours)
-                                const ampm = hour >= 12 ? 'PM' : 'AM'
-                                const hour12 = hour % 12 || 12
-                                return `${hour12}:${minutes} ${ampm}`
-                              })()}
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
+                  </div>
+                )}
+
+                {/* Staff */}
+                <div className="border-t border-gray-100 pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Staff</span>
+                    <span className="text-gray-900 font-medium">
+                      {selectedStaff?.name || 'Any Available'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Date & Time */}
+                {(selectedDate || selectedTime) && (
+                  <div className="border-t border-gray-100 pt-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-2 font-semibold">Appointment</p>
+                    {selectedDate && (
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-gray-600">Date</span>
+                        <span className="text-gray-900 font-medium">
+                          {new Date(selectedDate).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {selectedTime && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Time</span>
+                        <span className="text-gray-900 font-medium">{formatTime(selectedTime)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Totals */}
+                {(totals.durationLabel || totals.priceLabel) && (
+                  <div className="border-t border-gray-200 pt-3 mt-2">
+                    <div className="flex items-center justify-between font-bold text-gray-900">
+                      <span>Total</span>
+                      <div className="text-right">
+                        {totals.durationLabel && <p className="text-xs font-normal text-gray-500 mb-0.5">{totals.durationLabel}</p>}
+                        {totals.priceLabel && <p className="text-lg">{totals.priceLabel}</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <button
-                onClick={handleContinue}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 transition-colors font-medium"
-              >
-                Continue
-                <FaArrowRight />
-              </button>
+              {/* Buttons */}
+              <div className="flex flex-col gap-3 mt-6">
+                <button
+                  onClick={handleContinue}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 transition-colors font-medium  hover:shadow-md"
+                >
+                  Continue
+                  <FaArrowRight />
+                </button>
+                <button
+                  onClick={handleBack}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-700 border border-gray-300  hover:bg-gray-50 transition-colors font-medium"
+                >
+                  <FaArrowLeft />
+                  Back
+                </button>
+              </div>
             </div>
           </div>
         </div>

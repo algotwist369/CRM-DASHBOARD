@@ -1,14 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  FaComments, 
-  FaTimes, 
-  FaPaperPlane, 
-  FaRobot, 
-  FaUser, 
+import {
+  FaComments,
+  FaTimes,
+  FaPaperPlane,
+  FaUser,
   FaSpinner,
-  FaBell,
-  FaCheckCircle
+  FaRobot
 } from 'react-icons/fa'
 
 const ChatBot = () => {
@@ -75,7 +73,7 @@ const ChatBot = () => {
 
   const getBotResponse = (message, action = null) => {
     const lowerMessage = message.toLowerCase()
-    
+
     // Business Listing
     if (action === 'business_listing' || lowerMessage.includes('list') || lowerMessage.includes('register') || lowerMessage.includes('sign up') || lowerMessage.includes('free listing')) {
       return {
@@ -293,7 +291,7 @@ const ChatBot = () => {
         quickReplies: botResponse.quickReplies || []
       }
       setMessages(prev => [...prev, botMessage])
-    }, 1000 + Math.random() * 1000)
+    }, 400 + Math.random() * 200)
   }
 
   const handleKeyPress = (e) => {
@@ -319,8 +317,8 @@ const ChatBot = () => {
         <div className="fixed bottom-24 right-6 z-50 animate-slide-up">
           <div className="bg-white  shadow-2xl border-2 border-primary-200 p-4 max-w-sm">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-primary-700 rounded-full flex items-center justify-center flex-shrink-0">
-                <FaRobot className="text-white" />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-primary-100">
+                <img src="/chatbot_avatar.png" alt="AI Support" className="w-full h-full object-cover" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
@@ -352,22 +350,23 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center group"
+          className="fixed md:bottom-6 bottom-20 right-6 z-50 w-16 h-16 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center group"
           aria-label="Open chat"
         >
-          <FaComments className="text-2xl" />
+          {/* <FaRobot  className="text-2xl" /> */}
+          <img src="https://reductress.com/wp-content/uploads/2019/06/petite-woman-1-820x500.jpg" className="w-full h-full object-cover rounded-full p-[2px]" alt="" />
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
         </button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white  shadow-2xl flex flex-col h-[600px] max-h-[calc(100vh-8rem)]">
+        <div className="fixed md:bottom-6 bottom-20 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white  shadow-2xl flex flex-col h-[600px] max-h-[calc(100vh-8rem)]">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <FaRobot className="text-xl" />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border-2 border-white/30">
+                <img src="/chatbot_avatar.png" alt="AI Assistant" className="w-full h-full object-cover" />
               </div>
               <div>
                 <h3 className="font-bold text-lg">AI Assistant</h3>
@@ -391,24 +390,22 @@ const ChatBot = () => {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
               >
                 <div className={`flex gap-2 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    message.sender === 'user' ? 'bg-primary-600' : 'bg-gray-200'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${message.sender === 'user' ? 'bg-primary-600' : 'border border-gray-200'
+                    }`}>
                     {message.sender === 'user' ? (
                       <FaUser className="text-white text-sm" />
                     ) : (
-                      <FaRobot className="text-gray-600 text-sm" />
+                      <img src="/chatbot_avatar.png" alt="Bot" className="w-full h-full object-cover" />
                     )}
                   </div>
                   <div className="flex flex-col">
-                    <div className={` px-4 py-2 ${
-                      message.sender === 'user'
-                        ? 'bg-primary-600 text-white rounded-tr-sm'
-                        : 'bg-white text-gray-900 rounded-tl-sm '
-                    }`}>
+                    <div className={` px-4 py-2 ${message.sender === 'user'
+                      ? 'bg-primary-600 text-white rounded-tr-sm'
+                      : 'bg-white text-gray-900 rounded-tl-sm '
+                      }`}>
                       <p className="text-sm whitespace-pre-line">{message.text}</p>
                     </div>
                     {message.quickReplies && message.quickReplies.length > 0 && (
@@ -433,8 +430,8 @@ const ChatBot = () => {
             {isTyping && (
               <div className="flex justify-start">
                 <div className="flex gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <FaRobot className="text-gray-600 text-sm" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
+                    <img src="/chatbot_avatar.png" alt="Bot" className="w-full h-full object-cover" />
                   </div>
                   <div className="bg-white  rounded-tl-sm px-4 py-3 ">
                     <div className="flex gap-1">
@@ -486,6 +483,13 @@ const ChatBot = () => {
       )}
 
       <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out forwards;
+        }
         @keyframes slide-up {
           from {
             transform: translateY(20px);

@@ -16,6 +16,7 @@ import {
   HiOutlineCalendar,
   HiOutlineDocumentText,
   HiOutlineClipboardList,
+  HiOutlineCursorClick,
 } from 'react-icons/hi'
 import { GrAnnounce } from "react-icons/gr";
 import { FaUserCircle, FaLock } from 'react-icons/fa';
@@ -212,6 +213,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
     //   href: '/admin/analytics',
     //   icon: <HiOutlineChartBar className="w-5 h-5" />,
     // },
+    {
+      name: 'Lead Analytics',
+      href: '/admin/lead-analytics',
+      icon: <HiOutlineCursorClick className="w-5 h-5" />,
+    },
     {
       name: 'Notifications',
       href: '/admin/notifications',

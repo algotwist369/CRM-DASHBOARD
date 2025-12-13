@@ -4,7 +4,7 @@ import {
   FaArrowLeft,
   FaUser,
   FaEnvelope,
-  FaPhone,
+  FaPhoneAlt,
   FaBuilding,
   FaIdCard,
   FaCalendarAlt,
@@ -168,7 +168,7 @@ const ManagerDetails = () => {
     if (!manager) return [];
     return [
       { icon: FaEnvelope, label: 'Email', value: manager.email || "—" },
-      { icon: FaPhone, label: 'Phone', value: manager.phone || "—" }
+      { icon: FaPhoneAlt, label: 'Phone', value: manager.phone || "—" }
     ];
   }, [manager]);
 

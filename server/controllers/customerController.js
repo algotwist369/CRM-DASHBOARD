@@ -609,15 +609,9 @@ const getCustomerStats = async (req, res, next) => {
         }
 
         const cacheKeyPrefix = businessId ? `business:${businessId}` : `admin:${userId}`;
-        const cacheKey = `${cacheKeyPrefix}:customer:stats`;
+        // const cacheKey = `${cacheKeyPrefix}:customer:stats`;
 
-        // Try cache first
-        // const cachedData = await getCache(cacheKey);
-        // if (cachedData) {
-        //     return res.json({ success: true, source: "cache", data: cachedData });
-        // }
-
-        // Build query
+        // Create query
         let query = { isActive: true };
         if (businessIds.length === 1) {
             query.business = businessIds[0];
@@ -663,9 +657,6 @@ const getCustomerStats = async (req, res, next) => {
             averageSpent: 0,
             totalLoyaltyPoints: 0
         };
-
-        // Cache for 5 minutes
-        // await setCache(cacheKey, result, 300);
 
         return res.json({
             success: true,
@@ -818,10 +809,497 @@ const lookupCustomer = async (req, res, next) => {
             });
         }
 
+
         return res.json({
             success: true,
             data: customer
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Customer Timeline ==================
+const getCustomerTimeline = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { id } = req.params;
+
+        const customer = await Customer.findById(id).lean();
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer not found"
+            });
+        }
+
+        // Verify access
+        if (userRole === 'admin') {
+            const business = await Business.findOne({
+                _id: customer.business,
+                admin: userId
+            });
+            if (!business) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager.business.toString() !== customer.business.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        }
+
+        // Get appointments for timeline
+        const appointments = await Appointment.find({
+            customer: customer._id
+        })
+            .populate('staff', 'name')
+            .populate('service', 'name')
+            .sort({ appointmentDate: -1 })
+            .limit(50)
+            .lean();
+
+        // Build timeline from appointments
+        const timeline = appointments.map(apt => {
+            const serviceName = apt.service?.name || 'Service';
+            return {
+                type: 'appointment',
+                title: apt.status === 'completed' ? 'Completed Visit' : `${apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1)} Appointment`,
+                description: `${serviceName}${apt.staff?.name ? ` with ${apt.staff.name}` : ''}${apt.totalAmount ? ` - ₹${apt.totalAmount}` : ''}`,
+                date: apt.appointmentDate,
+                status: apt.status,
+                amount: apt.totalAmount || 0
+            };
+        });
+
+        return res.json({
+            success: true,
+            data: {
+                timeline,
+                total: timeline.length
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Add Customer Note ==================
+const addCustomerNote = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { id } = req.params;
+        const { note, type = 'general' } = req.body;
+
+        if (!note || !note.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Note content is required"
+            });
+        }
+
+        const customer = await Customer.findById(id);
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer not found"
+            });
+        }
+
+        // Verify access
+        if (userRole === 'admin') {
+            const business = await Business.findOne({
+                _id: customer.business,
+                admin: userId
+            });
+            if (!business) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager.business.toString() !== customer.business.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied"
+                });
+            }
+        }
+
+        // Add note with timestamp
+        const timestamp = new Date().toLocaleDateString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        const formattedNote = `[${timestamp}] ${note.trim()}`;
+
+        // Initialize notes if not exists/empty
+        if (!customer.notes) {
+            customer.notes = '';
+        }
+
+        // Append to existing notes
+        if (customer.notes) {
+            customer.notes = `${customer.notes}\n${formattedNote}`;
+        } else {
+            customer.notes = formattedNote;
+        }
+
+        customer.updatedBy = userId;
+        customer.updatedByModel = userRole === 'admin' ? 'Admin' : 'Manager';
+
+        await customer.save();
+
+        return res.json({
+            success: true,
+            message: "Note added successfully",
+            data: {
+                notes: customer.notes
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+// ================== Get Customer Analytics ==================
+const getCustomerAnalyticsOverview = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { startDate, endDate, groupBy = 'daily' } = req.query;
+
+        // Determine businessId
+        let businessId;
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ admin: userId });
+            if (business) businessId = business._id;
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager) businessId = manager.business;
+        }
+
+        if (!businessId) {
+            return res.status(403).json({ success: false, message: "Business context required" });
+        }
+
+        // Date Range
+        const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const end = endDate ? new Date(endDate) : new Date();
+        end.setHours(23, 59, 59, 999);
+
+        // 1. Overview Counts
+        const totalCustomers = await Customer.countDocuments({ business: businessId, isActive: true });
+        const newCustomers = await Customer.countDocuments({
+            business: businessId,
+            createdAt: { $gte: start, $lte: end }
+        });
+
+        // 2. Segments (New 0-1, Returning 2-4, Loyal 5+)
+        // We use Appointment aggregation for accurate visit counts
+        const visitCounts = await Appointment.aggregate([
+            { $match: { business: businessId, status: 'completed' } },
+            { $group: { _id: "$customer", count: { $sum: 1 } } }
+        ]);
+
+        const segments = {
+            new: 0,
+            returning: 0,
+            loyal: 0
+        };
+
+        // Also count customers with 0 visits as 'new'
+        const customersWithVisits = visitCounts.length;
+        segments.new += (totalCustomers - customersWithVisits); // Assumes non-visiting are new/prospects
+
+        visitCounts.forEach(c => {
+            if (c.count <= 1) segments.new++;
+            else if (c.count <= 4) segments.returning++;
+            else segments.loyal++;
+        });
+
+        // 3. Value Metrics (All Time for Business)
+        const valueStats = await Appointment.aggregate([
+            {
+                $match: {
+                    business: businessId,
+                    status: 'completed'
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: "$totalAmount" },
+                    avgRating: { $avg: "$rating" },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const stats = valueStats[0] || { totalRevenue: 0, avgRating: 0, count: 0 };
+
+        const value = {
+            avgFirstVisit: 0, // Placeholder
+            avgTotalSpent: totalCustomers > 0 ? (stats.totalRevenue / totalCustomers) : 0,
+            totalRevenue: stats.totalRevenue,
+            avgRating: stats.avgRating || 0,
+            avgLoyaltyPoints: 0
+        };
+
+        // Avg Loyalty Points
+        const loyaltyStats = await Customer.aggregate([
+            { $match: { business: businessId, isActive: true } },
+            { $group: { _id: null, avgPoints: { $avg: "$loyaltyPoints" } } }
+        ]);
+        value.avgLoyaltyPoints = loyaltyStats[0]?.avgPoints || 0;
+
+        // 4. Growth Trends
+        let dateFormat = "%Y-%m-%d";
+        if (groupBy === 'monthly') dateFormat = "%Y-%m";
+        if (groupBy === 'weekly') dateFormat = "%Y-%U";
+        if (groupBy === 'yearly') dateFormat = "%Y";
+
+        const growthData = await Customer.aggregate([
+            {
+                $match: {
+                    business: businessId,
+                    createdAt: { $gte: start, $lte: end }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: dateFormat, date: "$createdAt" } },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Calculate running total for growth chart if needed, 
+        // but frontend table shows "Total" per period. 
+        // Let's compute cumulative total.
+        let runningTotal = await Customer.countDocuments({
+            business: businessId,
+            createdAt: { $lt: start }
+        });
+
+        const growth = growthData.map(item => {
+            runningTotal += item.count;
+            return {
+                period: item._id,
+                count: item.count,
+                total: runningTotal
+            };
+        });
+
+        return res.json({
+            success: true,
+            data: {
+                overview: {
+                    totalCustomers,
+                    newCustomers
+                },
+                segments,
+                value,
+                growth
+            }
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Customer Insights ==================
+const getCustomerInsights = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Determine businessId
+        let businessId;
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ admin: userId });
+            if (business) businessId = business._id;
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager) businessId = manager.business;
+        }
+
+        if (!businessId) {
+            return res.status(403).json({ success: false, message: "Business context required" });
+        }
+
+        // Run aggregations in parallel for performance
+        const [
+            customerStats,
+            retentionStats,
+            growthStats
+        ] = await Promise.all([
+            // 1. General Stats (Segments, Value)
+            Customer.aggregate([
+                { $match: { business: businessId, isActive: true } },
+                {
+                    $group: {
+                        _id: null,
+                        totalCustomers: { $sum: 1 },
+                        new: { $sum: { $cond: [{ $eq: ["$customerType", "new"] }, 1, 0] } },
+                        regular: { $sum: { $cond: [{ $eq: ["$customerType", "regular"] }, 1, 0] } },
+                        vip: { $sum: { $cond: [{ $eq: ["$customerType", "vip"] }, 1, 0] } },
+                        inactive: { $sum: { $cond: [{ $eq: ["$customerType", "inactive"] }, 1, 0] } },
+                        totalRevenue: { $sum: "$totalSpent" },
+                        avgSpent: { $avg: "$averageSpent" }
+                    }
+                }
+            ]),
+
+            // 2. Retention (Last Visit buckets)
+            Customer.aggregate([
+                { $match: { business: businessId, isActive: true } },
+                {
+                    $group: {
+                        _id: null,
+                        last30Days: {
+                            $sum: {
+                                $cond: [
+                                    { $gte: ["$lastVisit", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)] },
+                                    1, 0
+                                ]
+                            }
+                        },
+                        last60Days: {
+                            $sum: {
+                                $cond: [
+                                    { $gte: ["$lastVisit", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)] },
+                                    1, 0
+                                ]
+                            }
+                        },
+                        last90Days: {
+                            $sum: {
+                                $cond: [
+                                    { $gte: ["$lastVisit", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)] },
+                                    1, 0
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]),
+
+            // 3. Growth (Monthly for last 6 months)
+            Customer.aggregate([
+                {
+                    $match: {
+                        business: businessId,
+                        createdAt: { $gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000) }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { _id: 1 } }
+            ])
+        ]);
+
+        const stats = customerStats[0] || {
+            totalCustomers: 0, new: 0, regular: 0, vip: 0, inactive: 0, totalRevenue: 0, avgSpent: 0
+        };
+        const retention = retentionStats[0] || { last30Days: 0, last60Days: 0, last90Days: 0 };
+
+        // Construct response object
+        const analytics = {
+            segments: {
+                new: stats.new,
+                returning: stats.regular, // Mapping regular -> returning
+                loyal: stats.vip,         // Mapping vip -> loyal
+                inactive: stats.inactive
+            },
+            value: {
+                averageValue: stats.avgSpent || 0,
+                totalRevenue: stats.totalRevenue || 0
+            },
+            retention: {
+                last30Days: retention.last30Days,
+                last60Days: retention.last60Days,
+                last90Days: retention.last90Days
+            },
+            growth: growthStats.map(g => ({
+                period: g._id,
+                count: g.count
+            }))
+        };
+
+        // Generate Insights & Recommendations
+        const insights = [];
+        const recommendations = [];
+
+        // 1. Inactivity Insight
+        const inactivePercentage = stats.totalCustomers > 0 ? (stats.inactive / stats.totalCustomers) * 100 : 0;
+        if (inactivePercentage > 20) {
+            insights.push(`High inactivity rate detected: ${inactivePercentage.toFixed(1)}% of customers are inactive.`);
+            recommendations.push("Launch a 'Win-Back' campaign to re-engage inactive customers.");
+        }
+
+        // 2. Loyalty Insight
+        const loyalPercentage = stats.totalCustomers > 0 ? (stats.vip / stats.totalCustomers) * 100 : 0;
+        if (loyalPercentage < 10) {
+            insights.push(`Loyal customer base is small (${loyalPercentage.toFixed(1)}%). Focus on retention.`);
+            recommendations.push("Create a loyalty program or VIP tiers to incentivize repeat visits.");
+        } else if (loyalPercentage > 30) {
+            insights.push(`Strong loyal customer base (${loyalPercentage.toFixed(1)}%).`);
+            recommendations.push("Reward your VIPs with exclusive offers to maintain their loyalty.");
+        }
+
+        // 3. New Customer Growth
+        // Check last month growth
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const lastMonthGrowth = growthStats.find(g => g._id === currentMonth)?.count || 0;
+        if (lastMonthGrowth === 0 && stats.totalCustomers > 0) {
+            insights.push("No new customers acquired this month.");
+            recommendations.push("Increase marketing efforts or run a referral campaign.");
+        } else if (lastMonthGrowth > stats.totalCustomers * 0.1) {
+            insights.push("Significant growth in new customers this month!");
+            recommendations.push("Ensure onboarding process is smooth for new customers.");
+        }
+
+        // 4. Retention Insight
+        if (retention.last30Days < stats.totalCustomers * 0.3 && stats.totalCustomers > 0) {
+            insights.push("Low 30-day retention rate.");
+            recommendations.push("Send follow-up messages 2 weeks after service.");
+        }
+
+        // Default if empty
+        if (insights.length === 0) {
+            insights.push("Customer base is stable.");
+            recommendations.push("Continue monitoring customer satisfaction.");
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                insights,
+                recommendations,
+                analytics
+            }
+        });
+
     } catch (err) {
         next(err);
     }
@@ -836,5 +1314,9 @@ module.exports = {
     getCustomerStats,
     addLoyaltyPoints,
     redeemLoyaltyPoints,
-    lookupCustomer
+    lookupCustomer,
+    getCustomerTimeline,
+    addCustomerNote,
+    getCustomerAnalyticsOverview,
+    getCustomerInsights
 };

@@ -133,6 +133,7 @@ const DailyBusinessAnalytics = () => {
             <option value="weekly">Last 7 Days</option>
             <option value="monthly">Last 30 Days</option>
             <option value="yearly">Last 12 Months</option>
+            <option value="all">All Time</option>
           </select>
         </div>
       </div>
@@ -146,9 +147,8 @@ const DailyBusinessAnalytics = () => {
                 <div className="flex items-center justify-between mb-2">
                   <FaDollarSign className="text-green-600 text-2xl" />
                   {analytics.revenueGrowth !== undefined && (
-                    <span className={`flex items-center gap-1 text-sm ${
-                      analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <span className={`flex items-center gap-1 text-sm ${analytics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {analytics.revenueGrowth >= 0 ? <FaArrowUp /> : <FaArrowDown />}
                       {formatPercent(Math.abs(analytics.revenueGrowth))}
                     </span>
@@ -171,9 +171,8 @@ const DailyBusinessAnalytics = () => {
                 <div className="flex items-center justify-between mb-2">
                   <FaUsers className="text-blue-600 text-2xl" />
                   {analytics.customerGrowth !== undefined && (
-                    <span className={`flex items-center gap-1 text-sm ${
-                      analytics.customerGrowth >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <span className={`flex items-center gap-1 text-sm ${analytics.customerGrowth >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {analytics.customerGrowth >= 0 ? <FaArrowUp /> : <FaArrowDown />}
                       {formatPercent(Math.abs(analytics.customerGrowth))}
                     </span>
@@ -217,9 +216,8 @@ const DailyBusinessAnalytics = () => {
                   )}
                 </div>
                 <p className="text-sm text-gray-500 mb-1">Net Profit</p>
-                <p className={`text-2xl font-bold ${
-                  analytics.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <p className={`text-2xl font-bold ${analytics.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {formatCurrency(analytics.netProfit)}
                 </p>
               </div>
@@ -271,10 +269,10 @@ const DailyBusinessAnalytics = () => {
                       <span className="font-semibold text-gray-900">Top Staff</span>
                     </div>
                     <p className="text-sm text-gray-600 mb-1">
-                      {analytics.peakPerformance.bestStaff.staffName || 
-                       (typeof analytics.peakPerformance.bestStaff.staff === 'object' && analytics.peakPerformance.bestStaff.staff 
-                        ? analytics.peakPerformance.bestStaff.staff.name 
-                        : 'Staff Member')}
+                      {analytics.peakPerformance.bestStaff.staffName ||
+                        (typeof analytics.peakPerformance.bestStaff.staff === 'object' && analytics.peakPerformance.bestStaff.staff
+                          ? analytics.peakPerformance.bestStaff.staff.name
+                          : 'Staff Member')}
                     </p>
                     <p className="text-lg font-bold text-purple-700">
                       {formatCurrency(analytics.peakPerformance.bestStaff.revenue)}
@@ -340,9 +338,8 @@ const DailyBusinessAnalytics = () => {
                 </div>
                 <div className="p-4 bg-gray-50 ">
                   <p className="text-sm text-gray-500 mb-1">Expense Ratio</p>
-                  <p className={`text-xl font-bold ${
-                    analytics.efficiencyMetrics.expenseRatio > 70 ? 'text-red-600' : 'text-gray-900'
-                  }`}>
+                  <p className={`text-xl font-bold ${analytics.efficiencyMetrics.expenseRatio > 70 ? 'text-red-600' : 'text-gray-900'
+                    }`}>
                     {formatPercent(analytics.efficiencyMetrics.expenseRatio)}
                   </p>
                 </div>
@@ -422,8 +419,8 @@ const DailyBusinessAnalytics = () => {
                       </span>
                     </div>
                     <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-primary-600 h-2 rounded-full" 
+                      <div
+                        className="bg-primary-600 h-2 rounded-full"
                         style={{ width: `${Math.min(data.percentage || 0, 100)}%` }}
                       ></div>
                     </div>
@@ -444,12 +441,11 @@ const DailyBusinessAnalytics = () => {
                 {analytics.staffPerformance.map((perf, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-gray-50 ">
                     <div className="flex items-center gap-3 flex-1">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-                        index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                        index === 1 ? 'bg-gray-100 text-gray-700' :
-                        index === 2 ? 'bg-orange-100 text-orange-700' :
-                        'bg-primary-100 text-primary-700'
-                      }`}>
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                          index === 1 ? 'bg-gray-100 text-gray-700' :
+                            index === 2 ? 'bg-orange-100 text-orange-700' :
+                              'bg-primary-100 text-primary-700'
+                        }`}>
                         {index + 1}
                       </div>
                       <div>
@@ -499,9 +495,8 @@ const DailyBusinessAnalytics = () => {
                       <p className="font-semibold text-gray-900">
                         {formatCurrency(trend.revenue)}
                       </p>
-                      <p className={`text-xs ${
-                        trend.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <p className={`text-xs ${trend.profit >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         Profit: {formatCurrency(trend.profit)}
                       </p>
                     </div>

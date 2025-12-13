@@ -15,6 +15,9 @@ router.get("/business/:businessLink/slots", appointmentController.getAvailableSl
 // Book appointment (by businessLink)
 router.post("/business/:businessLink/book", appointmentController.bookAppointmentPublic);
 
+// Verify booking OTP (by businessLink)
+router.post("/business/:businessLink/book/verify", appointmentController.verifyBookingOTP);
+
 // Get appointment by confirmation code (public)
 router.get("/confirmation/:confirmationCode", appointmentController.getAppointmentByConfirmationCode);
 
@@ -65,5 +68,8 @@ router.post("/:id/no-show", appointmentController.markNoShow);
 
 // Add review to appointment
 router.post("/:id/review", appointmentController.addReview);
+
+// Update appointment status
+router.patch("/:id/status", appointmentController.updateAppointmentStatus);
 
 module.exports = router;

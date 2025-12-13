@@ -4,7 +4,7 @@ import {
   FaDollarSign,
   FaCalendarAlt,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaSpinner,
   FaSearch,
   FaFilter,
@@ -256,6 +256,9 @@ const TransactionList = () => {
                       Amount
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Source
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Payment
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -271,14 +274,14 @@ const TransactionList = () => {
                     <tr key={transaction._id || transaction.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <FaUser className="text-gray-400 mr-2" />
+                          {/* <FaUser className="text-gray-400 mr-2" /> */}
                           <div>
                             <div className="text-sm font-medium text-gray-900">
                               {transaction.customerName || '-'}
                             </div>
                             {transaction.customerPhone && (
                               <div className="text-sm text-gray-500 flex items-center gap-1">
-                                <FaPhone className="text-xs" />
+                                <FaPhoneAlt className="text-xs" />
                                 {transaction.customerPhone}
                               </div>
                             )}
@@ -292,15 +295,14 @@ const TransactionList = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          SERVICE_TYPE_COLORS[transaction.serviceType] || SERVICE_TYPE_COLORS.other
-                        }`}>
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${SERVICE_TYPE_COLORS[transaction.serviceType] || SERVICE_TYPE_COLORS.other
+                          }`}>
                           {transaction.serviceType || 'N/A'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          <FaDollarSign className="text-green-600" />
+                          {/* <FaDollarSign className="text-green-600" /> */}
                           <span className="text-sm font-semibold text-gray-900">
                             {formatCurrency(transaction.finalPrice)}
                           </span>
@@ -312,16 +314,20 @@ const TransactionList = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200 capitalize">
+                          {transaction.source || 'walk-in'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 capitalize">
                           {transaction.paymentMethod || '-'}
                         </div>
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs mt-1 ${
-                          transaction.paymentStatus === 'completed'
-                            ? 'bg-green-100 text-green-700'
-                            : transaction.paymentStatus === 'pending'
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs mt-1 ${transaction.paymentStatus === 'completed'
+                          ? 'bg-green-100 text-green-700'
+                          : transaction.paymentStatus === 'pending'
                             ? 'bg-yellow-100 text-yellow-700'
                             : 'bg-red-100 text-red-700'
-                        }`}>
+                          }`}>
                           {transaction.paymentStatus || 'completed'}
                         </span>
                       </td>

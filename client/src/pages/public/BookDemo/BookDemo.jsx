@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { FaCalendarAlt, FaClipboardCheck, FaHeadset, FaShieldAlt } from 'react-icons/fa'
+import { FaCalendarAlt, FaClipboardCheck, FaHeadset, FaShieldAlt, FaSpinner, FaCheckCircle } from 'react-icons/fa'
+import { toast } from 'react-hot-toast'
 import { usePageTitle } from '../../../hooks/usePageTitle'
+import { useBookDemo } from '../../../hooks/public/useBookDemo'
 
 const summaryPoints = [
   {
@@ -36,6 +38,16 @@ const initialFormState = {
   message: ''
 }
 
+// Mobile number validation helper
+const validatePhoneNumber = (phone) => {
+  if (!phone) return { valid: false, error: 'Phone number is required' }
+  const cleanPhone = phone.replace(/[^0-9]/g, '')
+  if (cleanPhone.length < 7 || cleanPhone.length > 15) {
+    return { valid: false, error: 'Phone number must be between 7 and 15 digits' }
+  }
+  return { valid: true, cleanPhone }
+}
+
 const objectives = [
   { value: 'scale-bookings', label: 'Increase online bookings' },
   { value: 'streamline-ops', label: 'Streamline operations & staffing' },
@@ -52,6 +64,7 @@ const heroHighlights = [
 export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { sendOtp, verifyOtp, createBookDemo, loading: apiLoading } = useBookDemo()
 
   const initialValues = useMemo(() => {
     const fromLocation =
@@ -62,51 +75,369 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
   }, [initialData, location.state, mode])
 
   const [formValues, setFormValues] = useState(initialValues)
-  const [status, setStatus] = useState('idle')
+  const [status, setStatus] = useState('idle') // 'idle', 'loading', 'otp-sent', 'otp-verifying', 'success', 'error'
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [step, setStep] = useState(1) // 1: Form, 2: OTP Verification
+  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false)
+
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [countdown])
+
+  // Auto-focus first OTP input when OTP step opens
+  useEffect(() => {
+    if (step === 2) {
+      setTimeout(() => {
+        document.getElementById('otp-0')?.focus()
+      }, 100)
+    }
+  }, [step])
 
   const isSubmitDisabled = useMemo(() => {
-    if (status === 'success') return true
+    if (status === 'success' || apiLoading || isVerifying || isSendingOtp) return true
+    if (step === 2) return otp.join('').length !== 6 || isVerifying
     return (
       !formValues.fullName.trim() ||
       !formValues.email.trim() ||
-      !formValues.businessName.trim()
+      !formValues.businessName.trim() ||
+      !formValues.phone.trim() ||
+      !formValues.teamSize.trim() ||
+      !formValues.message.trim()
     )
-  }, [formValues, status])
+  }, [formValues, status, apiLoading, step, otp, isVerifying, isSendingOtp])
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormValues((prev) => ({ ...prev, [name]: value }))
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+    
+    // Clear general error
+    if (error) {
+      setError('')
+    }
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
+  const validateForm = () => {
+    const errors = {}
+    
+    if (!formValues.fullName.trim()) {
+      errors.fullName = 'Full name is required'
+    } else if (formValues.fullName.trim().length < 2) {
+      errors.fullName = 'Full name must be at least 2 characters'
+    }
+    
+    if (!formValues.businessName.trim()) {
+      errors.businessName = 'Business name is required'
+    } else if (formValues.businessName.trim().length < 2) {
+      errors.businessName = 'Business name must be at least 2 characters'
+    }
+    
+    if (!formValues.email.trim()) {
+      errors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formValues.email)) {
+      errors.email = 'Invalid email address'
+    }
+    
+    const phoneValidation = validatePhoneNumber(formValues.phone)
+    if (!phoneValidation.valid) {
+      errors.phone = phoneValidation.error
+    }
+    
+    if (!formValues.teamSize.trim()) {
+      errors.teamSize = 'Team size is required'
+    }
+    
+    if (!formValues.message.trim()) {
+      errors.message = 'Message is required'
+    } else if (formValues.message.trim().length < 5) {
+      errors.message = 'Message must be at least 5 characters'
+    }
+    
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleOTPChange = (index, value) => {
+    if (value.length > 1) return
+
+    const newOtp = [...otp]
+    newOtp[index] = value.replace(/[^0-9]/g, '')
+    setOtp(newOtp)
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`)
+      if (nextInput) nextInput.focus()
+    }
+  }
+
+  const handleOTPKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`)
+      if (prevInput) prevInput.focus()
+    }
+  }
+
+  const handleSendOtp = async () => {
     setError('')
-    if (isSubmitDisabled) {
-      setError('Please provide your name, business, and email so we can reach you.')
+    setFieldErrors({})
+    
+    // Validate form first
+    if (!validateForm()) {
+      setError('Please correct the errors below')
       return
     }
-    setStatus('loading')
 
-    setTimeout(() => {
+    try {
+      setIsSendingOtp(true)
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      await sendOtp(phoneValidation.cleanPhone, formValues.fullName.trim())
+
+      setStep(2)
+      setCountdown(60) // 60 seconds countdown
+      toast.success('OTP sent to your mobile number')
+    } catch (err) {
+      toast.error(err.message || 'Failed to send OTP. Please try again.')
+    } finally {
+      setIsSendingOtp(false)
+    }
+  }
+
+  const handleResendOTP = async () => {
+    if (countdown > 0) return
+
+    try {
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      await sendOtp(phoneValidation.cleanPhone, formValues.fullName.trim())
+
+      toast.success('OTP resent to your mobile number')
+      setOtp(['', '', '', '', '', ''])
+      setCountdown(60)
+      document.getElementById('otp-0')?.focus()
+    } catch (err) {
+      toast.error(err.message || 'Failed to resend OTP. Please try again.')
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    const otpValue = otp.join('')
+
+    if (otpValue.length !== 6) {
+      toast.error('Please enter complete OTP')
+      return
+    }
+
+    try {
+      setIsVerifying(true)
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      await verifyOtp(phoneValidation.cleanPhone, otpValue)
+
+      setIsPhoneVerified(true)
+      toast.success('Phone number verified successfully!')
+      
+      // Automatically submit the form after OTP verification
+      await handleSubmitForm()
+    } catch (err) {
+      toast.error(err.message || 'Invalid OTP. Please try again.')
+      setOtp(['', '', '', '', '', ''])
+      document.getElementById('otp-0')?.focus()
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleSubmitForm = async () => {
+    try {
+      setStatus('loading')
+      
+      // Prepare data for API (map frontend fields to backend fields)
+      const phoneValidation = validatePhoneNumber(formValues.phone)
+      const apiData = {
+        fullName: formValues.fullName.trim(),
+        businessName: formValues.businessName.trim(),
+        email: formValues.email.trim().toLowerCase(),
+        phoneNumber: phoneValidation.cleanPhone,
+        teamSize: formValues.teamSize.trim(),
+        primaryObjective: formValues.objective || 'scale-bookings',
+        message: formValues.message.trim()
+      }
+
+      await createBookDemo(apiData)
+      
       setStatus('success')
+      toast.success('Demo request submitted successfully! We\'ll contact you soon.')
+      
+      // Reset form after success
+      setTimeout(() => {
+        setFormValues(initialFormState)
+        setOtp(['', '', '', '', '', ''])
+        setStep(1)
+        setIsPhoneVerified(false)
+        setStatus('idle')
+      }, 2000)
+      
       if (mode === 'modal') {
-        onComplete?.({ ...formValues })
+        onComplete?.(apiData)
       } else {
         navigate('/contact', {
           replace: false,
-          state: { intent: 'book-demo', payload: formValues, message: 'BookDemoFormSubmitted' }
+          state: { intent: 'book-demo', payload: apiData, message: 'BookDemoFormSubmitted' }
         })
       }
-    }, 600)
+    } catch (err) {
+      setStatus('error')
+      const errorMessage = err.message || 'Failed to submit demo request. Please try again.'
+      setError(errorMessage)
+      toast.error(errorMessage)
+    }
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    
+    // If phone is not verified, send OTP first
+    if (!isPhoneVerified && step === 1) {
+      await handleSendOtp()
+      return
+    }
+    
+    // If on OTP step, verify OTP
+    if (step === 2) {
+      await handleVerifyOtp()
+      return
+    }
   }
 
   return (
-    <div className="bg-white border border-gray-200  shadow-lg p-6 sm:p-8">
+    <div className="bg-white border border-gray-200 shadow-lg p-6 sm:p-8">
       <h2 className="text-2xl font-semibold text-gray-900 mb-2">Request your live walkthrough</h2>
       <p className="text-sm text-gray-600 mb-6">
-        Share a few details and we’ll follow up within one business day.
+        {step === 1 
+          ? "Share a few details and we'll follow up within one business day."
+          : "We've sent a 6-digit OTP to verify your phone number."
+        }
       </p>
+
+      {/* Progress Steps */}
+      <div className="mb-6 flex items-center justify-center gap-4">
+        <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary-600' : 'text-gray-400'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+            step >= 1 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
+          }`}>
+            {step > 1 ? <FaCheckCircle /> : '1'}
+          </div>
+          <span className="text-sm font-medium hidden sm:block">Details</span>
+        </div>
+        <div className={`w-16 h-0.5 ${step >= 2 ? 'bg-primary-600' : 'bg-gray-200'}`}></div>
+        <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary-600' : 'text-gray-400'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+            step >= 2 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
+          }`}>
+            {step > 2 ? <FaCheckCircle /> : '2'}
+          </div>
+          <span className="text-sm font-medium hidden sm:block">Verify</span>
+        </div>
+      </div>
+
+      {/* OTP Verification Step */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <div className="text-center mb-6">
+            <p className="text-gray-600 mb-1">
+              We've sent a 6-digit OTP to
+            </p>
+            <p className="text-lg font-semibold text-gray-900">
+              {formValues.phone}
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Please check your SMS inbox
+            </p>
+          </div>
+
+          <div className="flex justify-center gap-3 mb-4">
+            {otp.map((digit, index) => (
+              <input
+                key={index}
+                id={`otp-${index}`}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleOTPChange(index, e.target.value)}
+                onKeyDown={(e) => handleOTPKeyDown(index, e)}
+                className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+              />
+            ))}
+          </div>
+
+          <div className="text-center space-y-2">
+            <button
+              type="button"
+              onClick={handleVerifyOtp}
+              disabled={isVerifying || otp.join('').length !== 6}
+              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              {isVerifying ? (
+                <>
+                  <FaSpinner className="animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <span>Verify & Submit</span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResendOTP}
+              disabled={countdown > 0}
+              className={`text-sm font-medium transition-all duration-200 ${
+                countdown > 0
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-primary-600 hover:text-primary-700'
+              }`}
+            >
+              {countdown > 0 ? (
+                <span>Resend OTP in {countdown}s</span>
+              ) : (
+                <span>Didn't receive OTP? Resend</span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStep(1)
+                setOtp(['', '', '', '', '', ''])
+                setCountdown(0)
+              }}
+              className="block w-full text-sm text-gray-600 hover:text-primary-600 transition-colors duration-200"
+            >
+              ← Change Phone Number
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Form Step */}
+      {step === 1 && (
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
@@ -120,9 +451,16 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="Alex Johnson"
               value={formValues.fullName}
               onChange={handleChange}
-              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                fieldErrors.fullName 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-primary-500'
+              }`}
               required
             />
+            {fieldErrors.fullName && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.fullName}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="block text-sm font-semibold text-gray-700" htmlFor="businessName">
@@ -135,9 +473,16 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="Glow & Co. Salon"
               value={formValues.businessName}
               onChange={handleChange}
-              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                fieldErrors.businessName 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-primary-500'
+              }`}
               required
             />
+            {fieldErrors.businessName && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.businessName}</p>
+            )}
           </div>
         </div>
 
@@ -153,23 +498,39 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="you@business.com"
               value={formValues.email}
               onChange={handleChange}
-              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                fieldErrors.email 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-primary-500'
+              }`}
               required
             />
+            {fieldErrors.email && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="block text-sm font-semibold text-gray-700" htmlFor="phone">
-              Phone / WhatsApp (optional)
+              Phone / WhatsApp <span className="text-red-500">*</span>
             </label>
             <input
               id="phone"
               name="phone"
               type="tel"
-              placeholder="+91 98xxxxxx90"
+              placeholder="+91 9876543210 or 9876543210"
               value={formValues.phone}
               onChange={handleChange}
-              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                fieldErrors.phone 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-primary-500'
+              }`}
+              required
             />
+            {fieldErrors.phone && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">Enter 7-15 digits (spaces and special characters will be removed)</p>
           </div>
         </div>
 
@@ -185,8 +546,16 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               placeholder="e.g. 10 staff across 2 branches"
               value={formValues.teamSize}
               onChange={handleChange}
-              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+                fieldErrors.teamSize 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-primary-500'
+              }`}
+              required
             />
+            {fieldErrors.teamSize && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.teamSize}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="block text-sm font-semibold text-gray-700" htmlFor="objective">
@@ -219,30 +588,48 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
             rows={4}
             value={formValues.message}
             onChange={handleChange}
-            className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
+              fieldErrors.message 
+                ? 'border-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:border-primary-500'
+            }`}
+            required
           />
+          {fieldErrors.message && (
+            <p className="text-xs text-red-600 mt-1">{fieldErrors.message}</p>
+          )}
         </div>
 
         {error && (
-          <div className=" border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+          <div className="border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 rounded">
+            {error}
+          </div>
         )}
-        {status === 'success' && mode === 'modal' && (
-          <div className=" border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+        {status === 'success' && (
+          <div className="border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700 rounded">
             Thank you! Our team will reach out shortly to confirm your demo.
           </div>
         )}
 
         <button
           type="submit"
-          disabled={isSubmitDisabled || status === 'loading'}
-          className="w-full inline-flex items-center justify-center gap-2  bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 transition-colors"
+          disabled={isSubmitDisabled || isSendingOtp}
+          className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed transition-colors rounded"
         >
-          {status === 'loading' ? 'Booking your demo…' : 'Schedule my demo'}
+          {isSendingOtp ? (
+            <>
+              <FaSpinner className="animate-spin" />
+              <span>Sending OTP...</span>
+            </>
+          ) : (
+            'Verify Phone & Continue'
+          )}
         </button>
         <p className="text-xs text-gray-500 text-center">
-          We respect your inbox. You’ll only hear from us about your booking.
+          We'll verify your phone number with OTP to ensure we can reach you.
         </p>
       </form>
+      )}
     </div>
   )
 }

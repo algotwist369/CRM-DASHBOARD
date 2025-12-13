@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaIdBadge,
   FaDollarSign,
@@ -133,7 +133,7 @@ const StaffDetails = () => {
               </div>
               {staff.phone && (
                 <div className="flex items-center gap-3">
-                  <FaPhone className="text-gray-400 text-xl" />
+                  <FaPhoneAlt className="text-gray-400 text-xl" />
                   <div>
                     <p className="text-sm text-gray-500">Phone Number</p>
                     <p className="font-medium text-gray-900">{staff.phone}</p>
@@ -153,9 +153,8 @@ const StaffDetails = () => {
                 <FaUserTag className="text-gray-400 text-xl" />
                 <div>
                   <p className="text-sm text-gray-500">Role</p>
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                    ROLE_COLORS[staff.role] || ROLE_COLORS.other
-                  }`}>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[staff.role] || ROLE_COLORS.other
+                    }`}>
                     {staff.role || 'N/A'}
                   </span>
                 </div>
@@ -222,9 +221,8 @@ const StaffDetails = () => {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500">Account Status</p>
-                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-1 ${
-                  staff.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-1 ${staff.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
                   {staff.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>

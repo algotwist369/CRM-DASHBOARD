@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   AiOutlineEye,
   AiOutlineEyeInvisible,
   AiOutlineMail,
   AiOutlineUser,
-  AiOutlineLock,
-  AiOutlinePhone
-} from 'react-icons/ai'
+  AiOutlineLock
+} from 'react-icons/ai';
+import { FaPhoneAlt } from "react-icons/fa";
+import { FiPhone } from "react-icons/fi";
 import { toast } from 'react-hot-toast'
 import authService from '../../../services/auth/authService'
 
@@ -107,138 +108,170 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 bg-gray-50">
-      <div className="w-full max-w-md bg-white shadow-lg  p-8">
-        <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">
-          Create Your Account ✨
+    <div className="flex items-center justify-center">
+      <div className="w-full max-w-md bg-white/90 border border-gray-100 rounded-2xl shadow-sm p-8">
+        <h2 className="text-center text-[1.4rem] font-semibold text-gray-900 mb-1">
+          Create your account
         </h2>
         <p className="text-center text-gray-500 text-sm mb-6">
           Register your business admin account
         </p>
 
         {errors.general && (
-          <div className="bg-red-50 text-red-600 text-sm p-3  mb-3 border border-red-200">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
             {errors.general}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Company Name */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Company Name</label>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-gray-700">
+              Company Name
+            </label>
             <div className="relative">
-              <AiOutlineUser className="absolute left-3 top-3.5 text-gray-400 text-lg" />
+              <AiOutlineUser className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
               <input
                 type="text"
-                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
-                  errors.companyName ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
-                }`}
+                className={`w-full rounded-lg border pl-10 pr-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 ${errors.companyName
+                    ? 'border-red-300 focus:ring-red-200'
+                    : 'border-gray-200 focus:ring-gray-200'
+                  }`}
                 placeholder="Enter your company name"
                 value={formData.companyName}
                 onChange={e => handleInputChange('companyName', e.target.value)}
               />
             </div>
-            {errors.companyName && <p className="text-red-500 text-xs mt-1">{errors.companyName}</p>}
+            {errors.companyName && (
+              <p className="text-[11px] text-red-500">{errors.companyName}</p>
+            )}
           </div>
 
           {/* Full Name */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Full Name</label>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-gray-700">
+              Full Name
+            </label>
             <div className="relative">
-              <AiOutlineUser className="absolute left-3 top-3.5 text-gray-400 text-lg" />
+              <AiOutlineUser className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
               <input
                 type="text"
-                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
-                  errors.name ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
-                }`}
+                className={`w-full rounded-lg border pl-10 pr-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 ${errors.name
+                    ? 'border-red-300 focus:ring-red-200'
+                    : 'border-gray-200 focus:ring-gray-200'
+                  }`}
                 placeholder="Enter your full name"
                 value={formData.name}
                 onChange={e => handleInputChange('name', e.target.value)}
               />
             </div>
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+            {errors.name && (
+              <p className="text-[11px] text-red-500">{errors.name}</p>
+            )}
           </div>
 
           {/* Email */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Email Address</label>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-gray-700">
+              Email Address
+            </label>
             <div className="relative">
-              <AiOutlineMail className="absolute left-3 top-3.5 text-gray-400 text-lg" />
+              <AiOutlineMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
               <input
                 type="email"
-                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
-                  errors.email ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
-                }`}
+                className={`w-full rounded-lg border pl-10 pr-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 ${errors.email
+                    ? 'border-red-300 focus:ring-red-200'
+                    : 'border-gray-200 focus:ring-gray-200'
+                  }`}
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={e => handleInputChange('email', e.target.value)}
               />
             </div>
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            {errors.email && (
+              <p className="text-[11px] text-red-500">{errors.email}</p>
+            )}
           </div>
 
           {/* Phone */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Phone Number</label>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-gray-700">
+              Phone Number
+            </label>
             <div className="relative">
-              <AiOutlinePhone className="absolute left-3 top-3.5 text-gray-400 text-lg" />
+              <FiPhone className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
               <input
                 type="tel"
                 maxLength={10}
-                className={`w-full border  pl-10 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
-                  errors.phone ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
-                }`}
+                className={`w-full rounded-lg border pl-10 pr-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 ${errors.phone
+                    ? 'border-red-300 focus:ring-red-200'
+                    : 'border-gray-200 focus:ring-gray-200'
+                  }`}
                 placeholder="Enter your phone number"
                 value={formData.phone}
-                onChange={e => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
+                onChange={e =>
+                  handleInputChange('phone', e.target.value.replace(/\D/g, ''))
+                }
               />
             </div>
-            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+            {errors.phone && (
+              <p className="text-[11px] text-red-500">{errors.phone}</p>
+            )}
           </div>
 
           {/* Password */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Password</label>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-gray-700">
+              Password
+            </label>
             <div className="relative">
-              <AiOutlineLock className="absolute left-3 top-3.5 text-gray-400 text-lg" />
+              <AiOutlineLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                className={`w-full border  pl-10 pr-10 py-2 text-gray-700 focus:outline-none focus:ring-1 ${
-                  errors.password ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-gray-400'
-                }`}
+                className={`w-full rounded-lg border pl-10 pr-10 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 ${errors.password
+                    ? 'border-red-300 focus:ring-red-200'
+                    : 'border-gray-200 focus:ring-gray-200'
+                  }`}
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={e => handleInputChange('password', e.target.value)}
               />
-              <div
-                className="absolute right-3 top-3.5 text-gray-400 cursor-pointer text-lg"
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-base"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
-              </div>
+              </button>
             </div>
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+            {errors.password && (
+              <p className="text-[11px] text-red-500">{errors.password}</p>
+            )}
           </div>
 
           {/* Submit */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gray-800 text-white py-2  font-medium hover:bg-gray-700 transition duration-200"
+            className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition"
           >
             {isLoading ? 'Registering...' : 'Create Account'}
           </button>
         </form>
 
         {/* Login link */}
-        <p className="mt-6 text-center text-gray-600 text-sm">
+        <p className="mt-6 text-center text-xs text-gray-600">
           Already have an account?{' '}
-          <Link to="/auth/login" className="font-medium text-gray-800 hover:underline">
+          <Link
+            to="/auth/login"
+            className="font-medium text-gray-900 underline-offset-2 hover:underline"
+          >
             Sign in
           </Link>
         </p>
       </div>
     </div>
+
   )
 }
 

@@ -527,20 +527,7 @@ const updateBusiness = async (req, res, next) => {
         return res.json({
             success: true,
             message: "Business updated successfully",
-            data: {
-                id: updatedBusiness._id,
-                name: updatedBusiness.name,
-                type: updatedBusiness.type,
-                branch: updatedBusiness.branch,
-                businessLink: updatedBusiness.businessLink,
-                location: updatedBusiness.location,
-                googleMapsUrl: updatedBusiness.googleMapsUrl,
-                images: updatedBusiness.images,
-                socialMedia: updatedBusiness.socialMedia,
-                isActive: updatedBusiness.isActive,
-                managers: updatedBusiness.managers,
-                updatedAt: updatedBusiness.updatedAt
-            }
+            data: updatedBusiness
         });
     } catch (err) {
         next(err);

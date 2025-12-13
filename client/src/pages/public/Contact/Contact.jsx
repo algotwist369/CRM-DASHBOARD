@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { toast } from 'react-hot-toast'
 import {
   FaEnvelope,
-  FaPhone,
+  FaPhoneAlt,
   FaMapMarkerAlt,
   FaClock,
   FaPaperPlane,
@@ -27,7 +27,7 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!formData.name || !formData.email || !formData.message) {
       toast.error('Please fill in all required fields')
       return
@@ -38,7 +38,7 @@ const Contact = () => {
       // In a real app, you would send this to your backend
       // For now, we'll just simulate a submission
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       toast.success('Thank you for contacting us! We will get back to you soon.')
       setSubmitted(true)
       setFormData({
@@ -48,7 +48,7 @@ const Contact = () => {
         subject: '',
         message: ''
       })
-      
+
       // Reset submitted state after 5 seconds
       setTimeout(() => setSubmitted(false), 5000)
     } catch (error) {
@@ -80,7 +80,7 @@ const Contact = () => {
           <div className="space-y-6">
             <div className="bg-white   border border-gray-200 p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h2>
-              
+
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-primary-100  flex items-center justify-center flex-shrink-0">
@@ -100,7 +100,7 @@ const Contact = () => {
 
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-primary-100  flex items-center justify-center flex-shrink-0">
-                    <FaPhone className="text-primary-600 text-xl" />
+                    <FaPhoneAlt className="text-primary-600 text-xl" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
@@ -281,7 +281,7 @@ const Contact = () => {
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">How do I get started?</h3>
               <p className="text-gray-600 text-sm">
-                Simply sign up for an account, create your business profile, and start accepting appointments. 
+                Simply sign up for an account, create your business profile, and start accepting appointments.
                 It takes just a few minutes to get started.
               </p>
             </div>
@@ -294,7 +294,7 @@ const Contact = () => {
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">What payment methods do you accept?</h3>
               <p className="text-gray-600 text-sm">
-                We accept all major credit cards, debit cards, and online payment methods. 
+                We accept all major credit cards, debit cards, and online payment methods.
                 Contact us for enterprise payment options.
               </p>
             </div>

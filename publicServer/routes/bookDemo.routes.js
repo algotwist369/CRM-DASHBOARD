@@ -1,13 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const {
+    sendOtp,
+    verifyOtp,
     createBookDemo,
     getAllBookDemos,
     getBookDemoById,
     deleteBookDemo,
     updateBookDemoStatus,
-} = require("../controllers/bookDemo.controller");
+} = require("../controller/bookDemo.controller");
 
+// OTP Routes
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
+
+// Book Demo Routes
 router.post("/", createBookDemo);
 
 router.get("/", getAllBookDemos);

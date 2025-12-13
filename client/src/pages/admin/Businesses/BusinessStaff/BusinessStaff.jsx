@@ -1,16 +1,11 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useMemo, memo, useRef } from "react";
+import { useParams } from "react-router-dom";
 import {
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
-  FaIdBadge,
-  FaDollarSign,
-  FaStar,
   FaSpinner,
-  FaChevronLeft,
   FaSearch,
-  FaFilter,
   FaCopy,
 } from "react-icons/fa";
 import businessService from "../../../../services/admin/businessService";
@@ -25,6 +20,112 @@ const ROLE_COLORS = {
   other: "bg-pink-100 text-pink-700",
 };
 
+// Memoized Staff Card
+const StaffCard = memo(({ member, onCopy, copiedValue }) => {
+  const memberId = member._id || member.id;
+
+  return (
+    <div className="bg-white border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+            <FaUser className="text-primary-600" />
+          </div>
+          <div>
+            <h3 className="font-medium text-gray-900">{member.name}</h3>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${ROLE_COLORS[member.role] || ROLE_COLORS.other
+              }`}>
+              {member.role || 'N/A'}
+            </span>
+          </div>
+        </div>
+        <span className={`px-2 py-0.5 text-xs rounded-full ${member.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+          {member.isActive ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+
+      <div className="space-y-1 text-sm text-gray-600">
+        {member.phone && (
+          <div className="flex items-center justify-between gap-2 group">
+            <div className="flex items-center gap-2 min-w-0">
+              <FaPhoneAlt className="text-gray-400" size={12} />
+              <span className="truncate">{member.phone}</span>
+            </div>
+            <button
+              onClick={() => onCopy(member.phone, "phone")}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              {copiedValue === `phone-${member.phone}` ? (
+                <span className="text-green-600 text-xs">✓</span>
+              ) : (
+                <FaCopy className="text-gray-400 text-xs" />
+              )}
+            </button>
+          </div>
+        )}
+        {member.email && (
+          <div className="flex items-center justify-between gap-2 group">
+            <div className="flex items-center gap-2 min-w-0">
+              <FaEnvelope className="text-gray-400" size={12} />
+              <span className="truncate">{member.email}</span>
+            </div>
+            <button
+              onClick={() => onCopy(member.email, "email")}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              {copiedValue === `email-${member.email}` ? (
+                <span className="text-green-600 text-xs">✓</span>
+              ) : (
+                <FaCopy className="text-gray-400 text-xs" />
+              )}
+            </button>
+          </div>
+        )}
+        {(member.salary || member.commission > 0) && (
+          <div className="flex items-center gap-3 pt-2 border-t border-gray-100 mt-2">
+            {member.salary && (
+              <span className="text-gray-700">₹{parseInt(member.salary).toLocaleString('en-IN')}</span>
+            )}
+            {member.commission > 0 && (
+              <span className="text-gray-500">{member.commission}% comm</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// Memoized Pagination
+const Pagination = memo(({ pagination, onPageChange }) => {
+  if (pagination.totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between p-3 border-t border-gray-200 bg-white text-sm">
+      <span className="text-gray-600">
+        Page {pagination.currentPage} of {pagination.totalPages}
+      </span>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onPageChange(pagination.currentPage - 1)}
+          disabled={pagination.currentPage === 1}
+          className="px-3 py-1 border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Prev
+        </button>
+        <button
+          onClick={() => onPageChange(pagination.currentPage + 1)}
+          disabled={pagination.currentPage >= pagination.totalPages}
+          className="px-3 py-1 border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+});
+
 const BusinessStaff = () => {
   const { id: businessId } = useParams();
   const [staff, setStaff] = useState([]);
@@ -38,16 +139,19 @@ const BusinessStaff = () => {
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
-    limit: 20,
+    limit: 12,
     total: 0,
   });
+
+  // Refs for preventing duplicate calls
+  const fetchingRef = useRef(false);
+  const lastParamsRef = useRef("");
 
   const fetchBusiness = useCallback(async () => {
     try {
       const res = await businessService.getBusiness(businessId);
       if (res.success) {
-        const data = res.data?.data || res.data;
-        setBusiness(data);
+        setBusiness(res.data?.data || res.data);
       }
     } catch (e) {
       console.error("Failed to fetch business:", e);
@@ -55,20 +159,27 @@ const BusinessStaff = () => {
   }, [businessId]);
 
   const fetchStaff = useCallback(async () => {
+    const params = {
+      page: pagination.currentPage,
+      limit: pagination.limit,
+      search: debouncedSearch || undefined,
+      role: filterRole || undefined,
+    };
+
+    // Prevent duplicate calls
+    const paramsKey = JSON.stringify(params);
+    if (paramsKey === lastParamsRef.current) return;
+    if (fetchingRef.current) return;
+
     try {
+      fetchingRef.current = true;
+      lastParamsRef.current = paramsKey;
       setLoading(true);
       setError(null);
-      const params = {
-        page: pagination.currentPage,
-        limit: pagination.limit,
-      };
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (filterRole) params.role = filterRole;
 
       const res = await businessService.getBusinessStaff(businessId, params);
       if (res.success) {
-        const staffData = res.data?.data || res.data;
-        setStaff(staffData);
+        setStaff(res.data?.data || res.data);
         if (res.data?.pagination) {
           setPagination((prev) => ({ ...prev, ...res.data.pagination }));
         }
@@ -79,8 +190,9 @@ const BusinessStaff = () => {
       setError("Failed to fetch staff");
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  }, [businessId, debouncedSearch, filterRole, pagination.currentPage]);
+  }, [businessId, debouncedSearch, filterRole, pagination.currentPage, pagination.limit]);
 
   useEffect(() => {
     fetchBusiness();
@@ -88,16 +200,18 @@ const BusinessStaff = () => {
 
   useEffect(() => {
     fetchStaff();
-  }, [fetchStaff, pagination.currentPage]);
+  }, [fetchStaff]);
 
+  // Debounce search
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(search.trim()), 400);
-    return () => clearTimeout(id);
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(timer);
   }, [search]);
 
+  // Clear copied value
   useEffect(() => {
     if (copiedValue) {
-      const timer = setTimeout(() => setCopiedValue(null), 3000);
+      const timer = setTimeout(() => setCopiedValue(null), 2000);
       return () => clearTimeout(timer);
     }
   }, [copiedValue]);
@@ -116,262 +230,88 @@ const BusinessStaff = () => {
     setCopiedValue(`${type}-${value}`);
   }, []);
 
-  const roleOptions = useMemo(
-    () => [
-      "stylist",
-      "therapist",
-      "receptionist",
-      "cleaner",
-      "assistant",
-      "other",
-    ],
-    []
-  );
+  const roleOptions = useMemo(() => [
+    "stylist", "therapist", "receptionist", "cleaner", "assistant", "other"
+  ], []);
+
+  // Memoized staff cards
+  const staffCards = useMemo(() => (
+    staff.map((member) => (
+      <StaffCard
+        key={member._id || member.id}
+        member={member}
+        onCopy={handleCopy}
+        copiedValue={copiedValue}
+      />
+    ))
+  ), [staff, handleCopy, copiedValue]);
 
   return (
-    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
+      <div className="mb-4">
         <BackButton />
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
-            Business Staff
-          </h1>
+          <h1 className="text-xl font-bold text-gray-900">Business Staff</h1>
           {business && (
-            <p className="text-sm text-gray-600 mt-1">
-              {business.name} - {business.branch}
-            </p>
+            <p className="text-sm text-gray-600">{business.name} - {business.branch}</p>
           )}
         </div>
       </div>
 
       {/* Search and Filter */}
-      <div className="mb-4 flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative">
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search staff by name or phone..."
-            className="w-full border border-gray-300  pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
+      <div className="bg-white border border-gray-200 p-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="w-full border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-primary-500"
+            />
+          </div>
+          <select
+            value={filterRole}
+            onChange={(e) => handleFilterChange(e.target.value)}
+            className="border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-primary-500 bg-white"
+          >
+            <option value="">All Roles</option>
+            {roleOptions.map((role) => (
+              <option key={role} value={role}>
+                {role.charAt(0).toUpperCase() + role.slice(1)}
+              </option>
+            ))}
+          </select>
         </div>
-        <select
-          value={filterRole}
-          onChange={(e) => handleFilterChange(e.target.value)}
-          className="border border-gray-300  px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-        >
-          <option value="">All Roles</option>
-          {roleOptions.map((role) => (
-            <option key={role} value={role}>
-              {role.charAt(0).toUpperCase() + role.slice(1)}
-            </option>
-          ))}
-        </select>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <FaSpinner className="w-8 h-8 text-primary-600 animate-spin" />
+      {/* Content */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <FaSpinner className="text-3xl text-primary-600 animate-spin" />
         </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200  p-4 text-red-700 text-sm">
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 p-4 text-red-600 text-sm">
           {error}
         </div>
-      )}
-
-      {!loading && !error && (
+      ) : staff.length === 0 ? (
+        <div className="bg-white border border-gray-200 p-8 text-center">
+          <FaUser className="text-4xl text-gray-300 mx-auto mb-3" />
+          <h3 className="font-medium text-gray-700 mb-1">No Staff Found</h3>
+          <p className="text-sm text-gray-500">
+            {search || filterRole
+              ? "Try adjusting your search or filter."
+              : "No staff added to this business yet."}
+          </p>
+        </div>
+      ) : (
         <>
-          {/* Staff Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {staff.map((member) => (
-              <div
-                key={member._id || member.id}
-                className="bg-white border   p-4 sm:p-5 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                      <FaUser className="text-primary-600 text-xl" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800">
-                        {member.name}
-                      </h3>
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${ROLE_COLORS[member.role] || ROLE_COLORS.other
-                          }`}
-                      >
-                        {member.role}
-                      </span>
-                    </div>
-                  </div>
-                  {member.isActive ? (
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                      Active
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  {member.phone && (
-                    <div className="flex items-center justify-between gap-2 text-gray-600 group">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FaPhone className="text-gray-400 flex-shrink-0" />
-                        <span className="truncate">{member.phone}</span>
-                      </div>
-                      <button
-                        onClick={() => handleCopy(member.phone, "phone")}
-                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors"
-                        title="Copy phone"
-                      >
-                        {copiedValue === `phone-${member.phone}` ? (
-                          <span className="text-green-600 text-xs">✓</span>
-                        ) : (
-                          <FaCopy className="text-gray-400 text-xs group-hover:text-gray-600" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  {member.email && (
-                    <div className="flex items-center justify-between gap-2 text-gray-600 group">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FaEnvelope className="text-gray-400 flex-shrink-0" />
-                        <span className="truncate">{member.email}</span>
-                      </div>
-                      <button
-                        onClick={() => handleCopy(member.email, "email")}
-                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors"
-                        title="Copy email"
-                      >
-                        {copiedValue === `email-${member.email}` ? (
-                          <span className="text-green-600 text-xs">✓</span>
-                        ) : (
-                          <FaCopy className="text-gray-400 text-xs group-hover:text-gray-600" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  {member.specialization && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <FaIdBadge className="text-gray-400" />
-                      {member.specialization}
-                    </div>
-                  )}
-                  {member.experience > 0 && (
-                    <div className="text-gray-600">
-                      Experience: {member.experience} years
-                    </div>
-                  )}
-                </div>
-
-                {/* Performance Stats */}
-                {(member.performance?.totalCustomers > 0 ||
-                  member.performance?.totalRevenue > 0 ||
-                  member.performance?.rating > 0) && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
-                      {member.performance?.totalCustomers > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Customers</p>
-                          <p className="font-semibold text-gray-800">
-                            {member.performance.totalCustomers}
-                          </p>
-                        </div>
-                      )}
-                      {member.performance?.totalRevenue > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Revenue</p>
-                          <p className="font-semibold text-gray-800 flex items-center justify-center gap-1">
-                            <FaDollarSign className="text-xs" />
-                            {member.performance.totalRevenue.toLocaleString("en-IN")}
-                          </p>
-                        </div>
-                      )}
-                      {member.performance?.rating > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Rating</p>
-                          <p className="font-semibold text-gray-800 flex items-center justify-center gap-1">
-                            <FaStar className="text-yellow-500" />
-                            {member.performance.rating.toFixed(1)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                {/* Salary & Commission */}
-                {(member.salary || member.commission) && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-sm">
-                    {member.salary && (
-                      <div className="text-gray-600">
-                        Salary: ₹{member.salary.toLocaleString("en-IN")}
-                      </div>
-                    )}
-                    {member.commission > 0 && (
-                      <div className="text-green-600 font-medium">
-                        {member.commission}% commission
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
+            {staffCards}
           </div>
-
-          {staff.length === 0 && (
-            <div className="bg-white border   p-12 text-center">
-              <FaUser className="text-gray-400 text-5xl mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                No Staff Found
-              </h3>
-              <p className="text-gray-600">
-                {search || filterRole
-                  ? "Try adjusting your search or filter criteria."
-                  : "No staff members have been added to this business yet."}
-              </p>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white ">
-              <div className="text-sm text-gray-600">
-                Showing{" "}
-                {(pagination.currentPage - 1) * pagination.limit + 1} to{" "}
-                {Math.min(
-                  pagination.currentPage * pagination.limit,
-                  pagination.total
-                )}{" "}
-                of {pagination.total} staff members
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  disabled={pagination.currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <span className="px-3 py-1 text-sm text-gray-700 border border-gray-300 ">
-                  {pagination.currentPage} / {pagination.totalPages}
-                </span>
-                <button
-                  onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  disabled={pagination.currentPage >= pagination.totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination pagination={pagination} onPageChange={handlePageChange} />
         </>
       )}
     </div>
@@ -379,4 +319,3 @@ const BusinessStaff = () => {
 };
 
 export default BusinessStaff;
-

@@ -8,7 +8,7 @@ import {
   FaSpinner,
   FaClock,
   FaUser,
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaMapMarkerAlt,
   FaDollarSign,
@@ -47,7 +47,7 @@ const AppointmentStatus = () => {
     try {
       setLoading(true)
       const response = await apiClient.get(endpoints.appointments.appointmentByCode(confirmationCode))
-      
+
       if (response.data.success) {
         setAppointment(response.data.data)
       } else {
@@ -217,13 +217,13 @@ const AppointmentStatus = () => {
             </h3>
             <div className="space-y-2">
               <p className="text-gray-900 font-medium">
-                {appointment.appointmentDate 
+                {appointment.appointmentDate
                   ? new Date(appointment.appointmentDate).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })
                   : 'N/A'}
               </p>
               <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -262,7 +262,7 @@ const AppointmentStatus = () => {
                 )}
                 {appointment.business.address && (
                   <p className="text-sm text-gray-600">
-                    {typeof appointment.business.address === 'object' 
+                    {typeof appointment.business.address === 'object'
                       ? `${appointment.business.address.street || ''}${appointment.business.address.city ? ', ' + appointment.business.address.city : ''}${appointment.business.address.state ? ', ' + appointment.business.address.state : ''}${appointment.business.address.zipCode ? ' - ' + appointment.business.address.zipCode : ''}`.trim() || appointment.business.address.street
                       : appointment.business.address}
                     {appointment.business.city && typeof appointment.business.address !== 'object' && `, ${appointment.business.city}`}
@@ -271,7 +271,7 @@ const AppointmentStatus = () => {
                 )}
                 {appointment.business.phone && (
                   <p className="text-sm text-gray-600 flex items-center gap-2">
-                    <FaPhone className="text-gray-400" />
+                    <FaPhoneAlt className="text-gray-400" />
                     {appointment.business.phone}
                   </p>
                 )}
@@ -368,12 +368,11 @@ const AppointmentStatus = () => {
                 <div className="pt-2 mt-2 border-t border-gray-200">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Payment Status</span>
-                    <span className={`font-semibold ${
-                      appointment.paymentStatus === 'paid' ? 'text-green-600' :
-                      appointment.paymentStatus === 'partial' ? 'text-yellow-600' :
-                      appointment.paymentStatus === 'refunded' ? 'text-blue-600' :
-                      'text-gray-600'
-                    }`}>
+                    <span className={`font-semibold ${appointment.paymentStatus === 'paid' ? 'text-green-600' :
+                        appointment.paymentStatus === 'partial' ? 'text-yellow-600' :
+                          appointment.paymentStatus === 'refunded' ? 'text-blue-600' :
+                            'text-gray-600'
+                      }`}>
                       {appointment.paymentStatus.charAt(0).toUpperCase() + appointment.paymentStatus.slice(1)}
                     </span>
                   </div>
@@ -417,7 +416,7 @@ const AppointmentStatus = () => {
                 <div className="mt-2 space-y-1">
                   {appointment.staff.phone && (
                     <p className="text-sm text-gray-600 flex items-center gap-2">
-                      <FaPhone className="text-gray-400" />
+                      <FaPhoneAlt className="text-gray-400" />
                       {appointment.staff.phone}
                     </p>
                   )}
@@ -444,7 +443,7 @@ const AppointmentStatus = () => {
               <div>
                 <p className="text-sm text-gray-600">Name</p>
                 <p className="text-gray-900 font-medium">
-                  {appointment.customer.firstName || appointment.customer.name || ''} 
+                  {appointment.customer.firstName || appointment.customer.name || ''}
                   {appointment.customer.lastName ? ` ${appointment.customer.lastName}` : ''}
                 </p>
               </div>
@@ -572,7 +571,7 @@ const AppointmentStatus = () => {
               <FaExclamationTriangle className="text-red-600 text-2xl" />
               <h2 className="text-lg font-semibold text-gray-900">Cancel Appointment</h2>
             </div>
-            
+
             <p className="text-gray-600 mb-4">
               Are you sure you want to cancel this appointment? This action cannot be undone.
             </p>

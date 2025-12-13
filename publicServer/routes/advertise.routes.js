@@ -2,13 +2,20 @@ const express = require("express");
 const router = express.Router();
 
 const {
+    sendOtp,
+    verifyOtp,
     createAdvertise,
     getAllAdvertise,
     getAdvertiseById,
     updateAdvertise,
     deleteAdvertise,
-} = require("../controllers/advertise.controller");
+} = require("../controller/advertise.controller");
 
+// OTP Routes
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
+
+// Advertise Routes
 router.post("/", createAdvertise);
 
 router.get("/", getAllAdvertise);
