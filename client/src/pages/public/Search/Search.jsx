@@ -36,7 +36,7 @@ const ImageSlider = ({ images, name, distanceText }) => {
     // Handle manual navigation if needed (optional, keeping it simple/auto for now as per "auto slider")
 
     return (
-        <div className="w-full md:w-56 max-h-48 md:h-auto md:min-h-[12rem] bg-gray-100  overflow-hidden flex-shrink-0 relative group">
+        <div className="w-28 h-28 md:w-56 md:h-auto md:min-h-[12rem] bg-gray-100 overflow-hidden flex-shrink-0 relative group">
             <div
                 className="w-full h-full flex transition-transform duration-500 ease-in-out"
                 style={{ transform: `translateX(-${currentIndex * 100}%)` }}
@@ -103,10 +103,10 @@ const SearchBusinessCard = React.memo(({ business }) => {
                             }
                         `}
                     </style>
-                    <FiPhone className="w-4 h-4" style={wiggleStyle} />
+                    <FiPhone className="w-5 h-5" style={wiggleStyle} />
                 </>
             ),
-            text: "Call Now",
+            text: <><span className="md:hidden">Call</span><span className="hidden md:inline">Call Now</span></>,
             title: "Call Now",
             className: "bg-primary-500 text-white hover:bg-primary-600 shadow-md border-transparent flex-1 justify-center"
         },
@@ -116,8 +116,8 @@ const SearchBusinessCard = React.memo(({ business }) => {
             target: "_blank",
             rel: "noopener noreferrer",
             onClick: (e) => e.stopPropagation(),
-            icon: <FaWhatsapp className="w-4 h-4" />,
-            text: "WhatsApp",
+            icon: <FaWhatsapp className="w-5 h-5" />,
+            text: <><span className="md:hidden">WA</span><span className="hidden md:inline">WhatsApp</span></>,
             title: "Chat on WhatsApp",
             className: "bg-green-500 text-white hover:bg-green-600 shadow-md border-transparent flex-1 justify-center"
         }
@@ -133,101 +133,146 @@ const SearchBusinessCard = React.memo(({ business }) => {
                     console.warn("No businessLink found for:", business.name);
                 }
             }}
-            className="bg-white cursor-pointer border border-gray-200 p-3 mb-3 flex flex-col md:flex-row gap-3 hover:shadow-md transition-shadow relative"
+            className="bg-white cursor-pointer border border-gray-200 mb-3 hover:shadow-md transition-shadow relative overflow-hidden"
         >
-            {/* Image Slider Section */}
-            <ImageSlider
-                images={displayImages}
-                name={business.name}
-                distanceText={business.distanceText}
-            />
+            {/* Top Section: Image + Content */}
+            <div className="flex flex-row gap-3 p-3">
+                <style>
+                    {`
+                        @keyframes wiggle {
+                            0%, 20% { transform: rotate(0deg); }
+                            5%, 15% { transform: rotate(15deg); }
+                            10% { transform: rotate(-15deg); }
+                            100% { transform: rotate(0deg); }
+                        }
+                    `}
+                </style>
+                {/* Image Slider Section */}
+                <ImageSlider
+                    images={displayImages}
+                    name={business.name}
+                    distanceText={business.distanceText}
+                />
 
-            {/* Content Section */}
-            <div className="flex-1 flex flex-col justify-between">
-                <div>
-                    <div className="flex justify-between items-start">
-                        <div className="min-w-0 flex-1 mr-2">
-                            <h3 className="text-lg font-bold text-gray-900 mb-0.5 truncate">{business.name}</h3>
-                            <p className="text-xs text-primary-600 mb-1 font-medium truncate">{business.address}</p>
-                        </div>
-                        <div className="flex flex-col items-end flex-shrink-0">
-                            <div className="flex items-center gap-1 bg-primary-500 text-white px-1.5 py-0.5 rounded text-xs font-bold">
-                                <span>{business.ratings?.average ? Number(business.ratings.average).toFixed(1) : "New"}</span>
-                                <FaStar className="w-3 h-3 text-yellow-400" />
+                {/* Content Section */}
+                <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                        <div className="flex justify-between items-start">
+                            <div className="min-w-0 flex-1 mr-2">
+                                <h3 className="text-sm md:w-full w-[195px] md:text-lg font-bold text-gray-900 mb-1 truncate">{business.name}</h3>
+                                <p className="hidden md:block text-sm text-primary-600 mb-1.5 font-medium truncate">{business.address}</p>
+                                <p className="md:hidden text-xs text-primary-600 mb-1.5 font-medium truncate">{business.branch || business.address}</p>
                             </div>
-                            <span className="text-[10px] text-gray-500 mt-0.5">{business.ratings?.totalReviews || 0} Ratings</span>
+                            <div className="flex flex-col items-end flex-shrink-0">
+                                <div className="flex items-center gap-1 bg-primary-500 text-white px-1.5 py-0.5 rounded text-[10px] md:text-sm font-bold">
+                                    <span>{business.ratings?.average ? Number(business.ratings.average).toFixed(1) : "New"}</span>
+                                    <FaStar className="w-2.5 h-2.5 md:w-3 md:h-3 text-yellow-400" />
+                                </div>
+                                <span className="text-[8px] md:text-[10px] text-gray-500 mt-0.5 text-right">{business.ratings?.totalReviews || 0} Ratings</span>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Services */}
-                    {business.services && business.services.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-1.5">
-                            {business.services.map((service, idx) => (
-                                <span key={idx} className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100 font-medium whitespace-nowrap max-w-full truncate">
-                                    {service.name}
+                        {/* Services */}
+                        {business.services && business.services.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-1.5 overflow-hidden h-auto">
+                                {business.services.slice(0, 3).map((service, idx) => (
+                                    <span key={idx} className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100 font-medium whitespace-nowrap max-w-[70px] md:max-w-[80px] truncate">
+                                        {service.name}
+                                    </span>
+                                ))}
+                                {business.services.length > 3 && (
+                                    <span className="text-[10px] bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200 font-medium whitespace-nowrap">
+                                        +{business.services.length - 3} more
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="hidden md:flex items-center gap-1.5 mb-1.5 flex-wrap">
+                            {/* Tags/Categories */}
+                            <span className="text-[10px] border border-gray-300 px-1.5 py-0.5 rounded text-gray-600 capitalize whitespace-nowrap max-w-full truncate">
+                                {business.category}
+                            </span>
+                            {business.tags?.slice(0, 3).map((tag, idx) => (
+                                <span key={idx} className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 whitespace-nowrap max-w-full truncate">
+                                    {tag}
                                 </span>
                             ))}
                         </div>
-                    )}
 
-                    <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                        {/* Tags/Categories */}
-                        <span className="text-[10px] border border-gray-300 px-1.5 py-0.5 rounded text-gray-600 capitalize whitespace-nowrap max-w-full truncate">
-                            {business.category}
-                        </span>
-                        {business.tags?.slice(0, 3).map((tag, idx) => (
-                            <span key={idx} className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 whitespace-nowrap max-w-full truncate">
-                                {tag}
-                            </span>
-                        ))}
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-1.5">
+                            {business.snippet || business.description}
+                        </p>
+
+                        <div className="hidden md:flex flex-wrap gap-2 text-[10px] text-green-600">
+                            {business.features?.slice(0, 4).map((feature, i) => (
+                                <span key={i} className="flex items-center whitespace-nowrap max-w-full">
+                                    <span className="mr-1">✓</span> <span className="truncate">{feature}</span>
+                                </span>
+                            ))}
+                        </div>
                     </div>
 
-                    <p className="text-xs text-gray-600 line-clamp-2 mb-1.5">
-                        {business.snippet || business.description}
-                    </p>
+                    <div className="hidden md:flex items-center justify-between mt-2 pt-2 border-t border-gray-100 gap-2">
+                        <div className="flex gap-2 flex-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 scrollbar-hide">
+                            {actions.map((action, index) => (
+                                action.condition && (
+                                    <a
+                                        key={index}
+                                        href={action.href}
+                                        target={action.target}
+                                        rel={action.rel}
+                                        onClick={action.onClick}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${action.className}`}
+                                        title={action.title}
+                                    >
+                                        {action.icon}
+                                        <span>{action.text}</span>
+                                    </a>
+                                )
+                            ))}
+                        </div>
 
-                    <div className="flex flex-wrap gap-2 text-[10px] text-green-600">
-                        {business.features?.slice(0, 4).map((feature, i) => (
-                            <span key={i} className="flex items-center whitespace-nowrap max-w-full">
-                                <span className="mr-1">✓</span> <span className="truncate">{feature}</span>
-                            </span>
-                        ))}
+                        {business.businessLink && (
+                            <Button
+                                variant="primary"
+                                className="hidden md:block bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/${business.businessLink}`);
+                                }}
+                            >
+                                View Details
+                            </Button>
+                        )}
                     </div>
                 </div>
+            </div>
 
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto md:overflow-visible pb-1 md:pb-0">
-                        {actions.map((action, index) => (
-                            action.condition && (
-                                <a
-                                    key={index}
-                                    href={action.href}
-                                    target={action.target}
-                                    rel={action.rel}
-                                    onClick={action.onClick}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${action.className}`}
-                                    title={action.title}
-                                >
-                                    {action.icon}
-                                    <span>{action.text}</span>
-                                </a>
-                            )
-                        ))}
-                    </div>
-
-                    {business.businessLink && (
-                        <Button
-                            variant="primary"
-                            className="hidden md:block bg-primary-500 hover:bg-primary-600 text-white px-4 py-1.5 rounded text-xs font-semibold "
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/${business.businessLink}`);
-                            }}
-                        >
-                            View Details
-                        </Button>
-                    )}
-                </div>
+            {/* Mobile Actions Footer (Rounded Buttons) */}
+            <div className="md:hidden flex gap-2 px-3 pb-3">
+                {!!business.phone && (
+                    <a
+                        href={`tel:${business.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white font-semibold text-sm hover:bg-primary-600 transition-colors rounded-lg py-1.5 shadow-sm"
+                    >
+                        <FiPhone className="w-4 h-4" style={wiggleStyle} />
+                        <span>Call</span>
+                    </a>
+                )}
+                {!!business.socialMedia?.whatsapp && (
+                    <a
+                        href={`https://wa.me/${business.socialMedia?.whatsapp}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors rounded-lg py-1.5 shadow-sm"
+                    >
+                        <FaWhatsapp className="w-5 h-5" />
+                        <span>WA</span>
+                    </a>
+                )}
             </div>
         </div>
     );
