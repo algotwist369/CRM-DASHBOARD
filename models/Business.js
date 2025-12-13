@@ -170,8 +170,8 @@ const businessSchema = new mongoose.Schema(
         // Business-specific settings
         settings: {
             workingHours: {
-                open: { type: String, default: "09:00" },
-                close: { type: String, default: "18:00" },
+                open: { type: String, default: "08:00" },
+                close: { type: String, default: "22:00" },
                 days: [{ type: String, enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] }]
             },
             currency: { type: String, default: "INR" },
@@ -179,17 +179,17 @@ const businessSchema = new mongoose.Schema(
 
             // Appointment settings
             appointmentSettings: {
-                advanceBookingDays: { type: Number, default: 30 }, // How many days in advance can book
-                minAdvanceBookingHours: { type: Number, default: 2 }, // Minimum hours before appointment
-                maxAdvanceBookingHours: { type: Number, default: 24 * 30 }, // Maximum hours in advance
-                slotDuration: { type: Number, default: 30 }, // Default slot duration in minutes
+                advanceBookingDays: { type: Number, default: 20 }, // How many days in advance can book
+                minAdvanceBookingHours: { type: Number, default: 10 }, // Minimum hours before appointment
+                maxAdvanceBookingHours: { type: Number, default: 24 * 20 }, // Maximum hours in advance
+                slotDuration: { type: Number, default: 20 }, // Default slot duration in minutes
                 bufferTime: { type: Number, default: 15 }, // Buffer time between appointments
                 allowOnlineBooking: { type: Boolean, default: true },
                 requireAdvancePayment: { type: Boolean, default: false },
                 advancePaymentPercentage: { type: Number, default: 0 },
                 cancellationPolicy: {
                     allowCancellation: { type: Boolean, default: true },
-                    minCancellationHours: { type: Number, default: 2 },
+                    minCancellationHours: { type: Number, default: 10 },
                     refundPercentage: { type: Number, default: 100 }
                 },
                 reminderSettings: {

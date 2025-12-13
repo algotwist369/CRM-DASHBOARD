@@ -1039,7 +1039,7 @@ const getBusinessInfoForBooking = async (req, res, next) => {
         const { businessLink } = req.params;
 
         const business = await Business.findOne({ businessLink, isActive: true })
-            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags _id')
+            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags _id paymentMethods')
             .lean();
 
         if (!business) {
@@ -1063,7 +1063,7 @@ const getBusinessInfoForBooking = async (req, res, next) => {
             isActive: true,
             isAvailableOnline: true
         })
-            .select('name price duration category serviceType description images')
+            .select('name category serviceType description images pricingOptions')
             .sort({ displayOrder: 1, name: 1 })
             .lean();
 
