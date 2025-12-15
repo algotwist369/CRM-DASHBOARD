@@ -315,7 +315,7 @@ function isValidLatLng(lat, lng) {
 businessSchema.pre('save', async function (next) {
     try {
         // Generate business link if not exists
-        if (!this.businessLink) {
+        if (!this.businessLink && this.name) {
             const cleanBusinessName = this.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             const shortId = this._id.toString().slice(-3);
             this.businessLink = `${cleanBusinessName}_${shortId}`;
