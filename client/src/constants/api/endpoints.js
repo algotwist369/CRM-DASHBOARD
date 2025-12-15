@@ -108,6 +108,8 @@ export const endpoints = {
     getDailyRecords: (id) => `${API_BASE_URL}/business/${id}/daily-business`,
     getDailySummary: (id) => `${API_BASE_URL}/business/${id}/daily-business/summary`,
     getDailyAnalytics: (id) => `${API_BASE_URL}/business/${id}/daily-business/analytics`,
+    reviews: (id) => `${API_BASE_URL}/business/public/${id}/reviews`,
+    addReview: (id) => `${API_BASE_URL}/business/public/${id}/reviews`,
 
   },
 

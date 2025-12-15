@@ -20,6 +20,12 @@ router.get("/public/nearby", businessController.getBusinessesNearby);
 // Query params: lat, lng, q, category, radius, sort, page, limit
 router.get("/public/search", businessController.searchBusinesses);
 
+// Get list of reviews for a business (public)
+router.get("/public/:id/reviews", businessController.getBusinessReviews);
+
+// Add a review for a business (public)
+router.post("/public/:id/reviews", businessController.addBusinessReview);
+
 // Get business info by business link (public for appointment booking)
 router.get("/info/:businessLink", businessController.getBusinessInfoByLink);
 

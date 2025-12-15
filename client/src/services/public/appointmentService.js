@@ -131,6 +131,32 @@ class AppointmentService {
       }
     }
   }
+
+  // Get business reviews
+  async getBusinessReviews(businessId, params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.business.reviews(businessId), { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch reviews'
+      }
+    }
+  }
+
+  // Add business review
+  async addBusinessReview(businessId, reviewData) {
+    try {
+      const response = await apiClient.post(endpoints.business.addReview(businessId), reviewData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to submit review'
+      }
+    }
+  }
 }
 
 export default new AppointmentService()

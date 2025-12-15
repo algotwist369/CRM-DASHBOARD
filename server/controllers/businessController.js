@@ -1,5 +1,6 @@
 // businessController.js - Business-specific operations for managers and admins
 const Business = require("../models/Business");
+const Review = require("../models/Review");
 const mongoose = require("mongoose");
 
 // Fetch services for all businesses
@@ -1458,6 +1459,108 @@ const updateBusiness = async (req, res, next) => {
     }
 };
 
+// ================== Add Business Review (Public) ==================
+const addBusinessReview = async (req, res, next) => {
+    try {
+        const { id } = req.params; // Business ID
+        const { name, email, rating, review } = req.body;
+
+        // validation
+        if (!name || !email || !rating || !review) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide all required fields: name, email, rating, review"
+            });
+        }
+
+        if (rating < 1 || rating > 5) {
+            return res.status(400).json({
+                success: false,
+                message: "Rating must be between 1 and 5"
+            });
+        }
+
+        const business = await Business.findById(id);
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+
+        // Create the review
+        const newReview = await Review.create({
+            business: id,
+            guestName: name,
+            guestEmail: email,
+            rating: Number(rating),
+            review: review,
+            isPublished: true, // Auto-publish for now
+            status: 'approved',
+            source: 'website'
+        });
+
+        // Update Business Ratings
+        const ratingField = ['oneStar', 'twoStars', 'threeStars', 'fourStars', 'fiveStars'][Math.round(rating) - 1];
+
+        // Use atomic update for counts
+        const incUpdate = {
+            'ratings.totalReviews': 1
+        };
+        if (ratingField) {
+            incUpdate[`ratings.${ratingField}`] = 1;
+        }
+
+        await Business.findByIdAndUpdate(id, { $inc: incUpdate });
+
+        // Recalculate average
+        const updatedBusiness = await Business.findById(id).select('ratings');
+        const r = updatedBusiness.ratings;
+        const totalStars = (r.fiveStars * 5) + (r.fourStars * 4) + (r.threeStars * 3) + (r.twoStars * 2) + (r.oneStar * 1);
+        const newAverage = r.totalReviews > 0 ? totalStars / r.totalReviews : 0;
+
+        await Business.findByIdAndUpdate(id, { 'ratings.average': newAverage });
+
+        return res.status(201).json({
+            success: true,
+            message: "Review submitted successfully",
+            data: newReview
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Business Reviews (Public) ==================
+const getBusinessReviews = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { page = 1, limit = 20 } = req.query;
+
+        const reviews = await Review.find({
+            business: id,
+            isPublished: true
+        })
+            .select('guestName guestEmail rating review createdAt')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(Number(limit));
+
+        const total = await Review.countDocuments({ business: id, isPublished: true });
+
+        res.json({
+            success: true,
+            data: reviews,
+            pagination: {
+                total,
+                page: Number(page),
+                pages: Math.ceil(total / limit)
+            }
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getPublicBusinesses,
     getBusinessInfoByLink,
@@ -1468,5 +1571,7 @@ module.exports = {
     getBusinessesNearby,
     searchBusinesses, // Added new API
     getIndiaLocations,
-    updateBusiness
+    updateBusiness,
+    addBusinessReview,
+    getBusinessReviews
 };
