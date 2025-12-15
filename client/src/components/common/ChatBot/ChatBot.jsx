@@ -314,7 +314,7 @@ const ChatBot = () => {
     <>
       {/* Auto Notification */}
       {showNotification && !isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 animate-slide-up">
+        <div className="hidden md:block fixed bottom-24 right-6 z-50 animate-slide-up">
           <div className="bg-white  shadow-2xl border-2 border-primary-200 p-4 max-w-sm">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-primary-100">

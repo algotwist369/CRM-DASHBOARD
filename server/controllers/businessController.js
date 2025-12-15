@@ -704,6 +704,16 @@ const searchBusinesses = async (req, res, next) => {
                 }
             });
 
+            // Lookup Services for Search
+            pipeline.push({
+                $lookup: {
+                    from: "services",
+                    localField: "_id",
+                    foreignField: "business",
+                    as: "serviceDetails"
+                }
+            });
+
             // Stage 2: Match (Smart Regex for q: supports "spa london" etc.)
             const matchStage = {};
             if (q) {
@@ -720,7 +730,8 @@ const searchBusinesses = async (req, res, next) => {
                             { address: regex },
                             { city: regex },
                             { state: regex },
-                            { zipCode: regex }
+                            { zipCode: regex },
+                            { "serviceDetails.name": regex }
                         ]
                     };
                 });
@@ -748,6 +759,22 @@ const searchBusinesses = async (req, res, next) => {
             // Global Search (No Location)
             // We can use $text here, but it MUST be in the first stage combined with basic filters.
 
+            // To support searching by Services in Global Search, we must Lookup first,
+            // which means we cannot rely solely on $match as the very first stage if we want to filter by service name.
+            // However, $geoNear must be first. In this branch, we don't use $geoNear.
+
+            // Standard approach: Match base criteria -> Lookup -> Match Query
+            pipeline.push({ $match: baseMatch });
+
+            pipeline.push({
+                $lookup: {
+                    from: "services",
+                    localField: "_id",
+                    foreignField: "business",
+                    as: "serviceDetails"
+                }
+            });
+
             if (q) {
                 // Smart Regex Search Implementation
                 const terms = q.trim().split(/\s+/);
@@ -762,17 +789,16 @@ const searchBusinesses = async (req, res, next) => {
                             { address: regex },
                             { city: regex },
                             { state: regex },
-                            { zipCode: regex }
+                            { zipCode: regex },
+                            { "serviceDetails.name": regex }
                         ]
                     };
                 });
 
                 if (termConditions.length > 0) {
-                    baseMatch.$and = termConditions;
+                    pipeline.push({ $match: { $and: termConditions } });
                 }
             }
-
-            pipeline.push({ $match: baseMatch });
 
             // Subsequent Match Stage for other filters (Category, Rating)
             // Note: $text results are not sorted by score unless we project metadata.

@@ -14,12 +14,25 @@ import {
   FaLocationArrow,
   FaSync,
   FaChevronLeft,
+  FaFilter,
   FaChevronRight
 } from 'react-icons/fa'
 import { IoMdCall } from 'react-icons/io'
 import apiClient from '../../../services/api/client'
-import { FaLocationCrosshairs } from "react-icons/fa6"
 import { useDebounce } from '../../../hooks/common/useDebounce'
+
+
+import {
+  FiSearch,
+  FiStar,
+  FiUsers,
+} from "react-icons/fi";
+import {
+  GiLotus,
+  GiMuscleUp,
+  GiHeartInside,
+} from "react-icons/gi";
+import { MdSpa, MdFaceRetouchingNatural } from "react-icons/md";
 
 // Constants
 const CACHE_KEYS = {
@@ -823,679 +836,794 @@ const Home = () => {
     return buttons
   }, [])
 
+  const services = [
+    { id: 1, title: "Full Body Massage", icon: <MdSpa /> },
+    { id: 2, title: "Aromatherapy", icon: <GiLotus /> },
+    { id: 3, title: "Deep Tissue", icon: <GiMuscleUp /> },
+    { id: 4, title: "Facial Care", icon: <MdFaceRetouchingNatural /> },
+    { id: 5, title: "Couple Spa", icon: <GiHeartInside /> },
+  ];
+
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+
   return (
-    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
-      {/* Hero Section */}
-      <div className="relative h-[450px] xs:h-[500px] sm:h-[600px] lg:h-[700px]">
-        <img
-          src="/hero-placeholder.svg"
-          alt="Business Finder Background"
-          className="absolute inset-0 w-full h-full object-cover object-center"
-          fetchPriority="high"
-          loading="eager"
-        />
-        {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70"></div>
+    <>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-start lg:items-center">
 
-        <div className="relative max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="text-center w-full py-6 xs:py-8 sm:py-12">
-            <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-3 xs:mb-4 sm:mb-6 leading-tight px-2">
-              Business Finder & Booking System<br className="hidden xs:block" />
-              <span className="text-primary-400 text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl block xs:inline mt-1 xs:mt-0">Spa CRM | Salon CRM | Hotel CRM | Gym CRM</span>
-            </h1>
+          {/* LEFT */}
+          <div className="space-y-5 sm:space-y-6">
 
-            <p className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl text-gray-100 mb-6 xs:mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed px-3 xs:px-4">
-              Find Nearby Spas, Salons, Hotels & Gyms with Location-Based Service. Online Booking System & Appointment Scheduling - Book Instantly
-            </p>
-
-            {/* Direct Booking Input */}
-            <form onSubmit={handleDirectBooking} className="max-w-2xl mx-auto px-3 xs:px-4">
-              <div className="flex flex-col sm:flex-row gap-2.5 xs:gap-3 sm:gap-4">
-                <div className="flex-1 relative">
-                  <FaSearch className="absolute left-3 xs:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-base xs:text-lg z-10" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder={searchTerm ? '' : animatedPlaceholder || PLACEHOLDERS[0]}
-                    className="w-full pl-10 xs:pl-12 pr-3 xs:pr-4 py-3 xs:py-3.5 sm:py-4 text-gray-900 bg-white border-0 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 text-sm xs:text-base sm:text-lg placeholder:text-gray-400 transition-all duration-200 min-h-[44px]"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="px-5 xs:px-6 sm:px-8 py-3 xs:py-3.5 sm:py-4 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl flex items-center justify-center gap-2 font-semibold text-sm xs:text-base sm:text-lg min-h-[44px] touch-manipulation"
-                >
-                  <FaLocationCrosshairs className="text-lg xs:text-xl sm:text-2xl flex-shrink-0" />
-                  <span className="hidden xs:inline">Search</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      {/* Businesses Section */}
-      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-6 xs:py-8 sm:py-12">
-        <div className="mb-5 xs:mb-6 sm:mb-8">
-          {/* View Mode Toggle */}
-          <div className="flex flex-col gap-3 xs:gap-4 mb-4 sm:mb-6">
-            <div className="flex-1">
-              <h2 className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1.5 xs:mb-2 leading-tight">
-                {viewMode === 'nearby' ? 'Nearby Search - Find Local Businesses' : 'Business Finder - All Local Businesses'}
-              </h2>
-              <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed">
-                {viewMode === 'nearby'
-                  ? userLocation
-                    ? `Location-Based Service - Find businesses within ${(maxDistance / 1000).toFixed(0)}km using Nearby Search`
-                    : 'Enable location to find nearby spas, salons, hotels & gyms'
-                  : 'Business Finder - Browse and book appointments with Spa CRM, Salon CRM, Hotel CRM & Gym CRM'}
+            {/* Heading */}
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-900 leading-tight">
+                Professional spa services
+              </h1>
+              <p className="mt-2 text-sm sm:text-base text-gray-500">
+                Top spa and massage therapists near you
               </p>
             </div>
 
-            {/* View Mode Buttons */}
-            <div className="flex flex-wrap items-center gap-2 xs:gap-2.5 sm:gap-3">
-              <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 bg-gray-100 border border-gray-200 rounded-lg p-0.5 sm:p-1 w-full xs:w-auto">
-                <button
-                  onClick={() => handleViewModeChange('all')}
-                  className={`flex-1 xs:flex-none px-3 xs:px-3.5 sm:px-4 py-2 xs:py-2 sm:py-2.5 border-0 rounded-md text-xs xs:text-sm sm:text-sm font-medium transition-all duration-200 min-h-[44px] touch-manipulation ${viewMode === 'all'
-                    ? 'bg-white text-primary-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 active:bg-gray-50'
-                    }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => handleViewModeChange('nearby')}
-                  disabled={locationLoading}
-                  className={`flex-1 xs:flex-none px-3 xs:px-3.5 sm:px-4 py-2 xs:py-2 sm:py-2.5 border-0 rounded-md text-xs xs:text-sm sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 xs:gap-2 min-h-[44px] touch-manipulation ${viewMode === 'nearby'
-                    ? 'bg-white text-primary-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 active:bg-gray-50'
-                    } ${locationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <FaMapMarkerAlt className="text-xs xs:text-sm flex-shrink-0" />
-                  <span className="hidden xs:inline sm:hidden">Near</span>
-                  <span className="hidden sm:inline">Nearby</span>
-                  {locationLoading && <FaSpinner className="animate-spin text-xs flex-shrink-0" />}
-                </button>
-              </div>
+            {/* Search */}
+            <div className="w-full max-w-xl">
+              <button
+                type='button'
+                onClick={() => navigate('/search')}
+                className="
+                          relative w-full
+                          flex items-center
+                          pl-11 pr-4
+                          py-3 sm:py-3.5
+                          bg-white
+                          border border-gray-300
+                          rounded-md
+                          text-sm sm:text-base
+                          text-gray-500
+                          hover:border-gray-400
+                          focus:outline-none
+                          transition
+                          min-h-[44px]
+                          text-left
+                        "
+              >
+                <FaSearch className="absolute left-4 text-gray-400 text-sm sm:text-base" />
 
-              {/* Distance Selector (for nearby mode) */}
-              {viewMode === 'nearby' && userLocation && (
-                <select
-                  value={maxDistance}
-                  onChange={(e) => {
-                    setMaxDistance(Number(e.target.value))
-                  }}
-                  className="flex-1 xs:flex-none px-3 xs:px-3.5 sm:px-4 py-2 xs:py-2.5 sm:py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-xs xs:text-sm sm:text-sm min-h-[44px] touch-manipulation"
-                >
-                  {DISTANCE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {/* Refresh Location Button */}
-              {viewMode === 'nearby' && userLocation && (
-                <button
-                  onClick={handleRefreshLocation}
-                  className="p-2.5 xs:p-2.5 sm:p-2 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
-                  title="Refresh location"
-                  aria-label="Refresh location"
-                >
-                  <FaSync className="text-gray-600 text-sm xs:text-base sm:text-base" />
-                </button>
-              )}
+                <span className="truncate">
+                  {searchTerm || animatedPlaceholder || PLACEHOLDERS[0]}
+                </span>
+              </button>
             </div>
-          </div>
 
-          {/* Filter and Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 xs:gap-3 sm:gap-4">
-            <div className="flex-1 w-full sm:w-auto">
-              {locationError && viewMode === 'nearby' && (
-                <div className="mb-3 p-2.5 xs:p-3 sm:p-3 bg-yellow-50 border-yellow-200 border rounded-lg text-xs xs:text-sm sm:text-sm text-yellow-800">
-                  <FaMapMarkerAlt className="inline mr-2 flex-shrink-0" />
-                  <span className="break-words">{locationError}</span>
+            {/* Services (desktop only) */}
+            <div className="hidden md:block bg-white rounded-xl border divide-y">
+              {services.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition"
+                >
+                  <div className="text-xl text-gray-700">
+                    {item.icon}
+                  </div>
+                  <span className="text-gray-800 font-medium">
+                    {item.title}
+                  </span>
                 </div>
-              )}
-            </div>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="w-full sm:w-auto px-3 xs:px-4 sm:px-4 py-2.5 xs:py-2.5 sm:py-2 border-gray-300 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm xs:text-sm sm:text-sm min-h-[44px] touch-manipulation"
-            >
-              <option value="">All Types</option>
-              {BUSINESS_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
               ))}
-            </select>
-          </div>
-        </div>
+            </div>
 
-        {(loading || nearbyLoading) ? (
-          <div className="flex items-center justify-center py-8 xs:py-10 sm:py-12">
-            <div className="text-center px-4">
-              <FaSpinner className="animate-spin text-primary-600 text-3xl xs:text-3xl sm:text-4xl mx-auto mb-3 xs:mb-3 sm:mb-4" />
-              <p className="text-gray-600 text-sm xs:text-sm sm:text-base">
-                {viewMode === 'nearby' && locationLoading
-                  ? 'Getting your location...'
-                  : 'Loading businesses...'}
-              </p>
+            {/* Stats */}
+            <div className="flex flex-wrap gap-6 sm:gap-8 pt-2">
+              <div className="flex items-center gap-3">
+                <FiStar className="text-gray-800 text-lg" />
+                <div>
+                  <p className="font-semibold text-sm">4.8 / 5</p>
+                  <p className="text-xs text-gray-500">Avg rating</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <FiUsers className="text-gray-800 text-lg" />
+                <div>
+                  <p className="font-semibold text-sm">12M+</p>
+                  <p className="text-xs text-gray-500">Happy users</p>
+                </div>
+              </div>
             </div>
           </div>
-        ) : filteredBusinesses.length === 0 ? (
-          <div className="text-center py-8 xs:py-10 sm:py-12 bg-white border border-gray-200 rounded-lg px-4 xs:px-6">
-            <FaSearch className="mx-auto text-gray-400 text-3xl xs:text-3xl sm:text-4xl mb-3 xs:mb-3 sm:mb-4" />
-            <p className="text-gray-600 text-base xs:text-base sm:text-lg mb-2 font-semibold">No businesses found</p>
-            <p className="text-gray-500 text-xs xs:text-sm sm:text-sm leading-relaxed max-w-md mx-auto">
-              {searchTerm
-                ? `No businesses match "${searchTerm}". Try a different search term or clear filters.`
-                : viewMode === 'nearby'
-                  ? `No businesses found within ${(maxDistance / 1000).toFixed(0)}km. Try increasing the distance or switch to "All Businesses".`
-                  : 'No businesses are currently available for online booking'}
-            </p>
-            {(searchTerm || (viewMode === 'nearby' && businesses.length === 0)) && (
-              <div className="mt-5 xs:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 xs:gap-3 sm:gap-3 max-w-md mx-auto">
-                {searchTerm && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm('')
-                      setFilterType('')
-                    }}
-                    className="w-full sm:w-auto px-4 xs:px-5 py-2.5 xs:py-3 text-primary-600 hover:text-primary-700 border-primary-200 border rounded-lg hover:bg-primary-50 active:bg-primary-100 text-sm xs:text-sm sm:text-base font-medium min-h-[44px] touch-manipulation transition-all duration-200"
-                  >
-                    Clear Search
-                  </button>
-                )}
-                {viewMode === 'nearby' && businesses.length === 0 && (
-                  <button
-                    onClick={() => handleViewModeChange('all')}
-                    className="w-full sm:w-auto px-4 xs:px-5 py-2.5 xs:py-3 bg-primary-600 text-white border-0 rounded-lg hover:bg-primary-700 active:bg-primary-800 text-sm xs:text-sm sm:text-base font-medium min-h-[44px] touch-manipulation transition-all duration-200"
-                  >
-                    View All Businesses
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* Results Count */}
-            {searchTerm && (
-              <div className="mb-3 xs:mb-4 sm:mb-4 text-xs xs:text-sm sm:text-sm text-gray-600 px-1">
-                Found {filteredBusinesses.length} {filteredBusinesses.length === 1 ? 'business' : 'businesses'}
-                {businesses.length !== filteredBusinesses.length && ` (filtered from ${businesses.length} total)`}
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-4 lg:gap-6">
-              {filteredBusinesses.map((business) => {
-                // Format phone number for WhatsApp
-                const whatsappNumber = business.phone?.replace(/[^0-9]/g, '') || business.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
-                const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null
 
-                // Format location address (e.g., "Rajouri Garden, Delhi")
-                const locationText = formatLocation(business)
+          {/* RIGHT */}
+          <div className="relative">
+            <div
+              className="
+          grid grid-cols-12 gap-2
+          sm:grid-cols-3 sm:gap-3
+          lg:gap-4
+        "
+            >
+              {[
+                { src: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874", title: "Full Body Massage" },
+                { src: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881", title: "Aromatherapy" },
+                { src: "https://images.unsplash.com/photo-1600334129128-685c5582fd35", title: "Deep Tissue Therapy" },
 
-                const businessKey = business.id || business._id || business.businessLink
-                const cardImages = collectBusinessImages(business)
-                const totalImages = cardImages.length
-                const currentImageIndex = cardImageIndexes[businessKey] ?? 0
-                const currentImage = cardImages[currentImageIndex] || null
-                const desktopImage = cardImages[0] || null
+                { src: "https://images.unsplash.com/photo-1519824145371-296894a0daa9", title: "Spa & Relaxation" },
+                { src: "https://images.unsplash.com/photo-1540555700478-4be289fbecef", title: "Facial & Skin Care" },
+
+                { src: "https://images.unsplash.com/photo-1556228720-195a672e8a03", title: "Couple Spa" },
+                { src: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9", title: "Wellness Therapy" },
+                { src: "https://images.unsplash.com/photo-1522336572468-97b06e8ef143", title: "Luxury Spa" },
+              ].map((item, index) => {
+                const mobileColSpan =
+                  index < 3 ? "col-span-4" : index < 5 ? "col-span-6" : "col-span-4";
 
                 return (
                   <div
-                    key={business.id || business._id}
-                    className="bg-white border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200 active:scale-[0.98]"
-                    style={{ minHeight: 'auto', maxHeight: 'none' }}
-                    onClick={() => navigate(`/${business.businessLink}`)}
+                    key={index}
+                    className={`
+                relative overflow-hidden rounded-lg border bg-white
+                ${mobileColSpan}
+                sm:col-span-1
+              `}
+                    style={{ height: 120 }}
                   >
-                    {/* Mobile Layout */}
-                    <div className="flex sm:hidden">
-                      {/* Business Image */}
-                      <div className="relative w-[35%] xs:w-[40%] aspect-square overflow-hidden flex-shrink-0">
-                        {currentImage ? (
-                          <img
-                            src={currentImage}
-                            alt={business.name}
-                            className="w-full h-full object-cover object-center"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                              e.target.nextSibling.style.display = 'flex'
-                            }}
-                          />
-                        ) : null}
-                        <div
-                          className={`w-full h-full flex items-center justify-center ${currentImage ? 'hidden' : 'flex'}`}
-                        >
-                          {business.images?.logo ? (
+                    <img
+                      src={item.src}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
+
+                    {/* Mobile text always visible */}
+                    <div className="absolute inset-0 bg-black/30 flex items-end p-2">
+                      <span
+                        className="text-white text-xs font-semibold truncate whitespace-nowrap w-full"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Badge */}
+            <div className="absolute -bottom-6 left-4 bg-white px-3 py-2 rounded-md shadow flex items-center gap-2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.6 5.7 21l2.3-7.3-6-4.3h7.6L12 2z" />
+              </svg>
+              <span className="text-xs font-medium">
+                Trusted Professionals
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <div className="min-h-screen bg-gray-100 overflow-x-hidden">
+        {/* Businesses Section */}
+        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-6 xs:py-8 sm:py-12">
+          <div className="mb-5 xs:mb-6 sm:mb-8">
+            {/* View Mode Toggle */}
+            <div className="mb-4 sm:mb-6">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+
+                {/* Toggle Buttons */}
+                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+                  <button
+                    onClick={() => handleViewModeChange('all')}
+                    className={`px-3 py-2 text-xs sm:text-sm font-medium rounded-md min-h-[40px]
+          ${viewMode === 'all'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                  >
+                    All
+                  </button>
+
+                  <button
+                    onClick={() => handleViewModeChange('nearby')}
+                    disabled={locationLoading}
+                    className={`px-3 py-2 text-xs sm:text-sm font-medium rounded-md flex items-center gap-1.5 min-h-[40px]
+          ${viewMode === 'nearby'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                      }
+          ${locationLoading ? 'opacity-50 cursor-not-allowed' : ''}
+        `}
+                  >
+                    <FaMapMarkerAlt className="text-xs sm:text-sm" />
+                    Nearby
+                    {locationLoading && <FaSpinner className="animate-spin text-xs" />}
+                  </button>
+                </div>
+
+                {/* Distance */}
+                {viewMode === 'nearby' && userLocation && (
+                  <select
+                    value={maxDistance}
+                    onChange={(e) => setMaxDistance(Number(e.target.value))}
+                    className="px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg min-h-[40px]"
+                  >
+                    {DISTANCE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Refresh */}
+                {viewMode === 'nearby' && userLocation && (
+                  <button
+                    onClick={handleRefreshLocation}
+                    className="p-2 border border-gray-300 rounded-lg min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-gray-50"
+                    aria-label="Refresh location"
+                  >
+                    <FaSync className="text-gray-600 text-sm" />
+                  </button>
+                )}
+
+                {/* FILTER ICON */}
+                <button
+                  onClick={() => setIsFilterOpen((prev) => !prev)}
+                  className="ml-auto p-2 border border-gray-300 rounded-lg min-h-[40px] min-w-[40px]
+                 flex items-center justify-center hover:bg-gray-50 transition"
+                  aria-label="Filter"
+                >
+                  <FaFilter className="text-gray-700 text-sm" />
+                </button>
+              </div>
+
+              {/* EXPANDABLE FILTER */}
+              {isFilterOpen && (
+                <div className="mt-3 bg-white border border-gray-200 rounded-lg p-3 max-w-xs">
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md
+                   focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[40px]"
+                  >
+                    <option value="">All Types</option>
+                    {BUSINESS_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {(loading || nearbyLoading) ? (
+            <div className="flex items-center justify-center py-8 xs:py-10 sm:py-12">
+              <div className="text-center px-4">
+                <FaSpinner className="animate-spin text-primary-600 text-3xl xs:text-3xl sm:text-4xl mx-auto mb-3 xs:mb-3 sm:mb-4" />
+                <p className="text-gray-600 text-sm xs:text-sm sm:text-base">
+                  {viewMode === 'nearby' && locationLoading
+                    ? 'Getting your location...'
+                    : 'Loading businesses...'}
+                </p>
+              </div>
+            </div>
+          ) : filteredBusinesses.length === 0 ? (
+            <div className="text-center py-8 xs:py-10 sm:py-12 bg-white border border-gray-200 rounded-lg px-4 xs:px-6">
+              <FaSearch className="mx-auto text-gray-400 text-3xl xs:text-3xl sm:text-4xl mb-3 xs:mb-3 sm:mb-4" />
+              <p className="text-gray-600 text-base xs:text-base sm:text-lg mb-2 font-semibold">No businesses found</p>
+              <p className="text-gray-500 text-xs xs:text-sm sm:text-sm leading-relaxed max-w-md mx-auto">
+                {searchTerm
+                  ? `No businesses match "${searchTerm}". Try a different search term or clear filters.`
+                  : viewMode === 'nearby'
+                    ? `No businesses found within ${(maxDistance / 1000).toFixed(0)}km. Try increasing the distance or switch to "All Businesses".`
+                    : 'No businesses are currently available for online booking'}
+              </p>
+              {(searchTerm || (viewMode === 'nearby' && businesses.length === 0)) && (
+                <div className="mt-5 xs:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 xs:gap-3 sm:gap-3 max-w-md mx-auto">
+                  {searchTerm && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm('')
+                        setFilterType('')
+                      }}
+                      className="w-full sm:w-auto px-4 xs:px-5 py-2.5 xs:py-3 text-primary-600 hover:text-primary-700 border-primary-200 border rounded-lg hover:bg-primary-50 active:bg-primary-100 text-sm xs:text-sm sm:text-base font-medium min-h-[44px] touch-manipulation transition-all duration-200"
+                    >
+                      Clear Search
+                    </button>
+                  )}
+                  {viewMode === 'nearby' && businesses.length === 0 && (
+                    <button
+                      onClick={() => handleViewModeChange('all')}
+                      className="w-full sm:w-auto px-4 xs:px-5 py-2.5 xs:py-3 bg-primary-600 text-white border-0 rounded-lg hover:bg-primary-700 active:bg-primary-800 text-sm xs:text-sm sm:text-base font-medium min-h-[44px] touch-manipulation transition-all duration-200"
+                    >
+                      View All Businesses
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Results Count */}
+              {searchTerm && (
+                <div className="mb-3 xs:mb-4 sm:mb-4 text-xs xs:text-sm sm:text-sm text-gray-600 px-1">
+                  Found {filteredBusinesses.length} {filteredBusinesses.length === 1 ? 'business' : 'businesses'}
+                  {businesses.length !== filteredBusinesses.length && ` (filtered from ${businesses.length} total)`}
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-4 lg:gap-6">
+                {filteredBusinesses.map((business) => {
+                  // Format phone number for WhatsApp
+                  const whatsappNumber = business.phone?.replace(/[^0-9]/g, '') || business.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
+                  const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null
+
+                  // Format location address (e.g., "Rajouri Garden, Delhi")
+                  const locationText = formatLocation(business)
+
+                  const businessKey = business.id || business._id || business.businessLink
+                  const cardImages = collectBusinessImages(business)
+                  const totalImages = cardImages.length
+                  const currentImageIndex = cardImageIndexes[businessKey] ?? 0
+                  const currentImage = cardImages[currentImageIndex] || null
+                  const desktopImage = cardImages[0] || null
+
+                  return (
+                    <div
+                      key={business.id || business._id}
+                      className="bg-white border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200 active:scale-[0.98]"
+                      style={{ minHeight: 'auto', maxHeight: 'none' }}
+                      onClick={() => navigate(`/${business.businessLink}`)}
+                    >
+                      {/* Mobile Layout */}
+                      <div className="flex sm:hidden">
+                        {/* Business Image */}
+                        <div className="relative w-[35%] xs:w-[40%] aspect-square overflow-hidden flex-shrink-0">
+                          {currentImage ? (
                             <img
-                              src={business.images.logo}
+                              src={currentImage}
                               alt={business.name}
-                              className="max-w-[65%] max-h-[65%] object-cover object-center"
+                              className="w-full h-full object-cover object-center"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                                e.target.nextSibling.style.display = 'flex'
+                              }}
                             />
-                          ) : (
-                            <FaCalendarAlt className="text-primary-400 text-3xl" />
+                          ) : null}
+                          <div
+                            className={`w-full h-full flex items-center justify-center ${currentImage ? 'hidden' : 'flex'}`}
+                          >
+                            {business.images?.logo ? (
+                              <img
+                                src={business.images.logo}
+                                alt={business.name}
+                                className="max-w-[65%] max-h-[65%] object-cover object-center"
+                              />
+                            ) : (
+                              <FaCalendarAlt className="text-primary-400 text-3xl" />
+                            )}
+                          </div>
+
+                          {business.type && (
+                            <div className="absolute top-1.5 left-1.5">
+                              <span className="inline-block px-1.5 py-0.5 bg-primary-600/95 text-white rounded text-[10px] font-semibold capitalize border">
+                                {business.type}
+                              </span>
+                            </div>
+                          )}
+
+                          {viewMode === 'nearby' && business.distanceKm && (
+                            <div className="absolute bottom-1.5 right-1.5">
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/95 text-gray-900 rounded text-[10px] font-semibold   border border-gray-200">
+                                <FaLocationArrow className="text-primary-600 text-[10px]" />
+                                {business.distanceKm} km
+                              </span>
+                            </div>
+                          )}
+
+                          {cardImages.length > 1 && (
+                            <div className="absolute inset-0 flex items-center justify-between px-1.5 xs:px-2 pointer-events-none">
+                              <button
+                                type="button"
+                                className="text-white bg-black/30 hover:bg-black/50 rounded-full p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center touch-manipulation pointer-events-auto transition-all duration-200"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCardImageChange(businessKey, 'prev', cardImages.length)
+                                }}
+                                aria-label="Previous image"
+                              >
+                                <FaChevronLeft className="text-sm xs:text-base drop-shadow-lg" />
+                              </button>
+                              <button
+                                type="button"
+                                className="text-white bg-black/30 hover:bg-black/50 rounded-full p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center touch-manipulation pointer-events-auto transition-all duration-200"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCardImageChange(businessKey, 'next', cardImages.length)
+                                }}
+                                aria-label="Next image"
+                              >
+                                <FaChevronRight className="text-sm xs:text-base drop-shadow-lg" />
+                              </button>
+                            </div>
+                          )}
+                          {totalImages > 1 && (
+                            <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1.5 xs:gap-2 px-2">
+                              {cardImages.map((_, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleCardImageChange(businessKey, idx, cardImages.length)
+                                  }}
+                                  className={`h-2 w-2 xs:h-2.5 xs:w-2.5 rounded-full transition-all duration-200 touch-manipulation min-w-[8px] min-h-[8px] ${idx === currentImageIndex ? 'bg-white shadow-md scale-110' : 'bg-white/50 hover:bg-white/70'}`}
+                                  aria-label={`Go to image ${idx + 1}`}
+                                />
+                              ))}
+                            </div>
                           )}
                         </div>
 
-                        {business.type && (
-                          <div className="absolute top-1.5 left-1.5">
-                            <span className="inline-block px-1.5 py-0.5 bg-primary-600/95 text-white rounded text-[10px] font-semibold capitalize border">
-                              {business.type}
-                            </span>
-                          </div>
-                        )}
+                        {/* Business Info */}
+                        <div className="flex-1 min-w-0 p-2.5 xs:p-3 flex flex-col justify-between">
+                          <div className="space-y-1.5 xs:space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-sm xs:text-sm font-bold text-gray-900 leading-tight line-clamp-2">
+                                  {business.name}
+                                </h3>
+                                {business.ratings?.average > 0 && (
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <FaStar className="text-yellow-500 text-xs" />
+                                    <span className="text-gray-900 font-semibold text-xs">
+                                      {business.ratings.average.toFixed(1)}
+                                    </span>
+                                    {business.ratings.totalReviews > 0 && (
+                                      <span className="text-gray-500 text-[10px]">
+                                        ({business.ratings.totalReviews} reviews)
+                                      </span>
+                                    )}
+                                    {business.ratings.average >= 4.5 && (
+                                      <span className="inline-flex items-center gap-0.5 xs:gap-1 px-1.5 xs:px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] xs:text-[10px] font-semibold rounded-full whitespace-nowrap ml-auto">
+                                        <FaStar className="text-amber-500 text-[9px] xs:text-[10px] flex-shrink-0" />
+                                        <span className="hidden xs:inline">Top Rated</span>
+                                        <span className="xs:hidden">Top</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
 
-                        {viewMode === 'nearby' && business.distanceKm && (
-                          <div className="absolute bottom-1.5 right-1.5">
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/95 text-gray-900 rounded text-[10px] font-semibold   border border-gray-200">
-                              <FaLocationArrow className="text-primary-600 text-[10px]" />
-                              {business.distanceKm} km
-                            </span>
-                          </div>
-                        )}
+                            {locationText && (
+                              <div className="flex items-center gap-1 xs:gap-1.5 text-gray-600 min-w-0">
+                                <FaMapMarkerAlt className="text-primary-500 text-[10px] xs:text-xs flex-shrink-0" />
+                                <span className="text-xs xs:text-xs line-clamp-1 truncate min-w-0 flex-1">
+                                  {locationText}
+                                </span>
+                                {viewMode === 'nearby' && business.distanceKm && (
+                                  <span className="text-[9px] xs:text-[10px] text-gray-400 ml-0.5 flex-shrink-0">• {business.distanceKm} km</span>
+                                )}
+                              </div>
+                            )}
 
-                        {cardImages.length > 1 && (
-                          <div className="absolute inset-0 flex items-center justify-between px-1.5 xs:px-2 pointer-events-none">
-                            <button
-                              type="button"
-                              className="text-white bg-black/30 hover:bg-black/50 rounded-full p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center touch-manipulation pointer-events-auto transition-all duration-200"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleCardImageChange(businessKey, 'prev', cardImages.length)
-                              }}
-                              aria-label="Previous image"
-                            >
-                              <FaChevronLeft className="text-sm xs:text-base drop-shadow-lg" />
-                            </button>
-                            <button
-                              type="button"
-                              className="text-white bg-black/30 hover:bg-black/50 rounded-full p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center touch-manipulation pointer-events-auto transition-all duration-200"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleCardImageChange(businessKey, 'next', cardImages.length)
-                              }}
-                              aria-label="Next image"
-                            >
-                              <FaChevronRight className="text-sm xs:text-base drop-shadow-lg" />
-                            </button>
+                            {business.services?.length > 0 && (
+                              <div className="mt-1.5 xs:mt-2">
+                                <div className="text-[10px] xs:text-[11px] font-semibold text-gray-700 mb-1">
+                                  Popular Services
+                                </div>
+                                <div className="flex flex-wrap gap-1 xs:gap-1.5">
+                                  {business.services.slice(0, 3).map((service, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center px-1.5 xs:px-2 py-0.5 xs:py-1 bg-primary-50 text-primary-700 text-[9px] xs:text-[10px] rounded-full border border-primary-100 line-clamp-1 max-w-full"
+                                    >
+                                      {service.name || service}
+                                    </span>
+                                  ))}
+                                  {business.services.length > 3 && (
+                                    <span className="text-[9px] xs:text-[10px] text-gray-500 self-center">
+                                      +{business.services.length - 3} more
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {totalImages > 1 && (
-                          <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1.5 xs:gap-2 px-2">
-                            {cardImages.map((_, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleCardImageChange(businessKey, idx, cardImages.length)
-                                }}
-                                className={`h-2 w-2 xs:h-2.5 xs:w-2.5 rounded-full transition-all duration-200 touch-manipulation min-w-[8px] min-h-[8px] ${idx === currentImageIndex ? 'bg-white shadow-md scale-110' : 'bg-white/50 hover:bg-white/70'}`}
-                                aria-label={`Go to image ${idx + 1}`}
-                              />
-                            ))}
+
+                          <div className="pt-2 xs:pt-2.5 border-t border-gray-100 mt-auto">
+                            <div className="flex gap-1.5 xs:gap-2">
+                              {getMobileActionButtons(business, whatsappUrl).map((btn, idx) => {
+                                const Icon = btn.icon
+                                const commonProps = {
+                                  className: btn.className,
+                                  onClick: (e) => {
+                                    e.stopPropagation()
+                                    if (btn.onClick) btn.onClick(e)
+                                  },
+                                  ...(btn.title && { title: btn.title })
+                                }
+
+                                return btn.type === 'link' ? (
+                                  <a
+                                    key={idx}
+                                    {...commonProps}
+                                    href={btn.href}
+                                    {...(btn.target && { target: btn.target })}
+                                    {...(btn.rel && { rel: btn.rel })}
+                                  >
+                                    <Icon className={`${btn.iconSize} flex-shrink-0`} />
+                                    <span className="truncate">{btn.label}</span>
+                                  </a>
+                                ) : (
+                                  <button key={idx} {...commonProps}>
+                                    <Icon className={`${btn.iconSize} flex-shrink-0`} />
+                                    <span className="truncate">{btn.label}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
 
-                      {/* Business Info */}
-                      <div className="flex-1 min-w-0 p-2.5 xs:p-3 flex flex-col justify-between">
-                        <div className="space-y-1.5 xs:space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <h3 className="text-sm xs:text-sm font-bold text-gray-900 leading-tight line-clamp-2">
+                      {/* Desktop & Tablet Layout */}
+                      <div className="hidden sm:flex sm:flex-col h-full border">
+                        <div className="relative h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
+                          {desktopImage ? (
+                            <img
+                              src={desktopImage}
+                              alt={business.name}
+                              className="w-full h-full object-cover object-center"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                                e.target.nextSibling.style.display = 'flex'
+                              }}
+                            />
+                          ) : null}
+
+                          <div
+                            className={`w-full h-full flex items-center justify-center ${desktopImage ? 'hidden' : 'flex'}`}
+                          >
+                            {business.images?.logo ? (
+                              <img
+                                src={business.images.logo}
+                                alt={business.name}
+                                className="max-w-[65%] max-h-[65%] object-contain"
+                              />
+                            ) : (
+                              <FaCalendarAlt className="text-primary-400 text-4xl lg:text-6xl" />
+                            )}
+                          </div>
+
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+
+                          {business.type && (
+                            <div className="absolute top-2 left-2">
+                              <span className="inline-block px-2 py-1 bg-primary-600/95 text-white rounded text-xs font-semibold capitalize border">
+                                {business.type}
+                              </span>
+                            </div>
+                          )}
+
+                          {viewMode === 'nearby' && business.distanceKm && (
+                            <div className="absolute bottom-2 right-2">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 text-gray-900 rounded text-xs font-semibold border border-gray-200">
+                                <FaLocationArrow className="text-primary-600 text-xs" />
+                                {business.distanceKm} km
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-2.5 md:p-3 flex-1 flex flex-col">
+                          <div className="mb-1.5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-base md:text-lg font-bold text-gray-900 flex-1">
                                 {business.name}
                               </h3>
                               {business.ratings?.average > 0 && (
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <FaStar className="text-yellow-500 text-xs" />
-                                  <span className="text-gray-900 font-semibold text-xs">
+                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                  <FaStar className="text-yellow-500 text-sm" />
+                                  <span className="text-gray-900 font-bold text-sm">
                                     {business.ratings.average.toFixed(1)}
                                   </span>
                                   {business.ratings.totalReviews > 0 && (
-                                    <span className="text-gray-500 text-[10px]">
-                                      ({business.ratings.totalReviews} reviews)
+                                    <span className="text-gray-500 text-xs ml-0.5">
+                                      ({business.ratings.totalReviews})
                                     </span>
                                   )}
                                   {business.ratings.average >= 4.5 && (
-                                    <span className="inline-flex items-center gap-0.5 xs:gap-1 px-1.5 xs:px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] xs:text-[10px] font-semibold rounded-full whitespace-nowrap ml-auto">
-                                      <FaStar className="text-amber-500 text-[9px] xs:text-[10px] flex-shrink-0" />
-                                      <span className="hidden xs:inline">Top Rated</span>
-                                      <span className="xs:hidden">Top</span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] font-semibold rounded-full whitespace-nowrap ml-auto">
+                                      <FaStar className="text-amber-500 text-xs" />
+                                      Top Rated
                                     </span>
                                   )}
                                 </div>
                               )}
                             </div>
-                          </div>
 
-                          {locationText && (
-                            <div className="flex items-center gap-1 xs:gap-1.5 text-gray-600 min-w-0">
-                              <FaMapMarkerAlt className="text-primary-500 text-[10px] xs:text-xs flex-shrink-0" />
-                              <span className="text-xs xs:text-xs line-clamp-1 truncate min-w-0 flex-1">
-                                {locationText}
-                              </span>
-                              {viewMode === 'nearby' && business.distanceKm && (
-                                <span className="text-[9px] xs:text-[10px] text-gray-400 ml-0.5 flex-shrink-0">• {business.distanceKm} km</span>
-                              )}
-                            </div>
-                          )}
+                            {business.description && (
+                              <p className="text-sm text-gray-600 mb-1 line-clamp-2">
+                                {business.description}
+                              </p>
+                            )}
 
-                          {business.services?.length > 0 && (
-                            <div className="mt-1.5 xs:mt-2">
-                              <div className="text-[10px] xs:text-[11px] font-semibold text-gray-700 mb-1">
-                                Popular Services
-                              </div>
-                              <div className="flex flex-wrap gap-1 xs:gap-1.5">
-                                {business.services.slice(0, 3).map((service, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex items-center px-1.5 xs:px-2 py-0.5 xs:py-1 bg-primary-50 text-primary-700 text-[9px] xs:text-[10px] rounded-full border border-primary-100 line-clamp-1 max-w-full"
-                                  >
-                                    {service.name || service}
-                                  </span>
-                                ))}
-                                {business.services.length > 3 && (
-                                  <span className="text-[9px] xs:text-[10px] text-gray-500 self-center">
-                                    +{business.services.length - 3} more
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="pt-2 xs:pt-2.5 border-t border-gray-100 mt-auto">
-                          <div className="flex gap-1.5 xs:gap-2">
-                            {getMobileActionButtons(business, whatsappUrl).map((btn, idx) => {
-                              const Icon = btn.icon
-                              const commonProps = {
-                                className: btn.className,
-                                onClick: (e) => {
-                                  e.stopPropagation()
-                                  if (btn.onClick) btn.onClick(e)
-                                },
-                                ...(btn.title && { title: btn.title })
-                              }
-
-                              return btn.type === 'link' ? (
-                                <a
-                                  key={idx}
-                                  {...commonProps}
-                                  href={btn.href}
-                                  {...(btn.target && { target: btn.target })}
-                                  {...(btn.rel && { rel: btn.rel })}
-                                >
-                                  <Icon className={`${btn.iconSize} flex-shrink-0`} />
-                                  <span className="truncate">{btn.label}</span>
-                                </a>
-                              ) : (
-                                <button key={idx} {...commonProps}>
-                                  <Icon className={`${btn.iconSize} flex-shrink-0`} />
-                                  <span className="truncate">{btn.label}</span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Desktop & Tablet Layout */}
-                    <div className="hidden sm:flex sm:flex-col h-full border">
-                      <div className="relative h-32 md:h-36 lg:h-40 bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 overflow-hidden">
-                        {desktopImage ? (
-                          <img
-                            src={desktopImage}
-                            alt={business.name}
-                            className="w-full h-full object-cover object-center"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                              e.target.nextSibling.style.display = 'flex'
-                            }}
-                          />
-                        ) : null}
-
-                        <div
-                          className={`w-full h-full flex items-center justify-center ${desktopImage ? 'hidden' : 'flex'}`}
-                        >
-                          {business.images?.logo ? (
-                            <img
-                              src={business.images.logo}
-                              alt={business.name}
-                              className="max-w-[65%] max-h-[65%] object-contain"
-                            />
-                          ) : (
-                            <FaCalendarAlt className="text-primary-400 text-4xl lg:text-6xl" />
-                          )}
-                        </div>
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
-
-                        {business.type && (
-                          <div className="absolute top-2 left-2">
-                            <span className="inline-block px-2 py-1 bg-primary-600/95 text-white rounded text-xs font-semibold capitalize border">
-                              {business.type}
-                            </span>
-                          </div>
-                        )}
-
-                        {viewMode === 'nearby' && business.distanceKm && (
-                          <div className="absolute bottom-2 right-2">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 text-gray-900 rounded text-xs font-semibold border border-gray-200">
-                              <FaLocationArrow className="text-primary-600 text-xs" />
-                              {business.distanceKm} km
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-2.5 md:p-3 flex-1 flex flex-col">
-                        <div className="mb-1.5">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-base md:text-lg font-bold text-gray-900 flex-1">
-                              {business.name}
-                            </h3>
-                            {business.ratings?.average > 0 && (
-                              <div className="flex items-center gap-0.5 flex-shrink-0">
-                                <FaStar className="text-yellow-500 text-sm" />
-                                <span className="text-gray-900 font-bold text-sm">
-                                  {business.ratings.average.toFixed(1)}
-                                </span>
-                                {business.ratings.totalReviews > 0 && (
-                                  <span className="text-gray-500 text-xs ml-0.5">
-                                    ({business.ratings.totalReviews})
-                                  </span>
-                                )}
-                                {business.ratings.average >= 4.5 && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] font-semibold rounded-full whitespace-nowrap ml-auto">
-                                    <FaStar className="text-amber-500 text-xs" />
-                                    Top Rated
+                            {locationText && (
+                              <div className="flex items-center gap-1 text-gray-600 mb-1.5">
+                                <FaMapMarkerAlt className="text-primary-500 text-xs flex-shrink-0" />
+                                <span className="text-sm line-clamp-1">{locationText}</span>
+                                {viewMode === 'nearby' && business.distanceKm && (
+                                  <span className="text-xs text-gray-400 ml-0.5">
+                                    • {business.distanceKm} km
                                   </span>
                                 )}
                               </div>
                             )}
                           </div>
 
-                          {business.description && (
-                            <p className="text-sm text-gray-600 mb-1 line-clamp-2">
-                              {business.description}
-                            </p>
-                          )}
+                          {(() => {
+                            const services = business.services || [];
+                            const features = business.features || [];
+                            const hasServices = services.length > 0;
+                            const hasFeatures = features.length > 0;
 
-                          {locationText && (
-                            <div className="flex items-center gap-1 text-gray-600 mb-1.5">
-                              <FaMapMarkerAlt className="text-primary-500 text-xs flex-shrink-0" />
-                              <span className="text-sm line-clamp-1">{locationText}</span>
-                              {viewMode === 'nearby' && business.distanceKm && (
-                                <span className="text-xs text-gray-400 ml-0.5">
-                                  • {business.distanceKm} km
-                                </span>
-                              )}
+                            if (!hasServices && !hasFeatures) return null;
+
+                            const sections = [
+                              {
+                                title: "Services",
+                                items: services.slice(0, 3),
+                                icon: "•",
+                                iconClass: "text-primary-500",
+                                emptyText: "No services listed",
+                                hasData: hasServices,
+                              },
+                              {
+                                title: "Features",
+                                items: features.slice(0, 3),
+                                icon: FaCheckCircle,
+                                iconClass: "text-green-500",
+                                emptyText: "No features listed",
+                                isComponent: true,
+                                hasData: hasFeatures,
+                              },
+                            ].filter((section) => section.hasData);
+
+                            if (sections.length === 0) return null;
+
+                            return <></>;
+                          })()}
+
+                          <div className="mt-auto space-y-2 xs:space-y-2 pt-2 xs:pt-2.5 border-t border-gray-100">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleBookAppointment(business.businessLink);
+                              }}
+                              className="w-full flex items-center justify-center gap-1.5 xs:gap-2 px-4 xs:px-4 py-2.5 xs:py-2.5 bg-primary-600 text-white font-semibold border-0 rounded-lg text-sm xs:text-sm transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] min-h-[44px] touch-manipulation"
+                            >
+                              <FaCalendarAlt className="text-sm xs:text-sm flex-shrink-0" />
+                              <span>Book Appointment</span>
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-2 xs:gap-2">
+                              {getDesktopActionButtons(business, whatsappUrl).map((btn, idx) => {
+                                const Icon = btn.icon;
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={btn.href}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`${btn.className} min-h-[40px] touch-manipulation active:scale-95 transition-transform duration-150`}
+                                    {...(btn.target && { target: btn.target })}
+                                    {...(btn.rel && { rel: btn.rel })}
+                                  >
+                                    <Icon className={btn.iconSize} />
+                                    <span className="truncate">{btn.label}</span>
+                                  </a>
+                                );
+                              })}
                             </div>
-                          )}
-                        </div>
-
-                        {(() => {
-                          const services = business.services || [];
-                          const features = business.features || [];
-                          const hasServices = services.length > 0;
-                          const hasFeatures = features.length > 0;
-
-                          if (!hasServices && !hasFeatures) return null;
-
-                          const sections = [
-                            {
-                              title: "Services",
-                              items: services.slice(0, 3),
-                              icon: "•",
-                              iconClass: "text-primary-500",
-                              emptyText: "No services listed",
-                              hasData: hasServices,
-                            },
-                            {
-                              title: "Features",
-                              items: features.slice(0, 3),
-                              icon: FaCheckCircle,
-                              iconClass: "text-green-500",
-                              emptyText: "No features listed",
-                              isComponent: true,
-                              hasData: hasFeatures,
-                            },
-                          ].filter((section) => section.hasData);
-
-                          if (sections.length === 0) return null;
-
-                          return <></>;
-                        })()}
-
-                        <div className="mt-auto space-y-2 xs:space-y-2 pt-2 xs:pt-2.5 border-t border-gray-100">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleBookAppointment(business.businessLink);
-                            }}
-                            className="w-full flex items-center justify-center gap-1.5 xs:gap-2 px-4 xs:px-4 py-2.5 xs:py-2.5 bg-primary-600 text-white font-semibold border-0 rounded-lg text-sm xs:text-sm transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] min-h-[44px] touch-manipulation"
-                          >
-                            <FaCalendarAlt className="text-sm xs:text-sm flex-shrink-0" />
-                            <span>Book Appointment</span>
-                          </button>
-
-                          <div className="grid grid-cols-2 gap-2 xs:gap-2">
-                            {getDesktopActionButtons(business, whatsappUrl).map((btn, idx) => {
-                              const Icon = btn.icon;
-                              return (
-                                <a
-                                  key={idx}
-                                  href={btn.href}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={`${btn.className} min-h-[40px] touch-manipulation active:scale-95 transition-transform duration-150`}
-                                  {...(btn.target && { target: btn.target })}
-                                  {...(btn.rel && { rel: btn.rel })}
-                                >
-                                  <Icon className={btn.iconSize} />
-                                  <span className="truncate">{btn.label}</span>
-                                </a>
-                              );
-                            })}
                           </div>
                         </div>
                       </div>
-                    </div>
 
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Features Section */}
+        <div className="bg-white border-t border-gray-200 py-8 xs:py-10 sm:py-10 lg:py-12">
+          <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 xs:gap-6 sm:gap-8 text-center">
+              {FEATURES_DATA.map((feature, idx) => {
+                const Icon = feature.icon
+                return (
+                  <div key={idx} className="px-2 xs:px-3">
+                    <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 xs:mb-4 sm:mb-4">
+                      <Icon className="text-primary-600 text-xl xs:text-2xl sm:text-2xl" />
+                    </div>
+                    <h3 className="text-base xs:text-lg sm:text-xl font-semibold text-gray-900 mb-1.5 xs:mb-2 sm:mb-2 leading-tight">{feature.title}</h3>
+                    <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed px-2">{feature.description}</p>
                   </div>
                 )
               })}
             </div>
-          </>
-        )}
-      </div>
-
-      {/* Features Section */}
-      <div className="bg-white border-t border-gray-200 py-8 xs:py-10 sm:py-10 lg:py-12">
-        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 xs:gap-6 sm:gap-8 text-center">
-            {FEATURES_DATA.map((feature, idx) => {
-              const Icon = feature.icon
-              return (
-                <div key={idx} className="px-2 xs:px-3">
-                  <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 xs:mb-4 sm:mb-4">
-                    <Icon className="text-primary-600 text-xl xs:text-2xl sm:text-2xl" />
-                  </div>
-                  <h3 className="text-base xs:text-lg sm:text-xl font-semibold text-gray-900 mb-1.5 xs:mb-2 sm:mb-2 leading-tight">{feature.title}</h3>
-                  <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed px-2">{feature.description}</p>
-                </div>
-              )
-            })}
           </div>
         </div>
-      </div>
 
-      {/* Location Permission Prompt Modal */}
-      {showLocationPrompt && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 xs:p-4 sm:p-4"
-          onClick={handleDenyLocation}
-        >
+        {/* Location Permission Prompt Modal */}
+        {showLocationPrompt && (
           <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-5 xs:p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 xs:p-4 sm:p-4"
+            onClick={handleDenyLocation}
           >
-            <div className="text-center mb-5 xs:mb-6">
-              <div className="w-14 h-14 xs:w-16 xs:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 xs:mb-4">
-                <FaMapMarkerAlt className="text-primary-600 text-xl xs:text-2xl" />
+            <div
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-5 xs:p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-5 xs:mb-6">
+                <div className="w-14 h-14 xs:w-16 xs:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 xs:mb-4">
+                  <FaMapMarkerAlt className="text-primary-600 text-xl xs:text-2xl" />
+                </div>
+                <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 mb-2 leading-tight">
+                  Enable Location Access
+                </h3>
+                <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed px-2">
+                  Allow us to access your location to show nearby businesses and help you find the best services in your area.
+                </p>
               </div>
-              <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 mb-2 leading-tight">
-                Enable Location Access
-              </h3>
-              <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed px-2">
-                Allow us to access your location to show nearby businesses and help you find the best services in your area.
+
+              <div className="space-y-2.5 xs:space-y-3">
+                <button
+                  onClick={handleAllowLocation}
+                  disabled={locationLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 xs:px-4 py-3 xs:py-3 bg-primary-600 text-white font-semibold rounded-lg transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
+                >
+                  {locationLoading ? (
+                    <>
+                      <FaSpinner className="animate-spin text-base xs:text-base" />
+                      <span className="text-sm xs:text-sm sm:text-base">Getting location...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaMapMarkerAlt className="text-base xs:text-base flex-shrink-0" />
+                      <span className="text-sm xs:text-sm sm:text-base">Allow Location Access</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleDenyLocation}
+                  disabled={locationLoading}
+                  className="w-full px-4 xs:px-4 py-3 xs:py-3 text-gray-700 font-medium border border-gray-300 rounded-lg transition-all duration-200 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
+                >
+                  <span className="text-sm xs:text-sm sm:text-base">Not Now</span>
+                </button>
+              </div>
+
+              <p className="text-xs xs:text-xs text-gray-500 text-center mt-4 xs:mt-4 px-2">
+                You can enable this later from your browser settings
               </p>
             </div>
-
-            <div className="space-y-2.5 xs:space-y-3">
-              <button
-                onClick={handleAllowLocation}
-                disabled={locationLoading}
-                className="w-full flex items-center justify-center gap-2 px-4 xs:px-4 py-3 xs:py-3 bg-primary-600 text-white font-semibold rounded-lg transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
-              >
-                {locationLoading ? (
-                  <>
-                    <FaSpinner className="animate-spin text-base xs:text-base" />
-                    <span className="text-sm xs:text-sm sm:text-base">Getting location...</span>
-                  </>
-                ) : (
-                  <>
-                    <FaMapMarkerAlt className="text-base xs:text-base flex-shrink-0" />
-                    <span className="text-sm xs:text-sm sm:text-base">Allow Location Access</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={handleDenyLocation}
-                disabled={locationLoading}
-                className="w-full px-4 xs:px-4 py-3 xs:py-3 text-gray-700 font-medium border border-gray-300 rounded-lg transition-all duration-200 hover:bg-gray-50 active:bg-gray-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
-              >
-                <span className="text-sm xs:text-sm sm:text-base">Not Now</span>
-              </button>
-            </div>
-
-            <p className="text-xs xs:text-xs text-gray-500 text-center mt-4 xs:mt-4 px-2">
-              You can enable this later from your browser settings
-            </p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }
 
