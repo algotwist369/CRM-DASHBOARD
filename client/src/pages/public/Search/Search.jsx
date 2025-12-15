@@ -2,11 +2,26 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import publicService from '../../../services/public/publicService';
 import { Button } from '../../../components/common'; // Assuming common components
-import { FiMapPin, FiSearch, FiPhone, FiX, FiAlertCircle, FiFilter } from 'react-icons/fi';
-import { FaWhatsapp, FaStar } from 'react-icons/fa';
+import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter } from 'react-icons/fi';
+import { FaWhatsapp, FaStar, FaPhoneAlt } from 'react-icons/fa';
+
+const WiggleStyles = React.memo(() => (
+    <style>
+        {`
+            @keyframes wiggle {
+                0%, 20% { transform: rotate(0deg) scale(1); }
+                5%, 15% { transform: rotate(15deg) scale(1.4); color: #fb2424ff; }
+                10% { transform: rotate(-15deg) scale(1.4); color: #fb2424ff; }
+                100% { transform: rotate(0deg) scale(1); }
+            }
+        `}
+    </style>
+));
+
+const wiggleAnimation = { animation: 'wiggle 2s linear infinite' };
 
 // Image Slider Component
-const ImageSlider = ({ images, name, distanceText }) => {
+const ImageSlider = React.memo(({ images, name, distanceText }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const timeoutRef = useRef(null);
 
@@ -32,8 +47,6 @@ const ImageSlider = ({ images, name, distanceText }) => {
             };
         }
     }, [currentIndex, hasMultiple, images.length]);
-
-    // Handle manual navigation if needed (optional, keeping it simple/auto for now as per "auto slider")
 
     return (
         <div className="w-28 h-28 md:w-56 md:h-auto md:min-h-[12rem] bg-gray-100 overflow-hidden flex-shrink-0 relative group">
@@ -72,40 +85,25 @@ const ImageSlider = ({ images, name, distanceText }) => {
             )}
         </div>
     );
-};
+});
 
 const SearchBusinessCard = React.memo(({ business }) => {
     const navigate = useNavigate();
 
     // Collect all valid images: Main image + Gallery
-    const allImages = [business.image, ...(business.gallery || [])].filter(Boolean);
+    const allImages = React.useMemo(() =>
+        [business.image, ...(business.gallery || [])].filter(Boolean),
+        [business.image, business.gallery]
+    );
+
     const displayImages = allImages.length > 0 ? allImages : ["/placeholder-business.jpg"];
 
-    // Keyframes for the wiggle animation (shake for 20% of time, wait for 80%)
-    const wiggleStyle = {
-        animation: 'wiggle 2s linear infinite'
-    };
-
-    const actions = [
+    const actions = React.useMemo(() => [
         {
             condition: !!business.phone,
             href: `tel:${business.phone}`,
             onClick: (e) => e.stopPropagation(),
-            icon: (
-                <>
-                    <style>
-                        {`
-                            @keyframes wiggle {
-                                0%, 20% { transform: rotate(0deg); }
-                                5%, 15% { transform: rotate(15deg); }
-                                10% { transform: rotate(-15deg); }
-                                100% { transform: rotate(0deg); }
-                            }
-                        `}
-                    </style>
-                    <FiPhone className="w-5 h-5" style={wiggleStyle} />
-                </>
-            ),
+            icon: <FaPhoneAlt className="w-5 h-5" style={wiggleAnimation} />,
             text: <><span className="md:hidden">Call</span><span className="hidden md:inline">Call Now</span></>,
             title: "Call Now",
             className: "bg-primary-500 text-white hover:bg-primary-600 shadow-md border-transparent flex-1 justify-center"
@@ -121,7 +119,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
             title: "Chat on WhatsApp",
             className: "bg-green-500 text-white hover:bg-green-600 shadow-md border-transparent flex-1 justify-center"
         }
-    ];
+    ], [business.phone, business.socialMedia?.whatsapp]);
 
     return (
         <div
@@ -137,16 +135,6 @@ const SearchBusinessCard = React.memo(({ business }) => {
         >
             {/* Top Section: Image + Content */}
             <div className="flex flex-row gap-3 p-3">
-                <style>
-                    {`
-                        @keyframes wiggle {
-                            0%, 20% { transform: rotate(0deg); }
-                            5%, 15% { transform: rotate(15deg); }
-                            10% { transform: rotate(-15deg); }
-                            100% { transform: rotate(0deg); }
-                        }
-                    `}
-                </style>
                 {/* Image Slider Section */}
                 <ImageSlider
                     images={displayImages}
@@ -159,7 +147,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
                     <div>
                         <div className="flex justify-between items-start">
                             <div className="min-w-0 flex-1 mr-2">
-                                <h3 className="text-sm md:w-full w-[195px] md:text-lg font-bold text-gray-900 mb-1 truncate">{business.name}</h3>
+                                <h3 className="text-sm md:w-full w-[160px] md:text-lg font-bold text-gray-900 mb-1 truncate">{business.name}</h3>
                                 <p className="hidden md:block text-sm text-primary-600 mb-1.5 font-medium truncate">{business.address}</p>
                                 <p className="md:hidden text-xs text-primary-600 mb-1.5 font-medium truncate">{business.branch || business.address}</p>
                             </div>
@@ -170,6 +158,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
                                 </div>
                                 <span className="text-[8px] md:text-[10px] text-gray-500 mt-0.5 text-right">{business.ratings?.totalReviews || 0} Ratings</span>
                             </div>
+
                         </div>
 
                         {/* Services */}
@@ -200,7 +189,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
                             ))}
                         </div>
 
-                        <p className="text-xs text-gray-600 line-clamp-2 mb-1.5">
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-1.5 max-w-[220px] md:max-w-full">
                             {business.snippet || business.description}
                         </p>
 
@@ -223,7 +212,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
                                         target={action.target}
                                         rel={action.rel}
                                         onClick={action.onClick}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${action.className}`}
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${action.className}`}
                                         title={action.title}
                                     >
                                         {action.icon}
@@ -255,9 +244,9 @@ const SearchBusinessCard = React.memo(({ business }) => {
                     <a
                         href={`tel:${business.phone}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white font-semibold text-sm hover:bg-primary-600 transition-colors rounded-lg py-1.5 shadow-sm"
+                        className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white font-semibold text-sm hover:bg-primary-600 transition-colors rounded-lg py-2.5 shadow-sm"
                     >
-                        <FiPhone className="w-4 h-4" style={wiggleStyle} />
+                        <FaPhoneAlt className="w-4 h-4" style={wiggleAnimation} />
                         <span>Call</span>
                     </a>
                 )}
@@ -267,7 +256,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors rounded-lg py-1.5 shadow-sm"
+                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors rounded-lg py-2.5 shadow-sm"
                     >
                         <FaWhatsapp className="w-5 h-5" />
                         <span>WA</span>
@@ -452,6 +441,7 @@ const Search = () => {
 
     return (
         <div className="bg-gray-50 min-h-screen">
+            <WiggleStyles />
             {/* Simple White Header - Fixed (Desktop Only) */}
             <div className="hidden md:block bg-white border-b border-gray-200 fixed top-14 left-0 right-0 z-20 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 py-4">
@@ -488,7 +478,7 @@ const Search = () => {
                                 <input
                                     type="text"
                                     className="block w-full pl-10 pr-3 py-2 border border-gray-300  leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="Search by name, category, or tag..."
+                                    placeholder="Search by name, category, service..."
                                     value={localQuery}
                                     onChange={(e) => setLocalQuery(e.target.value)}
                                     onKeyPress={(e) => e.key === 'Enter' && handleSearchSubmit()}
@@ -561,7 +551,7 @@ const Search = () => {
                                     <input
                                         type="text"
                                         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 sm:text-sm"
-                                        placeholder="Search by name, category..."
+                                        placeholder="Search by name, category, service..."
                                         value={localQuery}
                                         onChange={(e) => setLocalQuery(e.target.value)}
                                         onKeyPress={(e) => {
@@ -642,26 +632,26 @@ const Search = () => {
 
                 {/* Results List */}
                 <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4">
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="flex flex-row flex-wrap items-center justify-between mb-3 gap-2">
+                        <div className="flex items-center gap-2">
                             {/* Mobile Filter Toggle */}
                             <button
                                 onClick={() => setIsMobileFiltersOpen(true)}
-                                className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 flex-1 sm:flex-none justify-center"
+                                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs font-medium hover:bg-gray-50 justify-center"
                             >
-                                <FiFilter className="w-4 h-4" />
-                                <span>Filters</span>
+                                <FiFilter className="w-3.5 h-3.5" />
+                                <span className="hidden xs:inline">Filters</span>
                             </button>
-                            <h2 className="text-lg font-medium text-gray-900">
-                                {totalResults} Results Found
+                            <h2 className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                                {totalResults} Results
                             </h2>
                         </div>
-                        <div className="flex items-center gap-2 self-end">
-                            <label className="text-sm text-gray-500">Sort by:</label>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500 hidden sm:block">Sort by:</label>
                             <select
                                 value={currentSort}
                                 onChange={(e) => updateParams({ sort: e.target.value })}
-                                className="text-sm border-gray-300  focus:ring-primary-500 focus:border-primary-500"
+                                className="text-xs py-1.5 pl-2 pr-6 border-gray-300 focus:ring-primary-500 focus:border-primary-500 rounded-md bg-white"
                             >
                                 <option value="recommended">Recommended</option>
                                 <option value="distance">Distance</option>
@@ -673,11 +663,39 @@ const Search = () => {
                     {loading && page === 1 ? (
                         <div className="space-y-4">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className="bg-white border border-gray-200 h-40  p-4 flex gap-4">
-                                    <div className="w-48 bg-gray-100 rounded"></div>
-                                    <div className="flex-1 space-y-2 py-2">
-                                        <div className="h-4 bg-gray-100 w-3/4 rounded"></div>
-                                        <div className="h-4 bg-gray-100 w-1/2 rounded"></div>
+                                <div key={i} className="animate-pulse bg-white border border-gray-200 mb-3 overflow-hidden">
+                                    <div className="flex flex-row gap-3 p-3">
+                                        {/* Image Placeholder */}
+                                        <div className="bg-gray-200 w-28 h-28 md:w-56 md:h-40 flex-shrink-0"></div>
+
+                                        {/* Content Placeholder */}
+                                        <div className="flex-1 flex flex-col justify-between">
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                                    <div className="h-4 bg-gray-200 rounded w-12"></div>
+                                                </div>
+                                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+
+                                                {/* Tags */}
+                                                <div className="flex gap-1 mt-2">
+                                                    <div className="h-5 w-16 bg-gray-200 rounded"></div>
+                                                    <div className="h-5 w-16 bg-gray-200 rounded"></div>
+                                                </div>
+                                            </div>
+
+                                            {/* Desktop Actions */}
+                                            <div className="hidden md:flex gap-2 mt-2">
+                                                <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
+                                                <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Mobile Actions Footer */}
+                                    <div className="md:hidden flex gap-2 px-3 pb-3">
+                                        <div className="flex-1 h-9 bg-gray-200 rounded-lg"></div>
+                                        <div className="flex-1 h-9 bg-gray-200 rounded-lg"></div>
                                     </div>
                                 </div>
                             ))}
