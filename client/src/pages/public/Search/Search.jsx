@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import publicService from '../../../services/public/publicService';
-import { Button } from '../../../components/common'; // Assuming common components
+import { Button } from '../../../components/common';
 import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter } from 'react-icons/fi';
 import { FaWhatsapp, FaStar, FaPhoneAlt } from 'react-icons/fa';
+import { useDebounce } from '../../../hooks/common/useDebounce';
+
+// Static Constants - Outside component to prevent recreation
+const FILTER_CATEGORIES = ['Hotel', 'Spa', 'Salon', 'Gym', 'Restaurant'];
+const RATING_OPTIONS = [4, 3, 2];
+const SORT_OPTIONS = [
+    { value: 'recommended', label: 'Recommended' },
+    { value: 'distance', label: 'Distance' },
+    { value: 'rating', label: 'Rating' }
+];
 
 const WiggleStyles = React.memo(() => (
     <style>
@@ -61,6 +71,7 @@ const ImageSlider = React.memo(({ images, name, distanceText }) => {
                         alt={`${name} - View ${idx + 1}`}
                         className="w-full h-full object-cover flex-shrink-0"
                         loading="lazy"
+                        decoding="async"
                     />
                 ))}
             </div>
@@ -85,6 +96,10 @@ const ImageSlider = React.memo(({ images, name, distanceText }) => {
             )}
         </div>
     );
+}, (prevProps, nextProps) => {
+    // Only re-render if images array reference or distanceText changes
+    return prevProps.images === nextProps.images &&
+        prevProps.distanceText === nextProps.distanceText;
 });
 
 const SearchBusinessCard = React.memo(({ business }) => {
@@ -265,6 +280,10 @@ const SearchBusinessCard = React.memo(({ business }) => {
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    // Only re-render if business ID or distanceText changes
+    return prevProps.business.id === nextProps.business.id &&
+        prevProps.business.distanceText === nextProps.business.distanceText;
 });
 
 const FilterSection = ({ title, children }) => (
@@ -280,6 +299,7 @@ const Search = () => {
 
     // Local UI State
     const [localQuery, setLocalQuery] = useState(searchParams.get('q') || '');
+    const debouncedQuery = useDebounce(localQuery, 300);
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -305,6 +325,9 @@ const Search = () => {
             if (entries[0].isIntersecting && hasMore) {
                 setPage(prevPage => prevPage + 1);
             }
+        }, {
+            rootMargin: '100px', // Start loading 100px before end
+            threshold: 0.1
         });
         if (node) observer.current.observe(node);
     }, [loading, hasMore]);
@@ -590,7 +613,7 @@ const Search = () => {
 
                         <FilterSection title="Categories">
                             <div className="space-y-2">
-                                {['Hotel', 'Spa', 'Salon', 'Gym', 'Restaurant'].map(cat => (
+                                {FILTER_CATEGORIES.map(cat => (
                                     <label key={cat} className="flex items-center gap-3 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -609,7 +632,7 @@ const Search = () => {
 
                         <FilterSection title="Rating">
                             <div className="space-y-2">
-                                {[4, 3, 2].map(rating => (
+                                {RATING_OPTIONS.map(rating => (
                                     <label key={rating} className="flex items-center gap-3 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -653,9 +676,9 @@ const Search = () => {
                                 onChange={(e) => updateParams({ sort: e.target.value })}
                                 className="text-xs py-1.5 pl-2 pr-6 border-gray-300 focus:ring-primary-500 focus:border-primary-500 rounded-md bg-white"
                             >
-                                <option value="recommended">Recommended</option>
-                                <option value="distance">Distance</option>
-                                <option value="rating">Rating</option>
+                                {SORT_OPTIONS.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
