@@ -13,9 +13,12 @@ const reviewSchema = new mongoose.Schema(
         customer: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Customer",
-            required: true,
+            required: function () { return !this.guestName; }, // Required if not a guest
             index: true
         },
+        // Guest Details (for checking out/reviewing without account)
+        guestName: { type: String, trim: true },
+        guestEmail: { type: String, trim: true, lowercase: true },
         appointment: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Appointment"
@@ -28,7 +31,7 @@ const reviewSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Staff"
         },
-        
+
         // Rating
         rating: {
             type: Number,
@@ -37,7 +40,7 @@ const reviewSchema = new mongoose.Schema(
             max: 5,
             index: true
         },
-        
+
         // Review Content
         title: {
             type: String,
@@ -47,7 +50,7 @@ const reviewSchema = new mongoose.Schema(
             type: String,
             required: true
         },
-        
+
         // Detailed Ratings
         ratings: {
             service: { type: Number, min: 1, max: 5 },
@@ -56,10 +59,10 @@ const reviewSchema = new mongoose.Schema(
             ambience: { type: Number, min: 1, max: 5 },
             valueForMoney: { type: Number, min: 1, max: 5 }
         },
-        
+
         // Media
         images: [{ type: String }],
-        
+
         // Status
         status: {
             type: String,
@@ -67,7 +70,7 @@ const reviewSchema = new mongoose.Schema(
             default: "pending",
             index: true
         },
-        
+
         // Publishing
         isPublished: {
             type: Boolean,
@@ -82,7 +85,7 @@ const reviewSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
-        
+
         // Business Response
         response: {
             text: { type: String },
@@ -96,7 +99,7 @@ const reviewSchema = new mongoose.Schema(
             },
             respondedAt: { type: Date }
         },
-        
+
         // Helpfulness
         helpfulCount: {
             type: Number,
@@ -106,7 +109,7 @@ const reviewSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-        
+
         // Moderation
         flaggedReason: {
             type: String
@@ -125,14 +128,14 @@ const reviewSchema = new mongoose.Schema(
         moderationNotes: {
             type: String
         },
-        
+
         // Source
         source: {
             type: String,
             enum: ["website", "mobile_app", "email", "sms", "google", "facebook", "other"],
             default: "website"
         },
-        
+
         // Sentiment Analysis (can be added by AI)
         sentiment: {
             type: String,
@@ -143,14 +146,14 @@ const reviewSchema = new mongoose.Schema(
             min: -1,
             max: 1
         },
-        
+
         // Customer Details (snapshot at review time)
         customerSnapshot: {
             name: { type: String },
             email: { type: String },
             totalVisits: { type: Number }
         },
-        
+
         // Metadata
         isEdited: {
             type: Boolean,
@@ -159,7 +162,7 @@ const reviewSchema = new mongoose.Schema(
         editedAt: {
             type: Date
         },
-        
+
         // Display Order
         displayOrder: {
             type: Number,
@@ -185,25 +188,25 @@ reviewSchema.index({ staff: 1 });
 reviewSchema.index({ customer: 1, appointment: 1 }, { unique: true, sparse: true });
 
 // Virtual for helpful percentage
-reviewSchema.virtual('helpfulPercentage').get(function() {
+reviewSchema.virtual('helpfulPercentage').get(function () {
     const total = this.helpfulCount + this.notHelpfulCount;
     if (total === 0) return 0;
     return Math.round((this.helpfulCount / total) * 100);
 });
 
 // Virtual for average detailed rating
-reviewSchema.virtual('averageDetailedRating').get(function() {
+reviewSchema.virtual('averageDetailedRating').get(function () {
     if (!this.ratings) return this.rating;
-    
+
     const ratings = Object.values(this.ratings).filter(r => r > 0);
     if (ratings.length === 0) return this.rating;
-    
+
     const sum = ratings.reduce((acc, r) => acc + r, 0);
     return sum / ratings.length;
 });
 
 // Virtual for review age in days
-reviewSchema.virtual('reviewAgeInDays').get(function() {
+reviewSchema.virtual('reviewAgeInDays').get(function () {
     const now = new Date();
     const created = new Date(this.createdAt);
     const diffTime = Math.abs(now - created);
@@ -211,7 +214,7 @@ reviewSchema.virtual('reviewAgeInDays').get(function() {
 });
 
 // Pre-save middleware to calculate sentiment
-reviewSchema.pre('save', function(next) {
+reviewSchema.pre('save', function (next) {
     // Simple sentiment analysis based on rating
     if (this.rating >= 4) {
         this.sentiment = 'positive';
@@ -223,19 +226,19 @@ reviewSchema.pre('save', function(next) {
         this.sentiment = 'negative';
         this.sentimentScore = -0.7;
     }
-    
+
     next();
 });
 
 // Method to approve review
-reviewSchema.methods.approve = async function() {
+reviewSchema.methods.approve = async function () {
     this.status = 'approved';
     this.isPublished = true;
     await this.save();
 };
 
 // Method to reject review
-reviewSchema.methods.reject = async function(reason, moderatedBy, moderatedByModel) {
+reviewSchema.methods.reject = async function (reason, moderatedBy, moderatedByModel) {
     this.status = 'rejected';
     this.isPublished = false;
     this.moderationNotes = reason;
@@ -246,14 +249,14 @@ reviewSchema.methods.reject = async function(reason, moderatedBy, moderatedByMod
 };
 
 // Method to flag review
-reviewSchema.methods.flag = async function(reason) {
+reviewSchema.methods.flag = async function (reason) {
     this.status = 'flagged';
     this.flaggedReason = reason;
     await this.save();
 };
 
 // Method to add response
-reviewSchema.methods.addResponse = async function(text, respondedBy, respondedByModel) {
+reviewSchema.methods.addResponse = async function (text, respondedBy, respondedByModel) {
     this.response = {
         text,
         respondedBy,
@@ -264,19 +267,19 @@ reviewSchema.methods.addResponse = async function(text, respondedBy, respondedBy
 };
 
 // Method to mark as helpful
-reviewSchema.methods.markHelpful = async function() {
+reviewSchema.methods.markHelpful = async function () {
     this.helpfulCount += 1;
     await this.save();
 };
 
 // Method to mark as not helpful
-reviewSchema.methods.markNotHelpful = async function() {
+reviewSchema.methods.markNotHelpful = async function () {
     this.notHelpfulCount += 1;
     await this.save();
 };
 
 // Static method to get business average rating
-reviewSchema.statics.getBusinessAverageRating = async function(businessId) {
+reviewSchema.statics.getBusinessAverageRating = async function (businessId) {
     const result = await this.aggregate([
         {
             $match: {
@@ -308,7 +311,7 @@ reviewSchema.statics.getBusinessAverageRating = async function(businessId) {
             }
         }
     ]);
-    
+
     return result[0] || {
         averageRating: 0,
         totalReviews: 0,
@@ -321,29 +324,29 @@ reviewSchema.statics.getBusinessAverageRating = async function(businessId) {
 };
 
 // Static method to get featured reviews
-reviewSchema.statics.getFeaturedReviews = async function(businessId, limit = 5) {
+reviewSchema.statics.getFeaturedReviews = async function (businessId, limit = 5) {
     return await this.find({
         business: businessId,
         isPublished: true,
         isFeatured: true,
         status: 'approved'
     })
-    .populate('customer', 'firstName lastName')
-    .sort({ displayOrder: 1, createdAt: -1 })
-    .limit(limit);
+        .populate('customer', 'firstName lastName')
+        .sort({ displayOrder: 1, createdAt: -1 })
+        .limit(limit);
 };
 
 // Static method to get recent reviews
-reviewSchema.statics.getRecentReviews = async function(businessId, limit = 10) {
+reviewSchema.statics.getRecentReviews = async function (businessId, limit = 10) {
     return await this.find({
         business: businessId,
         isPublished: true,
         status: 'approved'
     })
-    .populate('customer', 'firstName lastName')
-    .populate('service', 'name')
-    .sort({ createdAt: -1 })
-    .limit(limit);
+        .populate('customer', 'firstName lastName')
+        .populate('service', 'name')
+        .sort({ createdAt: -1 })
+        .limit(limit);
 };
 
 module.exports = mongoose.model("Review", reviewSchema);
