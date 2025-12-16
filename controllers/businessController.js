@@ -19,6 +19,7 @@ const DailyBusiness = require("../models/DailyBusiness");
 const { setCache, getCache } = require("../utils/cache");
 const { generateBusinessAnalytics } = require("../utils/businessUtils");
 const indiaLocations = require("../data/indiaLocations");
+const { encryptResponse } = require("../utils/encryptionUtils");
 
 
 // ===========================================
@@ -54,8 +55,8 @@ const getPublicBusinesses = async (req, res, next) => {
         }
 
         const cacheKey = useCursor
-            ? `public:businesses:cursor:${cursor || 'start'}:${limitNumber}:${search || ''}:${type || ''}`
-            : `public:businesses:page:${pageNumber}:${limitNumber}:${search || ''}:${type || ''}`;
+            ? `public:businesses:v2:cursor:${cursor || 'start'}:${limitNumber}:${search || ''}:${type || ''}`
+            : `public:businesses:v2:page:${pageNumber}:${limitNumber}:${search || ''}:${type || ''}`;
 
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
@@ -198,15 +199,7 @@ const getPublicBusinesses = async (req, res, next) => {
         };
 
         // Simple obfuscation/encryption function
-        const encryptResponse = (data) => {
-            const jsonStr = JSON.stringify(data);
-            const key = "secure-reviews-key";
-            let result = "";
-            for (let i = 0; i < jsonStr.length; i++) {
-                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
-            return Buffer.from(result).toString('base64');
-        };
+        // Uses shared utility
 
         const secureResponse = {
             success: true,
@@ -369,8 +362,8 @@ const getBusinessesNearby = async (req, res, next) => {
 
         // ================== Cache Check ==================
         const cacheKey = useCursor
-            ? `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:cursor:${hasCursorDistance ? parsedCursorDistance : 'none'}:${cursorObjectId || 'none'}:${limitNumber}`
-            : `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:page:${pageNumber}:${limitNumber}`;
+            ? `nearby:v2:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:cursor:${hasCursorDistance ? parsedCursorDistance : 'none'}:${cursorObjectId || 'none'}:${limitNumber}`
+            : `nearby:v2:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:page:${pageNumber}:${limitNumber}`;
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({
@@ -931,15 +924,7 @@ const searchBusinesses = async (req, res, next) => {
         });
 
         // Encryption logic
-        const encryptResponse = (data) => {
-            const jsonStr = JSON.stringify(data);
-            const key = "secure-reviews-key";
-            let result = "";
-            for (let i = 0; i < jsonStr.length; i++) {
-                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
-            return Buffer.from(result).toString('base64');
-        };
+        // Uses shared utility
 
         const responseData = {
             page: pageNum,
@@ -1005,15 +990,7 @@ const getIndiaLocations = async (req, res, next) => {
         );
 
         // Encryption logic
-        const encryptResponse = (data) => {
-            const jsonStr = JSON.stringify(data);
-            const key = "secure-reviews-key";
-            let result = "";
-            for (let i = 0; i < jsonStr.length; i++) {
-                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
-            return Buffer.from(result).toString('base64');
-        };
+        // Uses shared utility
 
         const responseData = {
             totalStates: indiaLocations.length,
@@ -1603,15 +1580,7 @@ const getBusinessReviews = async (req, res, next) => {
 
         // Simple obfuscation/encryption function for the response
         // This hides the data in the network tab as requested
-        const encryptResponse = (data) => {
-            const jsonStr = JSON.stringify(data);
-            const key = "secure-reviews-key"; // Simple key
-            let result = "";
-            for (let i = 0; i < jsonStr.length; i++) {
-                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
-            return Buffer.from(result).toString('base64');
-        };
+        // Uses shared utility
 
         res.json({
             success: true,
