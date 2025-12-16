@@ -1,5 +1,6 @@
 import apiClient from '../api/client'
 import { endpoints } from '../../constants/api/endpoints'
+import { decryptPayload } from '../../utils/encryption'
 
 class AppointmentService {
   // Get business information for booking (by businessLink)
@@ -9,17 +10,10 @@ class AppointmentService {
 
       // Decrypt payload if present
       if (response.data?.payload) {
-        try {
-          const key = "secure-reviews-key";
-          const encrypted = atob(response.data.payload);
-          let result = "";
-          for (let i = 0; i < encrypted.length; i++) {
-            result += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-          }
-          const decryptedData = JSON.parse(result);
+        const decryptedData = decryptPayload(response.data.payload);
+        if (decryptedData) {
           return { success: true, data: { ...response.data, data: decryptedData } };
-        } catch (e) {
-          console.error("Failed to decrypt business info:", e);
+        } else {
           return { success: false, error: 'Security verification failed' };
         }
       }
@@ -155,24 +149,16 @@ class AppointmentService {
     try {
       const response = await apiClient.get(endpoints.business.reviews(businessId), { params })
 
-      // Decrypt/Deobfuscate payload if present
+      // Decrypt payload if present
       if (response.data?.payload) {
-        try {
-          const key = "secure-reviews-key";
-          const encrypted = atob(response.data.payload);
-          let result = "";
-          for (let i = 0; i < encrypted.length; i++) {
-            result += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-          }
-          const decryptedData = JSON.parse(result);
-
+        const decryptedData = decryptPayload(response.data.payload);
+        if (decryptedData) {
           return {
             success: true,
             data: decryptedData.reviews || [],
             pagination: decryptedData.pagination || {}
           }
-        } catch (e) {
-          console.error("Failed to decrypt reviews:", e);
+        } else {
           return { success: false, error: 'Security verification failed' };
         }
       }

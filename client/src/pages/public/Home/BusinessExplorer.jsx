@@ -11,16 +11,18 @@ import {
     FaWhatsapp
 } from 'react-icons/fa'
 import { IoMdCall } from 'react-icons/io'
-import apiClient from '../../../services/api/client'
+import publicService from '../../../services/public/publicService'
+import { apiClient } from '../../../services/api'
+import { decryptPayload } from '../../../utils/encryption'
 import BusinessCard from './BusinessCard'
 import LocationPromptModal from './LocationPromptModal'
 import SkeletonHome from './SkeletonHome'
 
 // Constants
 const CACHE_KEYS = {
-    LOCATION: 'business_location_cache',
-    NEARBY_BUSINESSES: 'nearby_businesses_cache',
-    ALL_BUSINESSES: 'all_businesses_cache',
+    LOCATION: 'business_location_cache_v2',
+    NEARBY_BUSINESSES: 'nearby_businesses_cache_v2',
+    ALL_BUSINESSES: 'all_businesses_cache_v2',
     LOCATION_PROMPT_SHOWN: 'location_prompt_shown'
 }
 
@@ -307,15 +309,8 @@ const BusinessExplorer = () => {
                 // Decrypt payload if present
                 if (response.data.payload) {
                     try {
-                        const key = "secure-reviews-key";
-                        const encrypted = atob(response.data.payload);
-                        let result = "";
-                        for (let i = 0; i < encrypted.length; i++) {
-                            result += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-                        }
-                        const decryptedData = JSON.parse(result);
+                        const decryptedData = decryptPayload(response.data.payload) || {};
                         businessList = decryptedData.businesses || [];
-                        // We can also extract pagination from decryptedData.pagination if needed
                     } catch (e) {
                         console.error("Failed to decrypt businesses:", e);
                         toast.error("Security check failed");

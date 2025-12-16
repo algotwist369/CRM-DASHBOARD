@@ -12,6 +12,7 @@ const { emitToUser } = require("../config/socket");
 const Otp = require("../models/OTP");
 const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
 const { sendTemplateSMS, sendTemplateWhatsApp } = require("../utils/sendSMS");
+const { encryptResponse } = require("../utils/encryptionUtils");
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
@@ -305,7 +306,7 @@ const getAppointments = async (req, res, next) => {
 
         // Cache key needs to handle multiple businesses or specific business
         const businessKey = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
-        const cacheKey = `${businessKey}:appointments:${page}:${limit}:${status}:${startDate}:${endDate}:${customerId}:${staffId}:${serviceId}:${search}`;
+        const cacheKey = `${businessKey}:appointments:v2:${page}:${limit}:${status}:${startDate}:${endDate}:${customerId}:${staffId}:${serviceId}:${search}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -963,7 +964,7 @@ const getAppointmentStats = async (req, res, next) => {
         }
 
         const businessKey = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
-        const cacheKey = `${businessKey}:appointment:stats:${startDate}:${endDate}`;
+        const cacheKey = `${businessKey}:appointment:stats:v2:${startDate}:${endDate}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -1068,15 +1069,8 @@ const getBusinessInfoForBooking = async (req, res, next) => {
             .lean();
 
         // Simple obfuscation/encryption function
-        const encryptResponse = (data) => {
-            const jsonStr = JSON.stringify(data);
-            const key = "secure-reviews-key";
-            let result = "";
-            for (let i = 0; i < jsonStr.length; i++) {
-                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
-            return Buffer.from(result).toString('base64');
-        };
+        // Uses shared utility
+
 
         const responseData = {
             ...business,
