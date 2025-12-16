@@ -790,7 +790,7 @@ const BusinessInfo = () => {
               {business.services && business.services.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3">
                     {business.services.map((service, index) => {
                       const serviceKey = typeof service === 'object' && service?._id ? service._id : `service-${index}`
                       return (
@@ -819,7 +819,7 @@ const BusinessInfo = () => {
               {business.features && business.features.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {business.features.map((feature, index) => (
                       <span
                         key={index}
@@ -837,7 +837,7 @@ const BusinessInfo = () => {
               {business.amenities && business.amenities.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {business.amenities.map((amenity, index) => (
                       <span
                         key={index}
@@ -1047,9 +1047,9 @@ const BusinessInfo = () => {
 
               {/* Features Section */}
               {business.features && business.features.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white  border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {business.features.map((feature, index) => (
                       <span
                         key={index}
@@ -1067,7 +1067,7 @@ const BusinessInfo = () => {
               {business.amenities && business.amenities.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {business.amenities.map((amenity, index) => (
                       <span
                         key={index}

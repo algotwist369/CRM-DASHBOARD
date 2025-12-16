@@ -130,7 +130,7 @@ const HeroSection = ({
                             </div>
 
                             {business?.ratings && (
-                                <div className="flex items-center gap-1 bg-black/20 backdrop-blur-sm px-2 py-0.5 text-xs font-semibold drop-shadow-md">
+                                <div className="flex items-center gap-1 bg-black/20 backdrop-blur-sm px-2 py-0.5 text-xs font-semibold drop-shadow-md text-white">
                                     <span className="text-yellow-400">★</span>
                                     {business.ratings.average.toFixed(1)}
                                     <span className="text-white/80 font-normal ml-1">
