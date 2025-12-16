@@ -179,8 +179,7 @@ const getPublicBusinesses = async (req, res, next) => {
             : null;
 
         const response = {
-            success: true,
-            data: formattedBusinesses,
+            businesses: formattedBusinesses,
             pagination: useCursor
                 ? null
                 : {
@@ -198,9 +197,27 @@ const getPublicBusinesses = async (req, res, next) => {
             }
         };
 
-        await setCache(cacheKey, response, 300);
+        // Simple obfuscation/encryption function
+        const encryptResponse = (data) => {
+            const jsonStr = JSON.stringify(data);
+            const key = "secure-reviews-key";
+            let result = "";
+            for (let i = 0; i < jsonStr.length; i++) {
+                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return Buffer.from(result).toString('base64');
+        };
 
-        return res.json(response);
+        const secureResponse = {
+            success: true,
+            message: "fetched successfully",
+            payload: encryptResponse(response)
+        };
+
+        // Cache the secure response
+        await setCache(cacheKey, secureResponse, 300);
+
+        return res.json(secureResponse);
     } catch (err) {
         next(err);
     }
@@ -663,7 +680,6 @@ const searchBusinesses = async (req, res, next) => {
 
         // 1. Validation & Setup
         // lat/lng are optional now to support "All Locations" default view.
-        // const hasLocation = lat && lng;
         let hasLocation = false;
         let latitude, longitude;
 
@@ -687,11 +703,6 @@ const searchBusinesses = async (req, res, next) => {
             isActive: true,
             'settings.appointmentSettings.allowOnlineBooking': true
         };
-
-        // Handle q (Text Search vs Regex)
-        // If Geo Search ($geoNear) is used, we CANNOT use $text in a subsequent stage.
-        // So we must use Regex for 'q' if doing Geo Search.
-        // If Global Search (No Geo), we can use $text as part of the first stage.
 
         if (hasLocation) {
             // Stage 1: GeoNear
@@ -758,13 +769,7 @@ const searchBusinesses = async (req, res, next) => {
 
         } else {
             // Global Search (No Location)
-            // We can use $text here, but it MUST be in the first stage combined with basic filters.
-
-            // To support searching by Services in Global Search, we must Lookup first,
-            // which means we cannot rely solely on $match as the very first stage if we want to filter by service name.
-            // However, $geoNear must be first. In this branch, we don't use $geoNear.
-
-            // Standard approach: Match base criteria -> Lookup -> Match Query
+            // Match base criteria -> Lookup -> Match Query
             pipeline.push({ $match: baseMatch });
 
             pipeline.push({
@@ -801,9 +806,6 @@ const searchBusinesses = async (req, res, next) => {
                 }
             }
 
-            // Subsequent Match Stage for other filters (Category, Rating)
-            // Note: $text results are not sorted by score unless we project metadata.
-
             const secondaryMatch = {};
             if (category) {
                 secondaryMatch.type = { $regex: category, $options: 'i' };
@@ -835,7 +837,6 @@ const searchBusinesses = async (req, res, next) => {
                 socialMedia: 1,
                 businessLink: 1,
                 distance: { $ifNull: ["$distance", null] },
-                // Create a snippet
                 snippet: {
                     $concat: [
                         { $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] },
@@ -852,10 +853,6 @@ const searchBusinesses = async (req, res, next) => {
             // Default sort for non-geo, non-text search: Newest first
             pipeline.push({ $sort: { createdAt: -1 } });
         }
-        // If geo search, default sort is by distance (handled by $geoNear)
-        // If text search, default is relevance (unless sorting overridden)
-        // If sorting by relevance (text score), we would need to project { score: { $meta: "textScore" } } earlier.
-        // For now, supporting requested sort params.
 
         // Stage 5: Pagination Facet
         pipeline.push({
@@ -933,18 +930,36 @@ const searchBusinesses = async (req, res, next) => {
             };
         });
 
-        return res.json({
-            success: true,
+        // Encryption logic
+        const encryptResponse = (data) => {
+            const jsonStr = JSON.stringify(data);
+            const key = "secure-reviews-key";
+            let result = "";
+            for (let i = 0; i < jsonStr.length; i++) {
+                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return Buffer.from(result).toString('base64');
+        };
+
+        const responseData = {
             page: pageNum,
             limit: limitNum,
             totalResults: totalResults,
             results: formattedResults
+        };
+
+        return res.json({
+            success: true,
+            message: "Fetched successfully",
+            payload: encryptResponse(responseData)
         });
 
     } catch (err) {
         next(err);
     }
 };
+
+
 
 
 const getIndiaLocations = async (req, res, next) => {
@@ -989,15 +1004,29 @@ const getIndiaLocations = async (req, res, next) => {
             }))
         );
 
+        // Encryption logic
+        const encryptResponse = (data) => {
+            const jsonStr = JSON.stringify(data);
+            const key = "secure-reviews-key";
+            let result = "";
+            for (let i = 0; i < jsonStr.length; i++) {
+                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return Buffer.from(result).toString('base64');
+        };
+
+        const responseData = {
+            totalStates: indiaLocations.length,
+            matchedStates: states.length,
+            totalCities: flattenedLocations.length,
+            states,
+            locations: flattenedLocations
+        };
+
         return res.json({
             success: true,
-            data: {
-                totalStates: indiaLocations.length,
-                matchedStates: states.length,
-                totalCities: flattenedLocations.length,
-                states,
-                locations: flattenedLocations
-            }
+            message: "Fetched successfully",
+            payload: encryptResponse(responseData)
         });
     } catch (error) {
         next(error);
@@ -1533,27 +1562,61 @@ const addBusinessReview = async (req, res, next) => {
 const getBusinessReviews = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { page = 1, limit = 20 } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20; // Default limit 20
+        const skip = (page - 1) * limit;
 
+        // Fetch reviews with pagination
         const reviews = await Review.find({
             business: id,
             isPublished: true
         })
-            .select('guestName guestEmail rating review createdAt')
+            .select('guestName guestEmail rating review createdAt helpfulCount notHelpfulCount') // Added helpful counts
             .sort({ createdAt: -1 })
-            .skip((page - 1) * limit)
-            .limit(Number(limit));
+            .skip(skip)
+            .limit(limit)
+            .lean();
 
         const total = await Review.countDocuments({ business: id, isPublished: true });
 
-        res.json({
-            success: true,
-            data: reviews,
+        // Secure response by masking email
+        const securedData = {
+            reviews: reviews.map(review => ({
+                _id: review._id,
+                guestName: review.guestName,
+                // guestEmail removed for security
+                rating: review.rating,
+                review: review.review,
+                createdAt: review.createdAt,
+                helpfulPercentage: (review.helpfulCount + review.notHelpfulCount) > 0
+                    ? Math.round((review.helpfulCount / (review.helpfulCount + review.notHelpfulCount)) * 100)
+                    : 0
+            })),
             pagination: {
                 total,
-                page: Number(page),
-                pages: Math.ceil(total / limit)
+                page,
+                limit,
+                pages: Math.ceil(total / limit),
+                hasMore: (page * limit) < total
             }
+        };
+
+        // Simple obfuscation/encryption function for the response
+        // This hides the data in the network tab as requested
+        const encryptResponse = (data) => {
+            const jsonStr = JSON.stringify(data);
+            const key = "secure-reviews-key"; // Simple key
+            let result = "";
+            for (let i = 0; i < jsonStr.length; i++) {
+                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return Buffer.from(result).toString('base64');
+        };
+
+        res.json({
+            success: true,
+            message: "fetched successfully",
+            payload: encryptResponse(securedData)
         });
 
     } catch (err) {

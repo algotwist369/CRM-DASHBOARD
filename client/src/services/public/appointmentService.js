@@ -6,6 +6,24 @@ class AppointmentService {
   async getBusinessInfo(businessLink) {
     try {
       const response = await apiClient.get(endpoints.appointments.businessInfo(businessLink))
+
+      // Decrypt payload if present
+      if (response.data?.payload) {
+        try {
+          const key = "secure-reviews-key";
+          const encrypted = atob(response.data.payload);
+          let result = "";
+          for (let i = 0; i < encrypted.length; i++) {
+            result += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+          }
+          const decryptedData = JSON.parse(result);
+          return { success: true, data: { ...response.data, data: decryptedData } };
+        } catch (e) {
+          console.error("Failed to decrypt business info:", e);
+          return { success: false, error: 'Security verification failed' };
+        }
+      }
+
       return { success: true, data: response.data }
     } catch (error) {
       return {
@@ -136,7 +154,35 @@ class AppointmentService {
   async getBusinessReviews(businessId, params = {}) {
     try {
       const response = await apiClient.get(endpoints.business.reviews(businessId), { params })
-      return { success: true, data: response.data }
+
+      // Decrypt/Deobfuscate payload if present
+      if (response.data?.payload) {
+        try {
+          const key = "secure-reviews-key";
+          const encrypted = atob(response.data.payload);
+          let result = "";
+          for (let i = 0; i < encrypted.length; i++) {
+            result += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+          }
+          const decryptedData = JSON.parse(result);
+
+          return {
+            success: true,
+            data: decryptedData.reviews || [],
+            pagination: decryptedData.pagination || {}
+          }
+        } catch (e) {
+          console.error("Failed to decrypt reviews:", e);
+          return { success: false, error: 'Security verification failed' };
+        }
+      }
+
+      // Fallback for non-encrypted (or legacy)
+      return {
+        success: true,
+        data: response.data.data,
+        pagination: response.data.pagination
+      }
     } catch (error) {
       return {
         success: false,

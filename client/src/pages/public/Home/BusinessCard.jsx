@@ -1,10 +1,9 @@
-import React, { memo } from 'react'
+import React, { memo, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     FaCalendarAlt,
     FaMapMarkerAlt,
     FaStar,
-    FaWhatsapp,
     FaLocationArrow,
     FaChevronLeft,
     FaChevronRight
@@ -12,21 +11,37 @@ import {
 import { IoMdCall } from 'react-icons/io'
 
 /**
- * Memoized Business Card Component
- * Optimized to prevent unnecessary re-renders when parent state changes
+ * Memoized BusinessCard Component
+ * Handles its own image gallery state to prevent parent re-renders
  */
 const BusinessCard = memo(({
     business,
     viewMode,
-    currentImageIndex,
-    cardImages,
-    onImageChange,
-    onBookAppointment,
     formatLocation,
     getMobileActionButtons,
-    getDesktopActionButtons
+    getDesktopActionButtons,
+    onBookAppointment
 }) => {
     const navigate = useNavigate()
+    const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+    // Memoize image collection
+    const cardImages = useMemo(() => {
+        if (!business?.images) return []
+        const imageFields = ['banner', 'thumbnail', 'logo']
+        const images = imageFields
+            .map(field => business.images[field])
+            .filter(Boolean)
+
+        const galleryImages = Array.isArray(business.images.gallery)
+            ? business.images.gallery.filter(Boolean)
+            : []
+
+        return [...images, ...galleryImages]
+    }, [business?.images])
+
+    // Reset index if business changes (though component key usually handles this)
+    // We rely on the parent using a proper key (business.id) to remount the component if the business changes completely
 
     // Format phone number for WhatsApp
     const whatsappNumber = business.phone?.replace(/[^0-9]/g, '') || business.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
@@ -35,24 +50,28 @@ const BusinessCard = memo(({
     // Format location address
     const locationText = formatLocation(business)
 
-    const businessKey = business.id || business._id || business.businessLink
     const totalImages = cardImages.length
     const currentImage = cardImages[currentImageIndex] || null
     const desktopImage = cardImages[0] || null
 
-    const handleCardClick = () => {
+    const handleCardClick = useCallback(() => {
         navigate(`/${business.businessLink}`)
-    }
+    }, [navigate, business.businessLink])
 
-    const handleImageNavClick = (e, direction) => {
+    const handleImageNavClick = useCallback((e, direction) => {
         e.stopPropagation()
-        onImageChange(businessKey, direction, cardImages.length)
-    }
+        setCurrentImageIndex(prev => {
+            if (direction === 'prev') {
+                return (prev - 1 + totalImages) % totalImages
+            }
+            return (prev + 1) % totalImages
+        })
+    }, [totalImages])
 
-    const handleDotClick = (e, idx) => {
+    const handleDotClick = useCallback((e, idx) => {
         e.stopPropagation()
-        onImageChange(businessKey, idx, cardImages.length)
-    }
+        setCurrentImageIndex(idx)
+    }, [])
 
     return (
         <div
@@ -384,10 +403,8 @@ const BusinessCard = memo(({
     )
 }, (prevProps, nextProps) => {
     // Custom comparison function for better performance
-    // Only re-render if these specific props change
     return (
         prevProps.business.id === nextProps.business.id &&
-        prevProps.currentImageIndex === nextProps.currentImageIndex &&
         prevProps.viewMode === nextProps.viewMode &&
         prevProps.business.distanceKm === nextProps.business.distanceKm
     )
@@ -396,3 +413,4 @@ const BusinessCard = memo(({
 BusinessCard.displayName = 'BusinessCard'
 
 export default BusinessCard
+

@@ -1,0 +1,36 @@
+/* Smooth animation for dropdown expansion */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.2s ease-out forwards;
+  will-change: opacity, transform;
+}
+
+/* Performance optimization for scrolling */
+.service-list {
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth transitions for interactive elements */
+.smooth-transition {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* GPU acceleration for better performance */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}

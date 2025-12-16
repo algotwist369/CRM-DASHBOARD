@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
-  FaSpinner,
   FaMapMarkerAlt,
   FaPhoneAlt,
   FaEnvelope,
@@ -21,21 +20,40 @@ import {
   FaYoutube,
   FaTelegram,
   FaTag,
-  FaArrowLeft,
   FaChevronLeft,
   FaChevronRight,
   FaTimes
 } from 'react-icons/fa';
+import BackButton from '../../../../components/common/Button/BackButton'
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import { useLeadTracking } from '../../../../hooks/useLeadTracking';
-import Map from '../../../../components/common/Map/Map'
-import BusinessInfoReviews from './BusinessInfoReviews'
+import SkeletonBusinessInfo from './SkeletonBusinessInfo'
+import LazySection from '../../../../components/common/LazySection/LazySection'
+
+// Lazy load heavy components
+const Map = lazy(() => import('../../../../components/common/Map/Map'))
+const BusinessInfoReviews = lazy(() => import('./BusinessInfoReviews'))
 import HeroSection from './HeroSection'
 import MediaRenderer from './MediaRenderer'
 import { trackLeadClick } from '../../../../utils/analytics'
 
 import { useQuery } from '@tanstack/react-query'
+
+const ShakeZoomStyles = React.memo(() => (
+  <style>
+    {`
+      @keyframes shakeZoom {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        10%, 20% { transform: scale(1.2) rotate(-10deg); }
+        30%, 50%, 70%, 90% { transform: scale(1.2) rotate(10deg); }
+        40%, 60%, 80% { transform: scale(1.2) rotate(-10deg); }
+      }
+    `}
+  </style>
+))
+
+const shakeZoomAnimation = { animation: 'shakeZoom 2s ease-in-out infinite' }
 
 const BusinessInfo = () => {
   const navigate = useNavigate()
@@ -43,6 +61,8 @@ const BusinessInfo = () => {
   // currentImageIndex state moved to HeroSection to optimize re-renders
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
+
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
   // Fetch business info using React Query
   const {
@@ -64,7 +84,23 @@ const BusinessInfo = () => {
       return businessData
     },
     enabled: !!businessLink,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData: () => {
+      const stored = sessionStorage.getItem('bookingBusiness')
+      if (!stored) return undefined
+
+      try {
+        const parsed = JSON.parse(stored)
+        // Only use stored data if it matches current business
+        if (parsed.businessLink === businessLink || parsed.slug === businessLink) {
+          return parsed
+        }
+      } catch (e) {
+        console.error("Failed to parse stored business data", e);
+      }
+      return undefined
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
     retry: 1
   })
 
@@ -263,7 +299,7 @@ const BusinessInfo = () => {
   }, [business])
 
   const renderBookingCard = useCallback(() => (
-    <div className="bg-white   border border-gray-200 p-6">
+    <div className="bg-white hidden md:block border border-gray-200 p-6">
       {business.appointmentSettings?.allowOnlineBooking ? (
         <>
           <div className="flex items-center gap-2 text-green-600 mb-4">
@@ -715,14 +751,7 @@ const BusinessInfo = () => {
   }, [isImageModalOpen, allImages, modalImageIndex, business, closeImageModal, prevModalImage, nextModalImage])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
-          <p className="text-gray-600 text-sm">Loading business information...</p>
-        </div>
-      </div>
-    )
+    return <SkeletonBusinessInfo />
   }
 
   if (error || !business) {
@@ -745,23 +774,13 @@ const BusinessInfo = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
 
-      {/* Back Button - Mobile Optimized */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 ">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-gray-50  border border-gray-200 font-medium text-sm active:bg-gray-100"
-          >
-            <FaArrowLeft className="text-sm" />
-            <span>Back</span>
-          </button>
-        </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <BackButton />
         <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 lg:gap-10 lg:items-start">
           <div className="space-y-6">
             {/* Hero Section */}
@@ -780,9 +799,21 @@ const BusinessInfo = () => {
 
               {/* About Section */}
               {business.description && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">About</h2>
-                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{business.description}</p>
+                  <div className={`relative transition-all duration-300 ${!isDescriptionExpanded ? 'max-h-24 overflow-hidden' : ''}`}>
+                    <p className={`text-sm sm:text-base text-gray-700 leading-relaxed ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
+                      {business.description}
+                    </p>
+                  </div>
+                  {business.description.length > 150 && (
+                    <button
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className="mt-2 text-primary-600 font-medium text-sm hover:underline focus:outline-none"
+                    >
+                      {isDescriptionExpanded ? 'Read Less' : 'Read More'}
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -874,7 +905,10 @@ const BusinessInfo = () => {
                       href={`tel:${business.phone}`}
                       className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
-                      <FaPhoneAlt className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
+                      <FaPhoneAlt
+                        className="text-primary-600 flex-shrink-0 text-base sm:text-lg"
+                        style={shakeZoomAnimation}
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Phone</p>
                         <p className="text-sm sm:text-base text-primary-600 font-medium">{business.phone}</p>
@@ -953,19 +987,21 @@ const BusinessInfo = () => {
 
               {/* Location - Mobile */}
               {(mapCoordinates || business.googleMapsUrl) && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
                     <span>Location</span>
                   </h2>
-                  <Map
-                    coordinates={mapCoordinates}
-                    googleMapsUrl={business.googleMapsUrl}
-                    zoom={mapZoom}
-                    height="300px"
-                    className="sm:h-[400px]"
-                    showLink={true}
-                  />
+                  <Suspense fallback={<div className="h-[300px] bg-gray-100 animate-pulse rounded"></div>}>
+                    <Map
+                      coordinates={mapCoordinates}
+                      googleMapsUrl={business.googleMapsUrl}
+                      zoom={mapZoom}
+                      height="300px"
+                      className="sm:h-[400px]"
+                      showLink={true}
+                    />
+                  </Suspense>
                 </div>
               )}
 
@@ -1084,18 +1120,20 @@ const BusinessInfo = () => {
 
               {(mapCoordinates || business.googleMapsUrl) && (
                 <div className="mt-6 sm:mt-8">
-                  <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                  <div className="bg-white border border-gray-200 p-4 sm:p-6">
                     <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                       <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
                       <span>Location</span>
                     </h2>
-                    <Map
-                      coordinates={mapCoordinates}
-                      googleMapsUrl={business.googleMapsUrl}
-                      zoom={mapZoom}
-                      height="400px"
-                      showLink={true}
-                    />
+                    <Suspense fallback={<div className="h-[400px] bg-gray-100 animate-pulse rounded"></div>}>
+                      <Map
+                        coordinates={mapCoordinates}
+                        googleMapsUrl={business.googleMapsUrl}
+                        zoom={mapZoom}
+                        height="400px"
+                        showLink={true}
+                      />
+                    </Suspense>
                   </div>
                 </div>
               )}
@@ -1155,7 +1193,13 @@ const BusinessInfo = () => {
         </div>
 
         {/* Ratings and reviews */}
-        <BusinessInfoReviews business={business} />
+        {/* Ratings and reviews */}
+        {/* Ratings and reviews */}
+        <LazySection fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>
+          <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>
+            <BusinessInfoReviews business={business} />
+          </Suspense>
+        </LazySection>
 
         {/* Quick Actions - Mobile Sticky Bottom */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 p-4">
@@ -1165,7 +1209,7 @@ const BusinessInfo = () => {
                 href={`tel:${business.phone}`}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white  font-medium text-sm active:bg-blue-700"
               >
-                <FaPhoneAlt />
+                <FaPhoneAlt style={shakeZoomAnimation} />
                 <span>Call</span>
               </a>
             )}

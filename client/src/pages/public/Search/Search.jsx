@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import publicService from '../../../services/public/publicService';
 import { Button } from '../../../components/common';
+import SkeletonSearch from './SkeletonSearch';
+import LazySection from '../../../components/common/LazySection/LazySection';
 import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter } from 'react-icons/fi';
 import { FaWhatsapp, FaStar, FaPhoneAlt } from 'react-icons/fa';
-import { useDebounce } from '../../../hooks/common/useDebounce';
 
 // Static Constants - Outside component to prevent recreation
 const FILTER_CATEGORIES = ['Hotel', 'Spa', 'Salon', 'Gym', 'Restaurant'];
@@ -299,49 +301,14 @@ const Search = () => {
 
     // Local UI State
     const [localQuery, setLocalQuery] = useState(searchParams.get('q') || '');
-    const debouncedQuery = useDebounce(localQuery, 300);
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [totalResults, setTotalResults] = useState(0);
+
+    // Removed local results/loading state - handled by Query
     const [isLocationInitialized, setIsLocationInitialized] = useState(false);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
-    // Pagination State
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const observer = useRef();
-
-    // Reset pagination when search params change
-    useEffect(() => {
-        setPage(1);
-        setHasMore(true);
-    }, [searchParams]);
-
-    const lastBusinessElementRef = useCallback(node => {
-        if (loading) return;
-        if (observer.current) observer.current.disconnect();
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) {
-                setPage(prevPage => prevPage + 1);
-            }
-        }, {
-            rootMargin: '100px', // Start loading 100px before end
-            threshold: 0.1
-        });
-        if (node) observer.current.observe(node);
-    }, [loading, hasMore]);
-
-    // Helper to update URL params smoothly
-    const updateParams = useCallback((newParams) => {
-        const current = Object.fromEntries(searchParams.entries());
-        setSearchParams({ ...current, ...newParams });
-    }, [searchParams, setSearchParams]);
-
-    // 1. Initial Geolocation Logic
+    // Initial Geolocation Logic - Simplified to just setup
     useEffect(() => {
         window.scrollTo(0, 0);
-        // If we've already done the check, skip
         if (isLocationInitialized) return;
 
         const hasLat = searchParams.get('lat');
@@ -349,41 +316,25 @@ const Search = () => {
         const hasQuery = searchParams.get('q');
         const hasCategory = searchParams.get('category');
 
-        // Case A: URL already has location -> We are good.
-        if (hasLat && hasLng) {
+        if ((hasLat && hasLng) || hasQuery || hasCategory) {
             setIsLocationInitialized(true);
             return;
         }
 
-        // Case B: URL has other explicit search intents (query/category) but no location.
-        // We assume user wants global/specific search, but we could optionally still try to add 'near me'.
-        // For optimization, if user shared a link "?q=pizza", we probably shouldn't override with their location immediately without asking,
-        // OR we can just default to global search since no location specified.
-        if (hasQuery || hasCategory) {
-            setIsLocationInitialized(true);
-            return;
-        }
-
-        // Case C: Fresh Load (Homepage -> Search). Try to get location.
         if ("geolocation" in navigator) {
-            // Don't set loading=true here to avoid visual flash, just fetch in background or wait.
-            // Actually, showing a skeleton is better than showing "0 results" then "results".
-            setLoading(true);
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    // Success: Update URL. This will trigger the main fetch effect.
-                    updateParams({
+                    const current = Object.fromEntries(searchParams.entries());
+                    setSearchParams({
+                        ...current,
                         lat: position.coords.latitude.toString(),
                         lng: position.coords.longitude.toString()
                     });
                     setIsLocationInitialized(true);
-                    setLoading(false);
                 },
                 (error) => {
                     console.log("Location auto-detection failed/denied:", error);
-                    // Failed: Just mark initialized, so main effect runs with empty location (Global)
                     setIsLocationInitialized(true);
-                    setLoading(false);
                 },
                 { timeout: 8000 }
             );
@@ -391,59 +342,79 @@ const Search = () => {
             setIsLocationInitialized(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLocationInitialized]); // Only run once on mount until initialized
+    }, [isLocationInitialized]);
 
-    // 2. Main Fetch Effect - Driven by URL Params
-    useEffect(() => {
-        if (!isLocationInitialized) return;
+    // Helper now needed again for handlers
+    const updateParams = useCallback((newParams) => {
+        const current = Object.fromEntries(searchParams.entries());
+        setSearchParams({ ...current, ...newParams });
+    }, [searchParams, setSearchParams]);
 
-        let isMounted = true;
+    // Pagination State
+    // 2. React Query for Infinite Search
+    const getSearchParamsObj = () => ({
+        q: searchParams.get('q') || '',
+        lat: searchParams.get('lat') || '',
+        lng: searchParams.get('lng') || '',
+        category: searchParams.get('category') || '',
+        rating: searchParams.get('rating') || 0,
+        sort: searchParams.get('sort') || 'recommended',
+    });
 
-        const fetchResults = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const params = {
-                    q: searchParams.get('q') || '',
-                    lat: searchParams.get('lat') || '',
-                    lng: searchParams.get('lng') || '',
-                    category: searchParams.get('category') || '',
-                    minRating: searchParams.get('rating') || 0,
-                    sort: searchParams.get('sort') || 'recommended',
-                    page: page,
-                    limit: 10
-                };
-
-                const response = await publicService.searchBusinesses(params);
-
-                if (!isMounted) return;
-
-                if (response.success) {
-                    setResults(prev => {
-                        return page === 1 ? response.data.results : [...prev, ...response.data.results];
-                    });
-                    setTotalResults(response.data.totalResults);
-                    setHasMore(response.data.results.length > 0 && response.data.results.length === 10); // Assuming limit is 10
-                } else {
-                    setError(response.error || "Failed to fetch results");
-                    if (page === 1) setResults([]);
-                }
-            } catch (err) {
-                if (!isMounted) return;
-                console.error(err);
-                if (page === 1) {
-                    setError("Something went wrong while fetching results. Please try again.");
-                    setResults([]);
-                }
-            } finally {
-                if (isMounted) setLoading(false);
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        isError,
+        error
+    } = useInfiniteQuery({
+        queryKey: ['searchResults', getSearchParamsObj()],
+        queryFn: async ({ pageParam = 1 }) => {
+            const params = {
+                ...getSearchParamsObj(),
+                minRating: searchParams.get('rating') || 0, // mapping rating -> minRating
+                page: pageParam,
+                limit: 10
+            };
+            const response = await publicService.searchBusinesses(params);
+            if (!response.success) {
+                throw new Error(response.error || "Failed to fetch results");
             }
-        };
+            return response.data; // Expected { results: [], totalResults: X }
+        },
+        getNextPageParam: (lastPage, allPages) => {
+            const currentCount = allPages.flatMap(p => p.results).length;
+            if (currentCount < lastPage.totalResults) {
+                return allPages.length + 1;
+            }
+            return undefined;
+        },
+        enabled: isLocationInitialized,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        keepPreviousData: true
+    });
 
-        fetchResults();
+    // Flatten results from all pages
+    const results = useMemo(() => {
+        return data?.pages.flatMap(page => page.results) || [];
+    }, [data]);
 
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, isLocationInitialized, page]);
+    const totalResults = data?.pages[0]?.totalResults || 0;
+
+    // Infinite Scroll Observer
+    const observer = useRef();
+    const lastBusinessElementRef = useCallback(node => {
+        if (isLoading || isFetchingNextPage) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasNextPage) {
+                fetchNextPage();
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage]);
 
     // Handlers
     const handleSearchSubmit = () => {
@@ -683,53 +654,15 @@ const Search = () => {
                         </div>
                     </div>
 
-                    {loading && page === 1 ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="animate-pulse bg-white border border-gray-200 mb-3 overflow-hidden">
-                                    <div className="flex flex-row gap-3 p-3">
-                                        {/* Image Placeholder */}
-                                        <div className="bg-gray-200 w-28 h-28 md:w-56 md:h-40 flex-shrink-0"></div>
-
-                                        {/* Content Placeholder */}
-                                        <div className="flex-1 flex flex-col justify-between">
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                                                    <div className="h-4 bg-gray-200 rounded w-12"></div>
-                                                </div>
-                                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-
-                                                {/* Tags */}
-                                                <div className="flex gap-1 mt-2">
-                                                    <div className="h-5 w-16 bg-gray-200 rounded"></div>
-                                                    <div className="h-5 w-16 bg-gray-200 rounded"></div>
-                                                </div>
-                                            </div>
-
-                                            {/* Desktop Actions */}
-                                            <div className="hidden md:flex gap-2 mt-2">
-                                                <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
-                                                <div className="h-8 w-24 bg-gray-200 rounded-full"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Mobile Actions Footer */}
-                                    <div className="md:hidden flex gap-2 px-3 pb-3">
-                                        <div className="flex-1 h-9 bg-gray-200 rounded-lg"></div>
-                                        <div className="flex-1 h-9 bg-gray-200 rounded-lg"></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : error && page === 1 ? (
+                    {isLoading ? (
+                        <SkeletonSearch />
+                    ) : isError ? (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-12 text-center">
                             <div className="flex justify-center mb-4">
                                 <FiAlertCircle className="w-12 h-12 text-red-500" />
                             </div>
                             <h3 className="text-lg font-medium text-red-800 mb-2">Oops! Something went wrong</h3>
-                            <p className="text-red-600 mb-6">{error}</p>
+                            <p className="text-red-600 mb-6">{error?.message || "Error fetching data"}</p>
                             <button
                                 onClick={() => window.location.reload()}
                                 className="px-4 py-2 bg-white border border-red-200 text-red-700 rounded-md hover:bg-red-50 font-medium transition-colors"
@@ -740,19 +673,29 @@ const Search = () => {
                     ) : results.length > 0 ? (
                         <div className="space-y-4">
                             {results.map((business, index) => {
+                                // Create a placeholder that matches roughly the card height to minimize layout shift
+                                const placeholder = <div className="h-48 w-full bg-gray-100 rounded-lg animate-pulse" />;
+
                                 if (results.length === index + 1) {
                                     return (
-                                        <div ref={lastBusinessElementRef} key={business.id || index}>
-                                            <SearchBusinessCard business={business} />
+                                        <div ref={lastBusinessElementRef} key={business._id || business.id || index}>
+                                            <LazySection fallback={placeholder}>
+                                                <SearchBusinessCard business={business} />
+                                            </LazySection>
                                         </div>
                                     );
                                 } else {
-                                    return <SearchBusinessCard key={business.id || index} business={business} />;
+                                    return (
+                                        <LazySection key={business._id || business.id || index} fallback={placeholder}>
+                                            <SearchBusinessCard business={business} />
+                                        </LazySection>
+                                    );
                                 }
                             })}
+                            {isFetchingNextPage && <SkeletonSearch />}
                         </div>
                     ) : (
-                        <div className="bg-white border border-gray-200  p-12 text-center">
+                        <div className="bg-white border border-gray-200 p-12 text-center">
                             <p className="text-gray-500 text-lg">No businesses found matching your criteria.</p>
                             <button
                                 onClick={handleClearAll}
