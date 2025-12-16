@@ -38,11 +38,20 @@ const generateAvailableSlots = (business, date, existingAppointments = [], staff
     
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
+
+    // Validate slotDuration to prevent infinite loops (OOM error)
+    // If invalid or too small, default to 30 mins or return empty
+    const safeSlotDuration = (!slotDuration || slotDuration < 5) ? 30 : slotDuration;
+
+    // Validate working hours
+    if (startMinutes >= endMinutes) {
+        return [];
+    }
     
     // Generate slots
-    for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += slotDuration) {
+    for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += safeSlotDuration) {
         const slotStartTime = minutesToTime(currentMinutes);
-        const slotEndTime = minutesToTime(currentMinutes + slotDuration);
+        const slotEndTime = minutesToTime(currentMinutes + safeSlotDuration);
         
         // Check if slot is available
         const isAvailable = !existingAppointments.some(appointment => {
@@ -55,7 +64,7 @@ const generateAvailableSlots = (business, date, existingAppointments = [], staff
             
             // Check for overlap (including buffer time)
             return (currentMinutes < appointmentEnd + bufferTime) && 
-                   (currentMinutes + slotDuration > appointmentStart - bufferTime);
+                   (currentMinutes + safeSlotDuration > appointmentStart - bufferTime);
         });
         
         if (isAvailable) {
