@@ -5,6 +5,8 @@ import {
     FaSpinner,
     FaCheckCircle,
     FaArrowRight,
+    FaArrowLeft,
+    FaExclamationTriangle,
     FaCopy,
     FaCalendarAlt,
     FaClock,
@@ -39,6 +41,7 @@ const BookingConfirmation = () => {
     const [canResend, setCanResend] = useState(false)
     const [lastBookingPayload, setLastBookingPayload] = useState(null)
     const [resendingOTP, setResendingOTP] = useState(false)
+    const [showExitConfirmation, setShowExitConfirmation] = useState(false)
 
     // Online payment discount configuration
     const ONLINE_PAYMENT_DISCOUNT = 10
@@ -52,6 +55,7 @@ const BookingConfirmation = () => {
     useLeadTracking(business?._id, !!business);
 
     useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' })
         loadBookingData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [businessLink])
@@ -67,6 +71,35 @@ const BookingConfirmation = () => {
         }
         return () => clearInterval(timer)
     }, [showOTPModal, otpTimeLeft])
+
+    // --- Mobile/Browser Back Button Interception ---
+    useEffect(() => {
+        // 1. Push a "dummy" state to create a history buffer
+        // This ensures the first "Back" click is trapped
+        window.history.pushState(null, document.title, window.location.href);
+
+        const handlePopState = (event) => {
+            // 2. When user presses Back, browser pops the state we pushed.
+            // We are still on the same pageURL, effectively.
+            // We intercept this action to show the retention modal.
+
+            // Prevent default isn't strictly needed for popstate but good practice mentally
+            // event.preventDefault() 
+
+            setShowExitConfirmation(true)
+
+            // 3. Re-push the state to "reset" the trap in case they dismiss the modal
+            // or if they are just trying to leave again.
+            // This is crucial: if we don't re-push, the next back click would actually leave.
+            window.history.pushState(null, document.title, window.location.href);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, []);
 
     const formatTimer = (seconds) => {
         const mins = Math.floor(seconds / 60)
@@ -383,17 +416,34 @@ const BookingConfirmation = () => {
 
     const handlePrint = () => window.print()
 
+    const handleBack = () => {
+        // Show retention modal instead of navigating immediately
+        setShowExitConfirmation(true)
+    }
+
+    const confirmExit = () => {
+        setShowExitConfirmation(false)
+        // Explicitly navigate away. 
+        // Since we have been pushing states to the history stack, simple back() logic
+        // might get stuck in our loop. Using replace or explicit path is safer.
+        navigate(`/${businessLink}`, { replace: true })
+    }
+
+    const cancelExit = () => {
+        setShowExitConfirmation(false)
+    }
+
     // --- Render Helpers ---
 
     // Reusable UI Component
     const Card = ({ children, className = "" }) => (
-        <div className={`bg-white  border border-gray-100  p-6 ${className}`}>
+        <div className={`bg-white border border-gray-100 p-3 sm:p-6 ${className}`}>
             {children}
         </div>
     );
 
     const SectionHeader = ({ title }) => (
-        <h2 className="text-sm uppercase tracking-wide text-gray-500 font-semibold mb-4">{title}</h2>
+        <h2 className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-semibold mb-2 sm:mb-4">{title}</h2>
     );
 
     // Loading State
@@ -412,46 +462,55 @@ const BookingConfirmation = () => {
     const totalDuration = calculateTotalDuration()
 
     return (
-        <div className="min-h-screen bg-gray-50/50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="min-h-screen bg-gray-50/50 py-1.5 sm:py-12 px-2 sm:px-6 lg:px-8 font-sans pb-20">
             <div className="max-w-6xl mx-auto">
                 {!appointment ? (
                     <>
+
                         {/* Page Header */}
-                        <div className="mb-8 max-w-5xl mx-auto">
-                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Review & Confirm</h1>
-                            <p className="text-gray-500 mt-2 text-lg">Please check your details before finalizing.</p>
+                        <div className="mb-3 sm:mb-8 max-w-5xl mx-auto flex items-start justify-between">
+                            <button
+                                onClick={handleBack}
+                                className="text-gray-500 hover:text-gray-900 transition-colors p-2 -ml-2 rounded-full hover:bg-gray-100"
+                            >
+                                <FaArrowLeft size={20} />
+                            </button>
+                            <div className="text-right flex-1">
+                                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">Finalize Your Booking</h1>
+                                <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-lg">Please check your details before finalizing.</p>
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-5xl mx-auto">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-8 max-w-5xl mx-auto">
 
                             {/* LEFT COLUMN: Details */}
-                            <div className="lg:col-span-7 space-y-6">
+                            <div className="lg:col-span-7 space-y-3 sm:space-y-6">
 
                                 {/* 1. Date & Time */}
                                 <Card>
                                     <SectionHeader title="Appointment Time" />
-                                    <div className="flex flex-col sm:flex-row gap-6">
-                                        <div className="flex items-start gap-4 flex-1">
-                                            <div className="p-3 bg-primary-50  text-primary-600">
-                                                <FaCalendarAlt size={20} />
+                                    <div className="flex flex-row gap-3 sm:gap-6">
+                                        <div className="flex items-center gap-2 sm:gap-4 flex-1">
+                                            <div className="p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-lg">
+                                                <FaCalendarAlt className="text-sm sm:text-xl" />
                                             </div>
                                             <div>
-                                                <p className="text-gray-900 font-semibold text-lg">
+                                                <p className="text-gray-900 font-semibold text-sm sm:text-lg">
                                                     {new Date(bookingData.date).toLocaleDateString('en-US', {
-                                                        weekday: 'long', month: 'short', day: 'numeric'
+                                                        weekday: 'short', month: 'short', day: 'numeric'
                                                     })}
                                                 </p>
-                                                <p className="text-gray-500 text-sm">{new Date(bookingData.date).getFullYear()}</p>
+                                                <p className="text-gray-500 text-[10px] sm:text-sm">{new Date(bookingData.date).getFullYear()}</p>
                                             </div>
                                         </div>
-                                        <div className="w-px bg-gray-100 hidden sm:block"></div>
-                                        <div className="flex items-start gap-4 flex-1">
-                                            <div className="p-3 bg-primary-50  text-primary-600">
-                                                <FaClock size={20} />
+                                        <div className="w-px bg-gray-100"></div>
+                                        <div className="flex items-center gap-2 sm:gap-4 flex-1">
+                                            <div className="p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-lg">
+                                                <FaClock className="text-sm sm:text-xl" />
                                             </div>
                                             <div>
-                                                <p className="text-gray-900 font-semibold text-lg">{formatTime(bookingData.time)}</p>
-                                                <p className="text-gray-500 text-sm">{totalDuration} Minutes</p>
+                                                <p className="text-gray-900 font-semibold text-sm sm:text-lg">{formatTime(bookingData.time)}</p>
+                                                <p className="text-gray-500 text-[10px] sm:text-sm">{totalDuration} Mins</p>
                                             </div>
                                         </div>
                                     </div>
@@ -488,32 +547,41 @@ const BookingConfirmation = () => {
                                 <Card>
                                     <SectionHeader title="Selected Services" />
                                     <div className="divide-y divide-gray-50">
-                                        {bookingData.services.map((service, index) => (
-                                            <div key={index} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                                                <span className="text-gray-900 font-medium">{getServiceName(service)}</span>
-                                                {getServicePrice(service) > 0 && (
-                                                    <span className="text-gray-600">₹{getServicePrice(service).toLocaleString()}</span>
-                                                )}
-                                            </div>
-                                        ))}
+                                        {bookingData.services.map((service, index) => {
+                                            const duration = typeof service === 'object' ? (service.duration || service.time || 60) : 60
+                                            return (
+                                                <div key={index} className="flex items-center justify-between py-2 sm:py-3 first:pt-0 last:pb-0">
+                                                    <div>
+                                                        <span className="text-gray-900 font-medium text-xs sm:text-base block">{getServiceName(service)}</span>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="text-gray-500 text-[10px] sm:text-xs">{duration} min</span>
+                                                            <span className="text-red-500 font-bold text-[10px] sm:text-xs">40% OFF</span>
+                                                        </div>
+                                                    </div>
+                                                    {getServicePrice(service) > 0 && (
+                                                        <span className="text-gray-600 text-xs sm:text-base">₹{getServicePrice(service).toLocaleString()}</span>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 </Card>
 
                                 {/* 4. Customer Info */}
                                 <Card>
                                     <SectionHeader title="Your Details" />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
-                                        <div className="flex items-center gap-3">
-                                            <FaUser className="text-gray-400" />
-                                            <span className="text-gray-900 font-medium">{bookingData.customer.name}</span>
+                                    <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                                        <div className="flex items-center gap-2">
+                                            <FaUser className="text-gray-400 text-xs" />
+                                            <span className="text-gray-900 font-medium text-xs sm:text-base truncate">{bookingData.customer.name}</span>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <FaPhoneAlt className="text-gray-400" />
-                                            <span className="text-gray-900">{bookingData.customer.phone}</span>
+                                        <div className="flex items-center gap-2">
+                                            <FaPhoneAlt className="text-gray-400 text-xs" />
+                                            <span className="text-gray-900 text-xs sm:text-base truncate">{bookingData.customer.phone}</span>
                                         </div>
-                                        <div className="flex items-center gap-3 md:col-span-2">
-                                            <FaEnvelope className="text-gray-400" />
-                                            <span className="text-gray-900">{bookingData.customer.email}</span>
+                                        <div className="flex items-center gap-2 col-span-2">
+                                            <FaEnvelope className="text-gray-400 text-xs" />
+                                            <span className="text-gray-900 text-xs sm:text-base truncate">{bookingData.customer.email}</span>
                                         </div>
                                     </div>
                                 </Card>
@@ -522,27 +590,27 @@ const BookingConfirmation = () => {
                             {/* RIGHT COLUMN: Payment & Actions */}
                             <div className="lg:col-span-5 space-y-6">
                                 <Card className="sticky top-6 border-primary-100 ring-4 ring-gray-50/50">
-                                    <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Summary</h2>
+                                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-6">Payment Summary</h2>
 
                                     {/* Price Breakdown */}
-                                    <div className="space-y-3 mb-6 bg-gray-50  p-4">
-                                        <div className="flex justify-between text-gray-600">
+                                    <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 bg-gray-50 p-3 sm:p-4 rounded-lg">
+                                        <div className="flex justify-between text-gray-600 text-xs sm:text-base">
                                             <span>Subtotal</span>
                                             <span>₹{basePrice.toLocaleString()}</span>
                                         </div>
 
                                         {isOnlinePayment && (
-                                            <div className="flex justify-between text-green-600 font-medium">
+                                            <div className="flex justify-between text-green-600 font-medium text-xs sm:text-base">
                                                 <span className="flex items-center gap-2">
-                                                    Discount <span className="text-[10px] bg-green-100 px-1.5 py-0.5  font-bold uppercase">{ONLINE_PAYMENT_DISCOUNT}% OFF</span>
+                                                    Discount <span className="text-[10px] bg-green-100 px-1.5 py-0.5 font-bold uppercase rounded">{ONLINE_PAYMENT_DISCOUNT}% OFF</span>
                                                 </span>
                                                 <span>-₹{discount.toLocaleString()}</span>
                                             </div>
                                         )}
 
-                                        <div className="pt-3 mt-1 border-t border-gray-200 flex justify-between items-end">
-                                            <span className="text-gray-900 font-semibold">Total to Pay</span>
-                                            <span className="text-2xl font-bold text-gray-900">
+                                        <div className="pt-2 sm:pt-3 mt-1 border-t border-gray-200 flex justify-between items-end">
+                                            <span className="text-gray-900 font-semibold text-sm sm:text-base">Total to Pay</span>
+                                            <span className="text-xl sm:text-2xl font-bold text-gray-900">
                                                 ₹{isOnlinePayment ? finalPrice.toLocaleString() : basePrice.toLocaleString()}
                                             </span>
                                         </div>
@@ -550,8 +618,8 @@ const BookingConfirmation = () => {
 
                                     {/* Payment Methods */}
                                     <div className="mb-6">
-                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-3 tracking-wide">Select Payment Method</label>
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-2 sm:mb-3 tracking-wide">Select Payment Method</label>
+                                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
                                             {[
                                                 { value: 'cash', label: 'Cash', icon: FaMoneyBillWave, isOnline: false, key: 'cash' },
                                                 { value: 'upi', label: 'UPI', icon: FaMobileAlt, isOnline: true, key: 'upi' },
@@ -567,15 +635,15 @@ const BookingConfirmation = () => {
                                                         type="button"
                                                         onClick={() => setPaymentMethod(method.value)}
                                                         className={`
-                              relative flex flex-col items-center justify-center gap-2 p-3  border transition-all duration-200 h-20
-                              ${isSelected
+                                                            relative flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-2 sm:p-3 border transition-all duration-200 h-16 sm:h-20 rounded-md
+                                                            ${isSelected
                                                                 ? 'border-primary-600 bg-primary-50 text-primary-700 ring-1 ring-primary-600'
                                                                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600'
                                                             }
-                            `}
+                                                        `}
                                                     >
-                                                        <Icon className={isSelected ? 'text-primary-600' : 'text-gray-400'} size={20} />
-                                                        <span className="text-xs font-semibold">{method.label}</span>
+                                                        <Icon className={isSelected ? 'text-primary-600' : 'text-gray-400'} size={18} />
+                                                        <span className="text-[10px] sm:text-xs font-semibold">{method.label}</span>
                                                         {method.isOnline && (
                                                             <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                                                         )}
@@ -591,13 +659,13 @@ const BookingConfirmation = () => {
                                             business?.paymentMethods?.card ||
                                             business?.paymentMethods?.netBanking ||
                                             business?.paymentMethods?.wallet) && (
-                                            <div className="bg-blue-50 border border-blue-100  p-3 mb-6 flex gap-3 items-start">
+                                            <div className="bg-blue-50 border border-blue-100 p-2 sm:p-3 mb-4 sm:mb-6 flex gap-2 sm:gap-3 items-start rounded-lg">
                                                 <div className="bg-blue-100 p-1.5 rounded-full text-blue-600 shrink-0 mt-0.5">
-                                                    <FaDollarSign size={12} />
+                                                    <FaDollarSign size={10} className="sm:text-xs" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-blue-900">Save ₹{discount.toLocaleString()}</p>
-                                                    <p className="text-xs text-blue-700 mt-0.5">Pay online now to save {ONLINE_PAYMENT_DISCOUNT}% on your booking.</p>
+                                                    <p className="text-xs sm:text-sm font-bold text-blue-900">Save ₹{discount.toLocaleString()}</p>
+                                                    <p className="text-[10px] sm:text-xs text-blue-700 mt-0.5">Pay online now to save {ONLINE_PAYMENT_DISCOUNT}% on your booking.</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -606,32 +674,42 @@ const BookingConfirmation = () => {
                                     <button
                                         onClick={handleConfirmBooking}
                                         disabled={submitting}
-                                        className="w-full py-4 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed transition-all font-semibold text-lg  hover: flex items-center justify-center gap-3 transform active:scale-[0.99]"
+                                        className="w-full py-3 sm:py-4 bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed transition-all font-semibold text-base sm:text-lg hover:shadow-lg flex items-center justify-center gap-2 sm:gap-3 transform active:scale-[0.99] rounded-lg"
                                     >
                                         {submitting ? (
                                             <><FaSpinner className="animate-spin" /> Processing...</>
                                         ) : (
-                                            <>Confirm Booking <FaArrowRight size={16} /></>
+                                            <>
+                                                <div className="flex items-center gap-2">
+                                                    <span>Complete & Book</span>
+                                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                </div>
+                                            </>
                                         )}
                                     </button>
-                                    <p className="text-center text-xs text-gray-400 mt-4">
-                                        Payment collected at venue or via online link.
-                                    </p>
+                                    <div className="flex items-center justify-center gap-1.5 mt-3 text-gray-400 text-[10px] sm:text-xs">
+                                        <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Secure Booking • Payment collected at venue</span>
+                                    </div>
                                 </Card>
                             </div>
                         </div>
                     </>
                 ) : (
                     /* --- SUCCESS STATE --- */
-                    <div className="max-w-xl mx-auto pt-10">
-                        <div className="bg-white   overflow-hidden border border-gray-100">
+                    <div className="max-w-xl mx-auto pt-4 sm:pt-10">
+                        <div className="bg-white overflow-hidden border border-gray-100 shadow-sm rounded-lg">
                             {/* Success Header */}
-                            <div className="bg-green-50 p-10 text-center border-b border-green-100">
-                                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 ">
-                                    <FaCheckCircle className="text-green-600 text-4xl" />
+                            <div className="bg-green-50 p-6 sm:p-10 text-center border-b border-green-100">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                                    <FaCheckCircle className="text-green-600 text-3xl sm:text-4xl" />
                                 </div>
-                                <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
-                                <p className="text-gray-600">Your appointment is successfully scheduled.</p>
+                                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Booking Confirmed!</h1>
+                                <p className="text-gray-600 text-sm sm:text-base">Your appointment is successfully scheduled.</p>
                             </div>
 
                             {/* Details Body */}
@@ -697,7 +775,7 @@ const BookingConfirmation = () => {
                                         onClick={handleViewAppointment}
                                         className="flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white  hover:bg-primary-700 font-medium transition-colors"
                                     >
-                                        Details <FaArrowRight size={12} />
+                                        <FaArrowRight size={12} /> View Appointment
                                     </button>
                                 </div>
                             </div>
@@ -780,6 +858,46 @@ const BookingConfirmation = () => {
                     </div>
                 )}
             </div>
+
+            {/* Exit Intent Retention Modal */}
+            {showExitConfirmation && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-scaleIn">
+                        <div className="bg-amber-50 p-6 text-center border-b border-amber-100">
+                            <div className="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <FaExclamationTriangle size={32} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Wait! Don't lose your spot!</h3>
+                            <p className="text-gray-600">
+                                You are just one step away from confirming your appointment.
+                            </p>
+                        </div>
+                        <div className="p-6">
+                            <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-6 flex items-start gap-3">
+                                <div className="text-sm text-red-800">
+                                    <p className="font-bold">Last Chance for 40% OFF</p>
+                                    <p>If you leave now, you will lose your <span className="font-bold">40% discount</span> and your preferred specific time slot might be taken by someone else.</p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={cancelExit}
+                                    className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg shadow-lg shadow-primary-600/20 transform transition-all hover:-translate-y-0.5"
+                                >
+                                    Complete Booking
+                                </button>
+                                <button
+                                    onClick={confirmExit}
+                                    className="w-full py-3 text-gray-400 hover:text-gray-600 font-medium text-sm hover:underline"
+                                >
+                                    Leave Anyway
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

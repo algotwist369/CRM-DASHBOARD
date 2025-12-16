@@ -1067,14 +1067,28 @@ const getBusinessInfoForBooking = async (req, res, next) => {
             .sort({ displayOrder: 1, name: 1 })
             .lean();
 
+        // Simple obfuscation/encryption function
+        const encryptResponse = (data) => {
+            const jsonStr = JSON.stringify(data);
+            const key = "secure-reviews-key";
+            let result = "";
+            for (let i = 0; i < jsonStr.length; i++) {
+                result += String.fromCharCode(jsonStr.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return Buffer.from(result).toString('base64');
+        };
+
+        const responseData = {
+            ...business,
+            services: services || [],
+            workingHours: business.settings?.workingHours,
+            appointmentSettings: business.settings?.appointmentSettings
+        };
+
         return res.json({
             success: true,
-            data: {
-                ...business,
-                services: services || [],
-                workingHours: business.settings?.workingHours,
-                appointmentSettings: business.settings?.appointmentSettings
-            }
+            message: "Fetched successfully",
+            payload: encryptResponse(responseData)
         });
     } catch (err) {
         next(err);

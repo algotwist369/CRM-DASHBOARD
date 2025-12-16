@@ -322,6 +322,26 @@ class PublicService {
     try {
       const endpoint = buildEndpoint(API_ENDPOINTS.PUBLIC.SEARCH, searchParams)
       const response = await apiClient.get(endpoint)
+
+      // Decrypt payload if present
+      if (response.data?.payload) {
+        try {
+          const key = "secure-reviews-key";
+          const encrypted = atob(response.data.payload);
+          let result = "";
+          for (let i = 0; i < encrypted.length; i++) {
+            result += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+          }
+          const decryptedData = JSON.parse(result);
+          // Return decrypted data merged with original success status if needed, 
+          // but mostly just the data object.
+          return { success: true, data: { ...decryptedData, success: true } }
+        } catch (e) {
+          console.error("Failed to decrypt search results:", e);
+          return { success: false, error: 'Security verification failed' };
+        }
+      }
+
       return { success: true, data: response.data }
     } catch (error) {
       return {

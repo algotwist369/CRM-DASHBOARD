@@ -1,0 +1,32 @@
+/* Smooth animations and performance optimizations for CustomerInfo */
+
+/* GPU acceleration for better performance */
+.gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Smooth fade-in for error messages */
+.fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Form field focus animation */
+input:focus,
+textarea:focus,
+select:focus {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
