@@ -404,7 +404,7 @@ function App() {
 
                     {/* Legacy Routes for backward compatibility */}
                     <Route path="/login" element={<Navigate to="/auth/login" replace />} />
-                    <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+                    <Route path="/ak_signup" element={<Navigate to="/auth/ak_signup" replace />} />
                   </Routes>
                 </Suspense>
                 <Toaster position="bottom-right" />

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import { FaUserPlus, FaCog, FaCalendarCheck, FaRocket } from 'react-icons/fa'
 import { Link } from 'react-router-dom'
@@ -6,6 +6,9 @@ import { Link } from 'react-router-dom'
 const HowItWorks = () => {
   usePageTitle('How It Works - Booking App')
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  })
   const steps = [
     {
       number: '01',

@@ -426,7 +426,7 @@ const BookingConfirmation = () => {
         // Explicitly navigate away. 
         // Since we have been pushing states to the history stack, simple back() logic
         // might get stuck in our loop. Using replace or explicit path is safer.
-        navigate(`/${businessLink}`, { replace: true })
+        navigate(`/book/${businessLink}/customer`, { replace: true })
     }
 
     const cancelExit = () => {

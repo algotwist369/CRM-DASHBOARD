@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useCallback, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import {
@@ -25,9 +25,7 @@ import {
 } from "react-icons/gi";
 import { MdSpa, MdFaceRetouchingNatural } from "react-icons/md";
 
-// Constants
-
-
+// Constants - moved outside component for better performance
 const FEATURES_DATA = [
   {
     icon: FaCalendarAlt,
@@ -47,11 +45,11 @@ const FEATURES_DATA = [
 ]
 
 const SERVICES_DATA = [
-  { id: 1, title: "Full Body Massage", icon: <MdSpa /> },
-  { id: 2, title: "Aromatherapy", icon: <GiLotus /> },
-  { id: 3, title: "Deep Tissue", icon: <GiMuscleUp /> },
-  { id: 4, title: "Facial Care", icon: <MdFaceRetouchingNatural /> },
-  { id: 5, title: "Couple Spa", icon: <GiHeartInside /> },
+  { id: 1, title: "Full Body Massage", icon: MdSpa },
+  { id: 2, title: "Aromatherapy", icon: GiLotus },
+  { id: 3, title: "Deep Tissue", icon: GiMuscleUp },
+  { id: 4, title: "Facial Care", icon: MdFaceRetouchingNatural },
+  { id: 5, title: "Couple Spa", icon: GiHeartInside },
 ]
 
 const HERO_IMAGES = [
@@ -65,13 +63,37 @@ const HERO_IMAGES = [
   { src: "home/luxary_spa.png", title: "Luxury Spa" },
 ]
 
+// Preload critical hero images (first 3-4 visible images)
+const preloadHeroImages = () => {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    requestIdleCallback(() => {
+      HERO_IMAGES.slice(0, 4).forEach((img) => {
+        const link = document.createElement('link')
+        link.rel = 'preload'
+        link.as = 'image'
+        link.href = img.src
+        document.head.appendChild(link)
+      })
+    })
+  }
+}
 
-
-const Home = () => {
+const Home = memo(() => {
   const navigate = useNavigate()
+  
   useEffect(() => {
     window.scrollTo(0, 0);
+    // Preload critical images after initial render
+    preloadHeroImages();
   }, []);
+
+  const handleSearchClick = useCallback(() => {
+    navigate('/search')
+  }, [navigate])
+
+  const handleHeroImageClick = useCallback((title) => {
+    navigate(`/search?q=${encodeURIComponent(title)}`)
+  }, [navigate])
 
 
   return (
@@ -96,7 +118,7 @@ const Home = () => {
             <div className="w-full max-w-xl">
               <button
                 type='button'
-                onClick={() => navigate('/search')}
+                onClick={handleSearchClick}
                 className="
                           relative w-full
                           flex items-center
@@ -121,19 +143,22 @@ const Home = () => {
 
             {/* Services (desktop only) */}
             <div className="hidden md:block bg-white rounded-xl border divide-y">
-              {SERVICES_DATA.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition"
-                >
-                  <div className="text-xl text-gray-700">
-                    {item.icon}
+              {SERVICES_DATA.map((item) => {
+                const Icon = item.icon
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition"
+                  >
+                    <div className="text-xl text-gray-700">
+                      <Icon />
+                    </div>
+                    <span className="text-gray-800 font-medium">
+                      {item.title}
+                    </span>
                   </div>
-                  <span className="text-gray-800 font-medium">
-                    {item.title}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Stats */}
@@ -168,11 +193,14 @@ const Home = () => {
               {HERO_IMAGES.map((item, index) => {
                 const mobileColSpan =
                   index < 3 ? "col-span-4" : index < 5 ? "col-span-6" : "col-span-4";
+                // First 3 images are above the fold - load eagerly, rest lazy
+                const isAboveFold = index < 3;
+                const imageKey = `hero-${index}-${item.title}`;
 
                 return (
                   <div
-                    key={index}
-                    onClick={() => navigate(`/search?q=${encodeURIComponent(item.title)}`)}
+                    key={imageKey}
+                    onClick={() => handleHeroImageClick(item.title)}
                     className={`
                 relative overflow-hidden rounded-lg border bg-white cursor-pointer hover:shadow-md transition-all duration-200
                 ${mobileColSpan}
@@ -184,8 +212,11 @@ const Home = () => {
                       src={item.src}
                       alt={item.title}
                       className="w-full h-full object-cover"
-                      loading="lazy"
+                      loading={isAboveFold ? "eager" : "lazy"}
                       decoding="async"
+                      fetchPriority={isAboveFold ? "high" : "low"}
+                      width={120}
+                      height={120}
                     />
 
                     {/* Mobile text always visible */}
@@ -251,6 +282,8 @@ const Home = () => {
       </div>
     </>
   )
-}
+})
+
+Home.displayName = 'Home'
 
 export default Home

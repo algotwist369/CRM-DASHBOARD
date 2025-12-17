@@ -382,9 +382,9 @@ const PublicHeader = () => {
               <FaBell className="w-4 h-4 sm:w-5 sm:h-5" />
               {NotificationBadge}
             </button> */}
-              <Button variant="outline" onClick={() => handleNavigate('/auth/login')} className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2">
+              {/* <Button variant="outline" onClick={() => handleNavigate('/auth/login')} className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2">
                 Login
-              </Button>
+              </Button> */}
               <div className="flex items-center gap-2">
                 <Button
                   variant="primary"
@@ -410,14 +410,14 @@ const PublicHeader = () => {
 
             {/* Tablet Actions */}
             <div className="hidden md:flex lg:hidden items-center space-x-2">
-              {/* <button
+              <button
               onClick={() => handleNavigate('/notifications')}
               className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors duration-200 rounded-md hover:bg-gray-50"
               aria-label="Notifications"
             >
               <FaBell className="w-5 h-5" />
               {NotificationBadge}
-            </button> */}
+            </button>
               <div className="flex items-center gap-2">
                 <Button variant="primary" onClick={handleOpenBookDemo} className="text-sm px-3 py-1.5">
                   Book Demo
@@ -492,9 +492,9 @@ const PublicHeader = () => {
                   <Button variant="ghost" className="w-full text-sm sm:text-base py-2.5 sm:py-3" onClick={handleOpenBookDemo}>
                     Book a Demo
                   </Button>
-                  <Button variant="outline" className="w-full text-sm sm:text-base py-2.5 sm:py-3" onClick={() => handleNavigate('/auth/login')}>
+                  {/* <Button variant="outline" className="w-full text-sm sm:text-base py-2.5 sm:py-3" onClick={() => handleNavigate('/auth/login')}>
                     Login
-                  </Button>
+                  </Button> */}
                   <Button variant="primary" className="w-full relative overflow-visible text-sm sm:text-base py-2.5 sm:py-3" onClick={() => handleNavigate('/free-listing')}>
                     Free Listing
                     <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap shadow-xl border-2 border-white z-10 free-badge-animate">

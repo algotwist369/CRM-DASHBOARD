@@ -127,6 +127,22 @@ const EditBusiness = () => {
       },
       currency: "INR",
       timezone: "Asia/Kolkata",
+      // Appointment/Time Slot Settings
+      appointmentSettings: {
+        slotDuration: 30, // minutes
+        bufferTime: 10, // minutes
+        minAdvanceBookingHours: 1, // hours
+        maxAdvanceBookingHours: 480, // 20 days in hours
+        advanceBookingDays: 20, // days
+        allowOnlineBooking: true,
+        requireAdvancePayment: false,
+        advancePaymentPercentage: 0,
+        cancellationPolicy: {
+          allowCancellation: true,
+          minCancellationHours: 24,
+          refundPercentage: 100,
+        },
+      },
     },
 
     // SEO
@@ -193,7 +209,15 @@ const EditBusiness = () => {
             settings: {
               ...prev.settings,
               ...data.settings,
-              workingHours: { ...prev.settings.workingHours, ...(data.settings?.workingHours || {}) }
+              workingHours: { ...prev.settings.workingHours, ...(data.settings?.workingHours || {}) },
+              appointmentSettings: {
+                ...prev.settings.appointmentSettings,
+                ...(data.settings?.appointmentSettings || {}),
+                cancellationPolicy: {
+                  ...prev.settings.appointmentSettings.cancellationPolicy,
+                  ...(data.settings?.appointmentSettings?.cancellationPolicy || {})
+                }
+              }
             },
             seo: { ...prev.seo, ...data.seo },
             subscription: { ...prev.subscription, ...data.subscription },
@@ -1357,6 +1381,285 @@ const EditBusiness = () => {
               </div>
             </div>
 
+            {/* Time Slot Configuration Section */}
+            <div className="border-b pb-4 pt-4">
+              <h4 className="text-lg font-medium text-gray-700 mb-3">
+                ⏱️ Time Slot Configuration
+              </h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Configure how customers can book appointments online
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Slot Duration */}
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">
+                    Slot Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="240"
+                    step="5"
+                    value={formData.settings.appointmentSettings?.slotDuration || 30}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 30;
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          appointmentSettings: {
+                            ...prev.settings.appointmentSettings,
+                            slotDuration: value,
+                          },
+                        },
+                      }));
+                    }}
+                    className="w-full border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Default time for each appointment slot (5-240 mins)
+                  </p>
+                </div>
+
+                {/* Buffer Time */}
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">
+                    Buffer Time (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    step="5"
+                    value={formData.settings.appointmentSettings?.bufferTime || 10}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 0;
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          appointmentSettings: {
+                            ...prev.settings.appointmentSettings,
+                            bufferTime: value,
+                          },
+                        },
+                      }));
+                    }}
+                    className="w-full border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Gap between consecutive appointments (0-120 mins)
+                  </p>
+                </div>
+
+                {/* Min Advance Booking */}
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">
+                    Minimum Advance Booking (hours)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="72"
+                    step="0.5"
+                    value={formData.settings.appointmentSettings?.minAdvanceBookingHours || 1}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          appointmentSettings: {
+                            ...prev.settings.appointmentSettings,
+                            minAdvanceBookingHours: value,
+                          },
+                        },
+                      }));
+                    }}
+                    className="w-full border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    How far ahead customers must book (0-72 hours)
+                  </p>
+                </div>
+
+                {/* Max Advance Booking (in days for UX) */}
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">
+                    Maximum Advance Booking (days)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="90"
+                    value={Math.round((formData.settings.appointmentSettings?.maxAdvanceBookingHours || 480) / 24)}
+                    onChange={(e) => {
+                      const days = parseInt(e.target.value) || 1;
+                      const hours = days * 24;
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          appointmentSettings: {
+                            ...prev.settings.appointmentSettings,
+                            maxAdvanceBookingHours: hours,
+                            advanceBookingDays: days,
+                          },
+                        },
+                      }));
+                    }}
+                    className="w-full border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Maximum days in advance to allow bookings (1-90 days)
+                  </p>
+                </div>
+
+                {/* Online Booking Toggle */}
+                <div className="sm:col-span-2 pt-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.settings.appointmentSettings?.allowOnlineBooking ?? true}
+                      onChange={(e) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...prev.settings,
+                            appointmentSettings: {
+                              ...prev.settings.appointmentSettings,
+                              allowOnlineBooking: e.target.checked,
+                            },
+                          },
+                        }));
+                      }}
+                      className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
+                    />
+                    <div>
+                      <span className="text-gray-700 font-medium">Allow Online Booking</span>
+                      <p className="text-xs text-gray-500">
+                        Enable customers to book appointments through your public booking page
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Cancellation Policy Section */}
+            <div className="border-b pb-4 pt-4">
+              <h4 className="text-lg font-medium text-gray-700 mb-3">
+                ❌ Cancellation Policy
+              </h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Set rules for appointment cancellations and refunds
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Allow Cancellation Toggle */}
+                <div className="sm:col-span-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.settings.appointmentSettings?.cancellationPolicy?.allowCancellation ?? true}
+                      onChange={(e) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...prev.settings,
+                            appointmentSettings: {
+                              ...prev.settings.appointmentSettings,
+                              cancellationPolicy: {
+                                ...prev.settings.appointmentSettings.cancellationPolicy,
+                                allowCancellation: e.target.checked,
+                              },
+                            },
+                          },
+                        }));
+                      }}
+                      className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
+                    />
+                    <div>
+                      <span className="text-gray-700 font-medium">Allow Customers to Cancel Appointments</span>
+                      <p className="text-xs text-gray-500">
+                        Permit customers to cancel their bookings
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Minimum Cancellation Hours */}
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">
+                    Minimum Cancellation Notice (hours)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="168"
+                    value={formData.settings.appointmentSettings?.cancellationPolicy?.minCancellationHours || 24}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 1;
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          appointmentSettings: {
+                            ...prev.settings.appointmentSettings,
+                            cancellationPolicy: {
+                              ...prev.settings.appointmentSettings.cancellationPolicy,
+                              minCancellationHours: value,
+                            },
+                          },
+                        },
+                      }));
+                    }}
+                    className="w-full border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    disabled={!formData.settings.appointmentSettings?.cancellationPolicy?.allowCancellation}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Required notice before appointment (1-168 hours)
+                  </p>
+                </div>
+
+                {/* Refund Percentage */}
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">
+                    Refund Percentage (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="10"
+                    value={formData.settings.appointmentSettings?.cancellationPolicy?.refundPercentage || 100}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 0;
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          appointmentSettings: {
+                            ...prev.settings.appointmentSettings,
+                            cancellationPolicy: {
+                              ...prev.settings.appointmentSettings.cancellationPolicy,
+                              refundPercentage: value,
+                            },
+                          },
+                        },
+                      }));
+                    }}
+                    className="w-full border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                    disabled={!formData.settings.appointmentSettings?.cancellationPolicy?.allowCancellation}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Percentage ref und for cancellations (0-100%)
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="border-b pb-4 pt-4">
               <h4 className="text-lg font-medium text-gray-700 mb-3">Days Off & Holidays</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -1443,48 +1746,48 @@ const EditBusiness = () => {
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t pt-4">
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Currency</label>
-                <select
-                  name="settings.currency"
-                  value={formData.settings.currency}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      settings: {
-                        ...prev.settings,
-                        currency: e.target.value,
-                      },
-                    }));
-                  }}
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="INR">INR - Indian Rupee</option>
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-                <input
-                  type="text"
-                  name="settings.timezone"
-                  value={formData.settings.timezone}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      settings: {
-                        ...prev.settings,
-                        timezone: e.target.value,
-                      },
-                    }));
-                  }}
-                  placeholder="Asia/Kolkata"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t pt-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Currency</label>
+                  <select
+                    name="settings.currency"
+                    value={formData.settings.currency}
+                    onChange={(e) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          currency: e.target.value,
+                        },
+                      }));
+                    }}
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="INR">INR - Indian Rupee</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Timezone</label>
+                  <input
+                    type="text"
+                    name="settings.timezone"
+                    value={formData.settings.timezone}
+                    onChange={(e) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          timezone: e.target.value,
+                        },
+                      }));
+                    }}
+                    placeholder="Asia/Kolkata"
+                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1856,8 +2159,5 @@ const EditBusiness = () => {
   );
 };
 
+
 export default EditBusiness;
-
-
-
-
