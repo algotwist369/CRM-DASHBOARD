@@ -1036,6 +1036,65 @@ const getAppointmentStats = async (req, res, next) => {
 
 // ================== PUBLIC APPOINTMENT ROUTES (No Authentication) ==================
 
+// Get available slots (authenticated or public with businessId)
+const getAvailableSlots = async (req, res, next) => {
+    try {
+        const { date, businessId, staffId, serviceId } = req.query;
+
+        if (!date || !businessId) {
+            return res.status(400).json({
+                success: false,
+                message: "Date and businessId are required"
+            });
+        }
+
+        const business = await Business.findById(businessId).lean();
+
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+
+        const appointmentDate = new Date(date);
+        const startOfDay = new Date(appointmentDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(appointmentDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Get existing appointments
+        const query = {
+            business: business._id,
+            appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+            status: { $nin: ['cancelled', 'no_show'] }
+        };
+
+        if (staffId) query.staff = staffId;
+
+        const existingAppointments = await Appointment.find(query)
+            .select('startTime endTime staff')
+            .lean();
+
+        // Generate slots
+        const { generateAvailableSlots } = require("../utils/appointmentUtils");
+        const slots = generateAvailableSlots(
+            business,
+            appointmentDate,
+            existingAppointments,
+            staffId
+        );
+
+        return res.json({
+            success: true,
+            data: slots
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
 // Get business info for booking (by businessLink)
 const getBusinessInfoForBooking = async (req, res, next) => {
     try {
@@ -1156,38 +1215,38 @@ const getAvailableSlotsForBooking = async (req, res, next) => {
         const settings = business.settings.appointmentSettings;
         const minAdvanceBookingHours = settings.minAdvanceBookingHours || 0;
         const now = new Date();
-        
+
         // Helper function to convert time string to minutes
         const timeToMinutes = (timeStr) => {
             const [hours, minutes] = timeStr.split(':').map(Number);
             return hours * 60 + minutes;
         };
-        
+
         // Helper function to parse time string to 24-hour format
         const parseTimeTo24Hour = (timeStr) => {
             if (!timeStr) return { hours: 0, minutes: 0 };
             let time = timeStr.trim();
             let isPM = false;
-            
+
             if (time.includes('PM') || time.includes('pm')) {
                 isPM = true;
                 time = time.replace(/PM|pm/gi, '').trim();
             } else if (time.includes('AM') || time.includes('am')) {
                 time = time.replace(/AM|am/gi, '').trim();
             }
-            
+
             const parts = time.split(':');
             if (parts.length < 2) return { hours: 0, minutes: 0 };
-            
+
             let hours = parseInt(parts[0], 10) || 0;
             const minutes = parseInt(parts[1], 10) || 0;
-            
+
             if (isPM && hours !== 12) {
                 hours += 12;
             } else if (!isPM && hours === 12) {
                 hours = 0;
             }
-            
+
             return { hours, minutes };
         };
 
@@ -1205,18 +1264,18 @@ const getAvailableSlotsForBooking = async (req, res, next) => {
                 0,
                 0
             );
-            
+
             // Check if slot is in the past
             if (slotDateTime <= now) {
                 return false;
             }
-            
+
             // Check advance booking hours requirement
             const hoursUntilSlot = (slotDateTime - now) / (1000 * 60 * 60);
             if (hoursUntilSlot < minAdvanceBookingHours) {
                 return false;
             }
-            
+
             // Slot is available
             return true;
         });
@@ -1535,21 +1594,21 @@ const executeBooking = async (bookingData, businessLink) => {
                 const serviceIds = parsedNotes.services
                     .map(s => s.serviceId)
                     .filter(Boolean);
-                
+
                 if (serviceIds.length > 0) {
                     const fetchedServices = await Service.find({
                         _id: { $in: serviceIds },
                         business: business._id
                     })
-                    .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
-                    .lean();
-                    
+                        .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                        .lean();
+
                     // Map fetched services with booking data
                     allServices = parsedNotes.services.map(bookingService => {
                         const fetchedService = fetchedServices.find(
                             fs => fs._id.toString() === bookingService.serviceId?.toString()
                         );
-                        
+
                         if (fetchedService) {
                             return {
                                 ...fetchedService,
@@ -1736,20 +1795,20 @@ const verifyBookingOTP = async (req, res, next) => {
                     .populate('staff', 'name role specialization phone email')
                     .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
                     .lean();
-                
+
                 if (!appointment) {
                     console.error('[Email] Appointment not found after repopulation');
                     return res.status(201).json(result);
                 }
-                
+
                 // Get business ID (handle both ObjectId and populated object)
                 const businessId = appointment.business?._id || appointment.business;
-                
+
                 // Repopulate business with admin and managers for email
                 const business = await Business.findById(businessId)
                     .populate('admin', 'email name')
                     .populate('managers', 'email name isActive');
-                
+
                 if (!business) {
                     console.error('[Email] Business not found for email notifications');
                 } else {
@@ -1758,20 +1817,20 @@ const verifyBookingOTP = async (req, res, next) => {
                 }
 
                 // Prepare email data with conditional fields
-                const staffInfo = appointment.staff?.name 
-                    ? `<p><strong>Assigned Staff:</strong> ${appointment.staff.name}</p>` 
+                const staffInfo = appointment.staff?.name
+                    ? `<p><strong>Assigned Staff:</strong> ${appointment.staff.name}</p>`
                     : '';
-                const customerNotesInfo = bookingData.customerNotes 
-                    ? `<p><strong>Customer Notes:</strong> ${bookingData.customerNotes}</p>` 
+                const customerNotesInfo = bookingData.customerNotes
+                    ? `<p><strong>Customer Notes:</strong> ${bookingData.customerNotes}</p>`
                     : '';
 
                 // Get business name (fallback if business not populated)
                 const businessName = business?.name || appointment.business?.name || 'Business';
-                
+
                 // Extract and format services (handle multiple services)
                 let servicesText = '';
                 let servicesArray = [];
-                
+
                 try {
                     // Try to parse services from internalNotes (for multiple services)
                     if (appointment.internalNotes) {
@@ -1783,7 +1842,7 @@ const verifyBookingOTP = async (req, res, next) => {
                 } catch (parseError) {
                     console.error('[Email] Error parsing services from internalNotes:', parseError);
                 }
-                
+
                 // If no services array found, use single service
                 if (servicesArray.length === 0) {
                     if (appointment.service) {
@@ -1813,11 +1872,11 @@ const verifyBookingOTP = async (req, res, next) => {
                         }];
                     }
                 }
-                
+
                 // Format services text for email
                 if (servicesArray.length === 1) {
                     const service = servicesArray[0];
-                    servicesText = service.optionLabel 
+                    servicesText = service.optionLabel
                         ? `${service.serviceName} (${service.optionLabel})`
                         : service.serviceName;
                 } else {
@@ -1827,16 +1886,16 @@ const verifyBookingOTP = async (req, res, next) => {
                         const option = service.optionLabel || service.pricingOptionLabel || '';
                         const duration = service.duration || 0;
                         const price = service.price || 0;
-                        
+
                         let serviceText = `${index + 1}. ${name}`;
                         if (option) serviceText += ` (${option})`;
                         if (duration) serviceText += ` - ${duration} min`;
                         if (price) serviceText += ` - ${price.toFixed(2)}`;
-                        
+
                         return serviceText;
                     }).join('<br>');
                 }
-                
+
                 const notificationData = {
                     customerName: appointment.customer?.firstName || bookingData.customerInfo?.name || 'Customer',
                     businessName: businessName,
@@ -1908,10 +1967,10 @@ const verifyBookingOTP = async (req, res, next) => {
                     .filter(m => m && m.isActive && m.email)
                     .map(m => m.email)
                     .filter(Boolean);
-                
+
                 if (managerEmails.length > 0) {
                     console.log(`[Email] Sending notification emails to ${managerEmails.length} manager(s)...`);
-                    const emailPromises = managerEmails.map(email => 
+                    const emailPromises = managerEmails.map(email =>
                         sendTemplateMail({
                             to: email,
                             template: 'new_booking_manager',
@@ -1945,22 +2004,22 @@ const verifyBookingOTP = async (req, res, next) => {
                             const serviceIds = parsedNotes.services
                                 .map(s => s.serviceId)
                                 .filter(Boolean);
-                            
+
                             if (serviceIds.length > 0) {
                                 const businessId = appointment.business?._id || appointment.business;
                                 const fetchedServices = await Service.find({
                                     _id: { $in: serviceIds },
                                     business: businessId
                                 })
-                                .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
-                                .lean();
-                                
+                                    .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                                    .lean();
+
                                 // Map fetched services with booking data
                                 const allServices = parsedNotes.services.map(bookingService => {
                                     const fetchedService = fetchedServices.find(
                                         fs => fs._id.toString() === bookingService.serviceId?.toString()
                                     );
-                                    
+
                                     if (fetchedService) {
                                         return {
                                             ...fetchedService,
@@ -1981,7 +2040,7 @@ const verifyBookingOTP = async (req, res, next) => {
                                         };
                                     }
                                 });
-                                
+
                                 result.data.appointment.services = allServices;
                             }
                         }
@@ -2021,7 +2080,7 @@ const getAppointmentByConfirmationCode = async (req, res, next) => {
         // Parse services from internalNotes if available (for multiple services)
         let servicesArray = [];
         let serviceData = appointment.service;
-        
+
         try {
             if (appointment.internalNotes) {
                 const parsedNotes = JSON.parse(appointment.internalNotes);
@@ -2030,25 +2089,25 @@ const getAppointmentByConfirmationCode = async (req, res, next) => {
                     const serviceIds = parsedNotes.services
                         .map(s => s.serviceId)
                         .filter(Boolean);
-                    
+
                     if (serviceIds.length > 0) {
                         const Service = require('../models/Service');
                         // Handle business ID (could be ObjectId or populated object)
                         const businessId = appointment.business?._id || appointment.business;
-                        
+
                         const fetchedServices = await Service.find({
                             _id: { $in: serviceIds },
                             business: businessId
                         })
-                        .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
-                        .lean();
-                        
+                            .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                            .lean();
+
                         // Map fetched services with booking data (price, duration from booking)
                         servicesArray = parsedNotes.services.map(bookingService => {
                             const fetchedService = fetchedServices.find(
                                 fs => fs._id.toString() === bookingService.serviceId?.toString()
                             );
-                            
+
                             if (fetchedService) {
                                 return {
                                     ...fetchedService,
@@ -2283,6 +2342,7 @@ module.exports = {
     // Public routes
     getBusinessInfoForBooking,
     getAvailableSlotsForBooking,
+    getAvailableSlots,
     bookAppointmentPublic,
     verifyBookingOTP,
     getAppointmentByConfirmationCode,
