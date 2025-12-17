@@ -218,52 +218,52 @@ const CustomerInfo = () => {
 
   if (loading || !business) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <FaSpinner className="animate-spin mx-auto text-primary-600 text-2xl mb-3" />
+          <p className="text-gray-600 text-sm">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-1.5 sm:py-8 px-1.5 sm:px-6 lg:px-8 pb-14 lg:pb-8 mx-2 md:mx-0">
+    <div className="min-h-screen bg-gray-50 py-4 px-4 pb-16">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4 transition-colors text-sm sm:text-base font-medium"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 text-xs"
           >
-            <FaArrowLeft className="text-sm sm:text-base" />
+            <FaArrowLeft className="text-xs" />
             <span>Back</span>
           </button>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Finalize Your Booking</h1>
-          <p className="text-gray-600 mt-1 sm:mt-2 text-base">Almost done! Enter your details to secure your spot.</p>
+          <h1 className="text-lg font-bold text-gray-900">Finalize Your Booking</h1>
+          <p className="text-gray-600 mt-1 text-xs">Almost done! Enter your details to secure your spot.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white border border-gray-200 p-1.5 sm:p-6 space-y-2 sm:space-y-6">
+            <div className="bg-white border p-3 space-y-4">
 
               {/* Required Fields */}
               <div>
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-6 bg-primary-600 rounded-sm"></span>
+                <h2 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary-600"></span>
                   <span>Contact Details</span>
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-3">
 
                   {/* Name */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs text-gray-700 mb-1">
                       Full Name
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaUser className="text-gray-400 text-lg" />
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                        <FaUser className="text-gray-400 text-xs" />
                       </div>
                       <input
                         type="text"
@@ -271,22 +271,21 @@ const CustomerInfo = () => {
                         value={formData.name}
                         onChange={handleChange}
                         autoComplete="name"
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-base shadow-sm ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                          }`}
+                        className={`w-full pl-8 pr-3 py-2 border rounded focus:outline-none focus:border-primary-500 text-xs ${errors.name ? 'border-red-500 bg-red-50' : ''}`}
                         placeholder="e.g. John Doe"
                       />
                     </div>
-                    {errors.name && <p className="mt-1 text-sm text-red-600 fade-in">{errors.name}</p>}
+                    {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
                   </div>
 
                   {/* Email */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs text-gray-700 mb-1">
                       Email Address
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaEnvelope className="text-gray-400 text-lg" />
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                        <FaEnvelope className="text-gray-400 text-xs" />
                       </div>
                       <input
                         type="email"
@@ -295,22 +294,21 @@ const CustomerInfo = () => {
                         value={formData.email}
                         onChange={handleChange}
                         autoComplete="email"
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-base shadow-sm ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                          }`}
+                        className={`w-full pl-8 pr-3 py-2 border rounded focus:outline-none focus:border-primary-500 text-xs ${errors.email ? 'border-red-500 bg-red-50' : ''}`}
                         placeholder="john@example.com"
                       />
                     </div>
-                    {errors.email && <p className="mt-1 text-sm text-red-600 fade-in">{errors.email}</p>}
+                    {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
                   </div>
 
                   {/* Phone */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs text-gray-700 mb-1">
                       Mobile Number
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaPhoneAlt className="text-gray-400" />
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                        <FaPhoneAlt className="text-gray-400 text-xs" />
                       </div>
                       <input
                         type="tel"
@@ -319,42 +317,41 @@ const CustomerInfo = () => {
                         value={formData.phone}
                         onChange={handleChange}
                         autoComplete="tel"
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-base shadow-sm ${errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                          }`}
+                        className={`w-full pl-8 pr-3 py-2 border rounded focus:outline-none focus:border-primary-500 text-xs ${errors.phone ? 'border-red-500 bg-red-50' : ''}`}
                         placeholder="10-digit number"
                         maxLength={10}
                       />
                     </div>
-                    {errors.phone && <p className="mt-1 text-sm text-red-600 fade-in">{errors.phone}</p>}
+                    {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
                   </div>
                 </div>
               </div>
 
               {/* Optional Fields */}
               <div className="pt-2">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-6 bg-gray-300 rounded-sm"></span>
+                <h2 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-gray-300"></span>
                   <span>Personalize Your Visit</span>
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-3">
 
                   {/* DOB and Gender Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Date of Birth */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <label className="block text-xs text-gray-700 mb-1">
                         Date of Birth (optional)
                       </label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <FaCalendarAlt className="text-gray-400" />
+                        <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                          <FaCalendarAlt className="text-gray-400 text-xs" />
                         </div>
                         <input
                           type="date"
                           name="dateOfBirth"
                           value={formData.dateOfBirth}
                           onChange={handleChange}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all text-base shadow-sm"
+                          className="w-full pl-8 pr-3 py-2 border rounded focus:outline-none focus:border-primary-500 text-xs"
                           max={new Date().toISOString().split('T')[0]}
                         />
                       </div>
@@ -362,12 +359,12 @@ const CustomerInfo = () => {
 
                     {/* Gender */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Gender</label>
+                      <label className="block text-xs text-gray-700 mb-1">Gender</label>
                       <select
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white text-base shadow-sm"
+                        className="w-full px-3 py-2 border rounded focus:outline-none focus:border-primary-500 bg-white text-xs"
                       >
                         <option value="">Select gender</option>
                         <option value="male">Male</option>
@@ -380,26 +377,26 @@ const CustomerInfo = () => {
 
                   {/* Notes */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Anything else we should know?</label>
+                    <label className="block text-xs text-gray-700 mb-1">Anything else we should know?</label>
                     <textarea
                       name="notes"
                       value={formData.notes}
                       onChange={handleChange}
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all text-base shadow-sm"
+                      className="w-full px-3 py-2 border rounded focus:outline-none focus:border-primary-500 text-xs"
                       placeholder="Any additional information..."
                     />
                   </div>
 
                   {/* Special Requests */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Special Preferences</label>
+                    <label className="block text-xs text-gray-700 mb-1">Special Preferences</label>
                     <textarea
                       name="specialRequests"
                       value={formData.specialRequests}
                       onChange={handleChange}
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all text-base shadow-sm"
+                      className="w-full px-3 py-2 border rounded focus:outline-none focus:border-primary-500 text-xs"
                       placeholder="Any special requests or preferences..."
                     />
                   </div>
@@ -409,25 +406,25 @@ const CustomerInfo = () => {
           </div>
 
           {/* Summary Sidebar */}
-          <div className="space-y-4">
-            <div className="bg-white border border-gray-200 p-4 sm:p-6 rounded-lg shadow-sm lg:sticky lg:top-6">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
+          <div className="space-y-3">
+            <div className="bg-white border p-3 rounded lg:sticky lg:top-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Booking Summary</h2>
 
-              <div className="space-y-4 mb-4 text-sm">
+              <div className="space-y-3 mb-3 text-xs">
                 {/* Business */}
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-900 font-medium truncate">{business.name}</span>
+                  <span className="text-gray-900 font-medium truncate text-xs">{business.name}</span>
                 </div>
 
                 {/* Services */}
                 {selectedServices.length > 0 && (
-                  <div className="border-t border-gray-100 pt-3 mt-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Services</p>
-                    <div className="space-y-3">
+                  <div className="border-t pt-2 mt-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Services</p>
+                    <div className="space-y-2">
                       {serviceDetails.map((service, index) => (
                         <div key={index} className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0 pr-3">
-                            <p className="text-gray-900 font-medium">{service.name}</p>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <p className="text-gray-900 font-medium text-xs">{service.name}</p>
                             {service.optionLabel && (
                               <p className="text-xs text-gray-500 mt-0.5">{service.optionLabel}</p>
                             )}
@@ -436,7 +433,7 @@ const CustomerInfo = () => {
                             )}
                           </div>
                           {service.priceLabel && (
-                            <p className="font-semibold text-gray-900 ml-3 whitespace-nowrap">{service.priceLabel}</p>
+                            <p className="font-semibold text-gray-900 ml-2 whitespace-nowrap text-xs">{service.priceLabel}</p>
                           )}
                         </div>
                       ))}
@@ -445,10 +442,10 @@ const CustomerInfo = () => {
                 )}
 
                 {/* Staff */}
-                <div className="border-t border-gray-100 pt-2 sm:pt-3">
+                <div className="border-t pt-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Staff</span>
-                    <span className="text-gray-900 font-medium truncate ml-2">
+                    <span className="text-gray-600 text-xs">Staff</span>
+                    <span className="text-gray-900 font-medium truncate ml-2 text-xs">
                       {selectedStaff?.name || 'Any Available'}
                     </span>
                   </div>
@@ -456,12 +453,12 @@ const CustomerInfo = () => {
 
                 {/* Date & Time */}
                 {(selectedDate || selectedTime) && (
-                  <div className="border-t border-gray-100 pt-3 mt-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Appointment</p>
+                  <div className="border-t pt-2 mt-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Appointment</p>
                     {selectedDate && (
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-gray-600">Date</span>
-                        <span className="text-gray-900 font-medium">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-gray-600 text-xs">Date</span>
+                        <span className="text-gray-900 font-medium text-xs">
                           {new Date(selectedDate).toLocaleDateString('en-US', {
                             weekday: 'short',
                             year: 'numeric',
@@ -473,8 +470,8 @@ const CustomerInfo = () => {
                     )}
                     {selectedTime && (
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Time</span>
-                        <span className="text-gray-900 font-medium">{formatTime(selectedTime)}</span>
+                        <span className="text-gray-600 text-xs">Time</span>
+                        <span className="text-gray-900 font-medium text-xs">{formatTime(selectedTime)}</span>
                       </div>
                     )}
                   </div>
@@ -482,12 +479,12 @@ const CustomerInfo = () => {
 
                 {/* Totals */}
                 {(totals.durationLabel || totals.priceLabel) && (
-                  <div className="border-t border-gray-200 pt-3 mt-3">
-                    <div className="flex items-center justify-between font-bold text-gray-900 text-lg">
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex items-center justify-between font-bold text-gray-900 text-sm">
                       <span>Total</span>
                       <div className="text-right">
-                        {totals.durationLabel && <p className="text-sm font-normal text-gray-500 mb-0.5">{totals.durationLabel}</p>}
-                        {totals.priceLabel && <p>{totals.priceLabel}</p>}
+                        {totals.durationLabel && <p className="text-xs font-normal text-gray-500 mb-0.5">{totals.durationLabel}</p>}
+                        {totals.priceLabel && <p className="text-sm">{totals.priceLabel}</p>}
                       </div>
                     </div>
                   </div>
@@ -495,16 +492,16 @@ const CustomerInfo = () => {
               </div>
 
               {/* Buttons - Hidden on mobile */}
-              <div className="hidden md:flex flex-col gap-3 mt-4 sm:mt-6">
+              <div className="hidden md:flex flex-col gap-2 mt-3">
                 <button
                   onClick={handleContinue}
-                  className="w-full flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-600 text-white hover:bg-primary-700 transition-all duration-200 font-medium hover:shadow-md text-sm sm:text-base"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 text-xs"
                 >
                   Continue to Review
-                  <FaArrowRight className="text-xs sm:text-base" />
+                  <FaArrowRight className="text-xs" />
                 </button>
-                <div className="flex items-center justify-center gap-2 text-gray-500 text-xs sm:text-sm mt-1">
-                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center justify-center gap-1 text-gray-500 text-xs mt-1">
+                  <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                   <span>Your information is safe with us</span>
@@ -516,13 +513,13 @@ const CustomerInfo = () => {
       </div>
 
       {/* Fixed Bottom Button for Mobile */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-3 z-50">
         <button
           onClick={handleContinue}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 font-semibold text-base shadow-lg active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded hover:bg-primary-700 text-xs"
         >
-          Review & Confirm
-          <FaArrowRight />
+          Continue
+          <FaArrowRight className="text-xs" />
         </button>
       </div>
     </div>

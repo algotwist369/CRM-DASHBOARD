@@ -1,4 +1,4 @@
-import { apiClient, API_ENDPOINTS, buildEndpoint } from '../api'
+import {apiClient,  API_ENDPOINTS, buildEndpoint } from '../api'
 import { decryptPayload } from '../../utils/encryption'
 
 class PublicService {

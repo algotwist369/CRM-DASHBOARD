@@ -1191,9 +1191,7 @@ const BusinessInfo = () => {
             </div>
           </div>
         </div>
-
-        {/* Ratings and reviews */}
-        {/* Ratings and reviews */}
+ 
         {/* Ratings and reviews */}
         <LazySection fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>
           <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>
