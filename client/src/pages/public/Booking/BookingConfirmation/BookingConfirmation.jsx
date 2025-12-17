@@ -437,13 +437,13 @@ const BookingConfirmation = () => {
 
     // Reusable UI Component
     const Card = ({ children, className = "" }) => (
-        <div className={`bg-white border border-gray-100 p-3 sm:p-6 ${className}`}>
+        <div className={`bg-white border p-3 ${className}`}>
             {children}
         </div>
     );
 
     const SectionHeader = ({ title }) => (
-        <h2 className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-semibold mb-2 sm:mb-4">{title}</h2>
+        <h2 className="text-xs uppercase tracking-wide text-gray-500 font-medium mb-2">{title}</h2>
     );
 
     // Loading State
@@ -462,55 +462,55 @@ const BookingConfirmation = () => {
     const totalDuration = calculateTotalDuration()
 
     return (
-        <div className="min-h-screen bg-gray-50/50 py-1.5 sm:py-12 px-2 sm:px-6 lg:px-8 font-sans pb-20">
+        <div className="min-h-screen bg-gray-50 py-4 px-4 pb-20">
             <div className="max-w-6xl mx-auto">
                 {!appointment ? (
                     <>
 
                         {/* Page Header */}
-                        <div className="mb-3 sm:mb-8 max-w-5xl mx-auto flex items-start justify-between">
+                        <div className="mb-4 max-w-5xl mx-auto flex items-start justify-between">
                             <button
                                 onClick={handleBack}
-                                className="text-gray-500 hover:text-gray-900 transition-colors p-2 -ml-2 rounded-full hover:bg-gray-100"
+                                className="text-gray-500 hover:text-gray-900 p-2 -ml-2 rounded-full hover:bg-gray-100"
                             >
-                                <FaArrowLeft size={20} />
+                                <FaArrowLeft size={18} />
                             </button>
                             <div className="text-right flex-1">
-                                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">Finalize Your Booking</h1>
-                                <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-lg">Please check your details before finalizing.</p>
+                                <h1 className="text-lg font-bold text-gray-900">Finalize Your Booking</h1>
+                                <p className="text-gray-500 mt-1 text-xs">Please check your details before finalizing.</p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-8 max-w-5xl mx-auto">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-5xl mx-auto">
 
                             {/* LEFT COLUMN: Details */}
-                            <div className="lg:col-span-7 space-y-3 sm:space-y-6">
+                            <div className="lg:col-span-7 space-y-3">
 
                                 {/* 1. Date & Time */}
                                 <Card>
                                     <SectionHeader title="Appointment Time" />
-                                    <div className="flex flex-row gap-3 sm:gap-6">
-                                        <div className="flex items-center gap-2 sm:gap-4 flex-1">
-                                            <div className="p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-lg">
-                                                <FaCalendarAlt className="text-sm sm:text-xl" />
+                                    <div className="flex flex-row gap-3">
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <div className="p-2 bg-primary-50 text-primary-600 rounded">
+                                                <FaCalendarAlt className="text-sm" />
                                             </div>
                                             <div>
-                                                <p className="text-gray-900 font-semibold text-sm sm:text-lg">
+                                                <p className="text-gray-900 font-semibold text-sm">
                                                     {new Date(bookingData.date).toLocaleDateString('en-US', {
                                                         weekday: 'short', month: 'short', day: 'numeric'
                                                     })}
                                                 </p>
-                                                <p className="text-gray-500 text-[10px] sm:text-sm">{new Date(bookingData.date).getFullYear()}</p>
+                                                <p className="text-gray-500 text-xs">{new Date(bookingData.date).getFullYear()}</p>
                                             </div>
                                         </div>
                                         <div className="w-px bg-gray-100"></div>
-                                        <div className="flex items-center gap-2 sm:gap-4 flex-1">
-                                            <div className="p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-lg">
-                                                <FaClock className="text-sm sm:text-xl" />
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <div className="p-2 bg-primary-50 text-primary-600 rounded">
+                                                <FaClock className="text-sm" />
                                             </div>
                                             <div>
-                                                <p className="text-gray-900 font-semibold text-sm sm:text-lg">{formatTime(bookingData.time)}</p>
-                                                <p className="text-gray-500 text-[10px] sm:text-sm">{totalDuration} Mins</p>
+                                                <p className="text-gray-900 font-semibold text-sm">{formatTime(bookingData.time)}</p>
+                                                <p className="text-gray-500 text-xs">{totalDuration} Mins</p>
                                             </div>
                                         </div>
                                     </div>
@@ -520,20 +520,20 @@ const BookingConfirmation = () => {
                                 {bookingData.staff && (
                                     <Card>
                                         <SectionHeader title="Selected Professional" />
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-full bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600">
-                                                <FaUserTie size={20} />
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-primary-50 border flex items-center justify-center text-primary-600">
+                                                <FaUserTie size={16} />
                                             </div>
                                             <div>
-                                                <p className="text-gray-900 font-semibold text-lg leading-tight">
+                                                <p className="text-gray-900 font-semibold text-sm">
                                                     {bookingData.staff.name}
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs font-medium uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full">
+                                                    <span className="text-xs font-medium uppercase tracking-wide text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
                                                         {bookingData.staff.role || 'Staff'}
                                                     </span>
                                                     {bookingData.staff.specialization && (
-                                                        <span className="text-sm text-gray-500">
+                                                        <span className="text-xs text-gray-500">
                                                             • {bookingData.staff.specialization}
                                                         </span>
                                                     )}
@@ -550,16 +550,16 @@ const BookingConfirmation = () => {
                                         {bookingData.services.map((service, index) => {
                                             const duration = typeof service === 'object' ? (service.duration || service.time || 60) : 60
                                             return (
-                                                <div key={index} className="flex items-center justify-between py-2 sm:py-3 first:pt-0 last:pb-0">
+                                                <div key={index} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
                                                     <div>
-                                                        <span className="text-gray-900 font-medium text-xs sm:text-base block">{getServiceName(service)}</span>
+                                                        <span className="text-gray-900 font-medium text-xs block">{getServiceName(service)}</span>
                                                         <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-gray-500 text-[10px] sm:text-xs">{duration} min</span>
-                                                            <span className="text-red-500 font-bold text-[10px] sm:text-xs">40% OFF</span>
+                                                            <span className="text-gray-500 text-xs">{duration} min</span>
+                                                            <span className="text-red-500 font-bold text-xs">40% OFF</span>
                                                         </div>
                                                     </div>
                                                     {getServicePrice(service) > 0 && (
-                                                        <span className="text-gray-600 text-xs sm:text-base">₹{getServicePrice(service).toLocaleString()}</span>
+                                                        <span className="text-gray-600 text-xs">₹{getServicePrice(service).toLocaleString()}</span>
                                                     )}
                                                 </div>
                                             )
@@ -570,56 +570,56 @@ const BookingConfirmation = () => {
                                 {/* 4. Customer Info */}
                                 <Card>
                                     <SectionHeader title="Your Details" />
-                                    <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                                    <div className="grid grid-cols-2 gap-y-2 gap-x-3">
                                         <div className="flex items-center gap-2">
                                             <FaUser className="text-gray-400 text-xs" />
-                                            <span className="text-gray-900 font-medium text-xs sm:text-base truncate">{bookingData.customer.name}</span>
+                                            <span className="text-gray-900 font-medium text-xs truncate">{bookingData.customer.name}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <FaPhoneAlt className="text-gray-400 text-xs" />
-                                            <span className="text-gray-900 text-xs sm:text-base truncate">{bookingData.customer.phone}</span>
+                                            <span className="text-gray-900 text-xs truncate">{bookingData.customer.phone}</span>
                                         </div>
                                         <div className="flex items-center gap-2 col-span-2">
                                             <FaEnvelope className="text-gray-400 text-xs" />
-                                            <span className="text-gray-900 text-xs sm:text-base truncate">{bookingData.customer.email}</span>
+                                            <span className="text-gray-900 text-xs truncate">{bookingData.customer.email}</span>
                                         </div>
                                     </div>
                                 </Card>
                             </div>
 
                             {/* RIGHT COLUMN: Payment & Actions */}
-                            <div className="lg:col-span-5 space-y-6">
-                                <Card className="sticky top-6 border-primary-100 ring-4 ring-gray-50/50">
-                                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-6">Payment Summary</h2>
+                            <div className="lg:col-span-5 space-y-4">
+                                <Card className="sticky top-4">
+                                    <h2 className="text-base font-semibold text-gray-900 mb-3">Payment Summary</h2>
 
                                     {/* Price Breakdown */}
-                                    <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 bg-gray-50 p-3 sm:p-4 rounded-lg">
-                                        <div className="flex justify-between text-gray-600 text-xs sm:text-base">
+                                    <div className="space-y-2 mb-4 bg-gray-50 p-3 rounded">
+                                        <div className="flex justify-between text-gray-600 text-xs">
                                             <span>Subtotal</span>
                                             <span>₹{basePrice.toLocaleString()}</span>
                                         </div>
 
                                         {isOnlinePayment && (
-                                            <div className="flex justify-between text-green-600 font-medium text-xs sm:text-base">
+                                            <div className="flex justify-between text-green-600 font-medium text-xs">
                                                 <span className="flex items-center gap-2">
-                                                    Discount <span className="text-[10px] bg-green-100 px-1.5 py-0.5 font-bold uppercase rounded">{ONLINE_PAYMENT_DISCOUNT}% OFF</span>
+                                                    Discount <span className="text-xs bg-green-100 px-1 py-0.5 font-bold uppercase rounded">{ONLINE_PAYMENT_DISCOUNT}% OFF</span>
                                                 </span>
                                                 <span>-₹{discount.toLocaleString()}</span>
                                             </div>
                                         )}
 
-                                        <div className="pt-2 sm:pt-3 mt-1 border-t border-gray-200 flex justify-between items-end">
-                                            <span className="text-gray-900 font-semibold text-sm sm:text-base">Total to Pay</span>
-                                            <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                                        <div className="pt-2 mt-1 border-t border-gray-200 flex justify-between items-end">
+                                            <span className="text-gray-900 font-semibold text-sm">Total to Pay</span>
+                                            <span className="text-lg font-bold text-gray-900">
                                                 ₹{isOnlinePayment ? finalPrice.toLocaleString() : basePrice.toLocaleString()}
                                             </span>
                                         </div>
                                     </div>
 
                                     {/* Payment Methods */}
-                                    <div className="mb-6">
-                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-2 sm:mb-3 tracking-wide">Select Payment Method</label>
-                                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                    <div className="mb-4">
+                                        <label className="block text-xs font-medium uppercase text-gray-500 mb-2">Select Payment Method</label>
+                                        <div className="grid grid-cols-2 gap-2">
                                             {[
                                                 { value: 'cash', label: 'Cash', icon: FaMoneyBillWave, isOnline: false, key: 'cash' },
                                                 { value: 'upi', label: 'UPI', icon: FaMobileAlt, isOnline: true, key: 'upi' },
@@ -635,15 +635,15 @@ const BookingConfirmation = () => {
                                                         type="button"
                                                         onClick={() => setPaymentMethod(method.value)}
                                                         className={`
-                                                            relative flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-2 sm:p-3 border transition-all duration-200 h-16 sm:h-20 rounded-md
+                                                            relative flex flex-col items-center justify-center gap-1 p-2 border h-14 rounded
                                                             ${isSelected
-                                                                ? 'border-primary-600 bg-primary-50 text-primary-700 ring-1 ring-primary-600'
+                                                                ? 'border-primary-600 bg-primary-50 text-primary-700'
                                                                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600'
                                                             }
                                                         `}
                                                     >
-                                                        <Icon className={isSelected ? 'text-primary-600' : 'text-gray-400'} size={18} />
-                                                        <span className="text-[10px] sm:text-xs font-semibold">{method.label}</span>
+                                                        <Icon className={isSelected ? 'text-primary-600' : 'text-gray-400'} size={16} />
+                                                        <span className="text-xs font-medium">{method.label}</span>
                                                         {method.isOnline && (
                                                             <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                                                         )}
@@ -659,13 +659,13 @@ const BookingConfirmation = () => {
                                             business?.paymentMethods?.card ||
                                             business?.paymentMethods?.netBanking ||
                                             business?.paymentMethods?.wallet) && (
-                                            <div className="bg-blue-50 border border-blue-100 p-2 sm:p-3 mb-4 sm:mb-6 flex gap-2 sm:gap-3 items-start rounded-lg">
-                                                <div className="bg-blue-100 p-1.5 rounded-full text-blue-600 shrink-0 mt-0.5">
-                                                    <FaDollarSign size={10} className="sm:text-xs" />
+                                            <div className="bg-blue-50 border border-blue-100 p-2 mb-4 flex gap-2 items-start rounded">
+                                                <div className="bg-blue-100 p-1 rounded-full text-blue-600 shrink-0 mt-0.5">
+                                                    <FaDollarSign size={10} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs sm:text-sm font-bold text-blue-900">Save ₹{discount.toLocaleString()}</p>
-                                                    <p className="text-[10px] sm:text-xs text-blue-700 mt-0.5">Pay online now to save {ONLINE_PAYMENT_DISCOUNT}% on your booking.</p>
+                                                    <p className="text-xs font-bold text-blue-900">Save ₹{discount.toLocaleString()}</p>
+                                                    <p className="text-xs text-blue-700 mt-0.5">Pay online now to save {ONLINE_PAYMENT_DISCOUNT}% on your booking.</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -674,22 +674,15 @@ const BookingConfirmation = () => {
                                     <button
                                         onClick={handleConfirmBooking}
                                         disabled={submitting}
-                                        className="w-full py-3 sm:py-4 bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed transition-all font-semibold text-base sm:text-lg hover:shadow-lg flex items-center justify-center gap-2 sm:gap-3 transform active:scale-[0.99] rounded-lg"
+                                        className="w-full py-2 bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-70 disabled:cursor-not-allowed font-medium text-sm flex items-center justify-center gap-2 rounded"
                                     >
                                         {submitting ? (
                                             <><FaSpinner className="animate-spin" /> Processing...</>
                                         ) : (
-                                            <>
-                                                <div className="flex items-center gap-2">
-                                                    <span>Complete & Book</span>
-                                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                    </svg>
-                                                </div>
-                                            </>
+                                            <span>Complete & Book</span>
                                         )}
                                     </button>
-                                    <div className="flex items-center justify-center gap-1.5 mt-3 text-gray-400 text-[10px] sm:text-xs">
+                                    <div className="flex items-center justify-center gap-1 mt-2 text-gray-400 text-xs">
                                         <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
@@ -701,40 +694,40 @@ const BookingConfirmation = () => {
                     </>
                 ) : (
                     /* --- SUCCESS STATE --- */
-                    <div className="max-w-xl mx-auto pt-4 sm:pt-10">
-                        <div className="bg-white overflow-hidden border border-gray-100 shadow-sm rounded-lg">
+                    <div className="max-w-xl mx-auto pt-4">
+                        <div className="bg-white overflow-hidden border rounded">
                             {/* Success Header */}
-                            <div className="bg-green-50 p-6 sm:p-10 text-center border-b border-green-100">
-                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                                    <FaCheckCircle className="text-green-600 text-3xl sm:text-4xl" />
+                            <div className="bg-green-50 p-6 text-center border-b">
+                                <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <FaCheckCircle className="text-green-600 text-2xl" />
                                 </div>
-                                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Booking Confirmed!</h1>
-                                <p className="text-gray-600 text-sm sm:text-base">Your appointment is successfully scheduled.</p>
+                                <h1 className="text-lg font-bold text-gray-900 mb-1">Booking Confirmed!</h1>
+                                <p className="text-gray-600 text-xs">Your appointment is successfully scheduled.</p>
                             </div>
 
                             {/* Details Body */}
-                            <div className="p-8 space-y-6">
+                            <div className="p-6 space-y-4">
 
                                 {/* Code Box */}
-                                <div className="border-2 border-dashed border-gray-200  p-4 flex flex-col items-center bg-gray-50/50">
-                                    <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Confirmation Code</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-3xl font-mono font-bold text-gray-900 tracking-wider">
+                                <div className="border border-dashed p-3 flex flex-col items-center bg-gray-50">
+                                    <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2">Confirmation Code</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl font-mono font-bold text-gray-900 tracking-wider">
                                             {appointment.confirmationCode}
                                         </span>
                                         <button
                                             onClick={handleCopyConfirmationCode}
-                                            className="text-gray-400 hover:text-primary-600 transition-colors p-2 hover:bg-white "
+                                            className="text-gray-400 hover:text-primary-600 p-1"
                                             title="Copy Code"
                                         >
-                                            <FaCopy size={18} />
+                                            <FaCopy size={14} />
                                         </button>
                                     </div>
                                 </div>
 
                                 {/* Quick Info */}
-                                <div className="space-y-4 text-sm">
-                                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                                <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between items-center py-2 border-b">
                                         <span className="text-gray-500">Date</span>
                                         <span className="text-gray-900 font-medium text-right">
                                             {new Date(appointment.appointmentDate).toLocaleDateString('en-US', {
@@ -742,21 +735,21 @@ const BookingConfirmation = () => {
                                             })}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                                    <div className="flex justify-between items-center py-2 border-b">
                                         <span className="text-gray-500">Time</span>
                                         <span className="text-gray-900 font-medium">{formatTime(appointment.startTime)}</span>
                                     </div>
 
                                     {/* Staff in Success View */}
                                     {bookingData.staff && (
-                                        <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                                        <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-gray-500">Professional</span>
                                             <span className="text-gray-900 font-medium">{bookingData.staff.name}</span>
                                         </div>
                                     )}
 
                                     {appointment.business && (
-                                        <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                                        <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-gray-500">Venue</span>
                                             <span className="text-gray-900 font-medium">{appointment.business.name}</span>
                                         </div>
@@ -764,18 +757,18 @@ const BookingConfirmation = () => {
                                 </div>
 
                                 {/* Success Actions */}
-                                <div className="grid grid-cols-2 gap-4 pt-4">
+                                <div className="grid grid-cols-2 gap-3 pt-2">
                                     <button
                                         onClick={handlePrint}
-                                        className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700  hover:bg-gray-50 font-medium transition-colors"
+                                        className="flex items-center justify-center gap-2 px-3 py-2 border text-gray-700 hover:bg-gray-50 text-xs"
                                     >
                                         <FaPrint /> Print
                                     </button>
                                     <button
                                         onClick={handleViewAppointment}
-                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white  hover:bg-primary-700 font-medium transition-colors"
+                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 text-white hover:bg-primary-700 text-xs"
                                     >
-                                        <FaArrowRight size={12} /> View Appointment
+                                        <FaArrowRight size={10} /> View Appointment
                                     </button>
                                 </div>
                             </div>
@@ -785,13 +778,13 @@ const BookingConfirmation = () => {
                 {/* OTP Modal */}
                 {showOTPModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                        <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Verify Mobile Number</h3>
-                            <p className="text-sm text-gray-500 mb-6">
-                                Enter the OTP sent to <span className="font-semibold text-gray-700">{phoneForOTP}</span>
+                        <div className="bg-white rounded p-4 max-w-sm w-full">
+                            <h3 className="text-base font-semibold text-gray-900 mb-2">Verify Mobile Number</h3>
+                            <p className="text-xs text-gray-500 mb-4">
+                                Enter the OTP sent to <span className="font-medium text-gray-700">{phoneForOTP}</span>
                             </p>
 
-                            <div className="flex gap-4 justify-center mb-8">
+                            <div className="flex gap-2 justify-center mb-6">
                                 {otp.map((digit, index) => (
                                     <input
                                         key={index}
@@ -815,23 +808,23 @@ const BookingConfirmation = () => {
                                                 document.getElementById(`otp-input-${index - 1}`).focus();
                                             }
                                         }}
-                                        className="w-12 h-12 text-center text-2xl border border-gray-300 rounded focus:border-primary-600 focus:outline-none transition-colors"
+                                        className="w-10 h-10 text-center text-lg border rounded focus:border-primary-600 focus:outline-none"
                                         maxLength={1}
                                         autoFocus={index === 0}
                                     />
                                 ))}
                             </div>
 
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-2">
                                 <button
                                     onClick={handleVerifyOTP}
                                     disabled={verifyingOTP}
-                                    className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg disabled:opacity-70 flex items-center justify-center gap-2"
+                                    className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded disabled:opacity-70 flex items-center justify-center gap-2"
                                 >
                                     {verifyingOTP ? <FaSpinner className="animate-spin" /> : "Verify Booking"}
                                 </button>
                                 {/* Resend Logic */}
-                                <div className="text-center text-sm font-medium">
+                                <div className="text-center text-xs font-medium">
                                     {otpTimeLeft > 0 ? (
                                         <span className="text-gray-500">
                                             Resend OTP in <span className="text-primary-600 tabular-nums">{formatTimer(otpTimeLeft)}</span>
@@ -849,7 +842,7 @@ const BookingConfirmation = () => {
 
                                 <button
                                     onClick={() => setShowOTPModal(false)}
-                                    className="w-full py-3 text-gray-500 hover:text-gray-700 font-medium"
+                                    className="w-full py-2 text-gray-500 hover:text-gray-700 text-xs"
                                 >
                                     Cancel
                                 </button>
@@ -861,35 +854,35 @@ const BookingConfirmation = () => {
 
             {/* Exit Intent Retention Modal */}
             {showExitConfirmation && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-scaleIn">
-                        <div className="bg-amber-50 p-6 text-center border-b border-amber-100">
-                            <div className="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <FaExclamationTriangle size={32} />
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+                    <div className="bg-white rounded max-w-md w-full overflow-hidden">
+                        <div className="bg-amber-50 p-4 text-center border-b">
+                            <div className="w-12 h-12 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <FaExclamationTriangle size={24} />
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Wait! Don't lose your spot!</h3>
-                            <p className="text-gray-600">
+                            <h3 className="text-base font-semibold text-gray-900 mb-1">Wait! Don't lose your spot!</h3>
+                            <p className="text-gray-600 text-xs">
                                 You are just one step away from confirming your appointment.
                             </p>
                         </div>
-                        <div className="p-6">
-                            <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-6 flex items-start gap-3">
-                                <div className="text-sm text-red-800">
+                        <div className="p-4">
+                            <div className="bg-red-50 border border-red-100 rounded p-3 mb-4">
+                                <div className="text-xs text-red-800">
                                     <p className="font-bold">Last Chance for 40% OFF</p>
                                     <p>If you leave now, you will lose your <span className="font-bold">40% discount</span> and your preferred specific time slot might be taken by someone else.</p>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-2">
                                 <button
                                     onClick={cancelExit}
-                                    className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg shadow-lg shadow-primary-600/20 transform transition-all hover:-translate-y-0.5"
+                                    className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded text-sm"
                                 >
                                     Complete Booking
                                 </button>
                                 <button
                                     onClick={confirmExit}
-                                    className="w-full py-3 text-gray-400 hover:text-gray-600 font-medium text-sm hover:underline"
+                                    className="w-full py-2 text-gray-400 hover:text-gray-600 text-xs hover:underline"
                                 >
                                     Leave Anyway
                                 </button>

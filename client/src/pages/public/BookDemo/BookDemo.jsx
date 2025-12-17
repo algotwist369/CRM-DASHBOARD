@@ -118,7 +118,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormValues((prev) => ({ ...prev, [name]: value }))
-    
+
     // Clear field error when user starts typing
     if (fieldErrors[name]) {
       setFieldErrors((prev) => {
@@ -127,7 +127,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
         return newErrors
       })
     }
-    
+
     // Clear general error
     if (error) {
       setError('')
@@ -136,40 +136,40 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
 
   const validateForm = () => {
     const errors = {}
-    
+
     if (!formValues.fullName.trim()) {
       errors.fullName = 'Full name is required'
     } else if (formValues.fullName.trim().length < 2) {
       errors.fullName = 'Full name must be at least 2 characters'
     }
-    
+
     if (!formValues.businessName.trim()) {
       errors.businessName = 'Business name is required'
     } else if (formValues.businessName.trim().length < 2) {
       errors.businessName = 'Business name must be at least 2 characters'
     }
-    
+
     if (!formValues.email.trim()) {
       errors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formValues.email)) {
       errors.email = 'Invalid email address'
     }
-    
+
     const phoneValidation = validatePhoneNumber(formValues.phone)
     if (!phoneValidation.valid) {
       errors.phone = phoneValidation.error
     }
-    
+
     if (!formValues.teamSize.trim()) {
       errors.teamSize = 'Team size is required'
     }
-    
+
     if (!formValues.message.trim()) {
       errors.message = 'Message is required'
     } else if (formValues.message.trim().length < 5) {
       errors.message = 'Message must be at least 5 characters'
     }
-    
+
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -198,7 +198,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
   const handleSendOtp = async () => {
     setError('')
     setFieldErrors({})
-    
+
     // Validate form first
     if (!validateForm()) {
       setError('Please correct the errors below')
@@ -251,7 +251,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
 
       setIsPhoneVerified(true)
       toast.success('Phone number verified successfully!')
-      
+
       // Automatically submit the form after OTP verification
       await handleSubmitForm()
     } catch (err) {
@@ -266,7 +266,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
   const handleSubmitForm = async () => {
     try {
       setStatus('loading')
-      
+
       // Prepare data for API (map frontend fields to backend fields)
       const phoneValidation = validatePhoneNumber(formValues.phone)
       const apiData = {
@@ -280,10 +280,10 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
       }
 
       await createBookDemo(apiData)
-      
+
       setStatus('success')
       toast.success('Demo request submitted successfully! We\'ll contact you soon.')
-      
+
       // Reset form after success
       setTimeout(() => {
         setFormValues(initialFormState)
@@ -292,11 +292,11 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
         setIsPhoneVerified(false)
         setStatus('idle')
       }, 2000)
-      
+
       if (mode === 'modal') {
         onComplete?.(apiData)
       } else {
-        navigate('/contact', {
+        navigate('/search', {
           replace: false,
           state: { intent: 'book-demo', payload: apiData, message: 'BookDemoFormSubmitted' }
         })
@@ -311,13 +311,13 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    
+
     // If phone is not verified, send OTP first
     if (!isPhoneVerified && step === 1) {
       await handleSendOtp()
       return
     }
-    
+
     // If on OTP step, verify OTP
     if (step === 2) {
       await handleVerifyOtp()
@@ -326,52 +326,39 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
   }
 
   return (
-    <div className="bg-white border border-gray-200 shadow-lg p-6 sm:p-8">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-2">Request your live walkthrough</h2>
-      <p className="text-sm text-gray-600 mb-6">
-        {step === 1 
-          ? "Share a few details and we'll follow up within one business day."
-          : "We've sent a 6-digit OTP to verify your phone number."
+    <div className="bg-white border border-gray-200 p-6 sm:p-7">
+      <h2 className="text-xl font-semibold text-gray-900 mb-1">
+        Request your live walkthrough
+      </h2>
+      <p className="text-sm text-gray-600 mb-5">
+        {step === 1
+          ? "Share a few details and we’ll follow up within one business day."
+          : "We’ve sent a 6-digit OTP to verify your phone number."
         }
       </p>
 
-      {/* Progress Steps */}
-      <div className="mb-6 flex items-center justify-center gap-4">
-        <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary-600' : 'text-gray-400'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-            step >= 1 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
-          }`}>
-            {step > 1 ? <FaCheckCircle /> : '1'}
-          </div>
-          <span className="text-sm font-medium hidden sm:block">Details</span>
-        </div>
-        <div className={`w-16 h-0.5 ${step >= 2 ? 'bg-primary-600' : 'bg-gray-200'}`}></div>
-        <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary-600' : 'text-gray-400'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-            step >= 2 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
-          }`}>
-            {step > 2 ? <FaCheckCircle /> : '2'}
-          </div>
-          <span className="text-sm font-medium hidden sm:block">Verify</span>
-        </div>
+      {/* Progress */}
+      <div className="flex items-center justify-center gap-6 mb-6 text-sm">
+        <span className={step >= 1 ? "text-primary-600 font-medium" : "text-gray-400"}>
+          1. Details
+        </span>
+        <span className="text-gray-300">—</span>
+        <span className={step >= 2 ? "text-primary-600 font-medium" : "text-gray-400"}>
+          2. Verify
+        </span>
       </div>
 
-      {/* OTP Verification Step */}
+      {/* OTP Step */}
       {step === 2 && (
-        <div className="space-y-4">
-          <div className="text-center mb-6">
-            <p className="text-gray-600 mb-1">
-              We've sent a 6-digit OTP to
-            </p>
-            <p className="text-lg font-semibold text-gray-900">
-              {formValues.phone}
-            </p>
-            <p className="text-sm text-gray-500 mt-2">
-              Please check your SMS inbox
-            </p>
+        <div className="space-y-5">
+
+          <div className="text-center">
+            <p className="text-sm text-gray-600">Enter OTP sent to</p>
+            <p className="font-medium text-gray-900">{formValues.phone}</p>
+            <p className="text-xs text-gray-500 mt-1">🔒 Secure verification</p>
           </div>
 
-          <div className="flex justify-center gap-3 mb-4">
+          <div className="flex justify-center gap-2">
             {otp.map((digit, index) => (
               <input
                 key={index}
@@ -382,191 +369,122 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
                 value={digit}
                 onChange={(e) => handleOTPChange(index, e.target.value)}
                 onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                placeholder="•"
+                className="w-10 h-11 text-center text-lg border border-gray-300 focus:outline-none focus:border-primary-500"
               />
             ))}
           </div>
 
-          <div className="text-center space-y-2">
-            <button
-              type="button"
-              onClick={handleVerifyOtp}
-              disabled={isVerifying || otp.join('').length !== 6}
-              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-            >
-              {isVerifying ? (
-                <>
-                  <FaSpinner className="animate-spin" />
-                  <span>Verifying...</span>
-                </>
-              ) : (
-                <span>Verify & Submit</span>
-              )}
-            </button>
+          <button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={isVerifying || otp.join('').length !== 6}
+            className="w-full py-2.5 bg-primary-600 text-white text-sm font-medium disabled:opacity-50"
+          >
+            {isVerifying ? "Verifying..." : "Verify & Submit"}
+          </button>
 
-            <button
-              type="button"
-              onClick={handleResendOTP}
-              disabled={countdown > 0}
-              className={`text-sm font-medium transition-all duration-200 ${
-                countdown > 0
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-primary-600 hover:text-primary-700'
+          <button
+            type="button"
+            onClick={handleResendOTP}
+            disabled={countdown > 0}
+            className={`block w-full text-xs ${countdown > 0 ? "text-gray-400" : "text-primary-600"
               }`}
-            >
-              {countdown > 0 ? (
-                <span>Resend OTP in {countdown}s</span>
-              ) : (
-                <span>Didn't receive OTP? Resend</span>
-              )}
-            </button>
+          >
+            {countdown > 0
+              ? `Resend OTP in ${countdown}s`
+              : "Didn't receive OTP? Resend"}
+          </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setStep(1)
-                setOtp(['', '', '', '', '', ''])
-                setCountdown(0)
-              }}
-              className="block w-full text-sm text-gray-600 hover:text-primary-600 transition-colors duration-200"
-            >
-              ← Change Phone Number
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setStep(1)
+              setOtp(['', '', '', '', '', ''])
+              setCountdown(0)
+            }}
+            className="block w-full text-xs text-gray-500"
+          >
+            ← Change phone number
+          </button>
         </div>
       )}
 
       {/* Form Step */}
       {step === 1 && (
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="fullName">
-              Full name
-            </label>
+        <form className="space-y-4 text-sm" onSubmit={handleSubmit}>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               id="fullName"
               name="fullName"
               type="text"
-              placeholder="Alex Johnson"
+              placeholder="Full name *"
               value={formValues.fullName}
               onChange={handleChange}
-              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
-                fieldErrors.fullName 
-                  ? 'border-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:border-primary-500'
-              }`}
+              className={`w-full border px-3 py-2 focus:outline-none ${fieldErrors.fullName ? "border-red-500" : "border-gray-300 focus:border-primary-500"
+                }`}
               required
             />
-            {fieldErrors.fullName && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.fullName}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="businessName">
-              Business name
-            </label>
+
             <input
               id="businessName"
               name="businessName"
               type="text"
-              placeholder="Glow & Co. Salon"
+              placeholder="Business name *"
               value={formValues.businessName}
               onChange={handleChange}
-              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
-                fieldErrors.businessName 
-                  ? 'border-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:border-primary-500'
-              }`}
+              className={`w-full border px-3 py-2 focus:outline-none ${fieldErrors.businessName ? "border-red-500" : "border-gray-300 focus:border-primary-500"
+                }`}
               required
             />
-            {fieldErrors.businessName && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.businessName}</p>
-            )}
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="email">
-              Work email
-            </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               id="email"
               name="email"
               type="email"
-              placeholder="you@business.com"
+              placeholder="Work email *"
               value={formValues.email}
               onChange={handleChange}
-              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
-                fieldErrors.email 
-                  ? 'border-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:border-primary-500'
-              }`}
+              className={`w-full border px-3 py-2 focus:outline-none ${fieldErrors.email ? "border-red-500" : "border-gray-300 focus:border-primary-500"
+                }`}
               required
             />
-            {fieldErrors.email && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="phone">
-              Phone / WhatsApp <span className="text-red-500">*</span>
-            </label>
+
             <input
               id="phone"
               name="phone"
               type="tel"
-              placeholder="+91 9876543210 or 9876543210"
+              placeholder="Phone / WhatsApp *"
               value={formValues.phone}
               onChange={handleChange}
-              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
-                fieldErrors.phone 
-                  ? 'border-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:border-primary-500'
-              }`}
+              className={`w-full border px-3 py-2 focus:outline-none ${fieldErrors.phone ? "border-red-500" : "border-gray-300 focus:border-primary-500"
+                }`}
               required
             />
-            {fieldErrors.phone && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>
-            )}
-            <p className="text-xs text-gray-500 mt-1">Enter 7-15 digits (spaces and special characters will be removed)</p>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="teamSize">
-              Team size
-            </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               id="teamSize"
               name="teamSize"
               type="text"
-              placeholder="e.g. 10 staff across 2 branches"
+              placeholder="Team size"
               value={formValues.teamSize}
               onChange={handleChange}
-              className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
-                fieldErrors.teamSize 
-                  ? 'border-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:border-primary-500'
-              }`}
+              className={`w-full border px-3 py-2 focus:outline-none ${fieldErrors.teamSize ? "border-red-500" : "border-gray-300 focus:border-primary-500"
+                }`}
               required
             />
-            {fieldErrors.teamSize && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.teamSize}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="objective">
-              Primary objective
-            </label>
+
             <select
               id="objective"
               name="objective"
               value={formValues.objective}
               onChange={handleChange}
-              className="w-full  border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full border border-gray-300 px-3 py-2 focus:outline-none focus:border-primary-500"
             >
               {objectives.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -575,62 +493,43 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="space-y-1">
-          <label className="block text-sm font-semibold text-gray-700" htmlFor="message">
-            Anything else you'd like us to know?
-          </label>
           <textarea
             id="message"
             name="message"
-            placeholder="Share current tools, challenges, or timelines so we tailor the walkthrough."
             rows={4}
+            placeholder="Anything else we should know?"
             value={formValues.message}
             onChange={handleChange}
-            className={`w-full border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 ${
-              fieldErrors.message 
-                ? 'border-red-500 focus:border-red-500' 
-                : 'border-gray-300 focus:border-primary-500'
-            }`}
+            className={`w-full border px-3 py-2 focus:outline-none ${fieldErrors.message ? "border-red-500" : "border-gray-300 focus:border-primary-500"
+              }`}
             required
           />
-          {fieldErrors.message && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.message}</p>
-          )}
-        </div>
 
-        {error && (
-          <div className="border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 rounded">
-            {error}
-          </div>
-        )}
-        {status === 'success' && (
-          <div className="border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700 rounded">
-            Thank you! Our team will reach out shortly to confirm your demo.
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isSubmitDisabled || isSendingOtp}
-          className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed transition-colors rounded"
-        >
-          {isSendingOtp ? (
-            <>
-              <FaSpinner className="animate-spin" />
-              <span>Sending OTP...</span>
-            </>
-          ) : (
-            'Verify Phone & Continue'
+          {error && (
+            <div className="text-sm text-red-600">{error}</div>
           )}
-        </button>
-        <p className="text-xs text-gray-500 text-center">
-          We'll verify your phone number with OTP to ensure we can reach you.
-        </p>
-      </form>
+          {status === "success" && (
+            <div className="text-sm text-green-600">
+              Thank you! Our team will reach out shortly.
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmitDisabled || isSendingOtp}
+            className="w-full py-2.5 bg-primary-600 text-white text-sm font-medium disabled:opacity-50"
+          >
+            {isSendingOtp ? "Sending OTP..." : "Verify phone & continue"}
+          </button>
+
+          <p className="text-xs text-gray-500 text-center">
+            🔒 OTP verification keeps your request secure
+          </p>
+        </form>
       )}
     </div>
+
   )
 }
 
@@ -638,32 +537,42 @@ const BookDemo = () => {
   usePageTitle('Book a Demo - Booking App')
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
+      {/* Hero */}
       <section className="bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+
             <div>
-              <span className="inline-flex items-center px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-primary-100 text-primary-700 rounded-full mb-4">
-                Book a Demo
+              <span className="text-xs font-medium text-primary-600 mb-3 block">
+                Book a demo
               </span>
-              <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
-                Discover Booking App in <span className="text-primary-600">one focused session</span>
+
+              <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-4">
+                Discover Booking App in{" "}
+                <span className="text-primary-600">one focused session</span>
               </h1>
-              <p className="text-lg text-gray-600 mb-6">
-                We’ll show you how modern salons, clinics, and service brands use Booking App to operate smarter, delight customers, and grow faster.
-                Walk away with a clear game plan for your business — no pressure, no jargon.
+
+              <p className="text-base text-gray-600 mb-6">
+                See how service businesses use Booking App to manage bookings,
+                improve customer experience, and grow—without complexity.
               </p>
-              <ul className="space-y-3 mb-8">
+
+              <ul className="space-y-2 mb-6">
                 {heroHighlights.map((highlight) => (
-                  <li key={highlight} className="flex items-start gap-3">
-                    <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-primary-500"></span>
-                    <span className="text-base text-gray-700">{highlight}</span>
+                  <li key={highlight} className="flex gap-2 text-sm text-gray-700">
+                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary-500" />
+                    <span>{highlight}</span>
                   </li>
                 ))}
               </ul>
-              <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-                <span>Prefer email?</span>
-                <Link to="/contact" className="text-primary-600 font-semibold hover:text-primary-700">
+
+              <div className="text-sm text-gray-500">
+                Prefer email?{" "}
+                <Link
+                  to="/contact"
+                  className="text-primary-600 font-medium hover:underline"
+                >
                   Talk to our team
                 </Link>
               </div>
@@ -674,18 +583,26 @@ const BookDemo = () => {
         </div>
       </section>
 
-      <section className="bg-gray-900 text-white py-16 sm:py-20">
+      {/* Summary */}
+      <section className="bg-gray-900 text-white py-14 sm:py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {summaryPoints.map((point) => {
               const Icon = point.icon
               return (
-                <div key={point.title} className="bg-white/5 border border-white/10  p-6 flex flex-col h-full">
-                  <div className="w-10 h-10 rounded-full bg-primary-500 text-white flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5" />
+                <div
+                  key={point.title}
+                  className="border border-white/10 p-5 bg-white/5"
+                >
+                  <div className="w-9 h-9 mb-3 flex items-center justify-center bg-primary-600 text-white">
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">{point.title}</h3>
-                  <p className="text-sm text-gray-200 flex-1">{point.description}</p>
+                  <h3 className="text-base font-medium mb-1">
+                    {point.title}
+                  </h3>
+                  <p className="text-sm text-gray-300">
+                    {point.description}
+                  </p>
                 </div>
               )
             })}
@@ -693,42 +610,58 @@ const BookDemo = () => {
         </div>
       </section>
 
-      <section className="bg-white py-16 sm:py-20">
+      {/* Process */}
+      <section className="bg-white py-14 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">What happens after I book?</h2>
-          <p className="text-lg text-gray-600 mb-10">
-            We believe in clarity from the first conversation. Here’s how the process works once you submit the form.
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-3">
+            What happens after I book?
+          </h2>
+
+          <p className="text-base text-gray-600 mb-8">
+            A simple, transparent process—no surprises.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-left">
             {[
               {
-                step: '01',
-                title: 'Discovery call',
-                description: 'We connect within one business day to confirm goals, current tools, and stakeholders.'
+                step: "01",
+                title: "Discovery call",
+                description:
+                  "Quick call to understand goals, current setup, and expectations."
               },
               {
-                step: '02',
-                title: 'Custom demo',
-                description: 'Our advisor walks you through Booking App tailored to your workflows and data.'
+                step: "02",
+                title: "Custom demo",
+                description:
+                  "Live walkthrough tailored to your workflows and business type."
               },
               {
-                step: '03',
-                title: 'Next steps',
-                description: 'Receive a proposal with pricing, onboarding plan, and ROI milestones if you’re ready.'
+                step: "03",
+                title: "Next steps",
+                description:
+                  "Clear proposal with pricing, onboarding, and timelines."
               }
             ].map((item) => (
-              <div key={item.step} className="bg-gray-50 border border-gray-200  p-6 ">
-                <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 text-primary-700 font-semibold mb-4">
+              <div
+                key={item.step}
+                className="border border-gray-200 bg-gray-50 p-5"
+              >
+                <span className="block text-sm font-medium text-primary-600 mb-2">
                   {item.step}
                 </span>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600">{item.description}</p>
+                <h3 className="text-base font-medium text-gray-900 mb-1">
+                  {item.title}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {item.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
     </div>
+
   )
 }
 

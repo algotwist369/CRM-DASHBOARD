@@ -1,4 +1,4 @@
-import apiClient from '../api/client'
+import apiClient from './client'
 import { endpoints } from '../../constants/api/endpoints'
 import { decryptPayload } from '../../utils/encryption'
 

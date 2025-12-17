@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useRef } from 'react'
 import { FaMapMarkerAlt } from 'react-icons/fa'
 
 /**
@@ -19,6 +19,8 @@ const Map = ({
   className = '',
   showLink = true
 }) => {
+  const iframeRef = useRef(null)
+
   // Extract coordinates from various sources
   const mapData = useMemo(() => {
     let lat = null
@@ -85,6 +87,61 @@ const Map = ({
     return `https://maps.google.com/maps?q=${mapData.lat},${mapData.lng}&hl=en&z=${mapData.zoom}&output=embed`
   }, [mapData])
 
+  // Suppress Google Maps console warnings when iframe loads
+  useEffect(() => {
+    if (!embedUrl || !iframeRef.current) return
+
+    const originalWarn = console.warn
+    const originalError = console.error
+    
+    // Create a filter to suppress Google Maps API warnings
+    const suppressGoogleMapsWarnings = (...args) => {
+      const message = String(args[0] || '')
+      // Suppress specific Google Maps warnings
+      if (
+        message.includes('Permissions policy violation') ||
+        message.includes('accelerometer') ||
+        message.includes('deviceorientation') ||
+        message.includes('deviceorientation events are blocked') ||
+        message.includes('apple-mobile-web-app-capable') ||
+        message.includes('Violation')
+      ) {
+        return // Suppress these warnings
+      }
+      // Allow other warnings/errors through
+      originalWarn.apply(console, args)
+    }
+
+    // Temporarily override console methods when iframe loads
+    const handleIframeLoad = () => {
+      console.warn = suppressGoogleMapsWarnings
+      console.error = suppressGoogleMapsWarnings
+      
+      // Restore after a short delay
+      setTimeout(() => {
+        console.warn = originalWarn
+        console.error = originalError
+      }, 2000)
+    }
+
+    const iframe = iframeRef.current
+    if (iframe) {
+      iframe.addEventListener('load', handleIframeLoad)
+      // Also set up immediately if already loaded
+      if (iframe.complete) {
+        handleIframeLoad()
+      }
+    }
+
+    return () => {
+      if (iframe) {
+        iframe.removeEventListener('load', handleIframeLoad)
+      }
+      console.warn = originalWarn
+      console.error = originalError
+    }
+  }, [embedUrl])
+
   // If no coordinates available, return placeholder
   if (!embedUrl && !googleMapsUrl) {
     return (
@@ -102,6 +159,7 @@ const Map = ({
       {embedUrl ? (
         <>
           <iframe
+            ref={iframeRef}
             width="100%"
             height={height}
             style={{ border: 0 }}
@@ -112,6 +170,7 @@ const Map = ({
             title="Location Map"
             allow="geolocation"
             className="w-full"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
           />
           {showLink && googleMapsUrl && (
             <div className="mt-3">

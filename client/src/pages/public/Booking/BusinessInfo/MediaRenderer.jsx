@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { FaImage } from 'react-icons/fa'
 
-const MediaRenderer = ({ item, className, isActive = true, alt }) => {
+const MediaRenderer = ({ item, className = '', isActive = true, alt }) => {
     const [hasError, setHasError] = useState(false)
     const [isLoaded, setIsLoaded] = useState(false)
 
@@ -13,12 +13,12 @@ const MediaRenderer = ({ item, className, isActive = true, alt }) => {
         return (
             <iframe
                 src={item.src}
-                className={`${className} border-0`}
+                className={`${className} border-0`.trim()}
                 width="100%"
                 height="100%"
-                allowFullScreen=""
+                allowFullScreen
                 loading="lazy"
-                title={`Embed ${item.type}`}
+                title={`Embed ${item.type || 'content'}`}
                 style={{ pointerEvents: isActive ? 'auto' : 'none' }}
             />
         )
@@ -26,26 +26,26 @@ const MediaRenderer = ({ item, className, isActive = true, alt }) => {
 
     if (hasError) {
         return (
-            <div className={`w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 ${className}`}>
-                <FaImage className="text-2xl opacity-50" />
+            <div className={`w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 ${className}`.trim()}>
+                <FaImage className="text-xl opacity-50" />
             </div>
         )
     }
 
     return (
-        <>
+        <div className={`relative ${className}`.trim()}>
             {!isLoaded && !hasError && (
-                <div className={`absolute inset-0 bg-gray-200 animate-pulse ${className}`} />
+                <div className="absolute inset-0 bg-gray-200 animate-pulse" />
             )}
             <img
                 src={item.src}
-                alt={alt || item.type}
-                className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                alt={alt || item.type || 'Media'}
+                className={`w-full h-full object-cover ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
                 loading={isActive ? 'eager' : 'lazy'}
                 onLoad={() => setIsLoaded(true)}
                 onError={() => setHasError(true)}
             />
-        </>
+        </div>
     )
 }
 

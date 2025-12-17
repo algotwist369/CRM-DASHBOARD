@@ -16,12 +16,12 @@ const BUSINESS_LINKS = [
 const EXPLORE_LINKS = [
   { name: 'Features', href: '/features' },
   { name: 'How It Works', href: '/how-it-works' },
-  {
-    name: 'For Businesses',
-    href: '/reviews-management',
-    children: BUSINESS_LINKS
-  },
-  { name: 'Pricing', href: '/pricing' }
+  // {
+  //   name: 'For Businesses',
+  //   href: '/reviews-management',
+  //   children: BUSINESS_LINKS
+  // },
+  // { name: 'Pricing', href: '/pricing' }
 ]
 
 const QUICK_ACTION_LINKS = [

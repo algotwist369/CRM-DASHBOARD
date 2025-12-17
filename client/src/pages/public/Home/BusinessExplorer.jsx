@@ -11,12 +11,12 @@ import {
     FaWhatsapp
 } from 'react-icons/fa'
 import { IoMdCall } from 'react-icons/io'
-import publicService from '../../../services/public/publicService'
 import { apiClient } from '../../../services/api'
 import { decryptPayload } from '../../../utils/encryption'
 import BusinessCard from './BusinessCard'
 import LocationPromptModal from './LocationPromptModal'
 import SkeletonHome from './SkeletonHome'
+import LazySection from '../../../components/common/LazySection/LazySection'
 
 // Constants
 const CACHE_KEYS = {
@@ -745,17 +745,29 @@ const BusinessExplorer = () => {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-4 lg:gap-6">
                     {businesses.map((business) => (
-                        <BusinessCard
+                        <LazySection
                             key={business.id || business._id}
-                            business={business}
-                            viewMode={viewMode}
-                            formatLocation={formatLocation}
-                            onBookAppointment={handleBookAppointment}
-                            // Pass empty functions or define them here if strictly needed by BusinessCard.
-                            // BusinessCard expects: getMobileActionButtons, getDesktopActionButtons
-                            getMobileActionButtons={getMobileActionButtons}
-                            getDesktopActionButtons={getDesktopActionButtons}
-                        />
+                            fallback={
+                                <div className="bg-white border border-gray-100 rounded-lg overflow-hidden animate-pulse">
+                                    <div className="aspect-square bg-gray-200"></div>
+                                    <div className="p-3 space-y-2">
+                                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                                    </div>
+                                </div>
+                            }
+                            threshold={0.1}
+                        >
+                            <BusinessCard
+                                business={business}
+                                viewMode={viewMode}
+                                formatLocation={formatLocation}
+                                onBookAppointment={handleBookAppointment}
+                                getMobileActionButtons={getMobileActionButtons}
+                                getDesktopActionButtons={getDesktopActionButtons}
+                            />
+                        </LazySection>
                     ))}
                 </div>
             )}

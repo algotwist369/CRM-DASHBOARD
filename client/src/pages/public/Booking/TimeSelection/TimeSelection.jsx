@@ -162,7 +162,7 @@ const TimeSelection = () => {
   }, [])
 
   // Check if a time slot is too soon (for today's date)
-  // Backend requires minAdvanceBookingHours (default 2 hours) advance booking
+  // Backend requires minAdvanceBookingHours (default 30 minutes = 0.5 hours) advance booking
   const isSlotInPast = useCallback((slotTime, date) => {
     if (!slotTime || !date) return false
 
@@ -174,9 +174,12 @@ const TimeSelection = () => {
     const slotDateTime = new Date()
     slotDateTime.setHours(parseInt(hours), parseInt(minutes || 0), 0, 0)
 
-    // Use business setting for min advance booking hours (default 2 hours = 120 minutes)
-    const minAdvanceHours = business?.appointmentSettings?.minAdvanceBookingHours || 2
-    const minAdvanceMinutes = minAdvanceHours * 60
+    // Use business setting for min advance booking hours
+    // Business setting is in hours, convert to minutes (default 0.5 hours = 30 minutes)
+    const minAdvanceHours = business?.appointmentSettings?.minAdvanceBookingHours
+    const minAdvanceMinutes = minAdvanceHours 
+      ? minAdvanceHours * 60 // Convert hours to minutes (e.g., 0.5 hours = 30 minutes, 2 hours = 120 minutes)
+      : 30 // Default 30 minutes (0.5 hours) instead of 2 hours (120 minutes)
 
     // Subtract the minimum advance booking time from slot time
     slotDateTime.setMinutes(slotDateTime.getMinutes() - minAdvanceMinutes)
@@ -191,6 +194,11 @@ const TimeSelection = () => {
       isDisabled: slot.available === false || isSlotInPast(slot.startTime, selectedDate)
     }))
   }, [slots, selectedDate, isSlotInPast])
+
+  // Filter available slots for mobile view (only show available slots)
+  const availableSlotsForMobile = useMemo(() => {
+    return allSlots.filter(slot => !slot.isDisabled)
+  }, [allSlots])
 
   const selectTime = useCallback((time) => {
     setSelectedTime(time)
@@ -271,38 +279,38 @@ const TimeSelection = () => {
 
   if (!business) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <FaSpinner className="animate-spin mx-auto text-primary-600 text-2xl mb-3" />
+          <p className="text-gray-600 text-sm">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-2 sm:py-8 px-2 sm:px-4 lg:px-8 pb-16 lg:pb-8">
+    <div className="min-h-screen bg-gray-50 py-4 px-4 pb-16">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4 transition-colors text-sm sm:text-base font-medium"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 text-xs"
           >
-            <FaArrowLeft className="text-sm sm:text-base" />
+            <FaArrowLeft className="text-xs" />
             <span>Back</span>
           </button>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Select Date & Time</h1>
-          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Choose your preferred appointment date and time</p>
+          <h1 className="text-lg font-bold text-gray-900">Select Date & Time</h1>
+          <p className="text-gray-600 mt-1 text-xs">Choose your preferred appointment date and time</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Date & Time Selection */}
-          <div className="lg:col-span-2 space-y-2 sm:space-y-6">
+          <div className="lg:col-span-2 space-y-3">
             {/* Date Picker */}
-            <div className="bg-white border border-gray-200 p-4 sm:p-6 rounded-lg shadow-sm">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                <FaCalendarAlt className="text-primary-600 text-base flex-shrink-0" />
+            <div className="bg-white border p-3 rounded">
+              <h2 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
+                <FaCalendarAlt className="text-primary-600 text-xs" />
                 <span>Select Date</span>
               </h2>
               <input
@@ -311,77 +319,124 @@ const TimeSelection = () => {
                 min={minDate}
                 max={maxDate}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-base sm:text-lg transition-all shadow-sm"
+                className="w-full px-3 py-2 border rounded focus:outline-none focus:border-primary-500 text-sm"
               />
             </div>
 
             {/* Time Slots */}
             {selectedDate && (
               <LazySection fallback={
-                <div className="bg-white border border-gray-200 p-4 sm:p-6 rounded-lg shadow-sm">
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <FaClock className="text-primary-600 text-base flex-shrink-0" />
+                <div className="bg-white border p-3 rounded">
+                  <h2 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FaClock className="text-primary-600 text-xs" />
                     <span>Available Time Slots</span>
                   </h2>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                    {[...Array(12)].map((_, index) => (
+                  <div className="grid grid-cols-3 gap-2">
+                    {[...Array(9)].map((_, index) => (
                       <div
                         key={index}
-                        className="h-12 border-2 border-gray-200 bg-gray-100 animate-pulse rounded-md"
+                        className="h-10 border bg-gray-100 animate-pulse rounded"
                       />
                     ))}
                   </div>
                 </div>
               }>
-                <div className="bg-white border border-gray-200 p-4 sm:p-6 rounded-lg shadow-sm">
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <FaClock className="text-primary-600 text-base flex-shrink-0" />
+                <div className="bg-white border p-3 rounded">
+                  <h2 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FaClock className="text-primary-600 text-xs" />
                     <span>Available Time Slots</span>
                   </h2>
 
                   {loadingSlots || isFetchingSlots ? (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                      {[...Array(12)].map((_, index) => (
-                        <div
-                          key={index}
-                          className="h-12 border-2 border-gray-200 bg-gray-100 animate-pulse rounded-md"
-                        />
-                      ))}
-                    </div>
+                    <>
+                      {/* Mobile loading skeleton */}
+                      <div className="grid grid-cols-3 gap-2 md:hidden">
+                        {[...Array(9)].map((_, index) => (
+                          <div
+                            key={index}
+                            className="h-10 border bg-gray-100 animate-pulse rounded"
+                          />
+                        ))}
+                      </div>
+                      {/* Desktop loading skeleton */}
+                      <div className="hidden md:grid grid-cols-4 gap-2">
+                        {[...Array(12)].map((_, index) => (
+                          <div
+                            key={index}
+                            className="h-10 border bg-gray-100 animate-pulse rounded"
+                          />
+                        ))}
+                      </div>
+                    </>
                   ) : allSlots.length === 0 ? (
-                    <div className="text-center py-10 text-gray-600">
-                      <FaClock className="mx-auto text-gray-400 text-4xl mb-3" />
-                      <p className="text-base font-medium">No time slots available</p>
-                      <p className="text-sm mt-1">Try selecting another date</p>
+                    <div className="text-center py-6 text-gray-600">
+                      <FaClock className="mx-auto text-gray-400 text-2xl mb-2" />
+                      <p className="text-sm font-medium">No time slots available</p>
+                      <p className="text-xs mt-1">Try selecting another date</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                      {allSlots.map((slot) => {
-                        const slotTime = slot.startTime
-                        const isSelected = selectedTime === slotTime
-                        const isDisabled = slot.isDisabled
+                    <>
+                      {/* Mobile View: Show only available slots */}
+                      <div className="grid grid-cols-3 gap-2 md:hidden">
+                        {availableSlotsForMobile.length === 0 ? (
+                          <div className="col-span-3 text-center py-4 text-gray-600">
+                            <FaClock className="mx-auto text-gray-400 text-xl mb-2" />
+                            <p className="text-xs font-medium">No available slots</p>
+                            <p className="text-xs mt-1">Try selecting another date</p>
+                          </div>
+                        ) : (
+                          availableSlotsForMobile.map((slot) => {
+                            const slotTime = slot.startTime
+                            const isSelected = selectedTime === slotTime
 
-                        return (
-                          <button
-                            key={slotTime}
-                            onClick={() => !isDisabled && selectTime(slotTime)}
-                            disabled={isDisabled}
-                            className={`
-                            py-3 px-1 border-2 rounded-md transition-all duration-200 text-sm font-medium
-                            ${isSelected
-                                ? 'border-green-600 bg-green-600 text-white shadow-md scale-105 transform'
-                                : isDisabled
-                                  ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
-                                  : 'border-green-200 bg-green-50 text-green-700 hover:border-green-500 hover:bg-green-100 hover:shadow-sm'
-                              }
-                          `}
-                            title={isDisabled ? 'Not available' : ''}
-                          >
-                            {formatTime(slotTime)}
-                          </button>
-                        )
-                      })}
-                    </div>
+                            return (
+                              <button
+                                key={slotTime}
+                                onClick={() => selectTime(slotTime)}
+                                className={`
+                                  py-2 px-1 border rounded text-xs font-medium
+                                  ${isSelected
+                                      ? 'border-green-600 bg-green-600 text-white'
+                                      : 'border-green-200 bg-green-50 text-green-700 hover:border-green-500 hover:bg-green-100'
+                                    }
+                                `}
+                              >
+                                {formatTime(slotTime)}
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+
+                      {/* Desktop View: Show all slots (with disabled ones grayed out) */}
+                      <div className="hidden md:grid grid-cols-4 gap-2">
+                        {allSlots.map((slot) => {
+                          const slotTime = slot.startTime
+                          const isSelected = selectedTime === slotTime
+                          const isDisabled = slot.isDisabled
+
+                          return (
+                            <button
+                              key={slotTime}
+                              onClick={() => !isDisabled && selectTime(slotTime)}
+                              disabled={isDisabled}
+                              className={`
+                                py-2 px-1 border rounded text-xs font-medium
+                                ${isSelected
+                                    ? 'border-green-600 bg-green-600 text-white'
+                                    : isDisabled
+                                      ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                                      : 'border-green-200 bg-green-50 text-green-700 hover:border-green-500 hover:bg-green-100'
+                                  }
+                              `}
+                              title={isDisabled ? 'Not available' : ''}
+                            >
+                              {formatTime(slotTime)}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               </LazySection>
@@ -389,26 +444,26 @@ const TimeSelection = () => {
           </div>
 
           {/* Summary Sidebar */}
-          <div className="space-y-4">
-            <div className="bg-white border border-gray-200 p-4 sm:p-6 rounded-lg shadow-sm lg:sticky lg:top-6">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
+          <div className="space-y-3">
+            <div className="bg-white border p-3 rounded lg:sticky lg:top-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Booking Summary</h2>
 
-              <div className="space-y-4 mb-4 text-sm">
+              <div className="space-y-3 mb-3 text-xs">
                 {/* Business */}
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between pb-2 border-b">
                   <span className="text-gray-600">Business</span>
                   <span className="text-gray-900 font-medium truncate ml-2">{business.name}</span>
                 </div>
 
                 {/* Services */}
                 {selectedServices.length > 0 && (
-                  <div className="pb-3 border-b border-gray-100">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Services</p>
-                    <div className="space-y-2">
+                  <div className="pb-2 border-b">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Services</p>
+                    <div className="space-y-1">
                       {serviceDetails.map((service, index) => (
                         <div key={index} className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
-                            <p className="text-gray-900 font-medium">{service.name}</p>
+                            <p className="text-gray-900 font-medium text-xs">{service.name}</p>
                             {service.optionLabel && (
                               <p className="text-xs text-gray-500 mt-0.5">{service.optionLabel}</p>
                             )}
@@ -417,7 +472,7 @@ const TimeSelection = () => {
                             )}
                           </div>
                           {service.priceLabel && (
-                            <p className="font-semibold text-gray-900 ml-3">{service.priceLabel}</p>
+                            <p className="font-semibold text-gray-900 ml-2 text-xs">{service.priceLabel}</p>
                           )}
                         </div>
                       ))}
@@ -426,10 +481,10 @@ const TimeSelection = () => {
                 )}
 
                 {/* Staff */}
-                <div className="pb-3 border-b border-gray-100">
+                <div className="pb-2 border-b">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Staff</span>
-                    <span className="text-gray-900 font-medium truncate ml-2">
+                    <span className="text-gray-900 font-medium truncate ml-2 text-xs">
                       {selectedStaff?.name || 'Any Available'}
                     </span>
                   </div>
@@ -437,21 +492,21 @@ const TimeSelection = () => {
 
                 {/* Customer Info */}
                 {customerInfo && (
-                  <div className="pb-3 border-b border-gray-100">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Contact</p>
-                    <p className="font-medium text-gray-900">{customerInfo.name}</p>
-                    {customerInfo.phone && <p className="text-gray-600 mt-0.5">{customerInfo.phone}</p>}
+                  <div className="pb-2 border-b">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Contact</p>
+                    <p className="font-medium text-gray-900 text-xs">{customerInfo.name}</p>
+                    {customerInfo.phone && <p className="text-gray-600 mt-0.5 text-xs">{customerInfo.phone}</p>}
                   </div>
                 )}
 
                 {/* Date & Time */}
                 {(selectedDate || selectedTime) && (
-                  <div className="pb-3 border-b border-gray-100">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Appointment</p>
+                  <div className="pb-2 border-b">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Appointment</p>
                     {selectedDate && (
-                      <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center justify-between mb-1">
                         <span className="text-gray-600">Date</span>
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-gray-900 font-medium text-xs">
                           {new Date(selectedDate).toLocaleDateString('en-US', {
                             weekday: 'short',
                             year: 'numeric',
@@ -464,7 +519,7 @@ const TimeSelection = () => {
                     {selectedTime && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">Time</span>
-                        <span className="text-gray-900 font-medium">{formatTime(selectedTime)}</span>
+                        <span className="text-gray-900 font-medium text-xs">{formatTime(selectedTime)}</span>
                       </div>
                     )}
                   </div>
@@ -472,12 +527,12 @@ const TimeSelection = () => {
 
                 {/* Totals */}
                 {(totals.durationLabel || totals.priceLabel) && (
-                  <div className="pt-2">
-                    <div className="flex items-center justify-between font-bold text-gray-900 text-lg">
+                  <div className="pt-1">
+                    <div className="flex items-center justify-between font-bold text-gray-900 text-sm">
                       <span>Total</span>
                       <div className="text-right">
-                        {totals.durationLabel && <p className="text-sm font-normal text-gray-500 mb-0.5">{totals.durationLabel}</p>}
-                        {totals.priceLabel && <p>{totals.priceLabel}</p>}
+                        {totals.durationLabel && <p className="text-xs font-normal text-gray-500 mb-0.5">{totals.durationLabel}</p>}
+                        {totals.priceLabel && <p className="text-sm">{totals.priceLabel}</p>}
                       </div>
                     </div>
                   </div>
@@ -487,10 +542,10 @@ const TimeSelection = () => {
               <button
                 onClick={handleContinue}
                 disabled={!selectedDate || !selectedTime}
-                className="hidden md:flex w-full mt-3 sm:mt-6 items-center justify-center gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-xs sm:text-base"
+                className="hidden md:flex w-full mt-3 items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
               >
                 Continue
-                <FaArrowRight className="text-xs sm:text-base" />
+                <FaArrowRight className="text-xs" />
               </button>
             </div>
           </div>
@@ -502,7 +557,7 @@ const TimeSelection = () => {
         <button
           onClick={handleContinue}
           disabled={!selectedDate || !selectedTime}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-base shadow-lg active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-base shadow-lg active:scale-[0.98]"
         >
           Continue
           <FaArrowRight />

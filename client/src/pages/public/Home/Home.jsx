@@ -225,32 +225,29 @@ const Home = () => {
 
       <div className="min-h-screen bg-gray-100 overflow-x-hidden">
         {/* Businesses Section - Now handled by BusinessExplorer */}
-        {/* Businesses Section - Now handled by BusinessExplorer */}
         <LazySection fallback={<SkeletonHome />}>
           <BusinessExplorer />
         </LazySection>
 
         {/* Features Section */}
-        <div className="bg-white border-t border-gray-200 py-8 xs:py-10 sm:py-10 lg:py-12">
-          <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 xs:gap-6 sm:gap-8 text-center">
+        <div className="bg-white border-t border-gray-200 py-6 sm:py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
               {FEATURES_DATA.map((feature, idx) => {
                 const Icon = feature.icon
                 return (
-                  <div key={idx} className="px-2 xs:px-3">
-                    <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 xs:mb-4 sm:mb-4">
-                      <Icon className="text-primary-600 text-xl xs:text-2xl sm:text-2xl" />
+                  <div key={idx} className="px-2">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Icon className="text-primary-600 text-lg sm:text-xl" />
                     </div>
-                    <h3 className="text-base xs:text-lg sm:text-xl font-semibold text-gray-900 mb-1.5 xs:mb-2 sm:mb-2 leading-tight">{feature.title}</h3>
-                    <p className="text-xs xs:text-sm sm:text-base text-gray-600 leading-relaxed px-2">{feature.description}</p>
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 leading-tight">{feature.title}</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{feature.description}</p>
                   </div>
                 )
               })}
             </div>
           </div>
         </div>
-
-
       </div>
     </>
   )

@@ -1,4 +1,5 @@
-import { apiClient, API_ENDPOINTS } from '../api'
+import { API_ENDPOINTS } from '../api'
+import apiClient from './client'
 
 class BookDemoService {
   

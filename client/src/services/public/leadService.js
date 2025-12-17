@@ -1,14 +1,8 @@
-import apiClient from '../api/client'
+import apiClient from './client'
 import { endpoints } from '../../constants/api/endpoints'
 
 class LeadService {
-    /**
-     * Track a lead click (Call, WhatsApp, Booking)
-     * Fire-and-forget: we don't return the promise to avoid blocking UI
-     * @param {string} businessId
-     * @param {string} leadType - 'call' | 'whatsapp' | 'booking'
-     * @param {string} page - Current page path
-     */
+   
     trackClick(businessId, leadType, page) {
         if (!businessId || !leadType) return
 
