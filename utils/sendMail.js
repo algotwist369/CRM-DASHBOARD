@@ -4,17 +4,42 @@ require("dotenv").config();
 
 // Create transporter (configure with your email service)
 const createTransporter = () => {
-    // Check if email credentials are available
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    // Check if SMTP credentials are available (priority: SMTP_* > EMAIL_*)
+    const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+    
+    if (!smtpUser || !smtpPass) {
         console.warn('Email credentials not configured, email will be logged instead of sent');
         return null;
     }
     
+    // Check if custom SMTP host is configured
+    if (process.env.SMTP_HOST) {
+        return nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT) || 587,
+            secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+            auth: {
+                user: smtpUser,
+                pass: smtpPass
+            },
+            tls: {
+                // Allow self-signed certificates (set SMTP_REJECT_UNAUTHORIZED=true to enforce strict validation)
+                rejectUnauthorized: process.env.SMTP_REJECT_UNAUTHORIZED === 'true'
+            }
+        });
+    }
+    
+    // Use service-based configuration (Gmail, etc.)
     return nodemailer.createTransport({
         service: process.env.EMAIL_SERVICE || 'gmail',
         auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            user: smtpUser,
+            pass: smtpPass
+        },
+        tls: {
+            // Allow self-signed certificates for Gmail and other services
+            rejectUnauthorized: false
         }
     });
 };
@@ -43,7 +68,7 @@ const sendMail = async (options) => {
         }
         
         const mailOptions = {
-            from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+            from: process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER,
             to: options.to,
             subject: options.subject,
             text: options.text,
@@ -148,6 +173,52 @@ const sendTemplateMail = async (options) => {
                     <p>This offer is valid until {{expiryDate}}.</p>
                 </div>
             `
+        },
+        new_booking_admin: {
+            subject: 'New Appointment Booking - {{businessName}}',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #333;">New Appointment Booking</h2>
+                    <p>Dear Admin,</p>
+                    <p>A new appointment has been booked for <strong>{{businessName}}</strong>.</p>
+                    <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                        <h3>Appointment Details:</h3>
+                        <p><strong>Customer Name:</strong> {{customerName}}</p>
+                        <p><strong>Customer Email:</strong> {{customerEmail}}</p>
+                        <p><strong>Customer Phone:</strong> {{customerPhone}}</p>
+                        <p><strong>Date:</strong> {{appointmentDate}}</p>
+                        <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
+                        <p><strong>Services:</strong> {{services}}</p>
+                        <p><strong>Confirmation Code:</strong> {{confirmationCode}}</p>
+                        {{staffInfo}}
+                        {{customerNotesInfo}}
+                    </div>
+                    <p>Please review and confirm the appointment details.</p>
+                </div>
+            `
+        },
+        new_booking_manager: {
+            subject: 'New Appointment Booking - {{businessName}}',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #333;">New Appointment Booking</h2>
+                    <p>Dear Manager,</p>
+                    <p>A new appointment has been booked for <strong>{{businessName}}</strong>.</p>
+                    <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                        <h3>Appointment Details:</h3>
+                        <p><strong>Customer Name:</strong> {{customerName}}</p>
+                        <p><strong>Customer Email:</strong> {{customerEmail}}</p>
+                        <p><strong>Customer Phone:</strong> {{customerPhone}}</p>
+                        <p><strong>Date:</strong> {{appointmentDate}}</p>
+                        <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
+                        <p><strong>Services:</strong> {{services}}</p>
+                        <p><strong>Confirmation Code:</strong> {{confirmationCode}}</p>
+                        {{staffInfo}}
+                        {{customerNotesInfo}}
+                    </div>
+                    <p>Please prepare for the appointment.</p>
+                </div>
+            `
         }
     };
     
@@ -162,8 +233,9 @@ const sendTemplateMail = async (options) => {
     
     Object.keys(options.data).forEach(key => {
         const placeholder = `{{${key}}}`;
-        subject = subject.replace(new RegExp(placeholder, 'g'), options.data[key]);
-        html = html.replace(new RegExp(placeholder, 'g'), options.data[key]);
+        const value = options.data[key] || ''; // Handle null/undefined as empty string
+        subject = subject.replace(new RegExp(placeholder, 'g'), value);
+        html = html.replace(new RegExp(placeholder, 'g'), value);
     });
     
     return sendMail({
