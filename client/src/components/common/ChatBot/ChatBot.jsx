@@ -17,7 +17,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Hello! 👋 I'm your AI assistant. I can help you with:\n\n• Free business listing\n• Appointment booking\n• Features & pricing\n• Customer management\n• Marketing campaigns\n• And much more!\n\nHow can I assist you today?",
+      text: "Hello! 👋 Welcome to SpaAdvisor!\n\nI'm your AI assistant. I can help you with:\n\n• Free business listing\n• Online appointment booking\n• Features & pricing\n• Customer management (CRM)\n• Reviews management\n• Marketing campaigns\n• Analytics & reports\n• And much more!\n\nHow can I assist you today?",
       sender: 'bot',
       timestamp: new Date()
     }
@@ -62,10 +62,11 @@ const ChatBot = () => {
 
   const quickReplies = [
     { text: 'Free Business Listing', action: 'business_listing' },
-    { text: 'Appointment Booking', action: 'appointment_booking' },
+    { text: 'Online Appointment Booking', action: 'appointment_booking' },
     { text: 'Features & Services', action: 'features' },
     { text: 'Pricing Plans', action: 'pricing' },
-    { text: 'Customer Management', action: 'customer_management' },
+    { text: 'Reviews Management', action: 'reviews_management' },
+    { text: 'Customer Management (CRM)', action: 'customer_management' },
     { text: 'Marketing & Campaigns', action: 'marketing' },
     { text: 'Analytics & Reports', action: 'analytics' },
     { text: 'Contact Support', action: 'contact' }
@@ -74,10 +75,22 @@ const ChatBot = () => {
   const getBotResponse = (message, action = null) => {
     const lowerMessage = message.toLowerCase()
 
+    // How to Book - Check this FIRST before general booking check
+    if (action === 'how_to_book' || lowerMessage.includes('how to book') || lowerMessage.includes('how do i book') || lowerMessage.includes('steps to book') || lowerMessage.includes('booking process')) {
+      return {
+        text: "📝 How to Book an Appointment:\n\n1️⃣ Search → Visit /search or homepage\n2️⃣ Select Business → Click business card\n3️⃣ Choose Service → Add to cart\n4️⃣ Pick Staff → Select preferred (optional)\n5️⃣ Select Time → Choose available slot\n6️⃣ Enter Details → Name, email, phone\n7️⃣ Confirm → Get confirmation code\n\n✅ Instant confirmations + SMS reminders!\n\n🔗 Start booking: /search",
+        quickReplies: [
+          { text: 'Search businesses', action: 'search_businesses' },
+          { text: 'Check appointment status', action: 'check_appointment' },
+          { text: 'Booking features', action: 'appointment_booking' }
+        ]
+      }
+    }
+
     // Business Listing
     if (action === 'business_listing' || lowerMessage.includes('list') || lowerMessage.includes('register') || lowerMessage.includes('sign up') || lowerMessage.includes('free listing')) {
       return {
-        text: "🚀 Free Business Listing - Get Started in Minutes!\n\n✅ 100% FREE - No charges ever\n✅ Quick 2-step registration\n✅ OTP verification\n✅ Complete business profile\n✅ Document upload (optional)\n✅ Team connects within 24 hours\n\n📋 Process:\n1. Click 'Free Listing' in header\n2. Enter company name & mobile\n3. Verify OTP\n4. Fill business details form\n5. Upload documents (optional)\n6. Submit & wait for activation\n\nReady to list your business?",
+        text: "🚀 Free Business Listing - 100% FREE Forever!\n\n✨ Quick Setup:\n1. Enter company name & mobile\n2. Verify OTP\n3. Complete profile\n4. Upload docs (optional)\n5. Get activated in 24hrs\n\n💼 Perfect for: Spas • Salons • Hotels • Gyms\n\n🎯 Benefits:\n✅ Accept bookings 24/7\n✅ Manage customers & staff\n✅ Reviews management\n✅ Analytics & reports\n✅ Marketing campaigns\n\n🔗 Get started: /free-listing",
         quickReplies: [
           { text: 'Start listing now', action: 'start_listing' },
           { text: 'What documents needed?', action: 'documents' },
@@ -86,12 +99,17 @@ const ChatBot = () => {
       }
     }
 
-    // Appointment Booking
-    if (action === 'appointment_booking' || lowerMessage.includes('book') || lowerMessage.includes('appointment') || lowerMessage.includes('schedule') || lowerMessage.includes('booking')) {
+    // Appointment Booking - General features (but NOT "how to book" which is handled above)
+    // Only match if it's NOT asking "how to book" - that's handled in the check above
+    if (action === 'appointment_booking' || 
+        (lowerMessage.includes('book') && !lowerMessage.includes('how to') && !lowerMessage.includes('how do')) || 
+        (lowerMessage.includes('appointment') && !lowerMessage.includes('how to') && !lowerMessage.includes('how do')) || 
+        (lowerMessage.includes('schedule') && !lowerMessage.includes('how')) || 
+        (lowerMessage.includes('booking') && !lowerMessage.includes('how to') && !lowerMessage.includes('how do'))) {
       return {
-        text: "📅 Online Appointment Booking System\n\n✨ Features:\n• 24/7 online booking\n• Real-time availability\n• Multi-staff scheduling\n• Service selection\n• Time slot booking\n• Customer information capture\n• Automated confirmations\n• SMS & Email reminders\n• Reschedule & cancel options\n\n🎯 For Customers:\n• Search businesses\n• Select services\n• Choose staff & time\n• Book instantly\n• Get reminders\n\n🎯 For Businesses:\n• Accept bookings 24/7\n• Reduce no-shows\n• Manage calendar\n• Track appointments\n\nWant to know more?",
+        text: "📅 Online Appointment Booking System\n\n✨ Key Features:\n• 24/7 booking availability\n• Location-based search\n• Real-time calendar\n• Multi-staff scheduling\n• Automated SMS/Email reminders\n• Easy reschedule & cancel\n\n🎯 For Customers:\nSearch → Select → Book → Get reminders!\n\n🎯 For Businesses:\nAccept bookings 24/7 • Reduce no-shows • Track history\n\n🔗 Search businesses: /search\n🔗 Check appointment: /check-appointment",
         quickReplies: [
-          { text: 'How to book?', action: 'how_to_book' },
+          { text: 'How to book an appointment?', action: 'how_to_book' },
           { text: 'For businesses', action: 'booking_for_business' },
           { text: 'Reminders & notifications', action: 'reminders' }
         ]
@@ -101,9 +119,10 @@ const ChatBot = () => {
     // Features
     if (action === 'features' || lowerMessage.includes('feature') || lowerMessage.includes('what can') || lowerMessage.includes('capabilities')) {
       return {
-        text: "🌟 Complete Business Management Platform\n\n📊 Core Features:\n\n1️⃣ Appointment Management\n• Online booking 24/7\n• Calendar integration\n• Multi-staff scheduling\n• Automated reminders\n• Waitlist management\n\n2️⃣ Customer Management (CRM)\n• Customer database\n• History tracking\n• Segmentation\n• Loyalty programs\n• Customer insights\n\n3️⃣ Staff Management\n• Add multiple staff\n• Role-based access\n• Schedule management\n• Performance tracking\n\n4️⃣ Marketing & Campaigns\n• Email campaigns\n• SMS marketing\n• Automated campaigns\n• Customer targeting\n• Promotional offers\n\n5️⃣ Analytics & Reports\n• Revenue analytics\n• Customer insights\n• Performance metrics\n• Custom reports\n• Trend analysis\n\n6️⃣ Payment Integration\n• Online payments\n• Multiple gateways\n• Invoice generation\n• Transaction tracking\n\n7️⃣ Notifications\n• Email notifications\n• SMS alerts\n• Push notifications\n• Automated reminders\n\nWhich feature interests you?",
+        text: "🌟 Complete Business Management Platform\n\n📊 Core Features:\n\n1️⃣ Appointments → 24/7 booking • Real-time calendar • Auto reminders\n2️⃣ CRM → Customer database • Segmentation • Loyalty programs\n3️⃣ Staff → Multi-staff • Role-based access • Performance tracking\n4️⃣ Reviews → Google • Facebook • Yelp • TripAdvisor management\n5️⃣ Marketing → Email/SMS campaigns • Automation • Analytics\n6️⃣ Analytics → Revenue • Customer insights • Custom reports\n7️⃣ More → Invoices • Expenses • Inventory • Payments\n\n🔗 View all features: /features\n🔗 Get started free: /free-listing",
         quickReplies: [
           { text: 'Appointment features', action: 'appointment_booking' },
+          { text: 'Reviews management', action: 'reviews_management' },
           { text: 'CRM features', action: 'customer_management' },
           { text: 'Marketing features', action: 'marketing' },
           { text: 'Analytics features', action: 'analytics' }
@@ -114,11 +133,11 @@ const ChatBot = () => {
     // Pricing
     if (action === 'pricing' || lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('fee') || lowerMessage.includes('plan')) {
       return {
-        text: "💰 Transparent Pricing - 100% FREE!\n\n🎁 Free Forever Plan:\n✅ Unlimited appointments\n✅ Unlimited customers\n✅ Staff management\n✅ Basic analytics\n✅ Email support\n✅ Mobile app access\n✅ Online booking\n✅ Automated reminders\n\n💼 Professional Plan: $29/month\n✅ Everything in Free\n✅ Advanced analytics\n✅ Priority support\n✅ Payment integration\n✅ Custom branding\n✅ API access\n\n🏢 Enterprise Plan: Custom\n✅ Everything in Professional\n✅ Dedicated manager\n✅ 24/7 phone support\n✅ Custom integrations\n✅ Multi-location\n✅ Advanced security\n\n💡 No setup fees, no hidden costs!\n\nWhich plan suits you?",
+        text: "💰 Simple & Transparent Pricing\n\n🎁 Starter: FREE Forever\n• 50 appointments/month • Basic CRM • Email support\n\n💼 Professional: $29/month\n• Unlimited appointments • Advanced CRM • Marketing\n• Reviews management • Analytics • API access\n\n🏢 Enterprise: Custom\n• Everything + Dedicated manager • 24/7 support\n• Custom integrations • Multi-location\n\n✅ No setup fees • Cancel anytime • 30-day guarantee\n\n🔗 View pricing: /pricing\n🔗 Start free: /free-listing\n🔗 Book demo: /book-demo",
         quickReplies: [
           { text: 'Start free listing', action: 'start_listing' },
           { text: 'View pricing page', action: 'view_pricing' },
-          { text: 'Compare plans', action: 'compare_plans' }
+          { text: 'Book a demo', action: 'book_demo' }
         ]
       }
     }
@@ -126,7 +145,7 @@ const ChatBot = () => {
     // Customer Management
     if (action === 'customer_management' || lowerMessage.includes('customer') || lowerMessage.includes('crm') || lowerMessage.includes('client')) {
       return {
-        text: "👥 Customer Relationship Management (CRM)\n\n📋 Features:\n\n• Customer Database\n  - Complete profiles\n  - Contact information\n  - Preferences & history\n\n• Customer Segmentation\n  - Group by behavior\n  - Target campaigns\n  - Personalized offers\n\n• Customer Analytics\n  - Lifetime value\n  - Visit frequency\n  - Spending patterns\n  - Churn analysis\n\n• Loyalty Programs\n  - Points system\n  - Rewards management\n  - Subscription plans\n\n• Customer Insights\n  - Behavior tracking\n  - Engagement metrics\n  - Satisfaction scores\n\n• Interaction History\n  - Appointment history\n  - Transaction records\n  - Communication logs\n\nWant details on any specific feature?",
+        text: "👥 Complete CRM System\n\n✨ Key Features:\n• Customer Database → Profiles • History • Notes\n• Segmentation → Group by behavior • Target campaigns\n• Analytics → CLV • Retention • Spending patterns\n• Loyalty Programs → Points • Rewards • Memberships\n• Insights → Behavior tracking • Engagement metrics\n• History → Appointments • Transactions • Reviews\n\n🎯 Perfect for spas, salons, hotels, gyms!\n\n🔗 Get started: /free-listing",
         quickReplies: [
           { text: 'Loyalty programs', action: 'loyalty' },
           { text: 'Customer analytics', action: 'customer_analytics' },
@@ -138,11 +157,11 @@ const ChatBot = () => {
     // Marketing
     if (action === 'marketing' || lowerMessage.includes('marketing') || lowerMessage.includes('campaign') || lowerMessage.includes('promote') || lowerMessage.includes('advertise')) {
       return {
-        text: "📢 Marketing & Campaign Management\n\n🎯 Campaign Types:\n• Promotional campaigns\n• Seasonal offers\n• Loyalty programs\n• Birthday campaigns\n• Referral programs\n• Feedback requests\n• Reactivation campaigns\n\n📧 Channels:\n• Email marketing\n• SMS campaigns\n• WhatsApp messages\n• Push notifications\n• In-app notifications\n\n🤖 Automated Campaigns:\n• Drip campaigns\n• Trigger-based\n• Scheduled campaigns\n• Event-triggered\n\n📊 Campaign Analytics:\n• Open rates\n• Click rates\n• Conversion tracking\n• ROI analysis\n• A/B testing\n\n🎨 Templates:\n• Pre-built templates\n• Custom templates\n• Personalization\n• Dynamic content\n\nNeed help with campaigns?",
+        text: "📢 Marketing & Campaign Management\n\n🎯 Campaign Types:\nPromotional • Seasonal • Loyalty • Birthday • Referral • Review requests\n\n📧 Channels:\nEmail • SMS • Push notifications • Auto reminders\n\n🤖 Automation:\nDrip campaigns • Trigger-based • Scheduled • Event-triggered\n\n📊 Analytics:\nOpen rates • Click rates • Conversion • ROI tracking\n\n🎨 Templates:\nPre-built • Custom • Personalized • Multi-channel\n\n🚀 Grow your business with targeted campaigns!\n\n🔗 Get started: /free-listing",
         quickReplies: [
-          { text: 'Create campaign', action: 'create_campaign' },
           { text: 'Campaign templates', action: 'templates' },
-          { text: 'Campaign analytics', action: 'campaign_analytics' }
+          { text: 'Campaign analytics', action: 'campaign_analytics' },
+          { text: 'Automated campaigns', action: 'automated_campaigns' }
         ]
       }
     }
@@ -150,11 +169,68 @@ const ChatBot = () => {
     // Analytics
     if (action === 'analytics' || lowerMessage.includes('analytics') || lowerMessage.includes('report') || lowerMessage.includes('statistics') || lowerMessage.includes('insights')) {
       return {
-        text: "📊 Analytics & Business Intelligence\n\n📈 Key Metrics:\n\n• Revenue Analytics\n  - Daily/weekly/monthly\n  - Service-wise revenue\n  - Staff performance\n  - Trend analysis\n\n• Appointment Analytics\n  - Booking trends\n  - No-show rates\n  - Peak hours\n  - Service popularity\n\n• Customer Analytics\n  - Customer lifetime value\n  - Retention rates\n  - New vs returning\n  - Customer segments\n\n• Staff Analytics\n  - Performance metrics\n  - Booking rates\n  - Revenue per staff\n  - Availability\n\n• Business Reports\n  - Custom reports\n  - Export options\n  - Scheduled reports\n  - Dashboard widgets\n\n📱 Real-time Dashboard:\n• Live metrics\n• Visual charts\n• Quick insights\n• Trend indicators\n\nWant to see sample reports?",
+        text: "📊 Business Intelligence & Analytics\n\n📈 Key Metrics:\n• Revenue → Daily/weekly/monthly • Service-wise • Staff performance\n• Appointments → Trends • No-shows • Peak hours • Conversion\n• Customers → CLV • Retention • Segmentation • Behavior\n• Staff → Performance • Booking rates • Revenue per staff\n• Daily Records → Operations • Closure • Performance\n• Reports → Custom • Export PDF/Excel • Scheduled\n\n📱 Real-time Dashboard:\nLive metrics • Charts • Insights • Trends • Comparisons\n\n🎯 Make data-driven decisions!\n\n🔗 Get started: /free-listing",
         quickReplies: [
           { text: 'Revenue analytics', action: 'revenue_analytics' },
           { text: 'Customer insights', action: 'customer_analytics' },
-          { text: 'Custom reports', action: 'custom_reports' }
+          { text: 'Daily business records', action: 'daily_business' }
+        ]
+      }
+    }
+
+    // Reviews Management
+    if (action === 'reviews_management' || lowerMessage.includes('review') || lowerMessage.includes('rating') || lowerMessage.includes('feedback')) {
+      return {
+        text: "⭐ Unified Reviews Management\n\n🌟 Platforms:\n• Google My Business → Boost SEO • Improve rankings\n• Facebook → Build social proof • Quick responses\n• Yelp → Improve ratings • Professional replies\n• TripAdvisor → Enhance reputation • Traveler engagement\n\n✨ Features:\n• Unified inbox • Auto review requests • Response templates\n• Analytics • Performance tracking • Sentiment analysis\n\n📊 Benefits:\n↑ Review volume • ↑ Ratings • Faster responses • Better reputation\n\n🔗 Google Reviews: /google-my-business-reviews\n🔗 Facebook: /facebook-reviews\n🔗 Yelp: /yelp-reviews\n🔗 TripAdvisor: /tripadvisor-reviews\n🔗 All Reviews: /reviews-management",
+        quickReplies: [
+          { text: 'Google My Business', action: 'gmb_reviews' },
+          { text: 'Facebook Reviews', action: 'facebook_reviews' },
+          { text: 'Yelp Reviews', action: 'yelp_reviews' },
+          { text: 'TripAdvisor Reviews', action: 'tripadvisor_reviews' }
+        ]
+      }
+    }
+
+    // Google My Business Reviews
+    if (action === 'gmb_reviews' || lowerMessage.includes('google') || lowerMessage.includes('gmb')) {
+      return {
+        text: "🔍 Google My Business Reviews\n\n✨ Features:\n• Unified GMB management • Auto review requests\n• Response templates • Analytics • Local SEO\n\n📈 Benefits:\n↑ Star ratings • ↑ Listing views • Faster responses\n\n🔗 Visit: /google-my-business-reviews",
+        quickReplies: [
+          { text: 'All reviews platforms', action: 'reviews_management' },
+          { text: 'View reviews page', action: 'view_gmb_reviews' }
+        ]
+      }
+    }
+
+    // Facebook Reviews
+    if (action === 'facebook_reviews' || lowerMessage.includes('facebook')) {
+      return {
+        text: "📘 Facebook Reviews Management\n\n✨ Features:\n• Centralized management • Quick responses • Analytics\n• Social proof building\n\n🔗 Visit: /facebook-reviews",
+        quickReplies: [
+          { text: 'All reviews platforms', action: 'reviews_management' },
+          { text: 'View reviews page', action: 'view_facebook_reviews' }
+        ]
+      }
+    }
+
+    // Yelp Reviews
+    if (action === 'yelp_reviews' || lowerMessage.includes('yelp')) {
+      return {
+        text: "⭐ Yelp Reviews Management\n\n✨ Features:\n• Review management • Improve ratings\n• Professional responses • Insights\n\n🔗 Visit: /yelp-reviews",
+        quickReplies: [
+          { text: 'All reviews platforms', action: 'reviews_management' },
+          { text: 'View reviews page', action: 'view_yelp_reviews' }
+        ]
+      }
+    }
+
+    // TripAdvisor Reviews
+    if (action === 'tripadvisor_reviews' || lowerMessage.includes('tripadvisor') || lowerMessage.includes('trip advisor')) {
+      return {
+        text: "✈️ TripAdvisor Reviews Management\n\n✨ Features:\n• Manage reviews • Enhance reputation\n• Respond to travelers • Analytics\n\n🔗 Visit: /tripadvisor-reviews",
+        quickReplies: [
+          { text: 'All reviews platforms', action: 'reviews_management' },
+          { text: 'View reviews page', action: 'view_tripadvisor_reviews' }
         ]
       }
     }
@@ -162,25 +238,16 @@ const ChatBot = () => {
     // Contact/Support
     if (action === 'contact' || lowerMessage.includes('contact') || lowerMessage.includes('support') || lowerMessage.includes('help') || lowerMessage.includes('phone') || lowerMessage.includes('email')) {
       return {
-        text: "📞 We're Here to Help!\n\n🕐 Support Hours: 24/7\n\n📱 Contact Options:\n• Phone: +91-XXXXX-XXXXX\n• Email: support@bookingapp.com\n• Live Chat: Right here! 😊\n• Contact Page: /contact\n\n💬 Support Channels:\n• Technical support\n• Business setup help\n• Feature guidance\n• Billing inquiries\n• General questions\n\n⏱️ Response Times:\n• Chat: Instant\n• Email: Within 24 hours\n• Phone: Immediate\n\n🎯 Common Support Topics:\n• Account setup\n• Feature tutorials\n• Troubleshooting\n• Billing questions\n• Integration help\n\nHow can we assist you?",
+        text: "📞 We're Here to Help!\n\n🕐 Support: 24/7 Available\n\n📱 Contact:\n• Email: dishaspaadvisor@gmail.com\n• Live Chat: Right here! 😊\n• Book Demo: /book-demo\n\n💬 We Help With:\nTechnical support • Setup • Features • Billing • Integrations\n\n⏱️ Response:\nLive Chat: Instant • Email: 24hrs • Demo: Schedule anytime\n\n🔗 Contact page: /contact\n🔗 Book demo: /book-demo",
         quickReplies: [
           { text: 'Technical support', action: 'technical' },
           { text: 'Setup help', action: 'setup_help' },
-          { text: 'Visit contact page', action: 'visit_contact' }
+          { text: 'Visit contact page', action: 'visit_contact' },
+          { text: 'Book a demo', action: 'book_demo' }
         ]
       }
     }
 
-    // How to Book
-    if (action === 'how_to_book' || lowerMessage.includes('how to book') || lowerMessage.includes('book appointment')) {
-      return {
-        text: "📝 How to Book an Appointment:\n\nStep 1: Search Business\n• Use search bar on homepage\n• Filter by location, category\n• Browse business listings\n\nStep 2: Select Business\n• Click on business card\n• View business details\n• Check services & reviews\n\nStep 3: Choose Service\n• Select service(s)\n• View pricing & duration\n• Add to booking\n\nStep 4: Select Staff (Optional)\n• Choose preferred staff\n• Or let business assign\n\nStep 5: Pick Time Slot\n• View available slots\n• Select date & time\n• Confirm selection\n\nStep 6: Enter Details\n• Customer information\n• Contact details\n• Special requests\n\nStep 7: Confirm Booking\n• Review details\n• Confirm appointment\n• Get confirmation code\n\n✅ You'll receive:\n• Confirmation email\n• SMS reminder\n• Calendar invite\n\nReady to book?",
-        quickReplies: [
-          { text: 'Search businesses', action: 'search_businesses' },
-          { text: 'Booking tips', action: 'booking_tips' }
-        ]
-      }
-    }
 
     // Loyalty Programs
     if (action === 'loyalty' || lowerMessage.includes('loyalty') || lowerMessage.includes('reward') || lowerMessage.includes('points')) {
@@ -196,10 +263,11 @@ const ChatBot = () => {
     // Start Listing
     if (action === 'start_listing') {
       return {
-        text: "🚀 Great! Let's get you started!\n\nClick the 'Free Listing' button in the header, or visit /free-listing\n\nI'll guide you through:\n• Registration process\n• OTP verification\n• Business details form\n• Document upload\n\nNeed help during registration? Just ask! 😊",
+        text: "🚀 Get Your Business Listed - FREE!\n\n📋 Quick Steps:\n1. Enter company name & mobile\n2. Verify OTP\n3. Complete profile\n4. Upload docs (optional)\n5. Get activated in 24hrs\n\n✅ You'll Need:\nCompany name • Mobile • Email • Address • Category • Services\n\n💡 Benefits:\n✅ 100% FREE forever\n✅ Accept bookings 24/7\n✅ Manage customers & staff\n✅ Reviews management\n✅ Analytics & reports\n\n🔗 Start now: /free-listing\n\nNeed help? Just ask! 😊",
         quickReplies: [
           { text: 'Registration help', action: 'registration_help' },
-          { text: 'What info needed?', action: 'listing_info' }
+          { text: 'What documents needed?', action: 'documents' },
+          { text: 'Benefits of listing', action: 'listing_benefits' }
         ]
       }
     }
@@ -207,9 +275,44 @@ const ChatBot = () => {
     // Documents
     if (action === 'documents' || lowerMessage.includes('document') || lowerMessage.includes('upload') || lowerMessage.includes('file')) {
       return {
-        text: "📄 Document Upload (Optional)\n\nYou can upload:\n• Business registration\n• License documents\n• GST certificate\n• PAN card\n• Other business docs\n\n📋 Supported Formats:\n• PDF, DOC, DOCX\n• JPG, PNG images\n• Max 10MB per file\n\n✅ Benefits:\n• Faster verification\n• Trust building\n• Complete profile\n\nNote: Documents are optional but recommended for faster approval!",
+        text: "📄 Document Upload for Free Listing (Optional)\n\n📋 Documents You Can Upload:\n• Business registration certificate\n• Business license documents\n• GST certificate\n• PAN card\n• Trade license\n• Other business verification documents\n\n✅ Supported File Formats:\n• PDF files (.pdf)\n• Word documents (.doc, .docx)\n• Image files (.jpg, .jpeg, .png)\n• Maximum file size: 10MB per file\n\n💡 Benefits of Uploading Documents:\n• Faster verification & approval\n• Build customer trust\n• Complete business profile\n• Enhanced credibility\n• Quicker team activation\n\n⚠️ Note: Documents are optional but highly recommended for faster approval and better business credibility!\n\nYou can always add documents later from your business dashboard.",
         quickReplies: [
-          { text: 'Back to listing', action: 'business_listing' }
+          { text: 'Back to listing info', action: 'business_listing' },
+          { text: 'Start listing now', action: 'start_listing' }
+        ]
+      }
+    }
+
+    // Listing Benefits
+    if (action === 'listing_benefits' || lowerMessage.includes('benefit') || lowerMessage.includes('advantage') || lowerMessage.includes('why list')) {
+      return {
+        text: "✨ Benefits of Listing Your Business on SpaAdvisor:\n\n🚀 Growth & Visibility:\n• Get discovered by customers searching for services\n• Location-based search visibility\n• Professional business profile\n• Online presence & credibility\n\n📅 Booking Management:\n• Accept online bookings 24/7\n• Reduce phone call bookings\n• Automated appointment reminders\n• Calendar management\n• Multi-staff scheduling\n\n👥 Customer Management:\n• Complete CRM system\n• Customer database & history\n• Customer segmentation\n• Loyalty programs\n• Customer insights\n\n⭐ Reviews & Reputation:\n• Manage reviews from Google, Facebook, Yelp, TripAdvisor\n• Automated review requests\n• Improve online reputation\n• Build customer trust\n\n📊 Business Intelligence:\n• Revenue analytics\n• Performance reports\n• Customer insights\n• Staff analytics\n• Daily business records\n\n💰 Cost Effective:\n• 100% FREE forever plan available\n• No setup fees\n• Transparent pricing\n• Cancel anytime\n\nPerfect for spas, salons, hotels, gyms, and service businesses!",
+        quickReplies: [
+          { text: 'Start listing now', action: 'start_listing' },
+          { text: 'View pricing', action: 'pricing' },
+          { text: 'Book a demo', action: 'book_demo' }
+        ]
+      }
+    }
+
+    // Book Demo
+    if (action === 'book_demo' || lowerMessage.includes('demo') || lowerMessage.includes('schedule demo')) {
+      return {
+        text: "📅 Book a Demo\n\n🎯 What You'll Get:\n• 30-min strategy call\n• Live walkthrough\n• Personalized plan\n• Success stories\n• Dedicated advisor\n\n✨ Perfect for: Spas • Salons • Hotels • Gyms\n\n🔗 Book now: /book-demo",
+        quickReplies: [
+          { text: 'Book demo now', action: 'view_book_demo' },
+          { text: 'Learn more', action: 'features' }
+        ]
+      }
+    }
+
+    // Check Appointment
+    if (action === 'check_appointment' || lowerMessage.includes('check appointment') || lowerMessage.includes('appointment status')) {
+      return {
+        text: "🔍 Check Appointment Status\n\n✅ You Can:\n• View details • Service & staff info\n• Reschedule • Cancel • Contact business\n\n🔗 Check now: /check-appointment\n\nEnter your confirmation code to view your appointment!",
+        quickReplies: [
+          { text: 'Check appointment', action: 'view_check_appointment' },
+          { text: 'Contact support', action: 'contact' }
         ]
       }
     }
@@ -217,15 +320,15 @@ const ChatBot = () => {
     // Greetings
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey') || lowerMessage === '') {
       return {
-        text: "Hello! 👋 Welcome!\n\nI'm your AI assistant. I can help with:\n\n✅ Free business listing\n✅ Appointment booking\n✅ Features & services\n✅ Pricing information\n✅ Customer management\n✅ Marketing campaigns\n✅ Analytics & reports\n✅ Technical support\n\nWhat would you like to know?",
-        quickReplies: quickReplies.slice(0, 4)
+        text: "Hello! 👋 Welcome to SpaAdvisor!\n\nI'm your AI assistant. I can help with:\n\n✅ Free business listing\n✅ Online appointment booking\n✅ Reviews management\n✅ CRM & Marketing\n✅ Analytics & Reports\n\n🚀 Complete platform for spas, salons, hotels, gyms!\n\n🔗 Get started free: /free-listing\n🔗 Search businesses: /search\n🔗 View features: /features\n\nWhat would you like to know?",
+        quickReplies: quickReplies.slice(0, 5)
       }
     }
 
     // Thank you
     if (lowerMessage.includes('thank')) {
       return {
-        text: "You're very welcome! 😊\n\nIs there anything else I can help you with today?",
+        text: "You're very welcome! 😊\n\nI'm here to help you with SpaAdvisor anytime. Is there anything else you'd like to know?\n\nRemember:\n• Free listing: /free-listing\n• Book demo: /book-demo\n• Contact: /contact\n• Features: /features\n• Pricing: /pricing",
         quickReplies: quickReplies.slice(0, 4)
       }
     }
@@ -248,16 +351,64 @@ const ChatBot = () => {
     }
 
     if (action === 'search_businesses') {
-      setTimeout(() => navigate('/'), 500)
+      setTimeout(() => navigate('/search'), 500)
       return {
-        text: "Taking you to the homepage to search businesses... 🔍",
+        text: "Taking you to search businesses... 🔍",
+        quickReplies: []
+      }
+    }
+
+    if (action === 'view_book_demo') {
+      setTimeout(() => navigate('/book-demo'), 500)
+      return {
+        text: "Taking you to book a demo... 📅",
+        quickReplies: []
+      }
+    }
+
+    if (action === 'view_check_appointment') {
+      setTimeout(() => navigate('/check-appointment'), 500)
+      return {
+        text: "Taking you to check appointment... 🔍",
+        quickReplies: []
+      }
+    }
+
+    if (action === 'view_gmb_reviews') {
+      setTimeout(() => navigate('/google-my-business-reviews'), 500)
+      return {
+        text: "Taking you to Google My Business Reviews... 🔍",
+        quickReplies: []
+      }
+    }
+
+    if (action === 'view_facebook_reviews') {
+      setTimeout(() => navigate('/facebook-reviews'), 500)
+      return {
+        text: "Taking you to Facebook Reviews... 📘",
+        quickReplies: []
+      }
+    }
+
+    if (action === 'view_yelp_reviews') {
+      setTimeout(() => navigate('/yelp-reviews'), 500)
+      return {
+        text: "Taking you to Yelp Reviews... ⭐",
+        quickReplies: []
+      }
+    }
+
+    if (action === 'view_tripadvisor_reviews') {
+      setTimeout(() => navigate('/tripadvisor-reviews'), 500)
+      return {
+        text: "Taking you to TripAdvisor Reviews... ✈️",
         quickReplies: []
       }
     }
 
     // Default response
     return {
-      text: `I understand you're asking about: "${message}"\n\nI can help you with:\n\n• Free business listing\n• Appointment booking system\n• Customer management (CRM)\n• Marketing campaigns\n• Analytics & reports\n• Pricing & plans\n• Staff management\n• Payment integration\n• Loyalty programs\n• Technical support\n\nPlease select a topic or ask a specific question!`,
+      text: `I understand you're asking about: "${message}"\n\nI can help with SpaAdvisor:\n\n• Free listing • Online booking • Reviews management\n• CRM • Marketing • Analytics • Pricing\n• Staff • Daily records • Expenses • Loyalty\n\n🚀 Perfect for spas, salons, hotels, gyms!\n\n🔗 Quick links:\n/free-listing • /search • /features • /pricing • /contact\n\nSelect a topic above or ask a specific question!`,
       quickReplies: quickReplies
     }
   }
@@ -331,7 +482,7 @@ const ChatBot = () => {
                   </button>
                 </div>
                 <p className="text-xs text-gray-600 mb-3">
-                  I'm SpaAdvisor, your AI assistant! I can help you with business listing, appointments, features, and more.
+                  I'm SpaAdvisor, your AI assistant! I can help you with free business listing, online appointments, reviews management, features, pricing, and more.
                 </p>
                 <button
                   onClick={handleNotificationClick}
@@ -369,7 +520,7 @@ const ChatBot = () => {
                 <img src="/chatbot_avatar.png" alt="AI Assistant" className="w-full h-full object-cover" />
               </div>
               <div>
-                <h3 className="font-bold text-lg">AI Assistant</h3>
+                <h3 className="font-bold text-lg">SpaAdvisor Assistant</h3>
                 <p className="text-xs text-primary-100 flex items-center gap-1">
                   <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                   Online

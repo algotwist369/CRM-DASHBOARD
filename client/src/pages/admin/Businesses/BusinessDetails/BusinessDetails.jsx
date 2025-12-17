@@ -17,6 +17,7 @@ import {
   FaCopy,
   FaCheck,
   FaCog,
+  FaEdit,
 } from "react-icons/fa";
 import { HiRefresh } from "react-icons/hi";
 import businessService from "../../../../services/admin/businessService";
@@ -272,6 +273,13 @@ const BusinessDetails = () => {
             >
               <FaCog className="text-sm" />
               <span>Settings</span>
+            </button>
+             <button
+              onClick={() => navigate(`/admin/businesses/${id}/edit`)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-purple-600 text-white  hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium"
+            >
+              <FaEdit className="text-sm" />
+              <span>Edit</span>
             </button>
           </div>
         </div>

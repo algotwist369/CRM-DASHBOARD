@@ -10,17 +10,17 @@ const PublicFooter = () => {
 
         {/* Left */}
         <p className="text-sm text-gray-500 text-center sm:text-left">
-          © {currentYear} Booking App. All rights reserved.
+          © {currentYear} SpaAdvisor. All rights reserved.
         </p>
 
         {/* Right */}
         <div className="flex items-center gap-4 text-sm">
-          <Link to="/privacy" className="text-gray-500 hover:text-gray-900">
+          {/* <Link to="/privacy" className="text-gray-500 hover:text-gray-900">
             Privacy
           </Link>
           <Link to="/terms" className="text-gray-500 hover:text-gray-900">
             Terms
-          </Link>
+          </Link> */}
           <Link to="/contact" className="text-gray-500 hover:text-gray-900">
             Contact
           </Link>

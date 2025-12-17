@@ -644,12 +644,6 @@ const BusinessInfo = () => {
     )
   }, [business])
 
-  // renderMedia and renderHeroSlider Logic moved to separate components
-  // to avoid re-rendering the entire page on auto-slide interval
-  // which was causing performance issues and image flickering
-
-  // Auto-slide logic removed from here and moved to HeroSection
-
   // Image Modal/Lightbox Component
   const renderImageModal = useCallback(() => {
     if (!isImageModalOpen || allImages.length === 0) return null

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import {
   FaEnvelope,
@@ -24,6 +24,10 @@ const Contact = () => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  })
 
   const handleSubmit = async (e) => {
     e.preventDefault()

@@ -2,7 +2,7 @@ import axios from 'axios'
 import authService from '../auth/authService'
 
 // Base configuration
-const API_BASE_URL = 'http://localhost:7000/api'
+const API_BASE_URL = 'https://public.sa.api.ramaai.cloud/api'
 const API_TIMEOUT = 30000 // 30 seconds
 
 // Create axios instance
