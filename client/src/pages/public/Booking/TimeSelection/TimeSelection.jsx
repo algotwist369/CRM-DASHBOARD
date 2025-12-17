@@ -153,57 +153,262 @@ const TimeSelection = () => {
     placeholderData: (previousData) => previousData // Keep showing previous data while fetching new date
   })
 
+  // Validate time selection
+  const validateTimeSelection = useCallback((date, time) => {
+    if (!date || !time || !business) return { isValid: true, errors: [] }
+
+    const errors = []
+    // Handle both nested and flat structure
+    const settings = business?.appointmentSettings || business?.settings?.appointmentSettings || {}
+    const workingHours = business?.workingHours || business?.settings?.workingHours || {}
+
+    // Parse time string to 24-hour format
+    const parseTimeTo24Hour = (timeStr) => {
+      if (!timeStr) return { hours: 0, minutes: 0 }
+      const [hours, minutes] = timeStr.split(':')
+      return {
+        hours: parseInt(hours, 10) || 0,
+        minutes: parseInt(minutes, 10) || 0
+      }
+    }
+
+    // Convert time string to minutes for comparison
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr) return 0
+      const { hours, minutes } = parseTimeTo24Hour(timeStr)
+      return hours * 60 + minutes
+    }
+
+    // Calculate total duration from selected services
+    const totalDuration = selectedServices.reduce((sum, service) => sum + (Number(service?.duration) || 0), 0) || 60
+
+    // Check advance booking hours
+    const appointmentDate = new Date(date)
+    const now = new Date()
+    const timeParts = parseTimeTo24Hour(time)
+    
+    const appointmentDateTime = new Date(
+      appointmentDate.getFullYear(),
+      appointmentDate.getMonth(),
+      appointmentDate.getDate(),
+      timeParts.hours,
+      timeParts.minutes,
+      0,
+      0
+    )
+
+    const minAdvanceHours = settings?.minAdvanceBookingHours || 10
+    const hoursUntilAppointment = (appointmentDateTime - now) / (1000 * 60 * 60)
+
+    if (hoursUntilAppointment < minAdvanceHours) {
+      errors.push(`Appointment must be booked at least ${minAdvanceHours} hours in advance`)
+    }
+
+    // Check if business is open on the selected day
+    if (workingHours?.days && Array.isArray(workingHours.days) && workingHours.days.length > 0) {
+      const dayName = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+      if (!workingHours.days.includes(dayName)) {
+        errors.push('Business is closed on the selected day')
+      }
+    }
+
+    // Check if appointment time is within working hours
+    if (workingHours?.open && workingHours?.close) {
+      const startMinutes = timeToMinutes(time)
+      const endMinutes = startMinutes + totalDuration
+      const openMinutes = timeToMinutes(workingHours.open)
+      const closeMinutes = timeToMinutes(workingHours.close)
+
+      if (startMinutes < openMinutes || endMinutes > closeMinutes) {
+        errors.push('Appointment time must be within business working hours')
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }, [business, selectedServices])
+
   const handleDateChange = useCallback((date) => {
     if (!date) return
     setSelectedDate(date)
-    setSelectedTime('')
+    
+    // Clear selected time and validate if time was already selected
+    if (selectedTime) {
+      const validation = validateTimeSelection(date, selectedTime)
+      if (!validation.isValid) {
+        setSelectedTime('')
+        sessionStorage.removeItem('selectedTime')
+        // Show validation errors
+        validation.errors.forEach(error => {
+          toast.error(error, { duration: 4000 })
+        })
+      }
+    } else {
+      setSelectedTime('')
+      sessionStorage.removeItem('selectedTime')
+    }
+    
     sessionStorage.setItem('selectedDate', date)
-    sessionStorage.removeItem('selectedTime')
-  }, [])
+  }, [selectedTime, validateTimeSelection])
 
-  // Check if a time slot is too soon (for today's date)
-  // Backend requires minAdvanceBookingHours (default 30 minutes = 0.5 hours) advance booking
-  const isSlotInPast = useCallback((slotTime, date) => {
-    if (!slotTime || !date) return false
+  // Check if a slot is invalid (matches backend validation logic)
+  const isSlotInvalid = useCallback((slotTime, date) => {
+    if (!slotTime || !date || !business) return true
 
-    const today = new Date().toISOString().split('T')[0]
-    if (date !== today) return false
+    const settings = business?.appointmentSettings || business?.settings?.appointmentSettings || {}
+    const workingHours = business?.workingHours || business?.settings?.workingHours || {}
 
+    // Calculate total duration from selected services
+    const totalDuration = selectedServices.reduce((sum, service) => sum + (Number(service?.duration) || 0), 0) || 60
+
+    // Parse time string to 24-hour format
+    const parseTimeTo24Hour = (timeStr) => {
+      if (!timeStr) return { hours: 0, minutes: 0 }
+      const [hours, minutes] = timeStr.split(':')
+      return {
+        hours: parseInt(hours, 10) || 0,
+        minutes: parseInt(minutes, 10) || 0
+      }
+    }
+
+    // Convert time string to minutes for comparison
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr) return 0
+      const { hours, minutes } = parseTimeTo24Hour(timeStr)
+      return hours * 60 + minutes
+    }
+
+    // Check advance booking hours
+    const appointmentDate = new Date(date)
     const now = new Date()
-    const [hours, minutes] = slotTime.split(':')
-    const slotDateTime = new Date()
-    slotDateTime.setHours(parseInt(hours), parseInt(minutes || 0), 0, 0)
+    const timeParts = parseTimeTo24Hour(slotTime)
+    
+    const appointmentDateTime = new Date(
+      appointmentDate.getFullYear(),
+      appointmentDate.getMonth(),
+      appointmentDate.getDate(),
+      timeParts.hours,
+      timeParts.minutes,
+      0,
+      0
+    )
 
-    // Use business setting for min advance booking hours
-    // Business setting is in hours, convert to minutes (default 0.5 hours = 30 minutes)
-    const minAdvanceHours = business?.appointmentSettings?.minAdvanceBookingHours
-    const minAdvanceMinutes = minAdvanceHours 
-      ? minAdvanceHours * 60 // Convert hours to minutes (e.g., 0.5 hours = 30 minutes, 2 hours = 120 minutes)
-      : 30 // Default 30 minutes (0.5 hours) instead of 2 hours (120 minutes)
+    const minAdvanceHours = settings?.minAdvanceBookingHours || 10
+    const hoursUntilAppointment = (appointmentDateTime - now) / (1000 * 60 * 60)
 
-    // Subtract the minimum advance booking time from slot time
-    slotDateTime.setMinutes(slotDateTime.getMinutes() - minAdvanceMinutes)
+    // Check if too soon (less than minAdvanceHours)
+    if (hoursUntilAppointment < minAdvanceHours) {
+      return true
+    }
 
-    return slotDateTime < now
-  }, [business?.appointmentSettings?.minAdvanceBookingHours])
+    // Check if business is open on the selected day
+    if (workingHours?.days && Array.isArray(workingHours.days) && workingHours.days.length > 0) {
+      const dayName = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+      if (!workingHours.days.includes(dayName)) {
+        return true
+      }
+    }
 
-  // Get all slots with disabled state (memoized)
+    // Check if appointment time is within working hours (check both start and end time)
+    if (workingHours?.open && workingHours?.close) {
+      const startMinutes = timeToMinutes(slotTime)
+      const endMinutes = startMinutes + totalDuration
+      const openMinutes = timeToMinutes(workingHours.open)
+      const closeMinutes = timeToMinutes(workingHours.close)
+
+      // Invalid if start is before open OR end is after close
+      if (startMinutes < openMinutes || endMinutes > closeMinutes) {
+        return true
+      }
+    }
+
+    return false
+  }, [business, selectedServices, selectedDate])
+
+  // Get all slots with disabled state (memoized) - filter out invalid slots
   const allSlots = useMemo(() => {
-    return slots.map(slot => ({
-      ...slot,
-      isDisabled: slot.available === false || isSlotInPast(slot.startTime, selectedDate)
-    }))
-  }, [slots, selectedDate, isSlotInPast])
+    if (!selectedDate || !business) return []
+    
+    return slots.map(slot => {
+      const isInvalid = isSlotInvalid(slot.startTime, selectedDate)
+      return {
+        ...slot,
+        isDisabled: slot.available === false || isInvalid,
+        isInvalid: isInvalid // Mark invalid slots
+      }
+    })
+  }, [slots, selectedDate, isSlotInvalid, business])
 
-  // Filter available slots for mobile view (only show available slots)
+  // Filter available slots for mobile view (only show valid and available slots)
   const availableSlotsForMobile = useMemo(() => {
-    return allSlots.filter(slot => !slot.isDisabled)
+    return allSlots.filter(slot => !slot.isDisabled && slot.available !== false)
   }, [allSlots])
 
+  // Filter slots to only show those within working hours (for both mobile and desktop)
+  const validSlotsWithinWorkingHours = useMemo(() => {
+    if (!selectedDate || !business) return []
+    
+    const workingHours = business?.workingHours || business?.settings?.workingHours || {}
+    if (!workingHours?.open || !workingHours?.close) return allSlots
+
+    // Calculate total duration from selected services
+    const totalDuration = selectedServices.reduce((sum, service) => sum + (Number(service?.duration) || 0), 0) || 60
+
+    // Parse time string to 24-hour format
+    const parseTimeTo24Hour = (timeStr) => {
+      if (!timeStr) return { hours: 0, minutes: 0 }
+      const [hours, minutes] = timeStr.split(':')
+      return {
+        hours: parseInt(hours, 10) || 0,
+        minutes: parseInt(minutes, 10) || 0
+      }
+    }
+
+    // Convert time string to minutes for comparison
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr) return 0
+      const { hours, minutes } = parseTimeTo24Hour(timeStr)
+      return hours * 60 + minutes
+    }
+
+    const openMinutes = timeToMinutes(workingHours.open)
+    const closeMinutes = timeToMinutes(workingHours.close)
+
+    // Filter slots where both start and end (start + duration) are within working hours
+    return allSlots.filter(slot => {
+      if (slot.isDisabled || slot.available === false) return false
+      
+      const startMinutes = timeToMinutes(slot.startTime)
+      const endMinutes = startMinutes + totalDuration
+      
+      // Only include slots where start is >= open AND end is <= close
+      return startMinutes >= openMinutes && endMinutes <= closeMinutes
+    })
+  }, [allSlots, selectedDate, business, selectedServices])
+
   const selectTime = useCallback((time) => {
+    if (!selectedDate) {
+      toast.error('Please select a date first')
+      return
+    }
+
+    // Check if slot is invalid (double check before allowing selection)
+    if (isSlotInvalid(time, selectedDate)) {
+      // Validate to get specific error messages
+      const validation = validateTimeSelection(selectedDate, time)
+      if (!validation.isValid) {
+        validation.errors.forEach(error => {
+          toast.error(error, { duration: 4000 })
+        })
+      }
+      return
+    }
+
     setSelectedTime(time)
     sessionStorage.setItem('selectedTime', time)
-  }, [])
+  }, [selectedDate, validateTimeSelection, isSlotInvalid])
 
   const handleContinue = useCallback(() => {
     if (!selectedDate) {
@@ -215,10 +420,21 @@ const TimeSelection = () => {
       return
     }
 
+    // Final validation before continuing
+    const validation = validateTimeSelection(selectedDate, selectedTime)
+    
+    if (!validation.isValid) {
+      // Show all validation errors
+      validation.errors.forEach(error => {
+        toast.error(error, { duration: 4000 })
+      })
+      return
+    }
+
     sessionStorage.setItem('selectedDate', selectedDate)
     sessionStorage.setItem('selectedTime', selectedTime)
     navigate(`/book/${businessLink}/customer`)
-  }, [selectedDate, selectedTime, businessLink, navigate])
+  }, [selectedDate, selectedTime, businessLink, navigate, validateTimeSelection])
 
   const handleBack = useCallback(() => {
     navigate(`/book/${businessLink}/services`)
@@ -376,16 +592,16 @@ const TimeSelection = () => {
                     </div>
                   ) : (
                     <>
-                      {/* Mobile View: Show only available slots */}
+                      {/* Mobile View: Show only valid slots within working hours */}
                       <div className="grid grid-cols-3 gap-2 md:hidden">
-                        {availableSlotsForMobile.length === 0 ? (
+                        {validSlotsWithinWorkingHours.length === 0 ? (
                           <div className="col-span-3 text-center py-4 text-gray-600">
                             <FaClock className="mx-auto text-gray-400 text-xl mb-2" />
                             <p className="text-xs font-medium">No available slots</p>
                             <p className="text-xs mt-1">Try selecting another date</p>
                           </div>
                         ) : (
-                          availableSlotsForMobile.map((slot) => {
+                          validSlotsWithinWorkingHours.map((slot) => {
                             const slotTime = slot.startTime
                             const isSelected = selectedTime === slotTime
 
@@ -408,33 +624,36 @@ const TimeSelection = () => {
                         )}
                       </div>
 
-                      {/* Desktop View: Show all slots (with disabled ones grayed out) */}
+                      {/* Desktop View: Show only valid slots within working hours */}
                       <div className="hidden md:grid grid-cols-4 gap-2">
-                        {allSlots.map((slot) => {
-                          const slotTime = slot.startTime
-                          const isSelected = selectedTime === slotTime
-                          const isDisabled = slot.isDisabled
+                        {validSlotsWithinWorkingHours.length === 0 ? (
+                          <div className="col-span-4 text-center py-4 text-gray-600">
+                            <FaClock className="mx-auto text-gray-400 text-xl mb-2" />
+                            <p className="text-xs font-medium">No available slots</p>
+                            <p className="text-xs mt-1">Try selecting another date</p>
+                          </div>
+                        ) : (
+                          validSlotsWithinWorkingHours.map((slot) => {
+                            const slotTime = slot.startTime
+                            const isSelected = selectedTime === slotTime
 
-                          return (
-                            <button
-                              key={slotTime}
-                              onClick={() => !isDisabled && selectTime(slotTime)}
-                              disabled={isDisabled}
-                              className={`
-                                py-2 px-1 border rounded text-xs font-medium
-                                ${isSelected
-                                    ? 'border-green-600 bg-green-600 text-white'
-                                    : isDisabled
-                                      ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                            return (
+                              <button
+                                key={slotTime}
+                                onClick={() => selectTime(slotTime)}
+                                className={`
+                                  py-2 px-1 border rounded text-xs font-medium
+                                  ${isSelected
+                                      ? 'border-green-600 bg-green-600 text-white'
                                       : 'border-green-200 bg-green-50 text-green-700 hover:border-green-500 hover:bg-green-100'
-                                  }
-                              `}
-                              title={isDisabled ? 'Not available' : ''}
-                            >
-                              {formatTime(slotTime)}
-                            </button>
-                          )
-                        })}
+                                    }
+                                `}
+                              >
+                                {formatTime(slotTime)}
+                              </button>
+                            )
+                          })
+                        )}
                       </div>
                     </>
                   )}

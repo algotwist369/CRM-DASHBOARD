@@ -13,6 +13,8 @@ const Otp = require("../models/OTP");
 const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
 const { sendTemplateSMS, sendTemplateWhatsApp } = require("../utils/sendSMS");
 const { encryptResponse } = require("../utils/encryptionUtils");
+const { sendTemplateMail } = require("../utils/sendMail");
+const Admin = require("../models/Admin");
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
@@ -1367,6 +1369,19 @@ const executeBooking = async (bookingData, businessLink) => {
         return { success: false, status: 400, message: validation.errors.join(', ') };
     }
 
+    // Store services data for later retrieval (store in internalNotes as JSON)
+    const servicesData = services.map(s => ({
+        serviceId: s.serviceId || s._id || s.id,
+        serviceName: s.serviceName || s.name,
+        price: s.price,
+        duration: s.duration,
+        category: s.serviceCategory || s.category,
+        serviceType: s.serviceType,
+        pricingOptionId: s.pricingOptionId,
+        optionLabel: s.optionLabel || s.pricingOptionLabel,
+        currency: s.currency
+    }));
+
     const appointment = await Appointment.create({
         business: business._id,
         customer: customer._id,
@@ -1385,7 +1400,9 @@ const executeBooking = async (bookingData, businessLink) => {
         paymentMethod: paymentMethod || 'cash',
         status: 'pending',
         createdBy: customer._id,
-        createdByModel: 'Customer'
+        createdByModel: 'Customer',
+        // Store services array in internalNotes as JSON string for retrieval
+        internalNotes: JSON.stringify({ services: servicesData })
     });
 
     const confirmationCode = appointment.bookingNumber || `CONF${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -1434,17 +1451,78 @@ const executeBooking = async (bookingData, businessLink) => {
     }
 
     await appointment.populate('business', 'name branch address phone');
-    await appointment.populate('service', 'name price duration');
+    await appointment.populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice');
     if (appointment.staff) {
         await appointment.populate('staff', 'name role');
     }
     await appointment.populate('customer', 'firstName lastName email phone');
 
+    // Fetch all services from internalNotes for response
+    let allServices = [];
+    try {
+        if (appointment.internalNotes) {
+            const parsedNotes = JSON.parse(appointment.internalNotes);
+            if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                const serviceIds = parsedNotes.services
+                    .map(s => s.serviceId)
+                    .filter(Boolean);
+                
+                if (serviceIds.length > 0) {
+                    const fetchedServices = await Service.find({
+                        _id: { $in: serviceIds },
+                        business: business._id
+                    })
+                    .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                    .lean();
+                    
+                    // Map fetched services with booking data
+                    allServices = parsedNotes.services.map(bookingService => {
+                        const fetchedService = fetchedServices.find(
+                            fs => fs._id.toString() === bookingService.serviceId?.toString()
+                        );
+                        
+                        if (fetchedService) {
+                            return {
+                                ...fetchedService,
+                                price: bookingService.price !== undefined ? bookingService.price : fetchedService.price,
+                                duration: bookingService.duration !== undefined ? bookingService.duration : fetchedService.duration,
+                                optionLabel: bookingService.optionLabel,
+                                pricingOptionId: bookingService.pricingOptionId,
+                                currency: bookingService.currency || fetchedService.currency
+                            };
+                        } else {
+                            // Fallback: use booking data if service not found
+                            return {
+                                name: bookingService.serviceName || 'Service',
+                                price: bookingService.price || 0,
+                                duration: bookingService.duration || 0,
+                                category: bookingService.category || 'General',
+                                serviceType: bookingService.serviceType || 'service',
+                                currency: bookingService.currency || 'INR'
+                            };
+                        }
+                    });
+                }
+            }
+        }
+    } catch (parseError) {
+        console.error('[Booking] Error parsing services from internalNotes:', parseError);
+    }
+
+    // If no services array found, use single service
+    if (allServices.length === 0 && appointment.service) {
+        allServices = [appointment.service];
+    }
+
+    // Convert appointment to plain object and add services array
+    const appointmentObj = appointment.toObject ? appointment.toObject() : appointment;
+    appointmentObj.services = allServices;
+
     return {
         success: true,
         message: "Appointment booked successfully",
         data: {
-            appointment: appointment,
+            appointment: appointmentObj,
             confirmationCode: confirmationCode
         }
     };
@@ -1542,42 +1620,270 @@ const verifyBookingOTP = async (req, res, next) => {
 
         // Send confirmation notifications (Async)
         try {
-            const appointment = result.data.appointment;
+            let appointment = result.data.appointment;
             if (appointment) {
+                // Repopulate appointment to get full service data and internalNotes
+                const appointmentId = appointment._id || appointment.id;
+                appointment = await Appointment.findById(appointmentId)
+                    .populate('business', 'name branch address city state country phone email website')
+                    .populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                    .populate('staff', 'name role specialization phone email')
+                    .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
+                    .lean();
+                
+                if (!appointment) {
+                    console.error('[Email] Appointment not found after repopulation');
+                    return res.status(201).json(result);
+                }
+                
+                // Get business ID (handle both ObjectId and populated object)
+                const businessId = appointment.business?._id || appointment.business;
+                
+                // Repopulate business with admin and managers for email
+                const business = await Business.findById(businessId)
+                    .populate('admin', 'email name')
+                    .populate('managers', 'email name isActive');
+                
+                if (!business) {
+                    console.error('[Email] Business not found for email notifications');
+                } else {
+                    // Update appointment business reference
+                    appointment.business = business;
+                }
+
+                // Prepare email data with conditional fields
+                const staffInfo = appointment.staff?.name 
+                    ? `<p><strong>Assigned Staff:</strong> ${appointment.staff.name}</p>` 
+                    : '';
+                const customerNotesInfo = bookingData.customerNotes 
+                    ? `<p><strong>Customer Notes:</strong> ${bookingData.customerNotes}</p>` 
+                    : '';
+
+                // Get business name (fallback if business not populated)
+                const businessName = business?.name || appointment.business?.name || 'Business';
+                
+                // Extract and format services (handle multiple services)
+                let servicesText = '';
+                let servicesArray = [];
+                
+                try {
+                    // Try to parse services from internalNotes (for multiple services)
+                    if (appointment.internalNotes) {
+                        const parsedNotes = JSON.parse(appointment.internalNotes);
+                        if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                            servicesArray = parsedNotes.services;
+                        }
+                    }
+                } catch (parseError) {
+                    console.error('[Email] Error parsing services from internalNotes:', parseError);
+                }
+                
+                // If no services array found, use single service
+                if (servicesArray.length === 0) {
+                    if (appointment.service) {
+                        // Handle populated service object
+                        const serviceName = appointment.service.name || appointment.service.serviceName || 'Service';
+                        const servicePrice = appointment.service.price || appointment.servicePrice || 0;
+                        const serviceDuration = appointment.service.duration || appointment.duration || 0;
+                        servicesArray = [{
+                            serviceName: serviceName,
+                            price: servicePrice,
+                            duration: serviceDuration,
+                            optionLabel: appointment.service.optionLabel || ''
+                        }];
+                    } else if (bookingData.services && Array.isArray(bookingData.services)) {
+                        // Fallback to bookingData services
+                        servicesArray = bookingData.services.map(s => ({
+                            serviceName: s.serviceName || s.name || 'Service',
+                            price: s.price || 0,
+                            duration: s.duration || 0,
+                            optionLabel: s.optionLabel || s.pricingOptionLabel || ''
+                        }));
+                    } else {
+                        servicesArray = [{
+                            serviceName: appointment.serviceName || 'Service',
+                            price: appointment.servicePrice || 0,
+                            duration: appointment.duration || 0
+                        }];
+                    }
+                }
+                
+                // Format services text for email
+                if (servicesArray.length === 1) {
+                    const service = servicesArray[0];
+                    servicesText = service.optionLabel 
+                        ? `${service.serviceName} (${service.optionLabel})`
+                        : service.serviceName;
+                } else {
+                    // Multiple services - format with details
+                    servicesText = servicesArray.map((service, index) => {
+                        const name = service.serviceName || service.name || `Service ${index + 1}`;
+                        const option = service.optionLabel || service.pricingOptionLabel || '';
+                        const duration = service.duration || 0;
+                        const price = service.price || 0;
+                        
+                        let serviceText = `${index + 1}. ${name}`;
+                        if (option) serviceText += ` (${option})`;
+                        if (duration) serviceText += ` - ${duration} min`;
+                        if (price) serviceText += ` - ${price.toFixed(2)}`;
+                        
+                        return serviceText;
+                    }).join('<br>');
+                }
+                
                 const notificationData = {
-                    customerName: appointment.customer.firstName,
-                    businessName: appointment.business.name,
+                    customerName: appointment.customer?.firstName || bookingData.customerInfo?.name || 'Customer',
+                    businessName: businessName,
                     appointmentDate: new Date(appointment.appointmentDate).toLocaleDateString('en-IN'),
                     startTime: appointment.startTime,
                     endTime: appointment.endTime,
-                    services: appointment.service.name,
-                    confirmationCode: appointment.bookingNumber
+                    services: servicesText,
+                    confirmationCode: appointment.bookingNumber,
+                    customerEmail: appointment.customer?.email || bookingData.customerInfo?.email || '',
+                    customerPhone: appointment.customer?.phone || bookingData.customerInfo?.phone || '',
+                    staffInfo: staffInfo,
+                    customerNotesInfo: customerNotesInfo
                 };
 
-                const phone = appointment.customer.phone;
+                const phone = appointment.customer?.phone || bookingData.customerInfo?.phone;
 
                 // Send WhatsApp
-                console.log(`[Notification] Sending WhatsApp to ${phone}...`);
-                sendTemplateWhatsApp({
-                    to: phone,
-                    template: 'appointment_confirmation',
-                    data: notificationData
-                })
-                    .then(res => console.log(`[Notification] WhatsApp sent details:`, JSON.stringify(res)))
-                    .catch(err => console.error('[Notification] WhatsApp confirmation failed:', err.message));
+                if (phone) {
+                    console.log(`[Notification] Sending WhatsApp to ${phone}...`);
+                    sendTemplateWhatsApp({
+                        to: phone,
+                        template: 'appointment_confirmation',
+                        data: notificationData
+                    })
+                        .then(res => console.log(`[Notification] WhatsApp sent details:`, JSON.stringify(res)))
+                        .catch(err => console.error('[Notification] WhatsApp confirmation failed:', err.message));
+                }
 
                 // Send SMS
-                console.log(`[Notification] Sending SMS to ${phone}...`);
-                sendTemplateSMS({
-                    to: phone,
-                    template: 'appointment_confirmation',
-                    data: notificationData
-                })
-                    .then(res => console.log(`[Notification] SMS sent details:`, JSON.stringify(res)))
-                    .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
+                if (phone) {
+                    console.log(`[Notification] Sending SMS to ${phone}...`);
+                    sendTemplateSMS({
+                        to: phone,
+                        template: 'appointment_confirmation',
+                        data: notificationData
+                    })
+                        .then(res => console.log(`[Notification] SMS sent details:`, JSON.stringify(res)))
+                        .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
+                }
+
+                // Send Email to Customer
+                if (notificationData.customerEmail) {
+                    console.log(`[Email] Sending confirmation email to customer: ${notificationData.customerEmail}...`);
+                    sendTemplateMail({
+                        to: notificationData.customerEmail,
+                        template: 'appointment_confirmation',
+                        data: notificationData
+                    })
+                        .then(res => console.log(`[Email] Customer email sent:`, res.messageId))
+                        .catch(err => console.error('[Email] Customer email failed:', err.message));
+                }
+
+                // Send Email to Admin
+                const adminEmail = business?.admin?.email;
+                if (adminEmail) {
+                    console.log(`[Email] Sending notification email to admin: ${adminEmail}...`);
+                    sendTemplateMail({
+                        to: adminEmail,
+                        template: 'new_booking_admin',
+                        data: notificationData
+                    })
+                        .then(res => console.log(`[Email] Admin email sent:`, res.messageId))
+                        .catch(err => console.error('[Email] Admin email failed:', err.message));
+                }
+
+                // Send Email to Managers
+                const managers = business?.managers || [];
+                const managerEmails = managers
+                    .filter(m => m && m.isActive && m.email)
+                    .map(m => m.email)
+                    .filter(Boolean);
+                
+                if (managerEmails.length > 0) {
+                    console.log(`[Email] Sending notification emails to ${managerEmails.length} manager(s)...`);
+                    const emailPromises = managerEmails.map(email => 
+                        sendTemplateMail({
+                            to: email,
+                            template: 'new_booking_manager',
+                            data: notificationData
+                        })
+                            .then(res => {
+                                console.log(`[Email] Manager email sent to ${email}:`, res.messageId);
+                                return res;
+                            })
+                            .catch(err => {
+                                console.error(`[Email] Manager email failed for ${email}:`, err.message);
+                                return null;
+                            })
+                    );
+                    await Promise.all(emailPromises);
+                }
             }
         } catch (notifyErr) {
             console.error('Notification error:', notifyErr);
+        }
+
+        // Ensure services array is included in the response
+        if (result.data && result.data.appointment) {
+            // Parse services from internalNotes if not already included
+            if (!result.data.appointment.services || result.data.appointment.services.length === 0) {
+                try {
+                    if (appointment.internalNotes) {
+                        const parsedNotes = JSON.parse(appointment.internalNotes);
+                        if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                            const Service = require('../models/Service');
+                            const serviceIds = parsedNotes.services
+                                .map(s => s.serviceId)
+                                .filter(Boolean);
+                            
+                            if (serviceIds.length > 0) {
+                                const businessId = appointment.business?._id || appointment.business;
+                                const fetchedServices = await Service.find({
+                                    _id: { $in: serviceIds },
+                                    business: businessId
+                                })
+                                .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                                .lean();
+                                
+                                // Map fetched services with booking data
+                                const allServices = parsedNotes.services.map(bookingService => {
+                                    const fetchedService = fetchedServices.find(
+                                        fs => fs._id.toString() === bookingService.serviceId?.toString()
+                                    );
+                                    
+                                    if (fetchedService) {
+                                        return {
+                                            ...fetchedService,
+                                            price: bookingService.price !== undefined ? bookingService.price : fetchedService.price,
+                                            duration: bookingService.duration !== undefined ? bookingService.duration : fetchedService.duration,
+                                            optionLabel: bookingService.optionLabel,
+                                            pricingOptionId: bookingService.pricingOptionId,
+                                            currency: bookingService.currency || fetchedService.currency
+                                        };
+                                    } else {
+                                        return {
+                                            name: bookingService.serviceName || 'Service',
+                                            price: bookingService.price || 0,
+                                            duration: bookingService.duration || 0,
+                                            category: bookingService.category || 'General',
+                                            serviceType: bookingService.serviceType || 'service',
+                                            currency: bookingService.currency || 'INR'
+                                        };
+                                    }
+                                });
+                                
+                                result.data.appointment.services = allServices;
+                            }
+                        }
+                    }
+                } catch (parseError) {
+                    console.error('[Response] Error parsing services from internalNotes:', parseError);
+                }
+            }
         }
 
         return res.status(201).json(result);
@@ -1594,7 +1900,7 @@ const getAppointmentByConfirmationCode = async (req, res, next) => {
 
         const appointment = await Appointment.findOne({ bookingNumber: confirmationCode })
             .populate('business', 'name branch address city state country phone email website')
-            .populate('service', 'name price duration category serviceType description')
+            .populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice')
             .populate('staff', 'name role specialization phone email')
             .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
             .lean();
@@ -1606,10 +1912,104 @@ const getAppointmentByConfirmationCode = async (req, res, next) => {
             });
         }
 
+        // Parse services from internalNotes if available (for multiple services)
+        let servicesArray = [];
+        let serviceData = appointment.service;
+        
+        try {
+            if (appointment.internalNotes) {
+                const parsedNotes = JSON.parse(appointment.internalNotes);
+                if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                    // Fetch all services from the stored service IDs
+                    const serviceIds = parsedNotes.services
+                        .map(s => s.serviceId)
+                        .filter(Boolean);
+                    
+                    if (serviceIds.length > 0) {
+                        const Service = require('../models/Service');
+                        // Handle business ID (could be ObjectId or populated object)
+                        const businessId = appointment.business?._id || appointment.business;
+                        
+                        const fetchedServices = await Service.find({
+                            _id: { $in: serviceIds },
+                            business: businessId
+                        })
+                        .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                        .lean();
+                        
+                        // Map fetched services with booking data (price, duration from booking)
+                        servicesArray = parsedNotes.services.map(bookingService => {
+                            const fetchedService = fetchedServices.find(
+                                fs => fs._id.toString() === bookingService.serviceId?.toString()
+                            );
+                            
+                            if (fetchedService) {
+                                return {
+                                    ...fetchedService,
+                                    // Use booking price/duration if available (might be different due to pricing options)
+                                    price: bookingService.price !== undefined ? bookingService.price : fetchedService.price,
+                                    duration: bookingService.duration !== undefined ? bookingService.duration : fetchedService.duration,
+                                    optionLabel: bookingService.optionLabel,
+                                    pricingOptionId: bookingService.pricingOptionId,
+                                    currency: bookingService.currency || fetchedService.currency
+                                };
+                            } else {
+                                // Fallback: use booking data if service not found
+                                return {
+                                    name: bookingService.serviceName || 'Service',
+                                    price: bookingService.price || 0,
+                                    duration: bookingService.duration || 0,
+                                    category: bookingService.category || 'General',
+                                    serviceType: bookingService.serviceType || 'service',
+                                    currency: bookingService.currency || 'INR',
+                                    optionLabel: bookingService.optionLabel,
+                                    pricingOptionId: bookingService.pricingOptionId
+                                };
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (parseError) {
+            console.error('Error parsing services from internalNotes:', parseError);
+        }
+
+        // If no services array found, use single service
+        if (servicesArray.length === 0) {
+            if (serviceData) {
+                // If service is populated but missing key fields, ensure defaults
+                if (!serviceData.name && appointment.serviceName) {
+                    serviceData.name = appointment.serviceName;
+                }
+                // Ensure price is available (use servicePrice from appointment if service price is missing)
+                if (!serviceData.price && appointment.servicePrice) {
+                    serviceData.price = appointment.servicePrice;
+                }
+                // Ensure duration is available
+                if (!serviceData.duration && appointment.duration) {
+                    serviceData.duration = appointment.duration;
+                }
+                servicesArray = [serviceData];
+            } else if (appointment.serviceName) {
+                // Fallback: create service object from appointment data if service not populated
+                servicesArray = [{
+                    name: appointment.serviceName,
+                    price: appointment.servicePrice || 0,
+                    duration: appointment.duration || 0,
+                    category: appointment.serviceCategory || 'General',
+                    serviceType: appointment.serviceType || 'service'
+                }];
+            } else {
+                servicesArray = [];
+            }
+        }
+
         return res.json({
             success: true,
             data: {
                 ...appointment,
+                service: servicesArray.length > 0 ? servicesArray[0] : null, // Keep single service for backward compatibility
+                services: servicesArray, // Add services array for multiple services
                 confirmationCode: appointment.bookingNumber
             }
         });
