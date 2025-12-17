@@ -16,10 +16,11 @@ const app = express();
 // CORS configuration - allow multiple origins for development
 const getAllowedOrigins = () => {
     const defaultOrigins = [
-        'http://localhost:3000',
+        'https://spaadvisor.in',
+        'http://spaadvisor.in',
+        'http://www.spaadvisor.in',
         'http://localhost:5173',  // Vite default port
         'http://localhost:5174',  // Vite alternate port
-        'http://localhost:3001'
     ];
     
     if (process.env.CORS_ORIGIN) {
