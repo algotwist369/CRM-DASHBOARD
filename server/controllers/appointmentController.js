@@ -14,7 +14,7 @@ const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
 const { sendTemplateSMS, sendTemplateWhatsApp } = require("../utils/sendSMS");
 const { encryptResponse } = require("../utils/encryptionUtils");
 const { sendTemplateMail } = require("../utils/sendMail");
-const Admin = require("../models/Admin");
+const { validateAppointmentBooking } = require("../utils/appointmentUtils");
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
@@ -1145,19 +1145,88 @@ const getAvailableSlotsForBooking = async (req, res, next) => {
 
         // Generate available slots
         const { generateAvailableSlots } = require("../utils/appointmentUtils");
-        const slots = generateAvailableSlots(
+        const allSlots = generateAvailableSlots(
             business,
             appointmentDate,
             existingAppointments,
             staffId || null
         );
 
+        // Filter slots based on advance booking hours and current time
+        const settings = business.settings.appointmentSettings;
+        const minAdvanceBookingHours = settings.minAdvanceBookingHours || 0;
+        const now = new Date();
+        
+        // Helper function to convert time string to minutes
+        const timeToMinutes = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+        
+        // Helper function to parse time string to 24-hour format
+        const parseTimeTo24Hour = (timeStr) => {
+            if (!timeStr) return { hours: 0, minutes: 0 };
+            let time = timeStr.trim();
+            let isPM = false;
+            
+            if (time.includes('PM') || time.includes('pm')) {
+                isPM = true;
+                time = time.replace(/PM|pm/gi, '').trim();
+            } else if (time.includes('AM') || time.includes('am')) {
+                time = time.replace(/AM|am/gi, '').trim();
+            }
+            
+            const parts = time.split(':');
+            if (parts.length < 2) return { hours: 0, minutes: 0 };
+            
+            let hours = parseInt(parts[0], 10) || 0;
+            const minutes = parseInt(parts[1], 10) || 0;
+            
+            if (isPM && hours !== 12) {
+                hours += 12;
+            } else if (!isPM && hours === 12) {
+                hours = 0;
+            }
+            
+            return { hours, minutes };
+        };
+
+        // Filter slots to only include truly available ones
+        const availableSlots = allSlots.filter(slot => {
+            // Check if slot is in the past
+            const slotDate = new Date(appointmentDate);
+            const timeParts = parseTimeTo24Hour(slot.startTime);
+            const slotDateTime = new Date(
+                slotDate.getFullYear(),
+                slotDate.getMonth(),
+                slotDate.getDate(),
+                timeParts.hours,
+                timeParts.minutes,
+                0,
+                0
+            );
+            
+            // Check if slot is in the past
+            if (slotDateTime <= now) {
+                return false;
+            }
+            
+            // Check advance booking hours requirement
+            const hoursUntilSlot = (slotDateTime - now) / (1000 * 60 * 60);
+            if (hoursUntilSlot < minAdvanceBookingHours) {
+                return false;
+            }
+            
+            // Slot is available
+            return true;
+        });
+
         return res.json({
             success: true,
             data: {
                 date: date,
-                availableSlots: slots.map(slot => slot.startTime),
-                slots: slots
+                availableSlots: availableSlots.map(slot => slot.startTime),
+                slots: availableSlots // Only return available slots
             }
         });
     } catch (err) {
@@ -1547,6 +1616,43 @@ const bookAppointmentPublic = async (req, res, next) => {
 
         const business = await Business.findOne({ businessLink, isActive: true });
         if (!business) return res.status(404).json({ success: false, message: "Business not found" });
+
+        // Validate booking slot availability before sending OTP
+        const appointmentDateObj = new Date(appointmentDate);
+        const startOfDay = new Date(appointmentDateObj);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(appointmentDateObj);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Get existing appointments for the date
+        const query = {
+            business: business._id,
+            appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+            status: { $nin: ['cancelled', 'no_show'] }
+        };
+
+        if (bookingData.staffId) {
+            query.staff = bookingData.staffId;
+        }
+
+        const existingAppointments = await Appointment.find(query)
+            .select('startTime endTime staff')
+            .lean();
+
+        // Validate appointment booking
+        const validation = validateAppointmentBooking({
+            appointmentDate,
+            startTime,
+            endTime,
+            staff: bookingData.staffId
+        }, business, existingAppointments);
+
+        if (!validation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: validation.errors.join(', ')
+            });
+        }
 
         const phone = customerInfo.phone;
         let response;

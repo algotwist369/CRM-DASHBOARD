@@ -180,8 +180,8 @@ const businessSchema = new mongoose.Schema(
             // Appointment settings
             appointmentSettings: {
                 advanceBookingDays: { type: Number, default: 20 }, // How many days in advance can book
-                minAdvanceBookingHours: { type: Number, default: 10 }, // Minimum hours before appointment
-                maxAdvanceBookingHours: { type: Number, default: 24 * 20 }, // Maximum hours in advance
+                minAdvanceBookingHours: { type: Number, default: 1 }, // Minimum hours before appointment
+                maxAdvanceBookingHours: { type: Number, default: 48 * 20 }, // Maximum hours in advance
                 slotDuration: { type: Number, default: 20 }, // Default slot duration in minutes
                 bufferTime: { type: Number, default: 15 }, // Buffer time between appointments
                 allowOnlineBooking: { type: Boolean, default: true },
