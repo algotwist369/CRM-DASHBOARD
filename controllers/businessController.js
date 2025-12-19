@@ -1404,9 +1404,36 @@ const updateBusiness = async (req, res, next) => {
             }
         }
 
-        // Apply updates to the business object
+        // Helper function for deep merging objects
+        const deepMerge = (target, source) => {
+            const output = { ...(target.toObject?.() || target) };
+
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    // Recursively merge nested objects
+                    if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                        output[key] = deepMerge(target[key], source[key]);
+                    } else {
+                        output[key] = source[key];
+                    }
+                } else {
+                    // Direct assignment for primitives and arrays
+                    output[key] = source[key];
+                }
+            }
+
+            return output;
+        };
+
+        // Apply updates to the business object with deep merge
         Object.keys(updates).forEach(key => {
-            business[key] = updates[key];
+            if (updates[key] && typeof updates[key] === 'object' && !Array.isArray(updates[key]) && business[key]) {
+                // For nested objects (like settings, seo, etc.), use deep merge
+                business[key] = deepMerge(business[key], updates[key]);
+            } else {
+                // For primitive values and arrays, direct assignment
+                business[key] = updates[key];
+            }
         });
 
         // Save to trigger pre-save hooks (for Google Maps URL lat/lng extraction and businessLink generation)
