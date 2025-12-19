@@ -1404,16 +1404,16 @@ const updateBusiness = async (req, res, next) => {
             }
         }
 
-        // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
-        const updatedBusiness = await Business.findByIdAndUpdate(
-            businessId,
-            { ...updates, updatedAt: new Date() },
-            { new: true, runValidators: true }
-        ).populate('managers', 'name username email phone isActive');
+        // Apply updates to the business object
+        Object.keys(updates).forEach(key => {
+            business[key] = updates[key];
+        });
 
-        if (!updatedBusiness) {
-            return res.status(404).json({ success: false, message: "Business not found" });
-        }
+        // Save to trigger pre-save hooks (for Google Maps URL lat/lng extraction and businessLink generation)
+        const updatedBusiness = await business.save();
+
+        // Populate the managers field after save
+        await updatedBusiness.populate('managers', 'name username email phone isActive');
 
         // Invalidate relevant caches
         if (userRole === 'admin') {
