@@ -136,7 +136,7 @@ const businessSchema = new mongoose.Schema(
         // Notification Preferences
         notifications: {
             emailNotifications: { type: Boolean, default: true },
-            smsNotifications: { type: Boolean, default: false },
+            smsNotifications: { type: Boolean, default: true },
             whatsappNotifications: { type: Boolean, default: false },
             pushNotifications: { type: Boolean, default: true }
         },
