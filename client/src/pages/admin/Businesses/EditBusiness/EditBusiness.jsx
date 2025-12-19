@@ -163,7 +163,7 @@ const EditBusiness = () => {
     },
 
     // Notification Preferences
-    notificationPreferences: {
+    notifications: {
       emailNotifications: true,
       smsNotifications: false,
       whatsappNotifications: false,
@@ -221,7 +221,7 @@ const EditBusiness = () => {
             },
             seo: { ...prev.seo, ...data.seo },
             subscription: { ...prev.subscription, ...data.subscription },
-            notificationPreferences: { ...prev.notificationPreferences, ...data.notificationPreferences },
+            notifications: { ...prev.notifications, ...data.notifications },
             // Arrays
             tags: data.tags || [],
             specialties: data.specialties || [],
@@ -246,20 +246,32 @@ const EditBusiness = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const actualValue = type === "checkbox" ? checked : value;
 
     if (name.includes(".")) {
-      const [parent, child] = name.split(".");
-      setFormData((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: type === "checkbox" ? checked : value,
-        },
-      }));
+      // Support multi-level nesting (e.g., settings.appointmentSettings.slotDuration)
+      const keys = name.split(".");
+
+      setFormData((prev) => {
+        const updated = { ...prev };
+        let current = updated;
+
+        // Navigate to the parent object
+        for (let i = 0; i < keys.length - 1; i++) {
+          current[keys[i]] = { ...current[keys[i]] };
+          current = current[keys[i]];
+        }
+
+        // Set the final value
+        current[keys[keys.length - 1]] = actualValue;
+
+        return updated;
+      });
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: actualValue }));
     }
-    validateField(name, type === "checkbox" ? checked : value);
+
+    validateField(name, actualValue);
   };
 
   const handleArrayAdd = (field, input, setInput) => {
@@ -1919,8 +1931,8 @@ const EditBusiness = () => {
                   <label key={pref} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      name={`notificationPreferences.${pref}`}
-                      checked={formData.notificationPreferences[pref]}
+                      name={`notifications.${pref}`}
+                      checked={formData.notifications[pref]}
                       onChange={handleChange}
                       className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                     />
