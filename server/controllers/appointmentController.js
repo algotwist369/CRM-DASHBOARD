@@ -934,7 +934,7 @@ const getAppointmentStats = async (req, res, next) => {
         let { businessId, startDate, endDate } = req.query;
 
         // Determine business scope
-        let dateFilter = {};
+        let baseFilter = {};
 
         if (userRole === 'admin') {
             if (businessId) {
@@ -945,12 +945,12 @@ const getAppointmentStats = async (req, res, next) => {
                         message: "Business not found or access denied"
                     });
                 }
-                dateFilter.business = business._id;
+                baseFilter.business = business._id;
             } else {
                 // If no businessId provided, fetch for all businesses owned by admin
                 const businesses = await Business.find({ admin: userId }).select('_id');
                 const businessIds = businesses.map(b => b._id);
-                dateFilter.business = { $in: businessIds };
+                baseFilter.business = { $in: businessIds };
             }
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
@@ -960,20 +960,35 @@ const getAppointmentStats = async (req, res, next) => {
                     message: "Manager not found"
                 });
             }
-            dateFilter.business = manager.business;
+            baseFilter.business = manager.business;
             // Explicitly set businessId for cache key
             businessId = manager.business.toString();
         }
 
         const businessKey = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
-        const cacheKey = `${businessKey}:appointment:stats:v2:${startDate}:${endDate}`;
+        const cacheKey = `${businessKey}:appointment:stats:v3:${startDate}:${endDate}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
-            return res.json({ success: true, source: "cache", data: cachedData });
+            return res.json({
+                success: true,
+                source: "cache",
+                cacheAge: cachedData.cacheTimestamp ? Math.floor((Date.now() - cachedData.cacheTimestamp) / 1000) : null,
+                lastUpdated: cachedData.cacheTimestamp,
+                data: cachedData
+            });
         }
 
+        // Calculate date ranges for today and this month
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        // Build date filter for custom range
+        let dateFilter = { ...baseFilter };
         if (startDate && endDate) {
             dateFilter.appointmentDate = {
                 $gte: new Date(startDate),
@@ -981,8 +996,8 @@ const getAppointmentStats = async (req, res, next) => {
             };
         }
 
-        // Aggregate statistics
-        const stats = await Appointment.aggregate([
+        // 1. Overall stats (with custom date range if provided)
+        const overallStats = await Appointment.aggregate([
             { $match: dateFilter },
             {
                 $group: {
@@ -1003,23 +1018,252 @@ const getAppointmentStats = async (req, res, next) => {
                     noShows: {
                         $sum: { $cond: [{ $eq: ['$status', 'no_show'] }, 1, 0] }
                     },
+                    inProgress: {
+                        $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
+                    },
+                    // Paid Revenue: Only from completed appointments with paid status
+                    paidRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$paymentStatus', 'paid'] },
+                                '$totalAmount',
+                                0
+                            ]
+                        }
+                    },
+                    // Pending Revenue: All other statuses
+                    pendingRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $ne: ['$paymentStatus', 'paid'] },
+                                { $subtract: ['$totalAmount', '$paidAmount'] },
+                                0
+                            ]
+                        }
+                    },
                     totalRevenue: { $sum: '$totalAmount' },
+                    totalPaid: { $sum: '$paidAmount' },
                     averageRevenue: { $avg: '$totalAmount' },
-                    totalPaid: { $sum: '$paidAmount' }
+                    averageAppointmentValue: { $avg: '$totalAmount' }
                 }
             }
         ]);
 
-        const result = stats[0] || {
-            totalAppointments: 0,
-            pending: 0,
-            confirmed: 0,
-            completed: 0,
-            cancelled: 0,
-            noShows: 0,
-            totalRevenue: 0,
-            averageRevenue: 0,
-            totalPaid: 0
+        // 2. Today's stats
+        const todayStats = await Appointment.aggregate([
+            {
+                $match: {
+                    ...baseFilter,
+                    appointmentDate: { $gte: todayStart, $lte: todayEnd }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    todayAppointments: { $sum: 1 },
+                    todayCompleted: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    },
+                    todayPending: {
+                        $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+                    },
+                    todayConfirmed: {
+                        $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] }
+                    },
+                    todayCancelled: {
+                        $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
+                    },
+                    // Today's Paid Revenue
+                    todayPaidRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$paymentStatus', 'paid'] },
+                                '$totalAmount',
+                                0
+                            ]
+                        }
+                    },
+                    // Today's Pending Revenue
+                    todayPendingRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $ne: ['$paymentStatus', 'paid'] },
+                                { $subtract: ['$totalAmount', '$paidAmount'] },
+                                0
+                            ]
+                        }
+                    },
+                    todayRevenue: { $sum: '$totalAmount' }
+                }
+            }
+        ]);
+
+        // 3. This month's stats
+        const monthStats = await Appointment.aggregate([
+            {
+                $match: {
+                    ...baseFilter,
+                    appointmentDate: { $gte: monthStart, $lte: monthEnd }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    thisMonthAppointments: { $sum: 1 },
+                    thisMonthCompleted: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    },
+                    thisMonthPending: {
+                        $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+                    },
+                    thisMonthConfirmed: {
+                        $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] }
+                    },
+                    thisMonthCancelled: {
+                        $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
+                    },
+                    // This Month's Paid Revenue
+                    thisMonthPaidRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$paymentStatus', 'paid'] },
+                                '$totalAmount',
+                                0
+                            ]
+                        }
+                    },
+                    // This Month's Pending Revenue
+                    thisMonthPendingRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $ne: ['$paymentStatus', 'paid'] },
+                                { $subtract: ['$totalAmount', '$paidAmount'] },
+                                0
+                            ]
+                        }
+                    },
+                    thisMonthRevenue: { $sum: '$totalAmount' }
+                }
+            }
+        ]);
+
+        // 4. Upcoming appointments (future appointments that are not cancelled/no_show)
+        const upcomingCount = await Appointment.countDocuments({
+            ...baseFilter,
+            appointmentDate: { $gte: now },
+            status: { $nin: ['cancelled', 'no_show', 'completed'] }
+        });
+
+        // 5. Overdue appointments (past appointments still pending/confirmed)
+        const overdueCount = await Appointment.countDocuments({
+            ...baseFilter,
+            appointmentDate: { $lt: todayStart },
+            status: { $in: ['pending', 'confirmed'] }
+        });
+
+        // 6. Payment breakdown
+        const paymentStats = await Appointment.aggregate([
+            { $match: dateFilter },
+            {
+                $group: {
+                    _id: '$paymentStatus',
+                    count: { $sum: 1 },
+                    amount: { $sum: '$totalAmount' }
+                }
+            }
+        ]);
+
+        // Build payment breakdown object
+        const paymentBreakdown = {
+            paid: { count: 0, amount: 0 },
+            partial: { count: 0, amount: 0 },
+            pending: { count: 0, amount: 0 },
+            failed: { count: 0, amount: 0 },
+            refunded: { count: 0, amount: 0 }
+        };
+
+        paymentStats.forEach(stat => {
+            if (stat._id && paymentBreakdown[stat._id] !== undefined) {
+                paymentBreakdown[stat._id] = {
+                    count: stat.count,
+                    amount: stat.amount || 0
+                };
+            }
+        });
+
+        // Compile final result
+        const overall = overallStats[0] || {};
+        const today = todayStats[0] || {};
+        const month = monthStats[0] || {};
+
+        const result = {
+            // Overall Metrics
+            totalAppointments: overall.totalAppointments || 0,
+            pending: overall.pending || 0,
+            confirmed: overall.confirmed || 0,
+            completed: overall.completed || 0,
+            cancelled: overall.cancelled || 0,
+            noShows: overall.noShows || 0,
+            inProgress: overall.inProgress || 0,
+
+            // Today's Metrics
+            todayAppointments: today.todayAppointments || 0,
+            todayCompleted: today.todayCompleted || 0,
+            todayPending: today.todayPending || 0,
+            todayConfirmed: today.todayConfirmed || 0,
+            todayCancelled: today.todayCancelled || 0,
+
+            // This Month's Metrics
+            thisMonthAppointments: month.thisMonthAppointments || 0,
+            thisMonthCompleted: month.thisMonthCompleted || 0,
+            thisMonthPending: month.thisMonthPending || 0,
+            thisMonthConfirmed: month.thisMonthConfirmed || 0,
+            thisMonthCancelled: month.thisMonthCancelled || 0,
+
+            // Revenue Metrics (Paid vs Pending)
+            paidRevenue: overall.paidRevenue || 0, // Only paid appointments
+            pendingRevenue: overall.pendingRevenue || 0, // All unpaid/partially paid
+            totalRevenue: overall.totalRevenue || 0, // Total (paid + pending)
+            totalPaid: overall.totalPaid || 0, // Amount actually received
+            averageRevenue: overall.averageRevenue || 0,
+            averageAppointmentValue: overall.averageAppointmentValue || 0,
+
+            // Today's Revenue
+            todayPaidRevenue: today.todayPaidRevenue || 0,
+            todayPendingRevenue: today.todayPendingRevenue || 0,
+            todayRevenue: today.todayRevenue || 0,
+
+            // This Month's Revenue
+            thisMonthPaidRevenue: month.thisMonthPaidRevenue || 0,
+            thisMonthPendingRevenue: month.thisMonthPendingRevenue || 0,
+            thisMonthRevenue: month.thisMonthRevenue || 0,
+
+            // Additional Analytics
+            upcomingAppointments: upcomingCount,
+            overdueAppointments: overdueCount,
+
+            // Payment Status Breakdown
+            paymentBreakdown,
+
+            // Conversion Rates
+            completionRate: overall.totalAppointments > 0
+                ? ((overall.completed || 0) / overall.totalAppointments * 100).toFixed(2)
+                : 0,
+            cancellationRate: overall.totalAppointments > 0
+                ? ((overall.cancelled || 0) / overall.totalAppointments * 100).toFixed(2)
+                : 0,
+            noShowRate: overall.totalAppointments > 0
+                ? ((overall.noShows || 0) / overall.totalAppointments * 100).toFixed(2)
+                : 0,
+
+            // Payment Collection Rate
+            paymentCollectionRate: overall.totalRevenue > 0
+                ? ((overall.totalPaid || 0) / overall.totalRevenue * 100).toFixed(2)
+                : 0,
+
+            // Cache metadata
+            cacheTimestamp: Date.now(),
+            lastUpdated: new Date().toISOString()
         };
 
         // Cache for 5 minutes
@@ -1027,6 +1271,7 @@ const getAppointmentStats = async (req, res, next) => {
 
         return res.json({
             success: true,
+            source: "live",
             data: result
         });
     } catch (err) {

@@ -31,7 +31,7 @@ export const endpoints = {
     businesses: `${API_BASE_URL}/admin/businesses`,
     business: (id) => `${API_BASE_URL}/admin/${id}`,
     createBusiness: `${API_BASE_URL}/admin/business`,
-    updateBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
+    updateBusiness: (id) => `${API_BASE_URL}/business/${id}`,
     updateBusinessStatus: (id) => `${API_BASE_URL}/admin/business/${id}/status`,
     deleteBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     businessLink: (id) => `${API_BASE_URL}/admin/business/${id}/link`,
