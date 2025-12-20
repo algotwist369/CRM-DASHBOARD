@@ -26,6 +26,9 @@ router.get("/public/:id/reviews", businessController.getBusinessReviews);
 // Add a review for a business (public)
 router.post("/public/:id/reviews", businessController.addBusinessReview);
 
+// Mark review as helpful (public)
+router.post("/public/reviews/:id/helpful", businessController.markReviewHelpful);
+
 // Get business info by business link (public for appointment booking)
 router.get("/info/:businessLink", businessController.getBusinessInfoByLink);
 

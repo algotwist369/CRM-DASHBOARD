@@ -1620,6 +1620,35 @@ const getBusinessReviews = async (req, res, next) => {
     }
 };
 
+// ================== Mark Review Helpful (Public) ==================
+const markReviewHelpful = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        const review = await Review.findById(id);
+
+        if (!review) {
+            return res.status(404).json({
+                success: false,
+                message: "Review not found"
+            });
+        }
+
+        await review.markHelpful();
+
+        return res.json({
+            success: true,
+            message: "Review marked as helpful",
+            data: {
+                helpfulCount: review.helpfulCount,
+                helpfulPercentage: review.helpfulPercentage
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getPublicBusinesses,
     getBusinessInfoByLink,
@@ -1632,5 +1661,6 @@ module.exports = {
     getIndiaLocations,
     updateBusiness,
     addBusinessReview,
-    getBusinessReviews
+    getBusinessReviews,
+    markReviewHelpful
 };
