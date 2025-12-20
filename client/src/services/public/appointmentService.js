@@ -177,7 +177,6 @@ class AppointmentService {
     }
   }
 
-  // Add business review
   async addBusinessReview(businessId, reviewData) {
     try {
       const response = await apiClient.post(endpoints.business.addReview(businessId), reviewData)
@@ -186,6 +185,19 @@ class AppointmentService {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to submit review'
+      }
+    }
+  }
+
+  // Mark review as helpful
+  async markReviewHelpful(reviewId) {
+    try {
+      const response = await apiClient.post(endpoints.business.markReviewHelpful(reviewId))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to mark review as helpful'
       }
     }
   }

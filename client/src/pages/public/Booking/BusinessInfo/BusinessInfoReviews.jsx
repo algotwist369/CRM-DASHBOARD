@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { FaStar, FaTimes, FaSpinner, FaUser } from 'react-icons/fa'
+import { FaStar, FaTimes, FaSpinner, FaUser, FaThumbsUp } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import appointmentService from '../../../../services/public/appointmentService' // Check relative path
@@ -86,6 +86,21 @@ const BusinessInfoReviews = ({ business }) => {
         },
         onError: (err) => {
             toast.error(err.message || 'Failed to submit review')
+        }
+    })
+
+    const markHelpfulMutation = useMutation({
+        mutationFn: async (reviewId) => {
+            const res = await appointmentService.markReviewHelpful(reviewId)
+            if (!res.success) throw new Error(res.error)
+            return res.data
+        },
+        onSuccess: () => {
+            toast.success('Marked as helpful')
+            queryClient.invalidateQueries(['businessReviews', business?._id])
+        },
+        onError: (err) => {
+            toast.error(err.message || 'Failed to mark as helpful')
         }
     })
 
@@ -223,11 +238,23 @@ const BusinessInfoReviews = ({ business }) => {
                                         {review.review}
                                     </p>
 
-                                    {review.helpfulPercentage !== undefined && review.helpfulPercentage !== null && (
-                                        <p className="text-[10px] text-gray-400 mt-1">
-                                            {review.helpfulPercentage}% found this helpful
-                                        </p>
-                                    )}
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <button
+                                            onClick={() => markHelpfulMutation.mutate(review._id)}
+                                            disabled={markHelpfulMutation.isPending}
+                                            className="text-gray-400 hover:text-primary-600 transition-colors flex items-center gap-1.5 text-[10px] sm:text-xs group"
+                                            title="Mark as helpful"
+                                        >
+                                            <FaThumbsUp className="group-hover:scale-110 transition-transform" />
+                                            <span>Helpful</span>
+                                        </button>
+
+                                        {review.helpfulPercentage > 0 && (
+                                            <p className="text-[10px] text-gray-400">
+                                                {review.helpfulPercentage}% found this helpful
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* RIGHT: Rating + Date */}
