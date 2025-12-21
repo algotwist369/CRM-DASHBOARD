@@ -120,6 +120,21 @@ app.use(express.urlencoded({
 app.use(cookieParser());
 
 // ================== Static Files (Uploads) ==================
+// Serve SEO files (sitemap, robots)
+app.use('/seo', express.static(path.join(__dirname, '../client/public/seo'), {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.xml')) {
+            res.setHeader('Content-Type', 'application/xml');
+        }
+        if (filePath.endsWith('.txt')) {
+            res.setHeader('Content-Type', 'text/plain');
+        }
+        if (filePath.endsWith('.json')) {
+            res.setHeader('Content-Type', 'application/json');
+        }
+    }
+}));
+
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     maxAge: '7d', // Cache static files for 7 days
