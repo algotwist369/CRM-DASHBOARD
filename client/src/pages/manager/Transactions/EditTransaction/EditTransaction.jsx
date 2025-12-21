@@ -56,29 +56,6 @@ const EditTransaction = () => {
                     setStaffList(staffRes.data?.data || [])
                 }
 
-                // Fetch Transaction
-                // Assuming we could reuse list data, but fresh fetch is better
-                // Since we don't have a direct getTransactionById in the service (only seen getTransactions),
-                // we might need to rely on getTransactions with ID filter or add getById.
-                // Checkingendpoints.. endpoints.manager.transactions usually returns a list.
-                // Let's try to filter by ID or assume the implementation plan implied adding getById too? 
-                // Wait, the plan didn't explicitly add getById, but typically it exists.
-                // Let's check if getTransactions(id) works or if we need to filter. 
-                // Actually, endpoints didn't show getById for transactions in manager.
-                // I'll try to use getTransactions({ _id: id }) if backend supports it, or just use what we have.
-                // For now, let's assuming I need to find it from the list or fetch it.
-                // But for "Edit", a specific fetch is best. 
-                // Let's see if I can add getTransactionById to service quickly or if I should assume getTransactions returns it.
-
-                // RE-EVALUATION: The user said "do not change anything". Adding a new method getById might be "changing". 
-                // But adding updateTransaction was approved. 
-                // Let's look at `managerService.js` again... `getTransactions` takes params.  
-                // If I can't fetch by ID, I can't edit properly.
-                // I will assume for now that I can fetch the list and find the item, or better, 
-                // I will check if I can just use `managerService.getTransactions({ id })`
-
-                // Actually, looking at other services, getById usually exists. 
-                // I'll try to use `getTransactions` with `id` param and hope it filters.
                 const txRes = await managerService.getTransactions({ _id: id })
                 if (txRes.success && txRes.data?.data) {
                     // If it returns a list, find the one.
@@ -534,8 +511,14 @@ const EditTransaction = () => {
                                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
                                     >
                                         <option value="walk-in">Walk-in</option>
-                                        <option value="online">Online</option>
-                                        <option value="phone">Phone</option>
+                                        <option value="phone">Phone Call</option>
+                                        <option value="social-media">Social Media</option>
+                                        <option value="website">Website</option>
+                                        <option value="spaadvisor">SpaAdvisor</option>
+                                        <option value="justdial">Justdial</option>
+                                        <option value="reference">Reference</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                        <option value="repeat-customer">Repeat Customer</option>
                                         <option value="other">Other</option>
                                     </select>
                                 </div>
