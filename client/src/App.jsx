@@ -137,7 +137,9 @@ const AppointmentCalendar = lazy(() => import('./pages/manager/Appointments').th
 // Manager - Transactions
 const TransactionList = lazy(() => import('./pages/manager/Transactions').then(module => ({ default: module.TransactionList })))
 const AddTransaction = lazy(() => import('./pages/manager/Transactions').then(module => ({ default: module.AddTransaction })))
+const EditTransaction = lazy(() => import('./pages/manager/Transactions').then(module => ({ default: module.EditTransaction })))
 const TransactionDetails = lazy(() => import('./pages/manager/Transactions').then(module => ({ default: module.TransactionDetails })))
+
 
 // Manager - Daily Business
 const DailyBusinessList = lazy(() => import('./pages/manager/DailyBusiness').then(module => ({ default: module.DailyBusinessList })))
@@ -329,11 +331,12 @@ function App() {
                       <Route path="customers/insights" element={<CustomerInsights />} />
                       <Route path="customers/targeting" element={<CustomerTargeting />} />
                       <Route path="appointments" element={<AppointmentList />} />
-                      <Route path="appointments/:id" element={<AppointmentDetails />} />
                       <Route path="appointments/calendar" element={<AppointmentCalendar />} />
+                      <Route path="appointments/:id" element={<AppointmentDetails />} />
                       <Route path="transactions" element={<TransactionList />} />
                       <Route path="transactions/add" element={<AddTransaction />} />
                       <Route path="transactions/:id" element={<TransactionDetails />} />
+                      <Route path="transactions/:id/edit" element={<EditTransaction />} />
                       <Route path="daily-business" element={<DailyBusinessList />} />
                       <Route path="daily-business/add" element={<AddDailyBusiness />} />
                       <Route path="daily-business/analytics" element={<DailyBusinessAnalytics />} />

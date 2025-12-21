@@ -10,7 +10,8 @@ import {
   FaFilter,
   FaEye,
   FaPlus,
-  FaReceipt
+  FaReceipt,
+  FaEdit
 } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import managerService from '../../../../services/manager/managerService'
@@ -342,6 +343,13 @@ const TransactionList = () => {
                         >
                           <FaEye />
                           <span>View</span>
+                        </Link>
+                        <Link
+                          to={`/manager/transactions/${transaction._id || transaction.id}/edit`}
+                          className="text-gray-600 hover:text-gray-900 inline-flex items-center gap-1 ml-4"
+                        >
+                          <FaEdit />
+                          <span>Edit</span>
                         </Link>
                       </td>
                     </tr>

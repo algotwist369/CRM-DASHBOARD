@@ -148,6 +148,14 @@ const ManagerHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
           {/* Quick Actions - Hidden on mobile */}
           <div className="hidden lg:flex items-center gap-2">
             <Button
+              variant="primary"
+              size="md"
+              className="text-sm"
+              onClick={() => navigate('/manager/transactions/add')}
+            >
+              + Add Transaction
+            </Button>
+            <Button
               variant="outline"
               size="md"
               className="text-sm"

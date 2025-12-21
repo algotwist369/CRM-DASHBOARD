@@ -464,6 +464,53 @@ const getCustomerById = async (req, res, next) => {
         const userRole = req.user.role;
         const { id } = req.params;
 
+        // Check for Virtual Walk-in ID
+        if (id.startsWith('walkin_')) {
+            const phone = id.split('_')[1];
+
+            // Get Business ID context
+            let businessId;
+            if (userRole === 'manager') {
+                const manager = await Manager.findById(userId);
+                businessId = manager.business;
+            } else if (userRole === 'admin') {
+                // For admin, we might need business context from query if available, 
+
+            }
+
+            const txnQuery = { customerPhone: phone };
+            if (businessId) txnQuery.business = businessId;
+
+            const transactions = await Transaction.find(txnQuery).sort({ transactionDate: -1 });
+
+            if (!transactions.length) {
+                return res.status(404).json({ success: false, message: "Walk-in customer not found" });
+            }
+
+            const firstTxn = transactions[0];
+            const totalSpent = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
+
+            // Construct Virtual Customer
+            const virtualCustomer = {
+                _id: id,
+                firstName: firstTxn.customerName || 'Walk-in',
+                lastName: 'Customer',
+                phone: phone,
+                email: firstTxn.customerEmail,
+                customerType: 'walkin',
+                business: firstTxn.business, // Primary business from latest txn
+                totalSpent: totalSpent,
+                totalVisits: transactions.length,
+                lastVisit: firstTxn.transactionDate,
+                createdAt: transactions[transactions.length - 1].transactionDate, // First visit
+                preferences: { preferredStaff: [], preferredServices: [] },
+                tags: ['walk-in'],
+                isVirtual: true
+            };
+
+            return res.json({ success: true, data: virtualCustomer });
+        }
+
         const customer = await Customer.findById(id)
             .populate('business', 'name type branch')
             .populate('preferences.preferredStaff', 'name role phone')
@@ -919,6 +966,44 @@ const getCustomerTimeline = async (req, res, next) => {
         const userId = req.user.id;
         const userRole = req.user.role;
         const { id } = req.params;
+
+        // Check for Virtual Walk-in ID (Timeline)
+        if (id.startsWith('walkin_')) {
+            const phone = id.split('_')[1];
+
+            // Get Business context (optional for strictness, but phone should be enough for timeline)
+            let businessId;
+            if (userRole === 'manager') {
+                const manager = await Manager.findById(userId);
+                businessId = manager.business;
+            }
+
+            const txnQuery = { customerPhone: phone };
+            if (businessId) txnQuery.business = businessId;
+
+            const transactions = await Transaction.find(txnQuery)
+                .populate('staff', 'name')
+                .sort({ transactionDate: -1 })
+                .limit(50)
+                .lean();
+
+            const timeline = transactions.map(t => ({
+                type: 'transaction',
+                title: 'Walk-in Visit',
+                description: `${t.serviceName || 'Service'} ${t.staff?.name ? `with ${t.staff.name}` : ''}`,
+                date: t.transactionDate,
+                status: t.paymentStatus || 'completed',
+                amount: t.finalPrice || 0
+            }));
+
+            return res.json({
+                success: true,
+                data: {
+                    timeline,
+                    total: timeline.length
+                }
+            });
+        }
 
         const customer = await Customer.findById(id).lean();
 
@@ -1399,6 +1484,68 @@ const getCustomerInsights = async (req, res, next) => {
     }
 };
 
+// ================== Update Customer Tier ==================
+const updateCustomerTier = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const { id } = req.params;
+        const { tier } = req.body;
+
+        const validTiers = ['none', 'bronze', 'silver', 'gold', 'platinum'];
+        if (!validTiers.includes(tier)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid tier. Must be one of: ${validTiers.join(', ')}`
+            });
+        }
+
+        // Check for Walk-in ID
+        if (id.startsWith('walkin_in')) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot update tier for walk-in customer. Please register the customer first."
+            });
+        }
+
+        const customer = await Customer.findById(id);
+
+        if (!customer) {
+            return res.status(404).json({ success: false, message: "Customer not found" });
+        }
+
+        // Verify access - Manager can only update their own business customers
+        if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (!manager || manager.business.toString() !== customer.business.toString()) {
+                return res.status(403).json({ success: false, message: "Access denied" });
+            }
+        } else if (userRole === 'admin') {
+            // Admin Check (Optional strictness: ensure admin owns the business)
+            const business = await Business.findOne({ _id: customer.business, admin: userId });
+            if (!business) {
+                return res.status(403).json({ success: false, message: "Access denied" });
+            }
+        }
+
+        customer.membershipTier = tier;
+        await customer.save();
+
+        return res.json({
+            success: true,
+            message: `Customer tier updated to ${tier}`,
+            data: {
+                id: customer._id,
+                name: `${customer.firstName} ${customer.lastName}`,
+                membershipTier: customer.membershipTier
+            }
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     createCustomer,
     getCustomers,
@@ -1412,5 +1559,6 @@ module.exports = {
     getCustomerTimeline,
     addCustomerNote,
     getCustomerAnalyticsOverview,
-    getCustomerInsights
+    getCustomerInsights,
+    updateCustomerTier // Export new function
 };

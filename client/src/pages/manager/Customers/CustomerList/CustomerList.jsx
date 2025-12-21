@@ -21,8 +21,9 @@ const StatCard = memo(({ title, value, color = "text-gray-900" }) => (
 ))
 
 // Memoized Customer Row - Updated to match backend response
-const CustomerRow = memo(({ customer, onView, formatCurrency, formatDate, getSegment }) => {
+const CustomerRow = memo(({ customer, onView, onUpdateTier, formatCurrency, formatDate, getSegment }) => {
   const segment = getSegment(customer)
+  const isWalkin = (customer.id || customer._id)?.toString().startsWith('walkin_');
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50">
@@ -59,15 +60,26 @@ const CustomerRow = memo(({ customer, onView, formatCurrency, formatDate, getSeg
       <td className="px-3 py-3 text-sm text-gray-500 hidden lg:table-cell">
         {formatDate(customer.lastVisit)}
       </td>
-      <td className="px-3 py-3 hidden sm:table-cell">
-        <span className={`px-2 py-0.5 rounded-full text-xs ${customer.membershipTier === 'platinum' ? 'bg-purple-100 text-purple-700' :
-          customer.membershipTier === 'gold' ? 'bg-yellow-100 text-yellow-700' :
-            customer.membershipTier === 'silver' ? 'bg-gray-100 text-gray-700' :
-              customer.membershipTier === 'bronze' ? 'bg-orange-100 text-orange-700' :
-                'bg-gray-100 text-gray-600'
-          }`}>
-          {customer.membershipTier || 'None'}
-        </span>
+      <td className="px-3 py-3 hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
+        <select
+          value={customer.membershipTier || 'none'}
+          onChange={(e) => onUpdateTier(customer.id || customer._id, e.target.value)}
+          disabled={isWalkin}
+          title={isWalkin ? "Register customer to update tier" : "Update Tier"}
+          className={`px-2 py-1 rounded text-xs border-0 focus:ring-0 ${isWalkin ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+            } ${customer.membershipTier === 'platinum' ? 'bg-purple-100 text-purple-700' :
+              customer.membershipTier === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                customer.membershipTier === 'silver' ? 'bg-gray-100 text-gray-700' :
+                  customer.membershipTier === 'bronze' ? 'bg-orange-100 text-orange-700' :
+                    'bg-gray-100 text-gray-600'
+            }`}
+        >
+          <option value="none" className="bg-white text-gray-600">None</option>
+          <option value="bronze" className="bg-white text-orange-700">Bronze</option>
+          <option value="silver" className="bg-white text-gray-700">Silver</option>
+          <option value="gold" className="bg-white text-yellow-700">Gold</option>
+          <option value="platinum" className="bg-white text-purple-700">Platinum</option>
+        </select>
       </td>
       <td className="px-3 py-3 text-right">
         <button
@@ -212,6 +224,22 @@ const CustomerList = () => {
     navigate(`/manager/customers/${id}`)
   }, [navigate])
 
+  const handleUpdateTier = useCallback(async (customerId, newTier) => {
+    try {
+      const result = await managerService.updateCustomerTier(customerId, newTier)
+      if (result.success) {
+        toast.success(`Tier updated to ${newTier}`)
+        setCustomers(prev => prev.map(c =>
+          (c.id === customerId || c._id === customerId) ? { ...c, membershipTier: newTier } : c
+        ))
+      } else {
+        toast.error(result.error || 'Failed to update tier')
+      }
+    } catch (error) {
+      toast.error('Failed to update tier')
+    }
+  }, [])
+
   // Memoized stats from backend data
   const stats = useMemo(() => {
     const totalSpent = customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0)
@@ -329,6 +357,7 @@ const CustomerList = () => {
                       key={customer.id || customer._id}
                       customer={customer}
                       onView={handleView}
+                      onUpdateTier={handleUpdateTier}
                       formatCurrency={formatCurrency}
                       formatDate={formatDate}
                       getSegment={getSegment}
