@@ -43,7 +43,6 @@ const transactionSchema = new mongoose.Schema(
         // Source of transaction
         source: {
             type: String,
-            enum: ["walk-in", "online", "phone", "other"],
             default: "walk-in"
         },
 
