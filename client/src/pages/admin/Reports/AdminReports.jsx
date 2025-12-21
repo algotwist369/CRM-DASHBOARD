@@ -147,19 +147,60 @@ const AdminReports = () => {
     }
   }, [trendType, selectedBusiness])
 
-  // Initial load
-  useEffect(() => {
-    fetchReports(page)
-    fetchSummary()
-  }, [page, fetchReports, fetchSummary])
+  // Fetch appointment trends (for line chart)
+  const [appointmentTrends, setAppointmentTrends] = useState([])
+  const fetchAppointmentTrends = useCallback(async () => {
+    try {
+      const params = {
+        type: 'appointments',
+        limit: 30
+      }
+      if (selectedBusiness !== 'all') {
+        params.businessId = selectedBusiness
+      }
 
-  // Load analytics when filters change
+      const res = await apiClient.get(endpoints.reports.trends, { params })
+      if (res.data.success) {
+        setAppointmentTrends(res.data.data || [])
+      }
+    } catch (e) {
+      console.error('Failed to load appointment trends:', e)
+    }
+  }, [selectedBusiness])
+
+  // 1. Fetch Reports List (Only in Reports Tab)
+  useEffect(() => {
+    if (activeTab === 'reports') {
+      fetchReports(page)
+    }
+  }, [activeTab, page, fetchReports])
+
+  // 2. Fetch Dashboard Data: Summary & Appointment Trends (Depends on Business only, ignores Date)
   useEffect(() => {
     if (activeTab === 'dashboard') {
-      fetchAnalytics()
+      fetchSummary()
+      fetchAppointmentTrends()
+    }
+  }, [activeTab, selectedBusiness, fetchSummary, fetchAppointmentTrends])
+
+  // 3. Fetch Dashboard Data: Analytics (Depends on Business & Date)
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      const { start, end } = dateRange
+      // Only fetch if BOTH are set, or BOTH are empty (All Time).
+      // Prevents "All Time" fetch when user has only picked Start Date.
+      if ((start && end) || (!start && !end)) {
+        fetchAnalytics()
+      }
+    }
+  }, [activeTab, selectedBusiness, dateRange, fetchAnalytics])
+
+  // 4. Fetch Dashboard Data: Chart Trends (Depends on Business & Type)
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
       fetchTrends()
     }
-  }, [activeTab, dateRange, selectedBusiness, fetchAnalytics, fetchTrends])
+  }, [activeTab, selectedBusiness, trendType, fetchTrends])
 
   // Export reports
   const exportReports = async (format = 'csv') => {
@@ -405,7 +446,7 @@ const AdminReports = () => {
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
             {/* Revenue Trend Chart */}
             <div className="bg-white   border border-gray-200 p-6">
               <div className="flex justify-between items-center mb-4">
@@ -462,8 +503,8 @@ const AdminReports = () => {
             </div>
 
             {/* Customer Tier Distribution */}
-            <div className="bg-white   border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Customer Distribution by Tier</h3>
+            {/* <div className="bg-white   border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Customer Distribution by Type</h3>
               {analyticsLoading ? (
                 <div className="h-64 flex items-center justify-center">
                   <FaSpinner className="w-8 h-8 text-primary-600 animate-spin" />
@@ -477,14 +518,33 @@ const AdminReports = () => {
                       nameKey="_id"
                       cx="50%"
                       cy="50%"
-                      outerRadius={80}
-                      label={(entry) => `${entry._id || 'None'} (${entry.count})`}
+                      outerRadius={100}
+                      label={(entry) => `${entry._id || 'Unknown'} (${entry.count})`}
                     >
-                      {analytics.customers.byTier.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
+                      {analytics.customers.byTier.map((entry, index) => {
+                        const tierColors = {
+                          'bronze': '#cd7f32',
+                          'silver': '#c0c0c0',
+                          'gold': '#ffd700',
+                          'platinum': '#8b5cf6',
+                          'none': '#3b82f6',
+                          'new': '#10b981',
+                          'regular': '#06b6d4',
+                          'vip': '#ec4899',
+                          'inactive': '#6b7280',
+                          'walkin': '#f59e0b',
+                          'online': '#3b82f6'
+                        };
+                        return (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={tierColors[entry._id?.toLowerCase()] || COLORS[index % COLORS.length]}
+                          />
+                        );
+                      })}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip formatter={(value, name) => [value, name || 'Unknown']} />
+                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -495,7 +555,7 @@ const AdminReports = () => {
                   </div>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
 
           {/* Top Spenders & Recent Signups */}
@@ -510,10 +570,6 @@ const AdminReports = () => {
                       <p className="font-medium text-gray-800">{customer.fullName}</p>
                       <p className="text-xs text-gray-500">{customer.email}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-green-600">{formatCurrency(customer.totalSpent)}</p>
-                      <p className="text-xs text-gray-500">{customer.visits} visits</p>
-                    </div>
                   </div>
                 )) || <p className="text-gray-500 text-center py-4">No data available</p>}
               </div>
@@ -521,15 +577,41 @@ const AdminReports = () => {
 
             {/* Appointment Status */}
             <div className="bg-white   border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Appointment Status</h3>
-              {analytics?.appointments?.byStatus?.length > 0 ? (
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Appointment Status Trends</h3>
+              {appointmentTrends.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={appointmentTrends}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="completed" stroke="#10b981" strokeWidth={2} name="Completed" dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="pending" stroke="#f59e0b" strokeWidth={2} name="Pending" dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="cancelled" stroke="#ef4444" strokeWidth={2} name="Cancelled" dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : analytics?.appointments?.byStatus?.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={analytics.appointments.byStatus}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="_id" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="#3b82f6" />
+                    <Bar dataKey="count">
+                      {analytics.appointments.byStatus.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            entry._id === 'completed' ? '#10b981' :
+                              entry._id === 'pending' ? '#f59e0b' :
+                                entry._id === 'cancelled' ? '#ef4444' :
+                                  entry._id === 'confirmed' ? '#3b82f6' :
+                                    COLORS[index % COLORS.length]
+                          }
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -578,34 +660,43 @@ const AdminReports = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {reports.map((r, index) => (
-                      <tr key={r._id || r.id || `report-${index}`} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-gray-700">
-                          {r.date ? new Date(r.date).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          }) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {r.manager?.username || r.manager?.name || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">{r.totalCustomers || 0}</td>
-                        <td className="px-4 py-3 text-green-700 font-medium">{formatCurrency(r.totalIncome || 0)}</td>
-                        <td className="px-4 py-3 text-red-600">{formatCurrency(r.totalExpenses || 0)}</td>
-                        <td className="px-4 py-3 text-blue-700 font-semibold">
-                          {formatCurrency((r.totalIncome || 0) - (r.totalExpenses || 0))}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${r.isCompleted !== false
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                            }`}>
-                            {r.isCompleted !== false ? 'Completed' : 'In Progress'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {reports.map((r, index) => {
+                      // Logic matching backend: Profit = Income - Expenses
+                      // Note: r.totalIncome is now dynamically calculated by backend to match transactions.
+                      // r.totalExpenses is from DailyBusiness (manual/saved).
+                      const income = r.totalIncome || 0;
+                      const expenses = r.totalExpenses || 0;
+                      const profit = income - expenses;
+
+                      return (
+                        <tr key={r._id || r.id || `report-${index}`} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-gray-700">
+                            {r.date ? new Date(r.date).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            }) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {r.manager?.username || r.manager?.name || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">{r.totalCustomers || 0}</td>
+                          <td className="px-4 py-3 text-green-700 font-medium">{formatCurrency(income)}</td>
+                          <td className="px-4 py-3 text-red-600">{formatCurrency(expenses)}</td>
+                          <td className={`px-4 py-3 font-semibold ${profit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                            {formatCurrency(profit)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${r.isCompleted !== false
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                              {r.isCompleted !== false ? 'Completed' : 'In Progress'}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

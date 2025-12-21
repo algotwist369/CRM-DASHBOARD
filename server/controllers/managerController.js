@@ -707,8 +707,23 @@ const getManagerStats = async (req, res, next) => {
         const apptCount = missingApptStats[0]?.count || 0;
 
         const totalRevenue = txnRevenue + apptRevenue;
-        // Hybrid Total Customers (Visits/Sales)
-        const totalCustomers = txnCount + apptCount;
+
+        // Updated Customer Logic (Appointment-based vs Walk-in)
+        // Online customers: Unique customers who have booked appointments
+        const appointmentCustomerIds = await Appointment.distinct('customer', {
+            business: businessId,
+            customer: { $ne: null }
+        });
+        const onlineCustomers = appointmentCustomerIds.length;
+
+        // Walk-in customers: Unique phone numbers from transactions with no customer profile
+        const walkInCustomerPhones = await Transaction.distinct('customerPhone', {
+            business: businessId,
+            customer: null
+        });
+        const walkInCustomers = walkInCustomerPhones.length;
+        const totalCustomers = onlineCustomers + walkInCustomers;
+
 
         // Hybrid Total Transactions (Completed Sales/Appts)
         const totalTransactions = txnCount + apptCount;
