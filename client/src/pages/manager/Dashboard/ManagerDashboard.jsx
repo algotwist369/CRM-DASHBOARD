@@ -7,25 +7,42 @@ import {
   FaExchangeAlt,
   FaBuilding,
   FaCalendarDay,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaCloud,
+  FaWalking
 } from "react-icons/fa";
 import { HiRefresh } from "react-icons/hi";
 import managerService from "../../../services/manager/managerService";
 
 // Memoized Stat Card
-const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
-  <div className="bg-white border border-gray-200 p-3">
-    <div className="flex items-center gap-3">
-      <div className={`${iconBg} p-2 flex-shrink-0`}>
-        <Icon className={`${iconColor} text-lg`} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 truncate">{title}</p>
-        <p className="text-lg font-semibold text-gray-900 truncate">{value}</p>
+const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor, rawValue }) => {
+  // Format the tooltip to show full amount with decimals
+  const getTooltip = () => {
+    if (!rawValue && rawValue !== 0) return value;
+    const num = parseFloat(rawValue.toString().replace(/[₹,]/g, ''));
+    if (isNaN(num)) return value;
+    return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 p-3">
+      <div className="flex items-center gap-3">
+        <div className={`${iconBg} p-2 flex-shrink-0`}>
+          <Icon className={`${iconColor} text-lg`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-500 truncate">{title}</p>
+          <p
+            className="text-lg font-semibold text-gray-900 truncate cursor-help"
+            title={getTooltip()}
+          >
+            {value}
+          </p>
+        </div>
       </div>
     </div>
-  </div>
-));
+  );
+});
 
 // Memoized Info Row
 const InfoRow = memo(({ label, value, isBorder }) => (
@@ -175,10 +192,19 @@ const ManagerDashboard = () => {
     fetchDashboard(true);
   }, [fetchDashboard]);
 
-  // Format helpers
+  // Format helpers - Compact number formatting for large amounts
   const formatCurrency = useCallback((amount) => {
     if (!amount) return "₹0";
-    return `₹${parseInt(amount).toLocaleString('en-IN')}`;
+    const num = parseInt(amount);
+
+    if (num >= 10000000) { // 1 Crore+
+      return `₹${(num / 10000000).toFixed(1)}Cr`;
+    } else if (num >= 100000) { // 1 Lakh+
+      return `₹${(num / 100000).toFixed(1)}L`;
+    } else if (num >= 1000) { // 1 Thousand+
+      return `₹${(num / 1000).toFixed(1)}K`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
   }, []);
 
   const formatDate = useCallback((dateString) => {
@@ -222,11 +248,13 @@ const ManagerDashboard = () => {
   // Memoized stat cards
   const statCards = useMemo(() => [
     { icon: FaUsers, title: "Total Customers", value: managerStats?.totalCustomers ?? 0, iconBg: "bg-indigo-100", iconColor: "text-indigo-600" },
+    { icon: FaCloud, title: "Online Customers", value: managerStats?.onlineCustomers ?? 0, iconBg: "bg-sky-100", iconColor: "text-sky-600" },
+    { icon: FaWalking, title: "Walk-in Customers", value: managerStats?.walkInCustomers ?? 0, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
     { icon: FaUsers, title: "Total Staff", value: managerStats?.totalStaff ?? 0, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
-    { icon: FaMoneyBillWave, title: "Total Revenue", value: formatCurrency(managerStats?.totalRevenue), iconBg: "bg-green-100", iconColor: "text-green-600" },
+    { icon: FaMoneyBillWave, title: "Total Revenue", value: formatCurrency(managerStats?.totalRevenue), rawValue: managerStats?.totalRevenue, iconBg: "bg-green-100", iconColor: "text-green-600" },
     { icon: FaExchangeAlt, title: "Total Transactions", value: managerStats?.totalTransactions ?? 0, iconBg: "bg-purple-100", iconColor: "text-purple-600" },
-    { icon: FaCalendarDay, title: "Today Revenue", value: formatCurrency(managerStats?.todayRevenue), iconBg: "bg-yellow-100", iconColor: "text-yellow-600" },
-    { icon: FaCalendarAlt, title: "Monthly Revenue", value: formatCurrency(managerStats?.monthlyRevenue), iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+    { icon: FaCalendarDay, title: "Today Revenue", value: formatCurrency(managerStats?.todayRevenue), rawValue: managerStats?.todayRevenue, iconBg: "bg-yellow-100", iconColor: "text-yellow-600" },
+    { icon: FaCalendarAlt, title: "Monthly Revenue", value: formatCurrency(managerStats?.monthlyRevenue), rawValue: managerStats?.monthlyRevenue, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
     { icon: FaChartLine, title: "Monthly Customers", value: managerStats?.monthlyCustomers ?? 0, iconBg: "bg-pink-100", iconColor: "text-pink-600" }
   ], [managerStats, formatCurrency]);
 

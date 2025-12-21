@@ -87,9 +87,41 @@ exports.getAnalyticsSummary = async (req, res) => {
         const { date, businessId } = req.query;
         const queryDate = date || getTodayDateString();
 
+        // 1. Get businesses owned by this admin
+        // req.user is attached by protect middleware
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        const adminId = req.user.id;
+        // Fetch all business IDs owned by this admin
+        const myBusinesses = await Business.find({ admin: adminId }).distinct('_id');
+
+        if (myBusinesses.length === 0) {
+            return res.status(200).json({
+                success: true,
+                data: {
+                    totalCallClicks: 0,
+                    totalWhatsappClicks: 0,
+                    totalBookingClicks: 0,
+                    totalClicks: 0
+                }
+            });
+        }
+
         const matchStage = { date: queryDate };
+
+        // 2. Filter by businessId
         if (businessId) {
+            // Check if admin owns this business
+            const isOwner = myBusinesses.some(id => id.toString() === businessId);
+            if (!isOwner) {
+                return res.status(403).json({ success: false, message: "You do not have permission to view stats for this business" });
+            }
             matchStage.businessId = new mongoose.Types.ObjectId(businessId);
+        } else {
+            // If no specific business requested, sum up for ALL their businesses
+            matchStage.businessId = { $in: myBusinesses };
         }
 
         // Aggregate total clicks for the date (and optional business)
@@ -134,9 +166,33 @@ exports.getBusinessBreakdown = async (req, res) => {
         const skip = (parseInt(page) - 1) * limitNum;
         const sortOrder = order === 'desc' ? -1 : 1;
 
+        // 1. Security Check
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        const adminId = req.user.id;
+        const myBusinesses = await Business.find({ admin: adminId }).distinct('_id');
+
+        if (myBusinesses.length === 0) {
+            return res.status(200).json({
+                success: true,
+                data: [],
+                pagination: { total: 0, page: 1, pages: 0 }
+            });
+        }
+
         const matchStage = { date: queryDate };
+
+        // 2. Filter by business
         if (businessId) {
+            const isOwner = myBusinesses.some(id => id.toString() === businessId);
+            if (!isOwner) {
+                return res.status(403).json({ success: false, message: "Permission denied for this business" });
+            }
             matchStage.businessId = new mongoose.Types.ObjectId(businessId);
+        } else {
+            matchStage.businessId = { $in: myBusinesses };
         }
 
         const breakdown = await DailyClickCount.aggregate([
@@ -187,20 +243,37 @@ exports.getBusinessBreakdown = async (req, res) => {
 exports.getIpJourneys = async (req, res) => {
     try {
         const { date, businessId, page = 1, limit = 20 } = req.query;
-        
+
+        // 1. Security
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        const adminId = req.user.id;
+        const myBusinesses = await Business.find({ admin: adminId }).distinct('_id');
+        // Convert ObjectIds to strings for easier comparison with req.query.businessId
+        const myBusinessIds = myBusinesses.map(id => id.toString());
+
         const filter = {};
+
         if (businessId) {
+            if (!myBusinessIds.includes(businessId)) {
+                return res.status(403).json({ success: false, message: "Permission denied for this business" });
+            }
             filter.businessId = businessId;
+        } else {
+            // Restrict to ANY of my businesses
+            filter.businessId = { $in: myBusinesses };
         }
 
         // Filter by date (using start/end of day logic for 'lastVisitedAt')
         if (date) {
             const startDate = new Date(date);
             startDate.setHours(0, 0, 0, 0);
-            
+
             const endDate = new Date(date);
             endDate.setHours(23, 59, 59, 999);
-            
+
             filter.lastVisitedAt = {
                 $gte: startDate,
                 $lte: endDate

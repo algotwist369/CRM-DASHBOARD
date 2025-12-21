@@ -15,27 +15,44 @@ import {
   FaFileInvoiceDollar,
   FaBullhorn,
   FaCheckCircle,
-  FaTimesCircle
+  FaTimesCircle,
+  FaCloud,
+  FaWalking
 } from "react-icons/fa";
 import { HiRefresh } from "react-icons/hi";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import adminService from "../../../services/admin/adminService";
 import AdminDailyBusinessList from "../DailyBusiness/AdminDailyBusinessList/AdminDailyBusinessList";
 
 // Optimized Stat Card Component
-const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor }) => (
-  <div className="bg-white  border border-gray-200 p-4">
-    <div className="flex items-center justify-between">
-      <div className="flex-1">
-        <p className="text-xs font-medium text-gray-500 mb-1">{title}</p>
-        <p className="text-xl font-bold text-gray-900">{value}</p>
-      </div>
-      <div className={`${iconBg} ${iconColor} p-3 `}>
-        <Icon className="text-lg" />
+const StatCard = memo(({ icon: Icon, title, value, iconBg, iconColor, rawValue }) => {
+  // Format the tooltip to show full amount with decimals
+  const getTooltip = () => {
+    if (!rawValue && rawValue !== 0) return value;
+    const num = parseFloat(rawValue.toString().replace(/[₹,]/g, ''));
+    if (isNaN(num)) return value;
+    return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-gray-500 mb-1 truncate">{title}</p>
+          <p
+            className="text-xl font-bold text-gray-900 truncate cursor-help"
+            title={getTooltip()}
+          >
+            {value}
+          </p>
+        </div>
+        <div className={`${iconBg} ${iconColor} p-3 flex-shrink-0`}>
+          <Icon className="text-lg" />
+        </div>
       </div>
     </div>
-  </div>
-));
+  );
+});
 
 // Business Type Card
 const BusinessTypeCard = memo(({ emoji, label, count, bgColor, borderColor, textColor }) => (
@@ -142,10 +159,50 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [performanceView, setPerformanceView] = useState('graph'); // 'graph' or 'list'
   const [currentPage, setCurrentPage] = useState(1);
+  const [businessesList, setBusinessesList] = useState([]);
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    businessId: ""
+  });
+  const [txPage, setTxPage] = useState(1);
+  const txPerPage = 10;
 
   // Ref to prevent duplicate API calls
   const fetchingRef = useRef(false);
   const itemsPerPage = 5;
+
+  // Load businesses for filter dropdown
+  useEffect(() => {
+    const loadBusinesses = async () => {
+      try {
+        const res = await adminService.getBusinesses({ limit: 100 });
+        if (res.success) {
+          const businesses = res.data.businesses || res.data || [];
+          console.log('Businesses loaded for filter:', businesses);
+          setBusinessesList(businesses);
+        }
+      } catch (err) {
+        console.error("Failed to load businesses list", err);
+      }
+    };
+    loadBusinesses();
+  }, []);
+
+  // Format large numbers compactly (₹1K, ₹1L, ₹1Cr, etc.)
+  const formatCompactNumber = useCallback((value) => {
+    if (!value || isNaN(value)) return value;
+    const num = parseFloat(value.toString().replace(/[₹,]/g, ''));
+
+    if (num >= 10000000) { // 1 Crore+
+      return `₹${(num / 10000000).toFixed(1)}Cr`;
+    } else if (num >= 100000) { // 1 Lakh+
+      return `₹${(num / 100000).toFixed(1)}L`;
+    } else if (num >= 1000) { // 1 Thousand+
+      return `₹${(num / 1000).toFixed(1)}K`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
+  }, []);
 
   const fetchDashboard = useCallback(async () => {
     // Prevent duplicate calls
@@ -159,7 +216,7 @@ const AdminDashboard = () => {
       // Fetch both dashboard and stats
       const [dashboardRes, statsRes] = await Promise.all([
         adminService.getDashboard(currentPage, itemsPerPage),
-        adminService.getStats()
+        adminService.getStats(filters)
       ]);
 
       if (dashboardRes.success) {
@@ -178,7 +235,7 @@ const AdminDashboard = () => {
       setRefreshing(false);
       fetchingRef.current = false;
     }
-  }, [currentPage]);
+  }, [currentPage, filters]);
 
   useEffect(() => {
     fetchDashboard();
@@ -203,11 +260,11 @@ const AdminDashboard = () => {
     { icon: FaChartLine, title: "Customers", value: stats?.customers?.total ?? dashboard?.stats?.totalCustomers ?? 0, iconBg: "bg-orange-100", iconColor: "text-orange-600" },
     { icon: FaClipboardList, title: "Services", value: stats?.services?.total ?? 0, iconBg: "bg-teal-100", iconColor: "text-teal-600" },
     { icon: FaCalendarAlt, title: "Appointments", value: stats?.appointments?.total ?? 0, iconBg: "bg-indigo-100", iconColor: "text-indigo-600" },
-    { icon: FaMoneyBillWave, title: "Revenue", value: stats?.transactions?.totalRevenue ?? dashboard?.stats?.totalRevenue ?? "₹0", iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+    { icon: FaMoneyBillWave, title: "Revenue", value: formatCompactNumber(stats?.transactions?.totalRevenueRaw ?? dashboard?.stats?.totalRevenueRaw ?? 0), rawValue: stats?.transactions?.totalRevenueRaw ?? dashboard?.stats?.totalRevenueRaw ?? 0, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
     { icon: FaExchangeAlt, title: "Transactions", value: stats?.transactions?.total ?? dashboard?.stats?.recentTransactions ?? 0, iconBg: "bg-pink-100", iconColor: "text-pink-600" },
     { icon: FaFileInvoiceDollar, title: "Invoices", value: stats?.invoices?.total ?? 0, iconBg: "bg-yellow-100", iconColor: "text-yellow-600" },
     { icon: FaBullhorn, title: "Campaigns", value: stats?.campaigns?.total ?? 0, iconBg: "bg-red-100", iconColor: "text-red-600" }
-  ], [dashboard?.stats, stats]);
+  ], [dashboard?.stats, stats, formatCompactNumber]);
 
   // Memoized business types
   const businessTypes = useMemo(() => {
@@ -232,11 +289,29 @@ const AdminDashboard = () => {
   // Memoized performance metrics
   const performanceMetrics = useMemo(() => {
     const analytics = dashboard?.analytics || {};
+
     return [
-      { label: "Avg Daily Revenue", value: analytics.averageDailyRevenue ? `₹${analytics.averageDailyRevenue.toLocaleString()}` : "₹0", numValue: analytics.averageDailyRevenue || 0 },
-      { label: "Avg Daily Customers", value: analytics.averageDailyCustomers?.toFixed(1) ?? "0", numValue: analytics.averageDailyCustomers || 0 },
-      { label: "Growth Rate", value: `${analytics.growthRate?.toFixed(1) ?? "0"}%`, showTrend: true, numValue: analytics.growthRate || 0 },
-      { label: "Net Profit", value: analytics.netProfit ? `₹${analytics.netProfit.toLocaleString()}` : "₹0", isHighlight: true, numValue: analytics.netProfit || 0 }
+      {
+        label: "Total Revenue (30d)",
+        value: analytics.totalRevenue ? `₹${analytics.totalRevenue.toLocaleString('en-IN')}` : "₹0",
+        numValue: analytics.totalRevenue || 0
+      },
+      {
+        label: "Total Customers (30d)",
+        value: analytics.totalCustomers?.toString() ?? "0",
+        numValue: analytics.totalCustomers || 0
+      },
+      {
+        label: "Avg Revenue/Customer",
+        value: analytics.averageRevenuePerCustomer ? `₹${Math.round(analytics.averageRevenuePerCustomer).toLocaleString('en-IN')}` : "₹0",
+        isHighlight: true,
+        numValue: analytics.averageRevenuePerCustomer || 0
+      },
+      {
+        label: "Total Transactions",
+        value: analytics.recentTransactions?.toString() ?? "0",
+        numValue: analytics.recentTransactions || 0
+      }
     ];
   }, [dashboard?.analytics]);
 
@@ -319,7 +394,7 @@ const AdminDashboard = () => {
               <FaChartLine />
               <span>Comprehensive Stats</span>
             </button>
-            <button
+            {/* <button
               onClick={() => setActiveTab('daily-business')}
               className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'daily-business'
                 ? 'border-primary-600 text-primary-600'
@@ -328,7 +403,7 @@ const AdminDashboard = () => {
             >
               <FaCalendarAlt />
               <span>Daily Business</span>
-            </button>
+            </button> */}
           </nav>
         </div>
       </div>
@@ -396,7 +471,7 @@ const AdminDashboard = () => {
               {performanceView === 'graph' && (
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={performanceChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <LineChart data={performanceChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#9ca3af" />
                       <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
@@ -408,8 +483,8 @@ const AdminDashboard = () => {
                           fontSize: '12px'
                         }}
                       />
-                      <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
+                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               )}
@@ -424,64 +499,226 @@ const AdminDashboard = () => {
               )}
             </div>
           </div>
+        </>
+      )}
 
-          {/* Recent Businesses */}
-          <div className="bg-white  border border-gray-200">
-            <div className="p-5 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-800">Recent Businesses</h2>
+      {/* Comprehensive Stats Tab */}
+      {activeTab === 'stats' && stats && (
+        <>
+          {/* Filters */}
+          <div className="bg-white border border-gray-200 p-3 mb-4">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[180px]">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Business</label>
+                <select
+                  className="w-full border border-gray-300 rounded text-sm p-1.5"
+                  value={filters.businessId}
+                  onChange={(e) => setFilters(prev => ({ ...prev, businessId: e.target.value }))}
+                >
+                  <option value="">All Businesses</option>
+                  {businessesList.map(b => (
+                    <option key={b._id || b.id} value={b._id || b.id}>
+                      {b.name || b.businessName || 'Unknown Business'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  className="border border-gray-300 rounded text-sm p-1.5"
+                  value={filters.startDate}
+                  onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">End Date</label>
+                <input
+                  type="date"
+                  className="border border-gray-300 rounded text-sm p-1.5"
+                  value={filters.endDate}
+                  onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                />
+              </div>
+              {(filters.startDate || filters.endDate || filters.businessId) && (
+                <button
+                  onClick={() => setFilters({ startDate: "", endDate: "", businessId: "" })}
+                  className="px-3 py-1.5 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+            {/* Businesses */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Businesses</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.businesses.total}</div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-green-600">{stats.businesses.active} active</span>
+                <span className="text-gray-400">•</span>
+                <span className="text-red-600">{stats.businesses.inactive} inactive</span>
+              </div>
             </div>
 
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full">
+            {/* Managers */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Managers</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.managers.total}</div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-green-600">{stats.managers.active} active</span>
+              </div>
+            </div>
+
+            {/* Staff */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Staff</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.staff.total}</div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-green-600">{stats.staff.active} active</span>
+              </div>
+            </div>
+
+            {/* Customers */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Customers</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.customers.total}</div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-blue-600">{stats.customers.online} online</span>
+                <span className="text-gray-400">•</span>
+                <span className="text-purple-600">{stats.customers.walkIn} walk-in</span>
+              </div>
+            </div>
+
+            {/* Services */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Services</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.services.total}</div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-green-600">{stats.services.active} active</span>
+              </div>
+            </div>
+
+            {/* Appointments */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Appointments</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.appointments.total}</div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-green-600">{stats.appointments.completed} done</span>
+                <span className="text-gray-400">•</span>
+                <span className="text-yellow-600">{stats.appointments.pending} pending</span>
+              </div>
+            </div>
+
+            {/* Transactions */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Transactions</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.transactions.total}</div>
+              <div className="text-xs text-gray-600">Total count</div>
+            </div>
+
+            {/* Revenue */}
+            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 border border-emerald-700 p-3">
+              <div className="text-xs text-emerald-100 mb-2">Revenue</div>
+              <div className="text-2xl font-bold text-white mb-1">{stats.transactions.totalRevenue}</div>
+              <div className="text-xs text-emerald-100">Total earned</div>
+            </div>
+
+            {/* Invoices */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Invoices</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.invoices.total}</div>
+              <div className="flex gap-2 text-xs">
+                <span className="text-green-600">{stats.invoices.paid} paid</span>
+              </div>
+            </div>
+
+            {/* Campaigns */}
+            <div className="bg-white border border-gray-200 p-3">
+              <div className="text-xs text-gray-500 mb-2">Campaigns</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{stats.campaigns.total}</div>
+              <div className="text-xs text-gray-600">Active campaigns</div>
+            </div>
+          </div>
+
+
+          {/* Transactions Table */}
+          <div className="bg-white border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800">Recent Transactions</h3>
+              <span className="text-xs text-gray-500">{stats.transactions.completed?.length || 0} total</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Branch</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Link</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Managers</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Staff</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Business</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Customer</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Amount</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Payment</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {(dashboard?.recentBusinesses || []).map((business) => (
-                    <BusinessRow key={business.id} business={business} />
-                  ))}
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(() => {
+                    const transactions = stats.transactions.completed || [];
+                    const startIdx = (txPage - 1) * txPerPage;
+                    const endIdx = startIdx + txPerPage;
+                    const paginatedTxs = transactions.slice(startIdx, endIdx);
+
+                    return paginatedTxs.length > 0 ? (
+                      paginatedTxs.map((tx, index) => (
+                        <tr key={tx._id || index} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm text-gray-900">{tx.businessName}</td>
+                          <td className="px-4 py-2 text-sm text-gray-600">{tx.customerName}</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-gray-900">₹{tx.finalPrice}</td>
+                          <td className="px-4 py-2 text-sm text-gray-600 capitalize">{tx.paymentMethod}</td>
+                          <td className="px-4 py-2 text-sm text-gray-500">{new Date(tx.transactionDate).toLocaleDateString()}</td>
+                          <td className="px-4 py-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${tx.paymentStatus === 'completed' ? 'bg-green-100 text-green-700' :
+                              tx.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                              {tx.paymentStatus || 'completed'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="px-4 py-8 text-center text-sm text-gray-500">No transactions found</td>
+                      </tr>
+                    );
+                  })()}
                 </tbody>
               </table>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="md:hidden p-4 space-y-3">
-              {(dashboard?.recentBusinesses || []).map((business) => (
-                <BusinessCard key={business.id} business={business} />
-              ))}
-            </div>
-
             {/* Pagination */}
-            {dashboard?.pagination && (
-              <div className="flex items-center justify-between px-5 py-4 bg-gray-50 border-t border-gray-200">
-                <div className="text-sm text-gray-600">
-                  Showing <span className="font-semibold">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
-                  <span className="font-semibold">{Math.min(currentPage * itemsPerPage, dashboard.pagination.total)}</span> of{' '}
-                  <span className="font-semibold">{dashboard.pagination.total}</span>
+            {stats.transactions.completed && stats.transactions.completed.length > txPerPage && (
+              <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-xs text-gray-600">
+                  Showing {((txPage - 1) * txPerPage) + 1} to {Math.min(txPage * txPerPage, stats.transactions.completed.length)} of {stats.transactions.completed.length}
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300  hover:bg-gray-50 disabled:opacity-50"
+                    onClick={() => setTxPage(p => Math.max(1, p - 1))}
+                    disabled={txPage === 1}
+                    className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
-                  <span className="px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 ">
-                    {currentPage} / {dashboard.pagination.totalPages}
+                  <span className="px-3 py-1 text-xs border border-gray-300 rounded bg-gray-50">
+                    {txPage} / {Math.ceil(stats.transactions.completed.length / txPerPage)}
                   </span>
                   <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= dashboard.pagination.totalPages}
-                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300  hover:bg-gray-50 disabled:opacity-50"
+                    onClick={() => setTxPage(p => Math.min(Math.ceil(stats.transactions.completed.length / txPerPage), p + 1))}
+                    disabled={txPage >= Math.ceil(stats.transactions.completed.length / txPerPage)}
+                    className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
@@ -492,258 +729,6 @@ const AdminDashboard = () => {
         </>
       )}
 
-      {/* Comprehensive Stats Tab */}
-      {activeTab === 'stats' && stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Businesses Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-blue-100 text-blue-600 p-3">
-                <FaBuilding className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Businesses</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.businesses.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-green-50">
-                <span className="text-sm text-green-700 flex items-center gap-1">
-                  <FaCheckCircle className="text-xs" /> Active
-                </span>
-                <span className="text-sm font-bold text-green-800">{stats.businesses.active}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-red-50">
-                <span className="text-sm text-red-700 flex items-center gap-1">
-                  <FaTimesCircle className="text-xs" /> Inactive
-                </span>
-                <span className="text-sm font-bold text-red-800">{stats.businesses.inactive}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Managers Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-purple-100 text-purple-600 p-3">
-                <FaUserTie className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Managers</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.managers.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-green-50">
-                <span className="text-sm text-green-700 flex items-center gap-1">
-                  <FaCheckCircle className="text-xs" /> Active
-                </span>
-                <span className="text-sm font-bold text-green-800">{stats.managers.active}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-red-50">
-                <span className="text-sm text-red-700 flex items-center gap-1">
-                  <FaTimesCircle className="text-xs" /> Inactive
-                </span>
-                <span className="text-sm font-bold text-red-800">{stats.managers.inactive}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Staff Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-green-100 text-green-600 p-3">
-                <FaUsers className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Staff</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.staff.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-green-50">
-                <span className="text-sm text-green-700 flex items-center gap-1">
-                  <FaCheckCircle className="text-xs" /> Active
-                </span>
-                <span className="text-sm font-bold text-green-800">{stats.staff.active}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-red-50">
-                <span className="text-sm text-red-700 flex items-center gap-1">
-                  <FaTimesCircle className="text-xs" /> Inactive
-                </span>
-                <span className="text-sm font-bold text-red-800">{stats.staff.inactive}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Customers Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-orange-100 text-orange-600 p-3">
-                <FaChartLine className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Customers</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.customers.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-green-50">
-                <span className="text-sm text-green-700 flex items-center gap-1">
-                  <FaCheckCircle className="text-xs" /> Active
-                </span>
-                <span className="text-sm font-bold text-green-800">{stats.customers.active}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-red-50">
-                <span className="text-sm text-red-700 flex items-center gap-1">
-                  <FaTimesCircle className="text-xs" /> Inactive
-                </span>
-                <span className="text-sm font-bold text-red-800">{stats.customers.inactive}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Services Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-teal-100 text-teal-600 p-3">
-                <FaClipboardList className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Services</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.services.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-green-50">
-                <span className="text-sm text-green-700 flex items-center gap-1">
-                  <FaCheckCircle className="text-xs" /> Active
-                </span>
-                <span className="text-sm font-bold text-green-800">{stats.services.active}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-red-50">
-                <span className="text-sm text-red-700 flex items-center gap-1">
-                  <FaTimesCircle className="text-xs" /> Inactive
-                </span>
-                <span className="text-sm font-bold text-red-800">{stats.services.inactive}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Appointments Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-indigo-100 text-indigo-600 p-3">
-                <FaCalendarAlt className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Appointments</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.appointments.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-green-50">
-                <span className="text-sm text-green-700">Completed</span>
-                <span className="text-sm font-bold text-green-800">{stats.appointments.completed}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-yellow-50">
-                <span className="text-sm text-yellow-700">Pending</span>
-                <span className="text-sm font-bold text-yellow-800">{stats.appointments.pending}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-red-50">
-                <span className="text-sm text-red-700">Cancelled</span>
-                <span className="text-sm font-bold text-red-800">{stats.appointments.cancelled}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Transactions Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-pink-100 text-pink-600 p-3">
-                <FaExchangeAlt className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Transactions</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.transactions.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-emerald-50 border-l-4 border-emerald-500">
-                <span className="text-sm text-emerald-700 font-medium">Revenue</span>
-                <span className="text-base font-bold text-emerald-800">{stats.transactions.totalRevenue}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Invoices Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-yellow-100 text-yellow-600 p-3">
-                <FaFileInvoiceDollar className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Invoices</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.invoices.total}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-green-50">
-                <span className="text-sm text-green-700">Paid</span>
-                <span className="text-sm font-bold text-green-800">{stats.invoices.paid}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-red-50">
-                <span className="text-sm text-red-700">Unpaid</span>
-                <span className="text-sm font-bold text-red-800">{stats.invoices.unpaid}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Campaigns Stats */}
-          <div className="bg-white border border-gray-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-red-100 text-red-600 p-3">
-                <FaBullhorn className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Campaigns</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-bold text-gray-900">{stats.campaigns.total}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Grand Totals */}
-          <div className="bg-gradient-to-br from-primary-500 to-primary-700 border border-primary-800 p-5 md:col-span-2 lg:col-span-3">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-white/20 text-white p-3">
-                <FaChartPie className="text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-white">Grand Totals</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex justify-between items-center p-3 bg-white/10 backdrop-blur-sm">
-                <span className="text-sm text-white/90">All Entities (Total)</span>
-                <span className="text-xl font-bold text-white">{stats.grandTotals.allEntities.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-white/10 backdrop-blur-sm">
-                <span className="text-sm text-white/90">Active Entities</span>
-                <span className="text-xl font-bold text-white">{stats.grandTotals.allActiveEntities.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Daily Business Tab */}
       {activeTab === 'daily-business' && (

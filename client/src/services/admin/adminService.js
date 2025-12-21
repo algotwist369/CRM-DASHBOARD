@@ -18,9 +18,9 @@ class AdminService {
   }
 
   // Get admin stats
-  async getStats() {
+  async getStats(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.admin.stats)
+      const response = await apiClient.get(endpoints.admin.stats, { params })
       return { success: true, data: response.data }
     } catch (error) {
       return {
