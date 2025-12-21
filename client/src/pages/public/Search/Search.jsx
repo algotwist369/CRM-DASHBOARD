@@ -7,6 +7,7 @@ import SkeletonSearch from './SkeletonSearch';
 import LazySection from '../../../components/common/LazySection/LazySection';
 import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter } from 'react-icons/fi';
 import { FaWhatsapp, FaStar, FaPhoneAlt } from 'react-icons/fa';
+import SEO from '../../../components/common/SEO';
 
 // Static Constants - Outside component to prevent recreation
 const FILTER_CATEGORIES = ['Hotel', 'Spa', 'Salon', 'Gym', 'Restaurant'];
@@ -427,14 +428,32 @@ const Search = () => {
         // Note: clearing params triggers main effect -> fetches global 'all'
     };
 
+
+
+    // ... existing imports ...
+
+    // ... inside Search component ...
     // Derived state for UI inputs from URL
     const currentCategory = searchParams.get('category') || '';
     const currentRating = parseInt(searchParams.get('rating') || '0');
     const currentSort = searchParams.get('sort') || 'recommended';
     const currentLat = searchParams.get('lat');
 
+    // Dynamic SEO Metadata
+    const seoTitle = localQuery ? `Search Results for "${localQuery}"` :
+        currentCategory ? `Best ${currentCategory}s Near Me` :
+            "Search for Spa, Salon, and Wellness Centers";
+
+    const seoDesc = `Find the best ${localQuery || currentCategory || "Spa and Salons"} in your area. Read reviews, check prices, and book appointments online at SpaAdvisor.`;
+
+
     return (
         <div className="bg-gray-50 min-h-screen">
+            <SEO
+                title={seoTitle}
+                description={seoDesc}
+                canonical={`/search?q=${localQuery || ''}&category=${currentCategory || ''}`}
+            />
             <WiggleStyles />
             {/* Simple White Header - Fixed (Desktop Only) */}
             <div className="hidden md:block bg-white border-b border-gray-200 fixed top-14 left-0 right-0 z-20 shadow-sm">

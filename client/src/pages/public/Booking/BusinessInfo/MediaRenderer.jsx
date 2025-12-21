@@ -34,15 +34,11 @@ const MediaRenderer = ({ item, className = '', isActive = true, alt }) => {
 
     return (
         <div className={`relative ${className}`.trim()}>
-            {!isLoaded && !hasError && (
-                <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-            )}
             <img
                 src={item.src}
                 alt={alt || item.type || 'Media'}
-                className={`w-full h-full object-cover ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                className={`w-full h-full object-cover`}
                 loading={isActive ? 'eager' : 'lazy'}
-                onLoad={() => setIsLoaded(true)}
                 onError={() => setHasError(true)}
             />
         </div>
