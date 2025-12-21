@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import SEO from '../../../../components/common/SEO'
 import {
   FaMapMarkerAlt,
   FaPhoneAlt,
@@ -22,6 +23,8 @@ import {
   FaTag,
   FaChevronLeft,
   FaChevronRight,
+  FaChevronDown,
+  FaChevronUp,
   FaTimes
 } from 'react-icons/fa';
 import BackButton from '../../../../components/common/Button/BackButton'
@@ -37,6 +40,7 @@ const BusinessInfoReviews = lazy(() => import('./BusinessInfoReviews'))
 import HeroSection from './HeroSection'
 import MediaRenderer from './MediaRenderer'
 import { trackLeadClick } from '../../../../utils/analytics'
+
 
 import { useQuery } from '@tanstack/react-query'
 
@@ -63,6 +67,10 @@ const BusinessInfo = () => {
   const [modalImageIndex, setModalImageIndex] = useState(0)
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const [showAllServices, setShowAllServices] = useState(false)
+  const [showAllFeatures, setShowAllFeatures] = useState(false)
+  const [showAllAmenities, setShowAllAmenities] = useState(false)
+
 
   // Fetch business info using React Query
   const {
@@ -194,12 +202,39 @@ const BusinessInfo = () => {
   const allImages = useMemo(() => {
     if (!business?.images) return []
     const images = []
-    if (business.images.banner) images.push({ src: business.images.banner, type: 'Banner' })
-    if (business.images.thumbnail) images.push({ src: business.images.thumbnail, type: 'Thumbnail' })
-    if (business.images.logo) images.push({ src: business.images.logo, type: 'Logo' })
+    const getImageUrl = (url) => {
+      if (!url) return null
+      // Check for Google 360/Photosphere URLs
+      if (url.includes('google.com/local/place') && url.includes('photosphere')) {
+        try {
+          const urlObj = new URL(url)
+          let iuParams = urlObj.searchParams.get('iu')
+          if (iuParams) {
+            // Try to upgrade quality from thumbnail to larger size
+            return iuParams.replace(/=w\d+-h\d+/, '=w800-h600')
+          }
+          return null // Return null if we can't extract an image URL
+        } catch (e) {
+          console.warn('Failed to parse 360 image URL:', e)
+          return null
+        }
+      }
+      return url
+    }
+
+    const bannerUrl = getImageUrl(business.images.banner)
+    if (bannerUrl) images.push({ src: bannerUrl, type: 'Banner' })
+
+    const thumbnailUrl = getImageUrl(business.images.thumbnail)
+    if (thumbnailUrl) images.push({ src: thumbnailUrl, type: 'Thumbnail' })
+
+    const logoUrl = getImageUrl(business.images.logo)
+    if (logoUrl) images.push({ src: logoUrl, type: 'Logo' })
+
     if (Array.isArray(business.images.gallery)) {
       business.images.gallery.forEach(img => {
-        if (img) images.push({ src: img, type: 'Gallery' })
+        const galleryUrl = getImageUrl(img)
+        if (galleryUrl) images.push({ src: galleryUrl, type: 'Gallery' })
       })
     }
     return images
@@ -644,6 +679,33 @@ const BusinessInfo = () => {
     )
   }, [business])
 
+  // Swipe handlers for modal
+  const modalTouchStart = useRef(null)
+  const modalTouchEnd = useRef(null)
+  const minSwipeDistance = 50
+
+  const onModalTouchStart = (e) => {
+    modalTouchEnd.current = null
+    modalTouchStart.current = e.targetTouches[0].clientX
+  }
+
+  const onModalTouchMove = (e) => {
+    modalTouchEnd.current = e.targetTouches[0].clientX
+  }
+
+  const onModalTouchEnd = () => {
+    if (!modalTouchStart.current || !modalTouchEnd.current) return
+    const distance = modalTouchStart.current - modalTouchEnd.current
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      nextModalImage()
+    } else if (isRightSwipe) {
+      prevModalImage()
+    }
+  }
+
   // Image Modal/Lightbox Component
   const renderImageModal = useCallback(() => {
     if (!isImageModalOpen || allImages.length === 0) return null
@@ -666,6 +728,9 @@ const BusinessInfo = () => {
         <div
           className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
           onClick={(e) => e.stopPropagation()}
+          onTouchStart={onModalTouchStart}
+          onTouchMove={onModalTouchMove}
+          onTouchEnd={onModalTouchEnd}
         >
           {/* Previous Button */}
           {allImages.length > 1 && (
@@ -766,8 +831,17 @@ const BusinessInfo = () => {
     )
   }
 
+
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO
+        title={business.name}
+        description={business.description}
+        image={business.images?.banner || business.images?.thumbnail}
+        canonical={`/${businessLink}`}
+        type="business.business"
+      />
       <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
@@ -815,8 +889,10 @@ const BusinessInfo = () => {
               {business.services && business.services.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
+
+                  {/* Initial 12 Services */}
                   <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {business.services.map((service, index) => {
+                    {business.services.slice(0, 12).map((service, index) => {
                       const serviceKey = typeof service === 'object' && service?._id ? service._id : `service-${index}`
                       return (
                         <div key={serviceKey} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50  border border-gray-100">
@@ -837,42 +913,171 @@ const BusinessInfo = () => {
                       )
                     })}
                   </div>
+
+                  {/* Hidden Services with Grid Transition */}
+                  {business.services.length > 12 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllServices ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3">
+                          {business.services.slice(12).map((service, index) => {
+                            const serviceKey = typeof service === 'object' && service?._id ? service._id : `extra-service-${index}`
+                            return (
+                              <div key={serviceKey} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50  border border-gray-100">
+                                <FaCheckCircle className="text-green-600 mt-0.5 flex-shrink-0 text-sm" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs sm:text-sm font-medium text-gray-900">
+                                    {typeof service === 'object' ? service.name || service.serviceName : service}
+                                  </p>
+                                  {typeof service === 'object' && (service.price || service.duration) && (
+                                    <p className="text-xs text-gray-600 mt-0.5 sm:mt-1">
+                                      {service.price ? `₹${service.price}` : ''}
+                                      {service.price && service.duration ? ' • ' : ''}
+                                      {service.duration ? `${service.duration} min` : ''}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.services.length > 12 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllServices ? '-mt-12 pt-6 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllServices(!showAllServices)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllServices ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.services.length - 12} services <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Features Section */}
               {business.features && business.features.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
+
+                  {/* Initial 8 Features */}
                   <div className="grid grid-cols-2 gap-2">
-                    {business.features.map((feature, index) => (
+                    {business.features.slice(0, 8).map((feature, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700  text-xs sm:text-sm border border-purple-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {feature}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Features with Grid Transition */}
+                  {business.features.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllFeatures ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.features.slice(8).map((feature, index) => (
+                            <span
+                              key={`extra-feature-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.features.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllFeatures ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllFeatures(!showAllFeatures)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllFeatures ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.features.length - 8} features <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Amenities Section */}
               {business.amenities && business.amenities.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
+
+                  {/* Initial 8 Amenities */}
                   <div className="grid grid-cols-2 gap-2">
-                    {business.amenities.map((amenity, index) => (
+                    {business.amenities.slice(0, 8).map((amenity, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700  text-xs sm:text-sm border border-indigo-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {amenity}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Amenities with Grid Transition */}
+                  {business.amenities.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllAmenities ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.amenities.slice(8).map((amenity, index) => (
+                            <span
+                              key={`extra-amenity-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {amenity}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.amenities.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllAmenities ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllAmenities(!showAllAmenities)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllAmenities ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.amenities.length - 8} amenities <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1016,8 +1221,10 @@ const BusinessInfo = () => {
               {business.services && business.services.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
+
+                  {/* Initial 12 Services */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {business.services.map((service, index) => {
+                    {business.services.slice(0, 12).map((service, index) => {
                       const isObject = typeof service === 'object' && service !== null
                       const serviceKey = isObject && service?._id ? service._id : `service-${index}`
                       const name =
@@ -1072,6 +1279,89 @@ const BusinessInfo = () => {
                       )
                     })}
                   </div>
+
+                  {/* Hidden Services with Grid Transition */}
+                  {business.services.length > 12 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllServices ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3">
+                          {business.services.slice(12).map((service, index) => {
+                            const isObject = typeof service === 'object' && service !== null
+                            const serviceKey = isObject && service?._id ? service._id : `extra-service-${index}`
+                            const name =
+                              (isObject && (service.name || service.serviceName || service.title)) ||
+                              (typeof service === 'string' ? service : `Service ${index + 1}`)
+                            const duration = isObject && service.duration ? `${service.duration} min` : ''
+                            const category = isObject && service.category ? service.category : ''
+                            const serviceImages = isObject && Array.isArray(service.images) ? service.images.filter(Boolean) : []
+                            const hasImage = serviceImages.length > 0
+                            const mainImage = hasImage ? serviceImages[0] : null
+
+                            return (
+                              <div
+                                key={serviceKey}
+                                className="bg-white border border-gray-200 overflow-hidden"
+                              >
+                                {hasImage && (
+                                  <div className="w-full h-24 sm:h-28 bg-gray-100 overflow-hidden">
+                                    <img
+                                      src={mainImage}
+                                      alt={name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none'
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <div className="p-2 sm:p-2.5">
+                                  <div className="flex items-start gap-1.5">
+                                    <FaCheckCircle className="text-green-600 text-xs mt-0.5 flex-shrink-0" />
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                      <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-0.5">{name}</h3>
+                                      <div className="flex flex-wrap gap-1.5 text-[10px] text-gray-600">
+                                        {duration && (
+                                          <span className="flex items-center gap-0.5">
+                                            <FaClock className="text-[9px]" />
+                                            {duration}-120 min
+                                          </span>
+                                        )}
+                                        {category && (
+                                          <span className="flex items-center gap-0.5">
+                                            <FaTag className="text-[9px]" />
+                                            {category}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.services.length > 12 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllServices ? '-mt-12 pt-6 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllServices(!showAllServices)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllServices ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.services.length - 12} services <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1079,35 +1369,115 @@ const BusinessInfo = () => {
               {business.features && business.features.length > 0 && (
                 <div className="bg-white  border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
+
+                  {/* Initial 8 Features */}
                   <div className="grid grid-cols-2 gap-2">
-                    {business.features.map((feature, index) => (
+                    {business.features.slice(0, 8).map((feature, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700  text-xs sm:text-sm border border-purple-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {feature}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Features with Grid Transition */}
+                  {business.features.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllFeatures ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.features.slice(8).map((feature, index) => (
+                            <span
+                              key={`extra-feature-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.features.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllFeatures ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllFeatures(!showAllFeatures)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllFeatures ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.features.length - 8} features <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Amenities Section */}
               {business.amenities && business.amenities.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
+
+                  {/* Initial 8 Amenities */}
                   <div className="grid grid-cols-2 gap-2">
-                    {business.amenities.map((amenity, index) => (
+                    {business.amenities.slice(0, 8).map((amenity, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700  text-xs sm:text-sm border border-indigo-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {amenity}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Amenities with Grid Transition */}
+                  {business.amenities.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllAmenities ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.amenities.slice(8).map((amenity, index) => (
+                            <span
+                              key={`extra-amenity-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {amenity}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.amenities.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllAmenities ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllAmenities(!showAllAmenities)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllAmenities ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.amenities.length - 8} amenities <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1185,7 +1555,7 @@ const BusinessInfo = () => {
             </div>
           </div>
         </div>
- 
+
         {/* Ratings and reviews */}
         <LazySection fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>
           <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>

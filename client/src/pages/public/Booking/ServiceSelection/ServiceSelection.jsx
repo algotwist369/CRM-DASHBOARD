@@ -7,9 +7,13 @@ import {
   FaArrowLeft,
   FaArrowRight,
   FaCheckCircle,
-  FaChevronDown
+  FaChevronDown,
+  FaFilter,
+  FaSearch,
+  FaSortAmountDown,
+  FaSortAmountUp
 } from 'react-icons/fa'
-import { FiCheck } from 'react-icons/fi'
+import { FiCheck, FiX } from 'react-icons/fi'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 import appointmentService from '../../../../services/public/appointmentService'
@@ -149,11 +153,43 @@ const ServiceSelection = () => {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [selectedStaffSummary, setSelectedStaffSummary] = useState(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortOrder, setSortOrder] = useState('default') // default, asc, desc
 
   // Derived error
   const error = queryError?.message || null
 
   const services = useMemo(() => business?.services || [], [business])
+
+  const filteredServices = useMemo(() => {
+    let result = [...services]
+
+    // 1. Search Filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(service => {
+        const name = getRawServiceName(service).toLowerCase()
+        return name.includes(query)
+      })
+    }
+
+    // 2. Sort
+    if (sortOrder !== 'default') {
+      result.sort((a, b) => {
+        const getPrice = (s) => {
+          const options = getServiceOptions(s)
+          const priceValues = options.map(option => Number(option.price) || 0)
+          return priceValues.length ? Math.min(...priceValues) : 0
+        }
+        const priceA = getPrice(a)
+        const priceB = getPrice(b)
+        return sortOrder === 'asc' ? priceA - priceB : priceB - priceA
+      })
+    }
+
+    return result
+  }, [services, searchQuery, sortOrder])
 
   // Update page title
   usePageTitle();
@@ -445,6 +481,72 @@ const ServiceSelection = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
           {/* Services List */}
           <div className="lg:col-span-2 space-y-1.5 sm:space-y-2">
+
+            {/* Filter Toggle & Controls */}
+            <div className="bg-white rounded-lg border border-gray-200 p-3 mb-2">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}
+                >
+                  <FaFilter className={showFilters ? 'text-primary-600' : 'text-gray-400'} />
+                  <span>Filter & Sort</span>
+                </button>
+                {(searchQuery || sortOrder !== 'default') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSortOrder('default')
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
+                  >
+                    <FiX /> Clear
+                  </button>
+                )}
+              </div>
+
+              {showFilters && (
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3 animate-slideDown">
+                  {/* Search */}
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                    <input
+                      type="text"
+                      placeholder="Search services..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Sort Controls */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    <span className="text-xs text-gray-500 whitespace-nowrap font-medium">Sort by Price:</span>
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                      <button
+                        onClick={() => setSortOrder('default')}
+                        className={`px-3 py-1 text-xs rounded-md transition-all whitespace-nowrap ${sortOrder === 'default' ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        Default
+                      </button>
+                      <button
+                        onClick={() => setSortOrder('asc')}
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-md transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        Low to High
+                      </button>
+                      <button
+                        onClick={() => setSortOrder('desc')}
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-md transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        High to Low
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {servicesLoading && (
               <div className="bg-white rounded-lg p-2 border border-gray-200 flex items-center gap-2 text-xs text-gray-500">
                 <FaSpinner className="animate-spin" />
@@ -452,13 +554,23 @@ const ServiceSelection = () => {
               </div>
             )}
 
-            {services.length === 0 ? (
+            {filteredServices.length === 0 ? (
               <div className="bg-white rounded-lg p-12 text-center border border-gray-200">
-                <p className="text-gray-500">This business has not published any bookable services yet.</p>
+                <p className="text-gray-500">
+                  {searchQuery ? 'No services found matching your search.' : 'This business has not published any bookable services yet.'}
+                </p>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="mt-2 text-primary-600 text-sm font-medium hover:underline"
+                  >
+                    Clear search
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
-                {services.map((service, index) => {
+                {filteredServices.map((service, index) => {
                   const serviceId = getServiceId(service) || `service-${index}`
                   const options = getServiceOptions(service)
                   const hasOptions = options.length > 0

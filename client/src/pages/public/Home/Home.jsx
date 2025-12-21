@@ -24,6 +24,7 @@ import {
   GiHeartInside,
 } from "react-icons/gi";
 import { MdSpa, MdFaceRetouchingNatural } from "react-icons/md";
+import SEO from '../../../components/common/SEO'
 
 // Constants - moved outside component for better performance
 const FEATURES_DATA = [
@@ -80,7 +81,7 @@ const preloadHeroImages = () => {
 
 const Home = memo(() => {
   const navigate = useNavigate()
-  
+
   useEffect(() => {
     window.scrollTo(0, 0);
     // Preload critical images after initial render
@@ -98,6 +99,11 @@ const Home = memo(() => {
 
   return (
     <>
+      <SEO
+        title="Best Spas, Salons & Wellness Centers Near You"
+        description="Book online appointments at top-rated spas, salons, and wellness centers. Compare prices, read reviews, and find exclusive deals on SpaAdvisor."
+        canonical="/"
+      />
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-start lg:items-center">
 

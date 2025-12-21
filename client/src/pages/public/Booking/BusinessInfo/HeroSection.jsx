@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { FaExpand, FaChevronLeft, FaChevronRight, FaMapMarkerAlt, FaCalendarAlt } from 'react-icons/fa'
 import MediaRenderer from './MediaRenderer'
 
@@ -18,10 +18,10 @@ const HeroSection = ({
             setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))
         }, 5000)
 
-        // Preload next image logic could go here
+        // Preload next image logic
         const nextIndex = (currentImageIndex + 1) % allImages.length
         const nextImg = new Image()
-        if (allImages[nextIndex]?.src && !allImages[nextIndex].src.includes('google.com')) {
+        if (allImages[nextIndex]?.src) {
             nextImg.src = allImages[nextIndex].src
         }
 
@@ -34,25 +34,59 @@ const HeroSection = ({
     }, [allImages.length])
 
     const prevImage = useCallback(() => {
-        if (allImages.length === 0) return
         setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length)
     }, [allImages.length])
+
+    // Swipe handlers
+    const touchStart = useRef(null)
+    const touchEnd = useRef(null)
+    const minSwipeDistance = 50
+
+    const onTouchStart = (e) => {
+        touchEnd.current = null
+        touchStart.current = e.targetTouches[0].clientX
+    }
+
+    const onTouchMove = (e) => {
+        touchEnd.current = e.targetTouches[0].clientX
+    }
+
+    const onTouchEnd = (e) => {
+        if (!touchStart.current) return
+
+        // If touchEnd is null, no move happened (tap)
+        const endX = touchEnd.current === null ? touchStart.current : touchEnd.current
+        const distance = touchStart.current - endX
+        const isLeftSwipe = distance > minSwipeDistance
+        const isRightSwipe = distance < -minSwipeDistance
+
+        if (isLeftSwipe) {
+            nextImage()
+        } else if (isRightSwipe) {
+            prevImage()
+        }
+    }
 
     // ---------------------------------------------------------
     // Mobile/Tablet View (Slider)
     // ---------------------------------------------------------
     const renderMobileSlider = () => (
-        <div className="relative h-[40vh] sm:h-[50vh] w-full bg-gray-100 group lg:hidden">
+        <div
+            className="relative h-[40vh] sm:h-[50vh] w-full bg-gray-100 group lg:hidden cursor-pointer"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onClick={() => openImageModal(currentImageIndex)}
+        >
             {allImages.length > 0 ? (
                 <>
                     <div
-                        className="relative w-full h-full cursor-pointer"
-                        onClick={() => openImageModal(currentImageIndex)}
+                        className="relative w-full h-full"
                     >
                         {allImages.map((image, index) => (
                             <div
                                 key={`${image.src}-${index}`}
-                                className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                                className={`absolute inset-0 w-full h-full transition-opacity duration-300 ease-out ${index === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
                                     }`}
                             >
                                 <MediaRenderer
@@ -229,7 +263,7 @@ const HeroSection = ({
                             >
                                 <MediaRenderer
                                     item={img}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover/side:scale-110"
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover/side:scale-110"
                                     isActive={false}
                                     alt={`${business?.name} - Side ${idx}`}
                                 />
@@ -259,7 +293,7 @@ const HeroSection = ({
                 <div className="hidden lg:block relative w-full h-[55vh] overflow-hidden group cursor-pointer" onClick={() => openImageModal(0)}>
                     <MediaRenderer
                         item={allImages[0]}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover/scale-105"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover/scale-105"
                         alt={`${business?.name} - Main`}
                     />
 
