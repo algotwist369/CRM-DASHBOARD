@@ -54,6 +54,8 @@ export const endpoints = {
     deleteStaff: (id) => `${API_BASE_URL}/manager/staff/${id}`,
     transactions: `${API_BASE_URL}/manager/transactions`,
     addTransaction: `${API_BASE_URL}/manager/transaction`,
+    getTransaction: (id) => `${API_BASE_URL}/manager/transaction/${id}`,
+    updateTransaction: (id) => `${API_BASE_URL}/manager/transaction/${id}`,
   },
 
   // Staff endpoints
@@ -128,6 +130,7 @@ export const endpoints = {
     getAnalytics: `${API_BASE_URL}/customers/analytics/overview`,
     getInsights: `${API_BASE_URL}/customers/analytics/insights`,
     getTargetCustomers: `${API_BASE_URL}/customers/analytics/target`,
+    updateTier: (id) => `${API_BASE_URL}/customers/${id}/tier`,
   },
 
   // Notification endpoints

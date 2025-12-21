@@ -130,6 +130,32 @@ class ManagerService {
     }
   }
 
+  // Get single transaction
+  async getTransaction(id) {
+    try {
+      const response = await apiClient.get(endpoints.manager.getTransaction(id))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch transaction'
+      }
+    }
+  }
+
+  // Update transaction
+  async updateTransaction(transactionId, transactionData) {
+    try {
+      const response = await apiClient.put(endpoints.manager.updateTransaction(transactionId), transactionData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update transaction'
+      }
+    }
+  }
+
   // Get daily business records
   async getDailyBusinessRecords(params = {}) {
     try {
@@ -395,6 +421,19 @@ class ManagerService {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to update customer'
+      }
+    }
+  }
+
+  // Update customer tier
+  async updateCustomerTier(customerId, tier) {
+    try {
+      const response = await apiClient.put(endpoints.customers.updateTier(customerId), { tier })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update customer tier'
       }
     }
   }

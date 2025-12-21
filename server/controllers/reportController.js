@@ -15,34 +15,60 @@ const getManagerReports = async (req, res, next) => {
         const managerId = req.user.id;
         const { page = 1, limit = 10 } = req.query;
 
-        // Fetch businesses managed by this manager (usually 1)
-        // Adjust logic if manager is linked to business directly
-        const reports = await DailyBusiness.find({ manager: managerId })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
-            .sort({ date: -1 });
-
-        const total = await DailyBusiness.countDocuments({ manager: managerId });
-
-        // Calculate accurate data for each report (Dynamic Sync)
-        const enhancedReports = await Promise.all(reports.map(async (report) => {
-            const date = new Date(report.date);
-            const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-            const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-
-            // 1. Transaction Revenue & Customers
-            const transactions = await Transaction.find({
-                business: report.business,
-                transactionDate: { $gte: startOfDay, $lte: endOfDay }
+        // Fetch manager's business
+        const manager = await Manager.findById(managerId).select('business');
+        if (!manager || !manager.business) {
+            return res.json({
+                success: true,
+                data: [],
+                pagination: { total: 0, page: parseInt(page), limit: parseInt(limit), pages: 0 }
             });
+        }
+        const businessId = manager.business;
+
+        // AGGREGATION: Find unique dates with activity (Transactions) for this business
+        const dateAggregation = await Transaction.aggregate([
+            { $match: { business: businessId } },
+            {
+                $group: {
+                    _id: {
+                        date: { $dateToString: { format: "%Y-%m-%d", date: "$transactionDate" } },
+                        business: "$business"
+                    }
+                }
+            },
+            { $sort: { "_id.date": -1 } },
+            {
+                $facet: {
+                    metadata: [{ $count: "total" }],
+                    data: [{ $skip: (page - 1) * parseInt(limit) }, { $limit: parseInt(limit) }]
+                }
+            }
+        ]);
+
+        const total = dateAggregation[0].metadata[0]?.total || 0;
+        const entries = dateAggregation[0].data || [];
+
+        // Hydrate Virtual Reports
+        const virtualReports = await Promise.all(entries.map(async (entry) => {
+            const dateStr = entry._id.date;
+            const date = new Date(dateStr);
+            const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+
+            // 1. Transaction Metrics
+            const transactions = await Transaction.find({
+                business: businessId,
+                transactionDate: { $gte: startOfDay, $lte: endOfDay }
+            }).populate('manager', 'username name');
 
             const transactionRevenue = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
             const transCustomerIds = transactions.map(t => t.customer?.toString()).filter(id => id);
             const walkInPhones = transactions.filter(t => !t.customer).map(t => t.customerPhone);
 
-            // 2. Untracked Appts Customers
+            // 2. Untracked Appts Metrics
             const appCustomerIds = await Appointment.distinct('customer', {
-                business: report.business,
+                business: businessId,
                 appointmentDate: { $gte: startOfDay, $lte: endOfDay }
             });
 
@@ -52,17 +78,27 @@ const getManagerReports = async (req, res, next) => {
                 ...walkInPhones
             ]);
 
-            const reportObj = report.toObject();
+            // 3. Try to merge existing DailyBusiness
+            const dailyRecord = await DailyBusiness.findOne({
+                business: businessId,
+                date: { $gte: startOfDay, $lte: endOfDay }
+            }).populate('manager', 'username name');
+
             return {
-                ...reportObj,
+                _id: dailyRecord?._id || `virt-${dateStr}-${businessId}`,
+                date: date,
+                manager: dailyRecord?.manager || transactions[0]?.manager || null,
+                business: businessId,
                 totalIncome: transactionRevenue,
-                totalCustomers: uniqueCustomers.size
+                totalCustomers: uniqueCustomers.size,
+                totalExpenses: dailyRecord?.totalExpenses || 0,
+                isCompleted: dailyRecord?.isCompleted ?? true
             };
         }));
 
         const response = {
             success: true,
-            data: enhancedReports,
+            data: virtualReports,
             pagination: {
                 total,
                 page: parseInt(page),

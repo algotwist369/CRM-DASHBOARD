@@ -39,6 +39,9 @@ router.get("/:id", customerController.getCustomerById);
 // Update customer information
 router.put("/:id", customerController.updateCustomer);
 
+// Update customer tier
+router.put("/:id/tier", customerController.updateCustomerTier);
+
 // Delete customer (soft delete)
 router.delete("/:id", customerController.deleteCustomer);
 

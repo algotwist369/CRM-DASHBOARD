@@ -20,6 +20,8 @@ router.delete("/staff/:id", managerController.deleteStaff);
 
 // ================== Transaction Management ==================
 router.post("/transaction", managerController.addTransaction);
+router.put("/transaction/:id", managerController.updateTransaction);
+router.get("/transaction/:id", managerController.getTransaction);
 router.get("/transactions", managerController.getTransactions);
 
 // ================== Business Management (Manager can update their own business) ==================
