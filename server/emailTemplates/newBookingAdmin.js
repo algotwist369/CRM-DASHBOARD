@@ -65,7 +65,7 @@ module.exports = {
                 
                 <!-- Footer -->
                 <div style="background-color: #f1f2f6; padding: 20px; text-align: center; color: #95a5a6; font-size: 12px;">
-                    <p style="margin: 0;">&copy; {{year}} {{businessName}} Admin System.</p>
+                    <p style="margin: 0;">&copy; {{year}} SpaAdvisor Admin System.</p>
                 </div>
             </div>
         </div>
