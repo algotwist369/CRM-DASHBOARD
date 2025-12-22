@@ -19,7 +19,8 @@ import {
     FaMobileAlt,
     FaWallet,
     FaMoneyBillWave,
-    FaUserTie // Added for Staff
+    FaUserTie, // Added for Staff
+    FaWhatsapp
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
@@ -433,6 +434,23 @@ const BookingConfirmation = () => {
         setShowExitConfirmation(false)
     }
 
+    const getWhatsappUrl = (isConfirmed = false) => {
+        const phoneNumber = business?.phone?.replace(/[^0-9]/g, '') || business?.socialMedia?.whatsapp?.replace(/[^0-9]/g, '')
+        if (!phoneNumber) return null
+
+        const servicesList = bookingData.services.map(s => typeof s === 'object' ? s.name : s).join(', ')
+        const dateStr = new Date(bookingData.date).toLocaleDateString('en-US', {
+            weekday: 'short', month: 'short', day: 'numeric'
+        })
+        const timeStr = formatTime(bookingData.time)
+
+        const message = isConfirmed
+            ? `Hi ${business.name || 'Business'}, I just booked ${servicesList} for ${dateStr} at ${timeStr} via SpaAdvisor. My confirmation code is ${appointment.confirmationCode}.`
+            : `Hi ${business.name || 'Business'}, I am interested in booking ${servicesList} for ${dateStr} at ${timeStr} via SpaAdvisor. Can you confirm availability?`
+
+        return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+    }
+
     // --- Render Helpers ---
 
     // Reusable UI Component
@@ -688,6 +706,20 @@ const BookingConfirmation = () => {
                                         </svg>
                                         <span>Secure Booking • Payment collected at venue</span>
                                     </div>
+
+                                    {getWhatsappUrl() && (
+                                        <div className="mt-4 pt-4 border-t border-gray-100">
+                                            <a
+                                                href={getWhatsappUrl()}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors text-sm font-medium rounded"
+                                            >
+                                                <FaWhatsapp className="text-lg" />
+                                                Inquire via WhatsApp
+                                            </a>
+                                        </div>
+                                    )}
                                 </Card>
                             </div>
                         </div>
@@ -757,19 +789,31 @@ const BookingConfirmation = () => {
                                 </div>
 
                                 {/* Success Actions */}
-                                <div className="grid grid-cols-2 gap-3 pt-2">
-                                    <button
-                                        onClick={handlePrint}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 border text-gray-700 hover:bg-gray-50 text-xs"
-                                    >
-                                        <FaPrint /> Print
-                                    </button>
-                                    <button
-                                        onClick={handleViewAppointment}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 text-white hover:bg-primary-700 text-xs"
-                                    >
-                                        <FaArrowRight size={10} /> View Appointment
-                                    </button>
+                                <div className="space-y-3 pt-2">
+                                    {getWhatsappUrl(true) && (
+                                        <a
+                                            href={getWhatsappUrl(true)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-green-500 text-white hover:bg-green-600 text-xs font-bold rounded"
+                                        >
+                                            <FaWhatsapp className="text-lg" /> Share Booking via WhatsApp
+                                        </a>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={handlePrint}
+                                            className="flex items-center justify-center gap-2 px-3 py-2 border text-gray-700 hover:bg-gray-50 text-xs"
+                                        >
+                                            <FaPrint /> Print
+                                        </button>
+                                        <button
+                                            onClick={handleViewAppointment}
+                                            className="flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 text-white hover:bg-primary-700 text-xs"
+                                        >
+                                            <FaArrowRight size={10} /> View Appointment
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

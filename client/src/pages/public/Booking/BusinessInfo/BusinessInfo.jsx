@@ -195,7 +195,12 @@ const BusinessInfo = () => {
 
     // Fallback to business phone number
     const phoneNumber = business.phone?.replace(/[^0-9]/g, '')
-    return phoneNumber ? `https://wa.me/${phoneNumber}` : null
+    const baseUrl = phoneNumber ? `https://wa.me/${phoneNumber}` : null
+
+    if (baseUrl) {
+      return `${baseUrl}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`
+    }
+    return null
   }, [business])
 
   // Memoize all images collection

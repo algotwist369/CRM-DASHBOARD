@@ -128,7 +128,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
         },
         {
             condition: !!business.socialMedia?.whatsapp,
-            href: `https://wa.me/${business.socialMedia?.whatsapp}`,
+            href: `https://wa.me/${business.socialMedia?.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`,
             target: "_blank",
             rel: "noopener noreferrer",
             onClick: (e) => e.stopPropagation(),
@@ -137,7 +137,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
             title: "Chat on WhatsApp",
             className: "bg-green-500 text-white hover:bg-green-600 shadow-md border-transparent flex-1 justify-center"
         }
-    ], [business.phone, business.socialMedia?.whatsapp]);
+    ], [business.name, business.phone, business.socialMedia?.whatsapp]);
 
     return (
         <div
@@ -270,7 +270,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
                 )}
                 {!!business.socialMedia?.whatsapp && (
                     <a
-                        href={`https://wa.me/${business.socialMedia?.whatsapp}`}
+                        href={`https://wa.me/${business.socialMedia?.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -427,12 +427,6 @@ const Search = () => {
         setSearchParams({}); // Clears all params
         // Note: clearing params triggers main effect -> fetches global 'all'
     };
-
-
-
-    // ... existing imports ...
-
-    // ... inside Search component ...
     // Derived state for UI inputs from URL
     const currentCategory = searchParams.get('category') || '';
     const currentRating = parseInt(searchParams.get('rating') || '0');
