@@ -267,7 +267,7 @@ const createAppointment = async (req, res, next) => {
                     confirmationCode: appointment.bookingNumber,
                     staffInfo: staffId ? `<p><strong>Assigned Staff:</strong> Staff ID ${staffId}</p>` : '',
                     customerNotesInfo: customerNotes ? `<p><strong>Customer Notes:</strong> ${customerNotes}</p>` : '',
-                    actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
+                    actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
                 };
 
                 // Track sent emails to prevent duplicates
@@ -281,7 +281,7 @@ const createAppointment = async (req, res, next) => {
                         template: 'new_booking_admin',
                         data: {
                             ...commonData,
-                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
                         }
                     });
                     sentEmails.add(adminEmail.toLowerCase());
@@ -296,7 +296,7 @@ const createAppointment = async (req, res, next) => {
                                 template: 'new_booking_manager',
                                 data: {
                                     ...commonData,
-                                    actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/manager/appointments/${appointment._id}`
+                                    actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/manager/appointments/${appointment._id}`
                                 }
                             });
                             sentEmails.add(manager.email.toLowerCase());
@@ -312,7 +312,7 @@ const createAppointment = async (req, res, next) => {
                         data: {
                             ...commonData,
                             customerName: customer.firstName, // Use first name for friendlier greeting
-                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
                         }
                     });
                     sentEmails.add(customer.email.toLowerCase());
@@ -676,7 +676,7 @@ const confirmAppointment = async (req, res, next) => {
                             endTime: fullAppt.endTime,
                             services: fullAppt.service?.name || 'Service',
                             confirmationCode: fullAppt.bookingNumber,
-                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
                         }
                     });
                 }
@@ -899,7 +899,7 @@ const cancelAppointment = async (req, res, next) => {
                         endTime: fullAppt.endTime,
                         services: fullAppt.service?.name || 'Service',
                         reason: reason || 'Requested by user',
-                        actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/admin/appointments/${fullAppt._id}`
+                        actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/admin/appointments/${fullAppt._id}`
                     };
 
                     // Track sent emails to prevent duplicates
@@ -913,7 +913,7 @@ const cancelAppointment = async (req, res, next) => {
                             data: {
                                 ...commonData,
                                 customerName: fullAppt.customer.firstName,
-                                actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/book/${fullAppt.business.businessLink}` // Rebook link
+                                actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/book/${fullAppt.business.businessLink}` // Rebook link
                             }
                         });
                         sentEmails.add(fullAppt.customer.email.toLowerCase());
@@ -1052,7 +1052,7 @@ const rescheduleAppointment = async (req, res, next) => {
                             startTime: fullAppt.startTime,
                             endTime: fullAppt.endTime,
                             services: fullAppt.service?.name || 'Service',
-                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
                         }
                     });
                 }
@@ -2573,7 +2573,7 @@ const verifyBookingOTP = async (req, res, next) => {
                     confirmationCode: appointment.bookingNumber,
                     staffInfo: appointment.staff ? `<p><strong>Assigned Staff:</strong> ${appointment.staff}</p>` : '', // Staff might be ID or populated
                     customerNotesInfo: '<p><strong>Booking Source:</strong> Online</p>',
-                    actionUrl: `${process.env.BASE_URL}/admin/appointments/${appointment._id}`
+                    actionUrl: `${process.env.FRONTEND_URL}/admin/appointments/${appointment._id}`
                 };
 
                 // 1. Notify Admin
@@ -2584,7 +2584,7 @@ const verifyBookingOTP = async (req, res, next) => {
                         template: 'new_booking_admin',
                         data: {
                             ...commonData,
-                            actionUrl: `${process.env.BASE_URL || ''}/admin/appointments/${appointment._id}`
+                            actionUrl: `${process.env.FRONTEND_URL || ''}/admin/appointments/${appointment._id}`
                         }
                     });
                 }
@@ -2598,7 +2598,7 @@ const verifyBookingOTP = async (req, res, next) => {
                                 template: 'new_booking_manager',
                                 data: {
                                     ...commonData,
-                                    actionUrl: `${process.env.BASE_URL || ''}/manager/appointments/${appointment._id}`
+                                    actionUrl: `${process.env.FRONTEND_URL || ''}/manager/appointments/${appointment._id}`
                                 }
                             });
                         }
@@ -2613,7 +2613,7 @@ const verifyBookingOTP = async (req, res, next) => {
                         data: {
                             ...commonData,
                             customerName: appointment.customer.firstName,
-                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
                         }
                     });
                 }
@@ -2922,13 +2922,13 @@ const updateAppointmentStatus = async (req, res, next) => {
                         services: fullAppt.service?.name || 'Service',
                         status: status,
                         year: new Date().getFullYear(),
-                        businessLink: `${process.env.BASE_URL || ''}/book/${fullAppt.business.businessLink}/reviews`
+                        businessLink: `${process.env.FRONTEND_URL || ''}/book/${fullAppt.business.businessLink}/reviews`
                     };
 
                     let templateName = 'appointment_status_update';
                     let emailData = {
                         ...commonData,
-                        actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
+                        actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
                     };
 
                     // ---- 1. Determine Template & Data ----
@@ -2938,7 +2938,7 @@ const updateAppointmentStatus = async (req, res, next) => {
                     } else if (status === 'cancelled') {
                         templateName = 'appointment_cancelled';
                         emailData.reason = notes || 'Update by staff';
-                        emailData.actionUrl = `${process.env.BASE_URL || ''}/book/${fullAppt.business.businessLink}`; // Re-book
+                        emailData.actionUrl = `${process.env.FRONTEND_URL || ''}/book/${fullAppt.business.businessLink}`; // Re-book
                     } else if (status === 'confirmed') {
                         templateName = 'appointment_confirmation';
                         emailData.confirmationCode = fullAppt.bookingNumber;
