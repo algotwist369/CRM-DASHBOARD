@@ -39,11 +39,11 @@ const BusinessCard = memo(({
     // Memoize image collection - extract URLs from strings or objects
     const cardImages = useMemo(() => {
         if (!business?.images) return []
-        
+
         const extractUrl = (img) => {
             if (!img) return null
             let url = null
-            
+
             // If it's already a string URL, use it
             if (typeof img === 'string') {
                 url = img.trim()
@@ -52,7 +52,7 @@ const BusinessCard = memo(({
             else if (typeof img === 'object' && img.url && typeof img.url === 'string') {
                 url = img.url.trim()
             }
-            
+
             // Validate URL - must be non-empty and look like a URL
             if (url && url.length > 0) {
                 // Check if it's a valid URL format (http/https or relative path starting with /)
@@ -64,7 +64,7 @@ const BusinessCard = memo(({
                     return url
                 }
             }
-            
+
             return null
         }
 
@@ -85,13 +85,13 @@ const BusinessCard = memo(({
 
     // Format phone number for WhatsApp
     const whatsappNumber = business?.phone?.replace(/[^0-9]/g, '') || business?.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
-    const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null
+    const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi ${business?.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}` : null
 
     // Format location address with fallback
     const locationText = useMemo(() => {
         try {
-            return formatLocation && typeof formatLocation === 'function' 
-                ? formatLocation(business) 
+            return formatLocation && typeof formatLocation === 'function'
+                ? formatLocation(business)
                 : business?.address || business?.city || ''
         } catch (error) {
             console.warn('Error formatting location:', error)
@@ -314,8 +314,8 @@ const BusinessCard = memo(({
                                 </div>
                                 <div className="flex flex-wrap gap-1 xs:gap-1.5">
                                     {business.services.slice(0, 3).map((service, idx) => {
-                                        const serviceName = typeof service === 'string' 
-                                            ? service 
+                                        const serviceName = typeof service === 'string'
+                                            ? service
                                             : (service?.name || 'Service')
                                         return (
                                             <span
@@ -593,15 +593,15 @@ const BusinessCard = memo(({
 }, (prevProps, nextProps) => {
     // Custom comparison function for better performance
     // Check if business objects are the same reference first (fastest check)
-    if (prevProps.business === nextProps.business && 
+    if (prevProps.business === nextProps.business &&
         prevProps.viewMode === nextProps.viewMode) {
         return true
     }
-    
+
     // Deep comparison for business properties
     const prevBusiness = prevProps.business || {}
     const nextBusiness = nextProps.business || {}
-    
+
     return (
         (prevBusiness.id || prevBusiness._id) === (nextBusiness.id || nextBusiness._id) &&
         prevProps.viewMode === nextProps.viewMode &&
