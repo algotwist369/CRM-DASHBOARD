@@ -267,49 +267,55 @@ const createAppointment = async (req, res, next) => {
                     confirmationCode: appointment.bookingNumber,
                     staffInfo: staffId ? `<p><strong>Assigned Staff:</strong> Staff ID ${staffId}</p>` : '',
                     customerNotesInfo: customerNotes ? `<p><strong>Customer Notes:</strong> ${customerNotes}</p>` : '',
-                    actionUrl: `${process.env.BASE_URL}/admin/appointments/${appointment._id}` // Adjust base URL as needed
+                    actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
                 };
+
+                // Track sent emails to prevent duplicates
+                const sentEmails = new Set();
 
                 // 1. Notify Admin
                 const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
-                if (adminEmail) {
+                if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
                     await sendTemplateMail({
                         to: adminEmail,
                         template: 'new_booking_admin',
                         data: {
                             ...commonData,
-                            actionUrl: `${process.env.BASE_URL || ''}/admin/appointments/${appointment._id}`
+                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
                         }
                     });
+                    sentEmails.add(adminEmail.toLowerCase());
                 }
 
                 // 2. Notify Managers
                 if (businessDetails?.managers?.length > 0) {
                     for (const manager of businessDetails.managers) {
-                        if (manager.isActive && manager.email) {
+                        if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
                             await sendTemplateMail({
                                 to: manager.email,
                                 template: 'new_booking_manager',
                                 data: {
                                     ...commonData,
-                                    actionUrl: `${process.env.BASE_URL || ''}/manager/appointments/${appointment._id}`
+                                    actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/manager/appointments/${appointment._id}`
                                 }
                             });
+                            sentEmails.add(manager.email.toLowerCase());
                         }
                     }
                 }
 
                 // 3. Notify Customer
-                if (customer.email) {
+                if (customer.email && !sentEmails.has(customer.email.toLowerCase())) {
                     await sendTemplateMail({
                         to: customer.email,
                         template: 'appointment_confirmation',
                         data: {
                             ...commonData,
                             customerName: customer.firstName, // Use first name for friendlier greeting
-                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${appointment.bookingNumber}`
+                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
                         }
                     });
+                    sentEmails.add(customer.email.toLowerCase());
                 }
 
             } catch (emailError) {
@@ -670,7 +676,7 @@ const confirmAppointment = async (req, res, next) => {
                             endTime: fullAppt.endTime,
                             services: fullAppt.service?.name || 'Service',
                             confirmationCode: fullAppt.bookingNumber,
-                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${fullAppt.bookingNumber}`
+                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
                         }
                     });
                 }
@@ -893,25 +899,29 @@ const cancelAppointment = async (req, res, next) => {
                         endTime: fullAppt.endTime,
                         services: fullAppt.service?.name || 'Service',
                         reason: reason || 'Requested by user',
-                        actionUrl: `${process.env.BASE_URL || ''}/admin/appointments/${fullAppt._id}`
+                        actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/admin/appointments/${fullAppt._id}`
                     };
 
+                    // Track sent emails to prevent duplicates
+                    const sentEmails = new Set();
+
                     // 1. Notify Customer
-                    if (fullAppt.customer?.email) {
+                    if (fullAppt.customer?.email && !sentEmails.has(fullAppt.customer.email.toLowerCase())) {
                         await sendTemplateMail({
                             to: fullAppt.customer.email,
                             template: 'appointment_cancelled',
                             data: {
                                 ...commonData,
                                 customerName: fullAppt.customer.firstName,
-                                actionUrl: `${process.env.BASE_URL || ''}/book/${fullAppt.business.businessLink}` // Rebook link
+                                actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/book/${fullAppt.business.businessLink}` // Rebook link
                             }
                         });
+                        sentEmails.add(fullAppt.customer.email.toLowerCase());
                     }
 
                     // 2. Notify Admin
                     const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
-                    if (adminEmail) {
+                    if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
                         await sendTemplateMail({
                             to: adminEmail,
                             template: 'appointment_cancelled',
@@ -921,12 +931,13 @@ const cancelAppointment = async (req, res, next) => {
                                 reason: `Cancelled by ${userRole}: ${reason || 'No reason provided'}`
                             }
                         });
+                        sentEmails.add(adminEmail.toLowerCase());
                     }
 
                     // 3. Notify Managers
                     if (businessDetails?.managers?.length > 0) {
                         for (const manager of businessDetails.managers) {
-                            if (manager.isActive && manager.email) {
+                            if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
                                 await sendTemplateMail({
                                     to: manager.email,
                                     template: 'appointment_cancelled',
@@ -936,6 +947,7 @@ const cancelAppointment = async (req, res, next) => {
                                         reason: `Cancelled by ${userRole}: ${reason || 'No reason provided'}`
                                     }
                                 });
+                                sentEmails.add(manager.email.toLowerCase());
                             }
                         }
                     }
@@ -1040,7 +1052,7 @@ const rescheduleAppointment = async (req, res, next) => {
                             startTime: fullAppt.startTime,
                             endTime: fullAppt.endTime,
                             services: fullAppt.service?.name || 'Service',
-                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${fullAppt.bookingNumber}`
+                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
                         }
                     });
                 }
@@ -2400,8 +2412,11 @@ const verifyBookingOTP = async (req, res, next) => {
                         .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
                 }
 
+                // Track sent emails to prevent duplicates
+                const sentEmails = new Set();
+
                 // Send Email to Customer
-                if (notificationData.customerEmail) {
+                if (notificationData.customerEmail && !sentEmails.has(notificationData.customerEmail.toLowerCase())) {
                     console.log(`[Email] Sending confirmation email to customer: ${notificationData.customerEmail}...`);
                     sendTemplateMail({
                         to: notificationData.customerEmail,
@@ -2410,11 +2425,12 @@ const verifyBookingOTP = async (req, res, next) => {
                     })
                         .then(res => console.log(`[Email] Customer email sent:`, res.messageId))
                         .catch(err => console.error('[Email] Customer email failed:', err.message));
+                    sentEmails.add(notificationData.customerEmail.toLowerCase());
                 }
 
                 // Send Email to Admin
                 const adminEmail = business?.admin?.email;
-                if (adminEmail) {
+                if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
                     console.log(`[Email] Sending notification email to admin: ${adminEmail}...`);
                     sendTemplateMail({
                         to: adminEmail,
@@ -2423,6 +2439,7 @@ const verifyBookingOTP = async (req, res, next) => {
                     })
                         .then(res => console.log(`[Email] Admin email sent:`, res.messageId))
                         .catch(err => console.error('[Email] Admin email failed:', err.message));
+                    sentEmails.add(adminEmail.toLowerCase());
                 }
 
                 // Send Email to Managers
@@ -2430,12 +2447,13 @@ const verifyBookingOTP = async (req, res, next) => {
                 const managerEmails = managers
                     .filter(m => m && m.isActive && m.email)
                     .map(m => m.email)
-                    .filter(Boolean);
+                    .filter(email => email && !sentEmails.has(email.toLowerCase()));
 
                 if (managerEmails.length > 0) {
                     console.log(`[Email] Sending notification emails to ${managerEmails.length} manager(s)...`);
-                    const emailPromises = managerEmails.map(email =>
-                        sendTemplateMail({
+                    const emailPromises = managerEmails.map(email => {
+                        sentEmails.add(email.toLowerCase());
+                        return sendTemplateMail({
                             to: email,
                             template: 'new_booking_manager',
                             data: notificationData
@@ -2447,8 +2465,8 @@ const verifyBookingOTP = async (req, res, next) => {
                             .catch(err => {
                                 console.error(`[Email] Manager email failed for ${email}:`, err.message);
                                 return null;
-                            })
-                    );
+                            });
+                    });
                     await Promise.all(emailPromises);
                 }
             }
@@ -2595,7 +2613,7 @@ const verifyBookingOTP = async (req, res, next) => {
                         data: {
                             ...commonData,
                             customerName: appointment.customer.firstName,
-                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${appointment.bookingNumber}`
+                            actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
                         }
                     });
                 }
@@ -2910,7 +2928,7 @@ const updateAppointmentStatus = async (req, res, next) => {
                     let templateName = 'appointment_status_update';
                     let emailData = {
                         ...commonData,
-                        actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${fullAppt.bookingNumber}`
+                        actionUrl: `${process.env.BASE_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
                     };
 
                     // ---- 1. Determine Template & Data ----
@@ -2926,8 +2944,11 @@ const updateAppointmentStatus = async (req, res, next) => {
                         emailData.confirmationCode = fullAppt.bookingNumber;
                     }
 
+                    // Track sent emails to prevent duplicates
+                    const sentEmails = new Set();
+
                     // ---- 2. Send to Customer ----
-                    if (fullAppt.customer?.email) {
+                    if (fullAppt.customer?.email && !sentEmails.has(fullAppt.customer.email.toLowerCase())) {
                         await sendTemplateMail({
                             to: fullAppt.customer.email,
                             template: templateName,
@@ -2936,6 +2957,7 @@ const updateAppointmentStatus = async (req, res, next) => {
                                 customerName: fullAppt.customer.firstName
                             }
                         });
+                        sentEmails.add(fullAppt.customer.email.toLowerCase());
                     }
 
                     // ---- 3. Send to Admin/Managers (ONLY IF CANCELLED) ----
@@ -2945,7 +2967,7 @@ const updateAppointmentStatus = async (req, res, next) => {
                             .populate('managers', 'email name isActive');
 
                         const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
-                        if (adminEmail) {
+                        if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
                             await sendTemplateMail({
                                 to: adminEmail,
                                 template: 'appointment_cancelled',
@@ -2955,11 +2977,12 @@ const updateAppointmentStatus = async (req, res, next) => {
                                     reason: `Cancelled via Status Update: ${notes || 'No reason provided'}`
                                 }
                             });
+                            sentEmails.add(adminEmail.toLowerCase());
                         }
 
                         if (businessDetails?.managers?.length > 0) {
                             for (const manager of businessDetails.managers) {
-                                if (manager.isActive && manager.email) {
+                                if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
                                     await sendTemplateMail({
                                         to: manager.email,
                                         template: 'appointment_cancelled',
@@ -2969,6 +2992,7 @@ const updateAppointmentStatus = async (req, res, next) => {
                                             reason: `Cancelled via Status Update: ${notes || 'No reason provided'}`
                                         }
                                     });
+                                    sentEmails.add(manager.email.toLowerCase());
                                 }
                             }
                         }
