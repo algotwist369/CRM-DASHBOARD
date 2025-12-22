@@ -45,7 +45,7 @@ module.exports = {
                 
                  <!-- Footer -->
                 <div style="background-color: #f1f2f6; padding: 20px; text-align: center; color: #95a5a6; font-size: 12px;">
-                    <p style="margin: 0;">&copy; {{year}} {{businessName}}. All rights reserved.</p>
+                    <p style="margin: 0;">&copy; {{year}} SpaAdvisor. All rights reserved.</p>
                 </div>
             </div>
         </div>
