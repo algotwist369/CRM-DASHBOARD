@@ -15,6 +15,8 @@ const { sendTemplateSMS, sendTemplateWhatsApp } = require("../utils/sendSMS");
 const { encryptResponse } = require("../utils/encryptionUtils");
 const { sendTemplateMail } = require("../utils/sendMail");
 const { validateAppointmentBooking } = require("../utils/appointmentUtils");
+// Calculate pricing (handle both old format and new pricingOptions)
+const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
@@ -157,8 +159,6 @@ const createAppointment = async (req, res, next) => {
             }
         }
 
-        // Calculate pricing (handle both old format and new pricingOptions)
-        const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
         const { price: servicePrice, duration: serviceDuration } = getServicePriceAndDuration(service);
         const discount = 0; // Can be calculated based on loyalty, membership, etc.
         const tax = servicePrice * 0.18; // 18% GST (can be configurable)
@@ -239,6 +239,85 @@ const createAppointment = async (req, res, next) => {
                 }
             );
         }
+
+        // ================== SEND EMAIL NOTIFICATIONS ==================
+        // Execute asynchronously to not block response
+        (async () => {
+            try {
+                // Fetch full business details for emails (Admin & Managers)
+                const businessDetails = await Business.findById(business._id)
+                    .populate('admin', 'email name')
+                    .populate('managers', 'email name isActive');
+
+                // Prepare common data
+                const dateObj = new Date(appointmentDate);
+                const formattedDate = dateObj.toLocaleDateString('en-US', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+
+                const commonData = {
+                    businessName: business.name,
+                    customerName: `${customer.firstName} ${customer.lastName}`,
+                    customerEmail: customer.email,
+                    customerPhone: customer.phone,
+                    appointmentDate: formattedDate,
+                    startTime: startTime,
+                    endTime: endTime,
+                    services: service.name,
+                    confirmationCode: appointment.bookingNumber,
+                    staffInfo: staffId ? `<p><strong>Assigned Staff:</strong> Staff ID ${staffId}</p>` : '',
+                    customerNotesInfo: customerNotes ? `<p><strong>Customer Notes:</strong> ${customerNotes}</p>` : '',
+                    actionUrl: `${process.env.BASE_URL}/admin/appointments/${appointment._id}` // Adjust base URL as needed
+                };
+
+                // 1. Notify Admin
+                const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                if (adminEmail) {
+                    await sendTemplateMail({
+                        to: adminEmail,
+                        template: 'new_booking_admin',
+                        data: {
+                            ...commonData,
+                            actionUrl: `${process.env.BASE_URL || ''}/admin/appointments/${appointment._id}`
+                        }
+                    });
+                }
+
+                // 2. Notify Managers
+                if (businessDetails?.managers?.length > 0) {
+                    for (const manager of businessDetails.managers) {
+                        if (manager.isActive && manager.email) {
+                            await sendTemplateMail({
+                                to: manager.email,
+                                template: 'new_booking_manager',
+                                data: {
+                                    ...commonData,
+                                    actionUrl: `${process.env.BASE_URL || ''}/manager/appointments/${appointment._id}`
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // 3. Notify Customer
+                if (customer.email) {
+                    await sendTemplateMail({
+                        to: customer.email,
+                        template: 'appointment_confirmation',
+                        data: {
+                            ...commonData,
+                            customerName: customer.firstName, // Use first name for friendlier greeting
+                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${appointment.bookingNumber}`
+                        }
+                    });
+                }
+
+            } catch (emailError) {
+                console.error('❌ EMAIL: Failed to send appointment creation emails:', emailError);
+                // Do not throw, finding is non-critical to flow
+            }
+        })();
+        // ==============================================================
 
         return res.status(201).json({
             success: true,
@@ -567,6 +646,38 @@ const confirmAppointment = async (req, res, next) => {
             data: appointment
         });
 
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt?.customer?.email) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    await sendTemplateMail({
+                        to: fullAppt.customer.email,
+                        template: 'appointment_confirmation',
+                        data: {
+                            businessName: fullAppt.business.name,
+                            customerName: fullAppt.customer.firstName,
+                            appointmentDate: formattedDate,
+                            startTime: fullAppt.startTime,
+                            endTime: fullAppt.endTime,
+                            services: fullAppt.service?.name || 'Service',
+                            confirmationCode: fullAppt.bookingNumber,
+                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${fullAppt.bookingNumber}`
+                        }
+                    });
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
+
         return res.json({
             success: true,
             message: "Appointment confirmed successfully"
@@ -756,6 +867,83 @@ const cancelAppointment = async (req, res, next) => {
             data: appointment
         });
 
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    // Fetch admin/managers for notifications
+                    const businessDetails = await Business.findById(fullAppt.business._id)
+                        .populate('admin', 'email name')
+                        .populate('managers', 'email name isActive');
+
+                    const commonData = {
+                        businessName: fullAppt.business.name,
+                        customerName: `${fullAppt.customer.firstName} ${fullAppt.customer.lastName}`,
+                        appointmentDate: formattedDate,
+                        startTime: fullAppt.startTime,
+                        endTime: fullAppt.endTime,
+                        services: fullAppt.service?.name || 'Service',
+                        reason: reason || 'Requested by user',
+                        actionUrl: `${process.env.BASE_URL || ''}/admin/appointments/${fullAppt._id}`
+                    };
+
+                    // 1. Notify Customer
+                    if (fullAppt.customer?.email) {
+                        await sendTemplateMail({
+                            to: fullAppt.customer.email,
+                            template: 'appointment_cancelled',
+                            data: {
+                                ...commonData,
+                                customerName: fullAppt.customer.firstName,
+                                actionUrl: `${process.env.BASE_URL || ''}/book/${fullAppt.business.businessLink}` // Rebook link
+                            }
+                        });
+                    }
+
+                    // 2. Notify Admin
+                    const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                    if (adminEmail) {
+                        await sendTemplateMail({
+                            to: adminEmail,
+                            template: 'appointment_cancelled',
+                            data: {
+                                ...commonData,
+                                customerName: "Admin", // Generic greeting for admin context
+                                reason: `Cancelled by ${userRole}: ${reason || 'No reason provided'}`
+                            }
+                        });
+                    }
+
+                    // 3. Notify Managers
+                    if (businessDetails?.managers?.length > 0) {
+                        for (const manager of businessDetails.managers) {
+                            if (manager.isActive && manager.email) {
+                                await sendTemplateMail({
+                                    to: manager.email,
+                                    template: 'appointment_cancelled',
+                                    data: {
+                                        ...commonData,
+                                        customerName: "Manager",
+                                        reason: `Cancelled by ${userRole}: ${reason || 'No reason provided'}`
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
+
         return res.json({
             success: true,
             message: "Appointment cancelled successfully"
@@ -828,6 +1016,37 @@ const rescheduleAppointment = async (req, res, next) => {
             message: `Appointment rescheduled`,
             data: appointment
         });
+
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt?.customer?.email) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    await sendTemplateMail({
+                        to: fullAppt.customer.email,
+                        template: 'appointment_rescheduled',
+                        data: {
+                            businessName: fullAppt.business.name,
+                            customerName: fullAppt.customer.firstName,
+                            appointmentDate: formattedDate,
+                            startTime: fullAppt.startTime,
+                            endTime: fullAppt.endTime,
+                            services: fullAppt.service?.name || 'Service',
+                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${fullAppt.bookingNumber}`
+                        }
+                    });
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
 
         return res.json({
             success: true,
@@ -2296,6 +2515,96 @@ const verifyBookingOTP = async (req, res, next) => {
             }
         }
 
+
+        // ================== SEND EMAIL NOTIFICATIONS ==================
+        (async () => {
+            try {
+                const appointmentRaw = result.data.appointment;
+                if (!appointmentRaw) return;
+
+                const appointmentId = appointmentRaw._id || appointmentRaw.id;
+
+                // Repopulate for full details
+                const appointment = await Appointment.findById(appointmentId)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (!appointment || !appointment.business || !appointment.customer) return;
+
+                // Fetch proper business admin/managers
+                const businessDetails = await Business.findById(appointment.business._id)
+                    .populate('admin', 'email name')
+                    .populate('managers', 'email name isActive');
+
+                // Prepare data
+                const dateObj = new Date(appointment.appointmentDate);
+                const formattedDate = dateObj.toLocaleDateString('en-US', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+
+                const commonData = {
+                    businessName: appointment.business.name,
+                    customerName: `${appointment.customer.firstName} ${appointment.customer.lastName}`,
+                    customerEmail: appointment.customer.email,
+                    customerPhone: appointment.customer.phone,
+                    appointmentDate: formattedDate,
+                    startTime: appointment.startTime,
+                    endTime: appointment.endTime,
+                    services: appointment.service?.name || 'Service',
+                    confirmationCode: appointment.bookingNumber,
+                    staffInfo: appointment.staff ? `<p><strong>Assigned Staff:</strong> ${appointment.staff}</p>` : '', // Staff might be ID or populated
+                    customerNotesInfo: '<p><strong>Booking Source:</strong> Online</p>',
+                    actionUrl: `${process.env.BASE_URL}/admin/appointments/${appointment._id}`
+                };
+
+                // 1. Notify Admin
+                const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                if (adminEmail) {
+                    await sendTemplateMail({
+                        to: adminEmail,
+                        template: 'new_booking_admin',
+                        data: {
+                            ...commonData,
+                            actionUrl: `${process.env.BASE_URL || ''}/admin/appointments/${appointment._id}`
+                        }
+                    });
+                }
+
+                // 2. Notify Managers
+                if (businessDetails?.managers?.length > 0) {
+                    for (const manager of businessDetails.managers) {
+                        if (manager.isActive && manager.email) {
+                            await sendTemplateMail({
+                                to: manager.email,
+                                template: 'new_booking_manager',
+                                data: {
+                                    ...commonData,
+                                    actionUrl: `${process.env.BASE_URL || ''}/manager/appointments/${appointment._id}`
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // 3. Notify Customer
+                if (appointment.customer.email) {
+                    await sendTemplateMail({
+                        to: appointment.customer.email,
+                        template: 'appointment_confirmation',
+                        data: {
+                            ...commonData,
+                            customerName: appointment.customer.firstName,
+                            actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${appointment.bookingNumber}`
+                        }
+                    });
+                }
+            } catch (emailError) {
+                console.error('❌ EMAIL: Failed to send public booking emails:', emailError);
+            }
+        })();
+        // ==============================================================
+
         return res.status(201).json(result);
 
     } catch (err) {
@@ -2572,6 +2881,102 @@ const updateAppointmentStatus = async (req, res, next) => {
             message: `Appointment status updated to ${status}`,
             data: appointment
         });
+
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    const commonData = {
+                        businessName: fullAppt.business.name,
+                        customerName: `${fullAppt.customer.firstName} ${fullAppt.customer.lastName}`,
+                        appointmentDate: formattedDate,
+                        startTime: fullAppt.startTime,
+                        endTime: fullAppt.endTime,
+                        services: fullAppt.service?.name || 'Service',
+                        status: status,
+                        year: new Date().getFullYear(),
+                        businessLink: `${process.env.BASE_URL || ''}/book/${fullAppt.business.businessLink}/reviews`
+                    };
+
+                    let templateName = 'appointment_status_update';
+                    let emailData = {
+                        ...commonData,
+                        actionUrl: `${process.env.BASE_URL || ''}/appointments/status/${fullAppt.bookingNumber}`
+                    };
+
+                    // ---- 1. Determine Template & Data ----
+                    if (status === 'completed') {
+                        templateName = 'appointment_completed';
+                        emailData.actionUrl = commonData.businessLink; // Main action is review
+                    } else if (status === 'cancelled') {
+                        templateName = 'appointment_cancelled';
+                        emailData.reason = notes || 'Update by staff';
+                        emailData.actionUrl = `${process.env.BASE_URL || ''}/book/${fullAppt.business.businessLink}`; // Re-book
+                    } else if (status === 'confirmed') {
+                        templateName = 'appointment_confirmation';
+                        emailData.confirmationCode = fullAppt.bookingNumber;
+                    }
+
+                    // ---- 2. Send to Customer ----
+                    if (fullAppt.customer?.email) {
+                        await sendTemplateMail({
+                            to: fullAppt.customer.email,
+                            template: templateName,
+                            data: {
+                                ...emailData,
+                                customerName: fullAppt.customer.firstName
+                            }
+                        });
+                    }
+
+                    // ---- 3. Send to Admin/Managers (ONLY IF CANCELLED) ----
+                    if (status === 'cancelled') {
+                        const businessDetails = await Business.findById(fullAppt.business._id)
+                            .populate('admin', 'email name')
+                            .populate('managers', 'email name isActive');
+
+                        const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                        if (adminEmail) {
+                            await sendTemplateMail({
+                                to: adminEmail,
+                                template: 'appointment_cancelled',
+                                data: {
+                                    ...commonData,
+                                    customerName: "Admin",
+                                    reason: `Cancelled via Status Update: ${notes || 'No reason provided'}`
+                                }
+                            });
+                        }
+
+                        if (businessDetails?.managers?.length > 0) {
+                            for (const manager of businessDetails.managers) {
+                                if (manager.isActive && manager.email) {
+                                    await sendTemplateMail({
+                                        to: manager.email,
+                                        template: 'appointment_cancelled',
+                                        data: {
+                                            ...commonData,
+                                            customerName: "Manager",
+                                            reason: `Cancelled via Status Update: ${notes || 'No reason provided'}`
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
 
         return res.json({
             success: true,
