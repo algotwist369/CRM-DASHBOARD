@@ -29,7 +29,6 @@ export default {
           950: '#001f1f',
         },
 
-
         // Secondary Colors - Professional Gray
         secondary: {
           50: '#fafafa',
