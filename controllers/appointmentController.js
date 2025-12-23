@@ -17,6 +17,7 @@ const { sendTemplateMail } = require("../utils/sendMail");
 const { validateAppointmentBooking } = require("../utils/appointmentUtils");
 // Calculate pricing (handle both old format and new pricingOptions)
 const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+require("dotenv").config();
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
@@ -312,14 +313,14 @@ const createAppointment = async (req, res, next) => {
                         data: {
                             ...commonData,
                             customerName: customer.firstName, // Use first name for friendlier greeting
-                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${appointment.confirmationCode}` // Customer view link
                         }
                     });
                     sentEmails.add(customer.email.toLowerCase());
                 }
 
             } catch (emailError) {
-                console.error('❌ EMAIL: Failed to send appointment creation emails:', emailError);
+                console.error('EMAIL: Failed to send appointment creation emails:', emailError);
                 // Do not throw, finding is non-critical to flow
             }
         })();
