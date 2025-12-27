@@ -40,6 +40,7 @@ const BusinessInfoReviews = lazy(() => import('./BusinessInfoReviews'))
 import HeroSection from './HeroSection'
 import MediaRenderer from './MediaRenderer'
 import { trackLeadClick } from '../../../../utils/analytics'
+import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
 
 
 import { useQuery } from '@tanstack/react-query'
@@ -65,6 +66,7 @@ const BusinessInfo = () => {
   // currentImageIndex state moved to HeroSection to optimize re-renders
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false)
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [showAllServices, setShowAllServices] = useState(false)
@@ -358,6 +360,26 @@ const BusinessInfo = () => {
           {(!business.services || business.services.length === 0) && (
             <p className="text-xs text-gray-500 text-center">No services available</p>
           )}
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200"></span>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-400">Or</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              trackLeadClick(business._id, 'inquiry');
+              setIsInquiryOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary-600 border-2 border-primary-600 font-semibold text-lg hover:bg-primary-50 transition-colors"
+          >
+            <FaEnvelope />
+            Send Inquiry
+          </button>
         </>
       ) : (
         <div className="text-center py-4">
@@ -839,7 +861,7 @@ const BusinessInfo = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0 overflow-x-hidden">
       <SEO
         title={business.name}
         description={business.description}
@@ -850,6 +872,14 @@ const BusinessInfo = () => {
       <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
+
+      {/* Inquiry Modal */}
+      <InquiryModal
+        isOpen={isInquiryOpen}
+        onClose={() => setIsInquiryOpen(false)}
+        businessId={business?._id}
+        businessName={business?.name}
+      />
 
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
@@ -896,7 +926,7 @@ const BusinessInfo = () => {
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
 
                   {/* Initial 12 Services */}
-                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     {business.services.slice(0, 12).map((service, index) => {
                       const serviceKey = typeof service === 'object' && service?._id ? service._id : `service-${index}`
                       return (
@@ -923,7 +953,7 @@ const BusinessInfo = () => {
                   {business.services.length > 12 && (
                     <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllServices ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                       <div className="overflow-hidden">
-                        <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3">
                           {business.services.slice(12).map((service, index) => {
                             const serviceKey = typeof service === 'object' && service?._id ? service._id : `extra-service-${index}`
                             return (
@@ -1602,6 +1632,24 @@ const BusinessInfo = () => {
             )}
           </div>
         </div>
+
+        {/* Floating Inquiry Button - Mobile only */}
+        <button
+          onClick={() => {
+            trackLeadClick(business._id, 'inquiry');
+            setIsInquiryOpen(true);
+          }}
+          className="lg:hidden fixed right-0 top-[60%] z-50 flex items-center justify-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-t-xl shadow-xl border-x-2 border-t-2 border-white hover:bg-primary-700 active:bg-primary-800 transition-all duration-300 font-bold -rotate-90 origin-bottom-right"
+          title="Send Inquiry"
+        >
+          <FaEnvelope className="text-sm" />
+          <span className="text-xs uppercase tracking-widest">Inquiry</span>
+          {/* Notification Dot Animation */}
+          <span className="absolute -top-1 -left-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500 border-2 border-white"></span>
+          </span>
+        </button>
       </div>
     </div>
   )

@@ -14,10 +14,6 @@ import {
   FaClipboardList,
   FaFileInvoiceDollar,
   FaBullhorn,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaCloud,
-  FaWalking
 } from "react-icons/fa";
 import { HiRefresh } from "react-icons/hi";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';

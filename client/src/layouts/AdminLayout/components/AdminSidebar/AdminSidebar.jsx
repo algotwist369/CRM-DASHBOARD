@@ -19,7 +19,7 @@ import {
   HiOutlineCursorClick,
 } from 'react-icons/hi'
 import { GrAnnounce } from "react-icons/gr";
-import { FaUserCircle, FaLock } from 'react-icons/fa';
+import { FaUserCircle, FaLock, FaQuestionCircle } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 
 
@@ -178,10 +178,15 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       icon: <HiOutlineCalendar className="w-5 h-5" />,
     },
     {
-      name: 'Invoices',
-      href: '/admin/invoices',
-      icon: <HiOutlineDocumentText className="w-5 h-5" />,
+      name: 'Inquiries',
+      href: '/admin/inquiries',
+      icon: <FaQuestionCircle className="w-5 h-5" />,
     },
+    // {
+    //   name: 'Invoices',
+    //   href: '/admin/invoices',
+    //   icon: <HiOutlineDocumentText className="w-5 h-5" />,
+    // },
     // {
     //   name: 'Reviews',
     //   href: '/admin/reviews',
@@ -223,11 +228,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       href: '/admin/notifications',
       icon: <HiOutlineBell className="w-5 h-5" />,
     },
-    {
-      name: 'Reports',
-      href: '/admin/reports',
-      icon: <HiOutlineClipboardList className="w-5 h-5" />,
-    },
+    // {
+    //   name: 'Reports',
+    //   href: '/admin/reports',
+    //   icon: <HiOutlineClipboardList className="w-5 h-5" />,
+    // },
     {
       name: 'Settings',
       href: '/admin/settings',
