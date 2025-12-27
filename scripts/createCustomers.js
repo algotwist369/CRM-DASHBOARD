@@ -133,14 +133,14 @@ async function createCustomers() {
 
         for (let i = 0; i < businesses.length; i++) {
             const business = businesses[i];
-            
+
             // Get staff and services for this business
             const staff = await Staff.find({ business: business._id, isActive: true }).limit(5);
             const services = await Service.find({ business: business._id, isActive: true }).limit(5);
-            
+
             // Number of customers per business
             const numCustomers = 10 + Math.floor(Math.random() * 11); // 10-20 customers
-            
+
             let created = 0;
             let skipped = 0;
             let errors = 0;
@@ -153,7 +153,7 @@ async function createCustomers() {
                     const { firstName, lastName } = generateCustomerName();
                     const phone = generatePhone();
                     const email = generateEmail(firstName, lastName);
-                    
+
                     // Check if customer already exists (by phone)
                     const existingCustomer = await Customer.findOne({
                         business: business._id,
@@ -170,12 +170,12 @@ async function createCustomers() {
                     const anniversary = Math.random() > 0.7 ? generateAnniversary() : null; // 30% have anniversary
                     const gender = getRandomItem(['male', 'female', 'other', 'prefer_not_to_say']);
                     const source = getRandomItem(['walk-in', 'online', 'referral', 'social_media', 'advertisement', 'other']);
-                    
+
                     // Generate visit history
                     const totalVisits = Math.floor(Math.random() * 30); // 0-29 visits
                     const totalSpent = totalVisits * (500 + Math.floor(Math.random() * 2000)); // ₹500-₹2500 per visit
                     const averageSpent = totalVisits > 0 ? totalSpent / totalVisits : 0;
-                    
+
                     // Generate dates
                     let firstVisit = null;
                     let lastVisit = null;
@@ -183,20 +183,20 @@ async function createCustomers() {
                         const monthsAgo = Math.floor(Math.random() * 24); // 0-24 months ago
                         firstVisit = new Date();
                         firstVisit.setMonth(firstVisit.getMonth() - monthsAgo);
-                        
+
                         const daysSinceLastVisit = Math.floor(Math.random() * 90); // 0-90 days ago
                         lastVisit = new Date();
                         lastVisit.setDate(lastVisit.getDate() - daysSinceLastVisit);
                     }
-                    
+
                     const customerType = getCustomerType(totalVisits);
                     const loyaltyPoints = Math.floor(totalSpent / 10); // 1 point per ₹10 spent
                     const membershipTier = getMembershipTier(loyaltyPoints);
-                    
+
                     // Preferred staff and services
                     const preferredStaff = staff.length > 0 ? getRandomItems(staff, Math.min(2, staff.length)).map(s => s._id) : [];
                     const preferredServices = services.length > 0 ? getRandomItems(services, Math.min(3, services.length)).map(s => s._id) : [];
-                    
+
                     // Marketing consent
                     const marketingConsent = {
                         email: Math.random() > 0.3, // 70% consent
@@ -204,7 +204,7 @@ async function createCustomers() {
                         whatsapp: Math.random() > 0.5, // 50% consent
                         phone: Math.random() > 0.6 // 40% consent
                     };
-                    
+
                     // Address
                     const address = {
                         street: `${Math.floor(Math.random() * 100)} Street`,
@@ -213,7 +213,7 @@ async function createCustomers() {
                         country: 'India',
                         zipCode: `${Math.floor(100000 + Math.random() * 900000)}`
                     };
-                    
+
                     // Create customer
                     const customer = await Customer.create({
                         business: business._id,
@@ -304,7 +304,7 @@ async function createCustomers() {
             vip: allCustomers.filter(c => c.customerType === 'vip').length,
             inactive: allCustomers.filter(c => c.customerType === 'inactive').length
         };
-        
+
         console.log('📊 Customer Type Distribution:');
         console.log(`   New: ${typeCounts.new}`);
         console.log(`   Regular: ${typeCounts.regular}`);

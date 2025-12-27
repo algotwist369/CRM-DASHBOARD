@@ -95,7 +95,7 @@ async function createManagers() {
                 // Generate manager data
                 const managerName = generateManagerName(business.name);
                 let username = generateUsername(business.name, business.branch);
-                
+
                 // Ensure username is unique
                 let usernameExists = await Manager.findOne({ username });
                 let attempts = 0;
@@ -104,7 +104,7 @@ async function createManagers() {
                     usernameExists = await Manager.findOne({ username });
                     attempts++;
                 }
-                
+
                 if (usernameExists) {
                     username = `${username}${Date.now().toString().slice(-4)}`;
                 }
@@ -145,7 +145,7 @@ async function createManagers() {
             } catch (error) {
                 errors++;
                 console.error(`❌ [${i + 1}/${businesses.length}] Error creating manager for ${business.name}:`, error.message);
-                
+
                 if (error.code === 11000) {
                     console.error(`   ⚠️  Duplicate username detected, skipping...\n`);
                 } else {
@@ -165,19 +165,19 @@ async function createManagers() {
         if (created > 0) {
             console.log('📋 Manager Login Credentials:');
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            
+
             // Display first 5 managers as examples
             const managers = await Manager.find({ business: { $in: businesses.map(b => b._id) } })
                 .populate('business', 'name branch')
                 .limit(5)
                 .sort({ createdAt: -1 });
-            
+
             managers.forEach((mgr, idx) => {
                 console.log(`\n${idx + 1}. ${mgr.business.name} - ${mgr.business.branch}:`);
                 console.log(`   Username: ${mgr.username}`);
                 console.log(`   PIN: ${mgr.pin}`);
             });
-            
+
             if (created > 5) {
                 console.log(`\n   ... and ${created - 5} more managers`);
             }

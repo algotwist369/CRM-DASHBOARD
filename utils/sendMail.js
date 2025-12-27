@@ -2,13 +2,15 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 require("dotenv").config();
 
- 
+
 const TEMPLATE_MAP = {
     'appointment_confirmation': 'appointmentConfirmation',
     'appointment_reminder': 'appointmentReminder',
     'promotional_offer': 'promotionalOffer',
     'new_booking_admin': 'newBookingAdmin',
     'new_booking_manager': 'newBookingManager',
+    'new_inquiry_admin': 'newInquiryAdmin',
+    'new_inquiry_manager': 'newInquiryManager',
     'appointment_cancelled': 'appointmentCancelled',
     'appointment_rescheduled': 'appointmentRescheduled',
     'appointment_status_update': 'appointmentStatusUpdate',
@@ -26,7 +28,7 @@ const QUEUE_CONCURRENCY = 5; // Process 5 emails at a time
 const QUEUE_DELAY = 100; // Small delay between batches to relieve event loop
 const emailQueue = [];
 let isProcessingQueue = false;
- 
+
 const getTransporter = () => {
     if (transporterInstance) return transporterInstance;
 

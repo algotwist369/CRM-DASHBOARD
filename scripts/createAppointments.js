@@ -50,7 +50,7 @@ const appointmentStatuses = [
 function getRandomStatus() {
     const totalWeight = appointmentStatuses.reduce((sum, s) => sum + s.weight, 0);
     let random = Math.random() * totalWeight;
-    
+
     for (const item of appointmentStatuses) {
         random -= item.weight;
         if (random <= 0) {
@@ -84,7 +84,7 @@ async function createAppointments() {
         console.log('✅ Database connected\n');
 
         // Get admin
-        const admin = await Admin.findOne({ email: 'dinesh@dishonlinesolution.com' });
+        const admin = await Admin.findOne({ email: 'dos.dineshmaurya@gmail.com' });
         if (!admin) {
             console.error('❌ Admin not found. Please create admin first using createAdmin.js');
             process.exit(1);
@@ -119,20 +119,20 @@ async function createAppointments() {
 
         for (let i = 0; i < businesses.length; i++) {
             const business = businesses[i];
-            
+
             // Get customers, services, and staff for this business
             const customers = await Customer.find({ business: business._id, isActive: true }).limit(20);
             const services = await Service.find({ business: business._id, isActive: true });
             const staff = await Staff.find({ business: business._id, isActive: true });
-            
+
             if (customers.length === 0 || services.length === 0) {
                 console.log(`⚠️  [${i + 1}/${businesses.length}] Skipped: ${business.name} - ${business.branch} (no customers or services)`);
                 continue;
             }
-            
+
             // Number of appointments per business
             const numAppointments = 5 + Math.floor(Math.random() * 11); // 5-15 appointments
-            
+
             let created = 0;
             let skipped = 0;
             let errors = 0;
@@ -145,33 +145,33 @@ async function createAppointments() {
                     // Select random customer, service, and staff
                     const customer = getRandomItem(customers);
                     const service = getRandomItem(services);
-                    const assignedStaff = service.assignedStaff && service.assignedStaff.length > 0 
-                        ? getRandomItem(service.assignedStaff) 
+                    const assignedStaff = service.assignedStaff && service.assignedStaff.length > 0
+                        ? getRandomItem(service.assignedStaff)
                         : (staff.length > 0 ? getRandomItem(staff)._id : null);
-                    
+
                     // Generate appointment date (past, present, or future)
                     const isPast = Math.random() > 0.3; // 70% past appointments
-                    const appointmentDate = isPast 
+                    const appointmentDate = isPast
                         ? randomDate(threeMonthsAgo, now)
                         : randomDate(now, oneMonthAhead);
-                    
+
                     // Generate time slots
                     const timeSlots = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
                     const startTime = getRandomItem(timeSlots);
                     const duration = service.duration || 60;
                     const endTime = addMinutes(startTime, duration);
-                    
+
                     // Calculate pricing
                     const servicePrice = service.price;
                     const discount = Math.random() > 0.7 ? Math.floor(servicePrice * 0.1) : 0; // 30% chance of discount
                     const tax = Math.floor((servicePrice - discount) * 0.18); // 18% GST
                     const totalAmount = servicePrice - discount + tax;
-                    
+
                     // Determine status
                     const status = getRandomStatus();
                     const paymentStatus = getPaymentStatus(status, totalAmount);
                     const paymentMethod = getRandomItem(paymentMethods);
-                    
+
                     // Calculate paid amount based on payment status
                     let paidAmount = 0;
                     let advanceAmount = 0;
@@ -181,33 +181,33 @@ async function createAppointments() {
                         advanceAmount = Math.floor(totalAmount * 0.5);
                         paidAmount = advanceAmount;
                     }
-                    
+
                     // Set completion/check-in times for completed appointments
                     let completedAt = null;
                     let checkInTime = null;
                     let checkOutTime = null;
                     let actualDuration = null;
-                    
+
                     if (status === 'completed' && isPast) {
                         checkInTime = new Date(appointmentDate);
                         const [hours, mins] = startTime.split(':').map(Number);
                         checkInTime.setHours(hours, mins, 0, 0);
                         checkInTime.setMinutes(checkInTime.getMinutes() + Math.floor(Math.random() * 10)); // 0-10 min late
-                        
+
                         checkOutTime = new Date(checkInTime);
                         checkOutTime.setMinutes(checkOutTime.getMinutes() + duration + Math.floor(Math.random() * 15)); // Actual duration
-                        
+
                         completedAt = checkOutTime;
                         actualDuration = Math.floor((checkOutTime - checkInTime) / (1000 * 60));
                     }
-                    
+
                     // Cancellation details
                     let cancellationReason = null;
                     let cancelledBy = null;
                     let cancelledByModel = null;
                     let cancelledAt = null;
                     let cancellationFee = 0;
-                    
+
                     if (status === 'cancelled') {
                         cancellationReason = getRandomItem([
                             'Customer requested',
@@ -222,14 +222,14 @@ async function createAppointments() {
                         cancelledAt.setDate(cancelledAt.getDate() - Math.floor(Math.random() * 2)); // Cancelled 0-2 days before
                         cancellationFee = Math.random() > 0.7 ? Math.floor(totalAmount * 0.1) : 0; // 30% chance of fee
                     }
-                    
+
                     // Reminder and confirmation
                     const reminderSent = status !== 'cancelled' && isPast && Math.random() > 0.3; // 70% sent
                     const confirmationSent = status !== 'cancelled' && Math.random() > 0.2; // 80% sent
-                    
+
                     // Booking source
                     const bookingSource = getRandomItem(['walk-in', 'online', 'phone', 'whatsapp', 'social_media', 'mobile_app']);
-                    
+
                     // Create appointment
                     const appointment = await Appointment.create({
                         business: business._id,
@@ -323,7 +323,7 @@ async function createAppointments() {
             cancelled: allAppointments.filter(a => a.status === 'cancelled').length,
             no_show: allAppointments.filter(a => a.status === 'no_show').length
         };
-        
+
         console.log('📊 Appointment Status Distribution:');
         console.log(`   Pending: ${statusCounts.pending}`);
         console.log(`   Confirmed: ${statusCounts.confirmed}`);

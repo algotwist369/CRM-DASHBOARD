@@ -177,7 +177,7 @@ async function createStaff() {
             const config = roleConfigs[business.type] || roleConfigs.spa;
             const numStaff = 7 + Math.floor(Math.random() * 3); // 7-9 staff per business
             const roles = config.roles.slice(0, numStaff);
-            
+
             // Add extra roles if needed
             while (roles.length < numStaff) {
                 roles.push(getRandomItem(config.roles));
