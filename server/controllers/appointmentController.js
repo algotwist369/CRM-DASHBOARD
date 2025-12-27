@@ -1785,8 +1785,8 @@ const executeBooking = async (bookingData, businessLink) => {
     } = bookingData;
 
     // Validate required fields
-    if (!customerInfo || !customerInfo.name || !customerInfo.email || !customerInfo.phone) {
-        return { success: false, status: 400, message: "Customer information (name, email, phone) is required" };
+    if (!customerInfo || !customerInfo.name || !customerInfo.phone) {
+        return { success: false, status: 400, message: "Customer information (name, phone) is required" };
     }
 
     if (!appointmentDate || !startTime || !endTime) {
@@ -1815,13 +1815,18 @@ const executeBooking = async (bookingData, businessLink) => {
     }
 
     // Find or create customer
-    let customer = await Customer.findOne({
+    const customerQuery = {
         business: business._id,
         $or: [
-            { email: customerInfo.email },
             { phone: customerInfo.phone }
         ]
-    });
+    };
+
+    if (customerInfo.email) {
+        customerQuery.$or.push({ email: customerInfo.email });
+    }
+
+    let customer = await Customer.findOne(customerQuery);
 
     // Helper function to parse address string into object
     const parseAddress = (addressString) => {
@@ -2140,7 +2145,7 @@ const bookAppointmentPublic = async (req, res, next) => {
         const bookingData = req.body;
         const { customerInfo, appointmentDate, startTime, endTime, services } = bookingData;
 
-        if (!customerInfo || !customerInfo.name || !customerInfo.email || !customerInfo.phone) {
+        if (!customerInfo || !customerInfo.name || !customerInfo.phone) {
             return res.status(400).json({ success: false, message: "Customer information required" });
         }
         if (!appointmentDate || !startTime || !endTime) {

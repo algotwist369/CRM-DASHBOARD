@@ -153,9 +153,7 @@ const CustomerInfo = () => {
       newErrors.name = 'Name is required'
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address'
     }
 
@@ -281,7 +279,7 @@ const CustomerInfo = () => {
                   {/* Email */}
                   <div>
                     <label className="block text-xs text-gray-700 mb-1">
-                      Email Address
+                      Email Address (optional)
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
