@@ -11,6 +11,9 @@ export * from './Managers'
 // Daily Business Management
 export * from './DailyBusiness'
 
+// Inquiries
+export * from './Inquiries'
+
 // Notifications
 export * from './Notifications'
 

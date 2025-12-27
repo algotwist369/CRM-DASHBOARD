@@ -180,8 +180,8 @@ const Home = memo(() => {
               <div className="flex items-center gap-3">
                 <FiUsers className="text-gray-800 text-lg" />
                 <div>
-                  <p className="font-semibold text-sm">12M+</p>
-                  <p className="text-xs text-gray-500">Happy users</p>
+                  <p className="font-semibold text-sm">2M+</p>
+                  <p className="text-xs text-gray-500">Happy customers</p>
                 </div>
               </div>
             </div>

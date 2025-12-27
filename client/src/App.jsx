@@ -79,6 +79,9 @@ const InvoiceForm = lazy(() => import('./pages/admin/Invoices').then(module => (
 const ReviewList = lazy(() => import('./pages/admin/Reviews').then(module => ({ default: module.ReviewList })))
 const ReviewDetails = lazy(() => import('./pages/admin/Reviews').then(module => ({ default: module.ReviewDetails })))
 
+// Admin - Inquiries
+const InquiryList = lazy(() => import('./pages/admin/Inquiries').then(module => ({ default: module.InquiryList })))
+
 // Admin - Campaigns
 const AdminCampaignList = lazy(() => import('./pages/admin/Campaigns').then(module => ({ default: module.CampaignList })))
 const CampaignForm = lazy(() => import('./pages/admin/Campaigns').then(module => ({ default: module.CampaignForm })))
@@ -274,6 +277,7 @@ function App() {
                       <Route path="invoices/create" element={<InvoiceForm />} />
                       <Route path="reviews" element={<ReviewList />} />
                       <Route path="reviews/:id" element={<ReviewDetails />} />
+                      <Route path="inquiries" element={<InquiryList />} />
                       {/* campaign routes */}
                       <Route path="campaigns" element={<AdminCampaignList />} />
                       <Route path="campaigns/create" element={<CampaignForm mode="create" />} />
@@ -350,6 +354,7 @@ function App() {
                       <Route path="campaigns/:id" element={<CampaignDetails />} />
                       <Route path="campaigns/:id/analytics" element={<CampaignAnalytics />} />
                       <Route path="campaigns/analytics" element={<CampaignAnalyticsOverview />} />
+                      <Route path="inquiries" element={<InquiryList />} />
                       <Route path="reports" element={<ManagerReports />} />
                       {/* Phase 3: expense & inventory routes */}
                       <Route path="expenses" element={<MyExpenses />} />

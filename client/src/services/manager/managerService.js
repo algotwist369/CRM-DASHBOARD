@@ -549,6 +549,58 @@ class ManagerService {
       }
     }
   }
+
+  // ================== Inquiry Methods ==================
+  async getInquiries(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.inquiries.list, { params })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch inquiries'
+      }
+    }
+  }
+
+  async markInquiryAsReceived(id) {
+    try {
+      const response = await apiClient.patch(endpoints.inquiries.receive(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update inquiry status'
+      }
+    }
+  }
+
+  async deleteInquiry(id) {
+    try {
+      const response = await apiClient.delete(endpoints.inquiries.delete(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete inquiry'
+      }
+    }
+  }
+
+  async exportInquiries(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.inquiries.export, {
+        params,
+        responseType: params.format === 'csv' ? 'blob' : 'arraybuffer'
+      })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to export inquiries'
+      }
+    }
+  }
 }
 
 export default new ManagerService()

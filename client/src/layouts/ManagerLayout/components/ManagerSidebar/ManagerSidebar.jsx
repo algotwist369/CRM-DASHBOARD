@@ -14,7 +14,7 @@ import {
   HiOutlineChevronLeft,
   HiOutlineChevronDown,
 } from 'react-icons/hi'
-import { FaBullhorn } from 'react-icons/fa'
+import { FaBullhorn, FaQuestionCircle } from 'react-icons/fa'
 import { FaUserCircle } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 import authService from '../../../../services/auth/authService';
@@ -137,6 +137,11 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
         { name: 'All Appointments', href: '/manager/appointments' },
         { name: 'Calendar View', href: '/manager/appointments/calendar' },
       ],
+    },
+    {
+      name: 'Inquiries',
+      href: '/manager/inquiries',
+      icon: <FaQuestionCircle className="w-5 h-5 text-amber-500" />,
     },
     {
       name: 'Transactions',

@@ -6,8 +6,9 @@ import { Button } from '../../../components/common';
 import SkeletonSearch from './SkeletonSearch';
 import LazySection from '../../../components/common/LazySection/LazySection';
 import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter } from 'react-icons/fi';
-import { FaWhatsapp, FaStar, FaPhoneAlt } from 'react-icons/fa';
+import { FaWhatsapp, FaStar, FaPhoneAlt, FaEnvelope } from 'react-icons/fa';
 import SEO from '../../../components/common/SEO';
+import InquiryModal from '../../../components/public/Inquiry/InquiryModal';
 
 // Static Constants - Outside component to prevent recreation
 const FILTER_CATEGORIES = ['Hotel', 'Spa', 'Salon', 'Gym', 'Restaurant'];
@@ -105,7 +106,7 @@ const ImageSlider = React.memo(({ images, name, distanceText }) => {
         prevProps.distanceText === nextProps.distanceText;
 });
 
-const SearchBusinessCard = React.memo(({ business }) => {
+const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
     const navigate = useNavigate();
 
     // Collect all valid images: Main image + Gallery
@@ -136,8 +137,19 @@ const SearchBusinessCard = React.memo(({ business }) => {
             text: <><span className="md:hidden">WA</span><span className="hidden md:inline">WhatsApp</span></>,
             title: "Chat on WhatsApp",
             className: "bg-green-500 text-white hover:bg-green-600 shadow-md border-transparent flex-1 justify-center"
+        },
+        {
+            condition: true,
+            onClick: (e) => {
+                e.stopPropagation();
+                onInquiry(business);
+            },
+            icon: <FaEnvelope className="w-5 h-5" />,
+            text: <><span className="md:hidden">Inq</span><span className="hidden md:inline">Inquiry</span></>,
+            title: "Send Inquiry",
+            className: "bg-white text-primary-600 border-primary-600 hover:bg-primary-50 flex-1 justify-center"
         }
-    ], [business.name, business.phone, business.socialMedia?.whatsapp]);
+    ], [business, onInquiry]);
 
     return (
         <div
@@ -222,22 +234,34 @@ const SearchBusinessCard = React.memo(({ business }) => {
 
                     <div className="hidden md:flex items-center justify-between mt-2 pt-2 border-t border-gray-100 gap-2">
                         <div className="flex gap-2 flex-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 scrollbar-hide">
-                            {actions.map((action, index) => (
-                                action.condition && (
+                            {actions.map((action, index) => {
+                                if (!action.condition && !action.onClick) return null;
+
+                                return action.href ? (
                                     <a
                                         key={index}
                                         href={action.href}
                                         target={action.target}
                                         rel={action.rel}
                                         onClick={action.onClick}
+                                        title={action.title}
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${action.className}`}
+                                    >
+                                        {action.icon}
+                                        <span>{action.text}</span>
+                                    </a>
+                                ) : (
+                                    <button
+                                        key={index}
+                                        onClick={action.onClick}
                                         className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${action.className}`}
                                         title={action.title}
                                     >
                                         {action.icon}
                                         <span>{action.text}</span>
-                                    </a>
-                                )
-                            ))}
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {business.businessLink && (
@@ -280,6 +304,16 @@ const SearchBusinessCard = React.memo(({ business }) => {
                         <span>WA</span>
                     </a>
                 )}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onInquiry(business);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white text-primary-600 border border-primary-600 font-semibold text-sm hover:bg-primary-50 transition-colors rounded-lg py-2.5 shadow-sm"
+                >
+                    <FaEnvelope className="w-4 h-4" />
+                    <span>Inquiry</span>
+                </button>
             </div>
         </div>
     );
@@ -302,6 +336,7 @@ const Search = () => {
 
     // Local UI State
     const [localQuery, setLocalQuery] = useState(searchParams.get('q') || '');
+    const [inquiryBusiness, setInquiryBusiness] = useState(null);
 
     // Removed local results/loading state - handled by Query
     const [isLocationInitialized, setIsLocationInitialized] = useState(false);
@@ -693,14 +728,20 @@ const Search = () => {
                                     return (
                                         <div ref={lastBusinessElementRef} key={business._id || business.id || index}>
                                             <LazySection fallback={placeholder}>
-                                                <SearchBusinessCard business={business} />
+                                                <SearchBusinessCard
+                                                    business={business}
+                                                    onInquiry={(biz) => setInquiryBusiness(biz)}
+                                                />
                                             </LazySection>
                                         </div>
                                     );
                                 } else {
                                     return (
                                         <LazySection key={business._id || business.id || index} fallback={placeholder}>
-                                            <SearchBusinessCard business={business} />
+                                            <SearchBusinessCard
+                                                business={business}
+                                                onInquiry={(biz) => setInquiryBusiness(biz)}
+                                            />
                                         </LazySection>
                                     );
                                 }
@@ -720,6 +761,14 @@ const Search = () => {
                     )}
                 </div>
             </div>
+
+            {/* Inquiry Modal */}
+            <InquiryModal
+                isOpen={!!inquiryBusiness}
+                onClose={() => setInquiryBusiness(null)}
+                businessId={inquiryBusiness?._id || inquiryBusiness?.id}
+                businessName={inquiryBusiness?.name}
+            />
         </div >
     );
 };

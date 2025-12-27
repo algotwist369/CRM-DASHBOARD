@@ -287,6 +287,15 @@ export const endpoints = {
       businessBreakdown: `${API_BASE_URL}/leads/analytics/business-breakdown`,
       ipJourneys: `${API_BASE_URL}/leads/analytics/ip-journeys`,
     }
+  },
+  // Inquiry endpoints
+  inquiries: {
+    list: `${API_BASE_URL}/inquiries`,
+    export: `${API_BASE_URL}/inquiries/export`,
+    sendOtp: `${API_BASE_URL}/inquiries/send-otp`,
+    create: `${API_BASE_URL}/inquiries`,
+    receive: (id) => `${API_BASE_URL}/inquiries/${id}/receive`,
+    delete: (id) => `${API_BASE_URL}/inquiries/${id}`,
   }
 }
 
