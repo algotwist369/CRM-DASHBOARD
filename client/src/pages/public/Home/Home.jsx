@@ -89,11 +89,11 @@ const Home = memo(() => {
   }, []);
 
   const handleSearchClick = useCallback(() => {
-    navigate('/search')
+    navigate('/spa')
   }, [navigate])
 
   const handleHeroImageClick = useCallback((title) => {
-    navigate(`/search?q=${encodeURIComponent(title)}`)
+    navigate(`/spa?q=${encodeURIComponent(title)}`)
   }, [navigate])
 
 

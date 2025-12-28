@@ -15,7 +15,7 @@ const validatePhoneNumber = (phone) => {
 }
 
 const Advertise = () => {
-  usePageTitle('Advertise - Booking App')
+  usePageTitle('Advertise - Spa Advisor')
   const { sendOtp, verifyOtp, createAdvertise, loading: apiLoading } = useAdvertise()
 
   const [formData, setFormData] = useState({

@@ -20,7 +20,7 @@ const Features = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   })
-  usePageTitle('Features - Booking App')
+  usePageTitle('Features - Spa Advisor')
 
   const features = [
     {

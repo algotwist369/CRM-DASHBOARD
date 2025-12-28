@@ -22,7 +22,7 @@ const STATIC_ROUTES = [
     { url: '/for-businesses', priority: 0.8, changefreq: 'monthly' },
     { url: '/advertise', priority: 0.7, changefreq: 'monthly' },
     { url: '/careers', priority: 0.6, changefreq: 'monthly' },
-    { url: '/search', priority: 0.9, changefreq: 'daily' },
+    { url: '/spa', priority: 0.9, changefreq: 'daily' },
     { url: '/contact', priority: 0.7, changefreq: 'monthly' },
     { url: '/free-listing', priority: 0.8, changefreq: 'monthly' },
     { url: '/book-demo', priority: 0.8, changefreq: 'monthly' },
@@ -100,7 +100,7 @@ const generateSitemap = async () => {
 
         nearMeQueries.forEach(query => {
             urls.push({
-                loc: `${BASE_URL}/search?q=${encodeURIComponent(query)}`,
+                loc: `${BASE_URL}/spa?q=${encodeURIComponent(query)}`,
                 lastmod: new Date().toISOString(),
                 changefreq: 'weekly',
                 priority: 0.8
@@ -112,7 +112,7 @@ const generateSitemap = async () => {
         validCities.forEach(city => {
             // Generic City Search
             urls.push({
-                loc: `${BASE_URL}/search?q=${encodeURIComponent(city)}`,
+                loc: `${BASE_URL}/spa?q=${encodeURIComponent(city)}`,
                 lastmod: new Date().toISOString(),
                 changefreq: 'weekly',
                 priority: 0.8
@@ -122,15 +122,15 @@ const generateSitemap = async () => {
                 // Query: "Best Spa in Mumbai"
                 const query = `Best ${type} in ${city}`;
                 urls.push({
-                    loc: `${BASE_URL}/search?q=${encodeURIComponent(query)}`,
+                    loc: `${BASE_URL}/spa?q=${encodeURIComponent(query)}`,
                     lastmod: new Date().toISOString(),
                     changefreq: 'weekly',
                     priority: 0.8
                 });
 
-                // Category Filter + City: /search?category=spa&q=Mumbai
+                // Category Filter + City: /spa?category=spa&q=Mumbai
                 urls.push({
-                    loc: `${BASE_URL}/search?category=${encodeURIComponent(type.toLowerCase())}&q=${encodeURIComponent(city)}`,
+                    loc: `${BASE_URL}/spa?category=${encodeURIComponent(type.toLowerCase())}&q=${encodeURIComponent(city)}`,
                     lastmod: new Date().toISOString(),
                     changefreq: 'weekly',
                     priority: 0.8

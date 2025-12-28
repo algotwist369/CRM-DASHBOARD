@@ -384,7 +384,9 @@ function App() {
                       <Route path="advertise" element={<Advertise />} />
                       <Route path="careers" element={<Careers />} />
                       <Route path="notifications" element={<Notifications />} />
-                      <Route path="search" element={<Search />} />
+                      <Route path="spa" element={<Search />} />
+                      <Route path="spa/:location" element={<Search />} />
+                      <Route path="spa/:location/:query" element={<Search />} />
                       <Route path="contact" element={<Contact />} />
                       <Route path="free-listing" element={<FreeListing />} />
                       <Route path="book-demo" element={<BookDemo />} />

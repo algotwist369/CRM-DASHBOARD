@@ -1,4 +1,4 @@
-import {apiClient,  API_ENDPOINTS, buildEndpoint } from '../api'
+import { apiClient, API_ENDPOINTS, buildEndpoint } from '../api'
 import { decryptPayload } from '../../utils/encryption'
 
 class PublicService {
@@ -319,23 +319,30 @@ class PublicService {
   }
 
   // Get business search results
+  // Get business search results
   async searchBusinesses(searchParams) {
     try {
       const endpoint = buildEndpoint(API_ENDPOINTS.PUBLIC.SEARCH, searchParams)
+      console.log('Searching:', endpoint);
       const response = await apiClient.get(endpoint)
 
       // Decrypt payload if present
       if (response.data?.payload) {
+        console.log('Received payload length:', response.data.payload.length);
         const decryptedData = decryptPayload(response.data.payload);
+        console.log('Decrypted data:', decryptedData);
+
         if (decryptedData) {
           return { success: true, data: { ...decryptedData, success: true } }
         } else {
+          console.error('Decryption failed');
           return { success: false, error: 'Security verification failed' };
         }
       }
 
       return { success: true, data: response.data }
     } catch (error) {
+      console.error('Search error:', error);
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to search businesses'

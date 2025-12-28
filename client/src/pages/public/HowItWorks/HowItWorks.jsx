@@ -4,7 +4,7 @@ import { FaUserPlus, FaCog, FaCalendarCheck, FaRocket } from 'react-icons/fa'
 import { Link } from 'react-router-dom'
 
 const HowItWorks = () => {
-  usePageTitle('How It Works - Booking App')
+  usePageTitle('How It Works - Spa Advisor')
 
   useEffect(() => {
     window.scrollTo(0, 0);
