@@ -125,7 +125,7 @@ const BusinessInfo = () => {
 
   // Update page title based on business name
   const pageTitle = useMemo(() => {
-    return business ? `${business.name}${business.branch ? ` - ${business.branch}` : ''} - Booking App` : null
+    return business ? `${business.name}${business.branch ? ` - ${business.branch}` : ''} - Spa Advisor` : null
   }, [business])
   usePageTitle(pageTitle)
 
@@ -135,6 +135,15 @@ const BusinessInfo = () => {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [businessLink])
+
+  // Auto-open inquiry modal after 10 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInquiryOpen(true)
+    }, 10000)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleBookNow = useCallback(() => {
     if (business && business.services && business.services.length > 0) {

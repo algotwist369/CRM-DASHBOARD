@@ -12,7 +12,7 @@ import {
 } from 'react-icons/fa'
 
 const ForBusinesses = () => {
-  usePageTitle('For Businesses - Booking App')
+  usePageTitle('For Businesses - Spa Advisor')
   const location = useLocation()
 
   useEffect(() => {

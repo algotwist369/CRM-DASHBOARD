@@ -55,6 +55,11 @@ const BusinessCard = memo(({
 
             // Validate URL - must be non-empty and look like a URL
             if (url && url.length > 0) {
+                // Skip embedded content (iframes, 360 viewers)
+                if (url.includes('<iframe') || url.includes('iframe.') || url.includes('embed/')) {
+                    return null;
+                }
+
                 // Check if it's a valid URL format (http/https or relative path starting with /)
                 if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/') || url.startsWith('./')) {
                     return url

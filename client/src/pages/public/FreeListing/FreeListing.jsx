@@ -15,7 +15,7 @@ import { Modal } from '../../../components'
 import { useFreeListing } from '../../../hooks/public/useFreeListing'
 
 const FreeListing = () => {
-  usePageTitle('Free Listing - Booking App')
+  usePageTitle('Free Listing - Spa Advisor')
   const navigate = useNavigate()
   const { sendOtp: sendOtpApi, verifyOtp: verifyOtpApi, createFreeListing: createFreeListingApi } = useFreeListing()
   const [step, setStep] = useState(1) // 1: Registration, 2: OTP Verification
@@ -1021,7 +1021,7 @@ const FreeListing = () => {
         isOpen={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false)
-          navigate('/search', {
+          navigate('/spa', {
             state: {
               companyName: registrationData.companyName,
               mobileNumber: registrationData.mobileNumber
@@ -1076,7 +1076,7 @@ const FreeListing = () => {
           <button
             onClick={() => {
               setShowSuccessModal(false)
-              navigate('/search', {
+              navigate('/spa', {
                 state: {
                   companyName: registrationData.companyName,
                   mobileNumber: registrationData.mobileNumber

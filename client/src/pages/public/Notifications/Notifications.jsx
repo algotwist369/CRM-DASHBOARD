@@ -3,13 +3,13 @@ import { usePageTitle } from '../../../hooks/usePageTitle'
 import { FaBell, FaCheckCircle, FaInfoCircle, FaExclamationTriangle, FaTimes } from 'react-icons/fa'
 
 const Notifications = () => {
-  usePageTitle('Notifications - Booking App')
+  usePageTitle('Notifications - Spa Advisor')
   
   const [notifications] = useState([
     {
       id: 1,
       type: 'info',
-      title: 'Welcome to Booking App!',
+      title: 'Welcome to Spa Advisor!',
       message: 'Thank you for joining us. Start by setting up your business profile.',
       time: '2 hours ago',
       read: false

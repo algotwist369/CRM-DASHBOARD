@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 
 // Constants
-const APP_NAME = 'Booking App'
+const APP_NAME = 'Spa Advisor'
 const DEFAULT_TITLE = APP_NAME
 
 // Route to title mapping configuration
@@ -111,14 +111,14 @@ const updateDocumentTitle = (title) => {
  * 
  * @param {string|null} customTitle - Optional custom title to override automatic title detection.
  *                                    If provided, this will be used instead of route-based title.
- *                                    Format: "Page Name - Booking App" or just "Page Name"
+ *                                    Format: "Page Name - Spa Advisor" or just "Page Name"
  * 
  * @example
  * // Automatic title based on route
  * usePageTitle()
  * 
  * // Custom title
- * usePageTitle('My Custom Page - Booking App')
+ * usePageTitle('My Custom Page - Spa Advisor')
  * 
  * // Custom title without app name (will be added automatically if not present)
  * usePageTitle('My Custom Page')

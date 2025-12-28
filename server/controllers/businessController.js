@@ -629,190 +629,436 @@ const getBusinessesNearby = async (req, res, next) => {
     }
 };
 
-// ================== Search Businesses (Public - Advanced) ==================
-// TODO: Required Indexes:
-// 1. db.businesses.createIndex({ location: "2dsphere" })
-// 2. db.businesses.createIndex({ name: "text", category: "text", subCategory: "text", tags: "text", description: "text" })
+// const searchBusinesses = async (req, res, next) => {
+//     try {
+//         const {
+//             lat,
+//             lng,
+//             q,
+//             category,
+//             minRating,
+//             radius = 5000,
+//             sort,
+//             page = 1,
+//             limit = 20
+//         } = req.query;
 
-// TODO: Geocoding Stub
-// function geocodeAddress(address) {
-//     // Integration with Google Maps Geocoding API or similar would go here
-//     // return { lat, lng };
-//     console.log("Geocoding not implemented yet");
-//     return null;
-// }
+//         // 1. Validation & Setup
+//         // lat/lng are optional now to support "All Locations" default view.
+//         let hasLocation = false;
+//         let latitude, longitude;
 
-/**
- * Advanced Location-Based Search API
- * 
- * Supports:
- * - "best hotel near me" (via q + lat/lng)
- * - "spa in vashi" (via q - currently requires lat/lng of "vashi" to be passed from frontend Geocoding)
- * - Category filtering
- * - Sorting
- * 
- * Test Outlines:
- * 1. Missing Coords -> 400 Bad Request
- *    curl "http://localhost:5000/api/business/public/search?q=hotel"
- * 2. Valid Search -> Success with Results
- *    curl "http://localhost:5000/api/business/public/search?lat=19.0760&lng=72.8777&q=spa&radius=5000"
- */
+//         if (lat && lng) {
+//             latitude = parseFloat(lat);
+//             longitude = parseFloat(lng);
+//             if (!isNaN(latitude) && !isNaN(longitude)) {
+//                 hasLocation = true;
+//             }
+//         }
+
+//         const maxDistance = parseInt(radius) || 5000;
+//         const pageNum = Math.max(1, parseInt(page));
+//         const limitNum = Math.min(Math.max(parseInt(limit), 1), 50);
+
+//         // 2. Build Pipeline
+//         const pipeline = [];
+
+//         // Base match criteria (always required)
+//         const baseMatch = {
+//             isActive: true,
+//             'settings.appointmentSettings.allowOnlineBooking': true
+//         };
+
+//         if (hasLocation) {
+//             // Stage 1: GeoNear
+//             pipeline.push({
+//                 $geoNear: {
+//                     near: { type: "Point", coordinates: [longitude, latitude] },
+//                     distanceField: "distance",
+//                     maxDistance: maxDistance,
+//                     spherical: true,
+//                     query: baseMatch // $text cannot be here
+//                 }
+//             });
+
+//             // Lookup Services for Search
+//             pipeline.push({
+//                 $lookup: {
+//                     from: "services",
+//                     localField: "_id",
+//                     foreignField: "business",
+//                     as: "serviceDetails"
+//                 }
+//             });
+
+//             // Stage 2: Match (Smart Regex for q: supports "spa london" etc.)
+//             const matchStage = {};
+//             if (q) {
+//                 // Split query into terms to allow "Spa London" (Category + City)
+//                 const terms = q.trim().split(/\s+/);
+//                 const termConditions = terms.map(term => {
+//                     const regex = new RegExp(term, 'i');
+//                     return {
+//                         $or: [
+//                             { name: regex },
+//                             { category: regex },
+//                             { "tags": regex },
+//                             { description: regex },
+//                             { address: regex },
+//                             { city: regex },
+//                             { state: regex },
+//                             { zipCode: regex },
+//                             { "serviceDetails.name": regex }
+//                         ]
+//                     };
+//                 });
+
+//                 if (termConditions.length > 0) {
+//                     matchStage.$and = termConditions;
+//                 }
+//             }
+
+//             // Add Category filter
+//             if (category) {
+//                 matchStage.type = { $regex: category, $options: 'i' };
+//             }
+
+//             // Add Min Rating
+//             if (minRating) {
+//                 matchStage['ratings.average'] = { $gte: parseFloat(minRating) };
+//             }
+
+//             if (Object.keys(matchStage).length > 0) {
+//                 pipeline.push({ $match: matchStage });
+//             }
+
+//         } else {
+//             // Global Search (No Location)
+//             // Match base criteria -> Lookup -> Match Query
+//             pipeline.push({ $match: baseMatch });
+
+//             pipeline.push({
+//                 $lookup: {
+//                     from: "services",
+//                     localField: "_id",
+//                     foreignField: "business",
+//                     as: "serviceDetails"
+//                 }
+//             });
+
+//             if (q) {
+//                 // Smart Regex Search Implementation
+//                 const terms = q.trim().split(/\s+/);
+//                 const termConditions = terms.map(term => {
+//                     const regex = new RegExp(term, 'i');
+//                     return {
+//                         $or: [
+//                             { name: regex },
+//                             { category: regex },
+//                             { "tags": regex },
+//                             { description: regex },
+//                             { address: regex },
+//                             { city: regex },
+//                             { state: regex },
+//                             { zipCode: regex },
+//                             { "serviceDetails.name": regex }
+//                         ]
+//                     };
+//                 });
+
+//                 if (termConditions.length > 0) {
+//                     pipeline.push({ $match: { $and: termConditions } });
+//                 }
+//             }
+
+//             const secondaryMatch = {};
+//             if (category) {
+//                 secondaryMatch.type = { $regex: category, $options: 'i' };
+//             }
+//             if (minRating) {
+//                 secondaryMatch['ratings.average'] = { $gte: parseFloat(minRating) };
+//             }
+
+//             if (Object.keys(secondaryMatch).length > 0) {
+//                 pipeline.push({ $match: secondaryMatch });
+//             }
+//         }
+
+//         // Stage 3: Project (Format & Snippet)
+//         pipeline.push({
+//             $project: {
+//                 name: 1,
+//                 type: 1,
+//                 branch: 1,
+//                 address: 1,
+//                 location: 1,
+//                 images: 1,
+//                 image: { $ifNull: ["$images.thumbnail", { $ifNull: ["$images.logo", { $ifNull: ["$images.banner", null] }] }] },
+//                 ratings: 1,
+//                 category: 1,
+//                 tags: 1,
+//                 description: 1,
+//                 phone: 1,
+//                 socialMedia: 1,
+//                 businessLink: 1,
+//                 distance: { $ifNull: ["$distance", null] },
+//                 snippet: {
+//                     $concat: [
+//                         { $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] },
+//                         "..."
+//                     ]
+//                 }
+//             }
+//         });
+
+//         // Stage 4: Sort
+//         if (sort === 'rating') {
+//             pipeline.push({ $sort: { "ratings.average": -1 } });
+//         } else if (!hasLocation && !q) {
+//             // Default sort for non-geo, non-text search: Newest first
+//             pipeline.push({ $sort: { createdAt: -1 } });
+//         }
+
+//         // Stage 5: Pagination Facet
+//         pipeline.push({
+//             $facet: {
+//                 results: [
+//                     { $skip: (pageNum - 1) * limitNum },
+//                     { $limit: limitNum }
+//                 ],
+//                 totalCount: [
+//                     { $count: "count" }
+//                 ]
+//             }
+//         });
+
+//         // 3. Execute
+//         const result = await Business.aggregate(pipeline);
+
+//         const businesses = result[0].results;
+//         const totalResults = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
+//         const businessIds = businesses.map(b => b._id);
+//         const servicesMap = {};
+
+//         if (businessIds.length > 0) {
+//             const services = await Service.find({
+//                 business: { $in: businessIds },
+//                 isActive: true
+//             })
+//                 .select('name business')
+//                 .lean();
+
+//             services.forEach(service => {
+//                 if (!servicesMap[service.business]) {
+//                     servicesMap[service.business] = [];
+//                 }
+//                 // Limit to 5 services per business for listing
+//                 if (servicesMap[service.business].length < 5) {
+//                     servicesMap[service.business].push({
+//                         name: service.name
+//                     });
+//                 }
+//             });
+//         }
+
+//         // 4. Format Output
+//         const formattedResults = businesses.map(b => {
+//             // Calculate human readable distance
+//             let distanceText = "";
+//             if (b.distance !== null && b.distance !== undefined) {
+//                 if (b.distance < 1000) {
+//                     distanceText = `${Math.round(b.distance)} m`;
+//                 } else {
+//                     distanceText = `${(b.distance / 1000).toFixed(1)} km`;
+//                 }
+//             }
+
+//             return {
+//                 id: b._id,
+//                 name: b.name,
+//                 type: b.type,
+//                 branch: b.branch,
+//                 address: b.address,
+//                 category: b.category,
+//                 tags: b.tags,
+//                 ratings: b.ratings,
+//                 image: b.image || b.images?.thumbnail || b.images?.logo,
+//                 gallery: b.images?.gallery || [],
+//                 distance: b.distance,
+//                 distanceText: distanceText,
+//                 snippet: b.snippet,
+//                 location: b.location,
+//                 phone: b.phone,
+//                 socialMedia: b.socialMedia,
+//                 services: servicesMap[b._id] || [],
+//                 businessLink: b.businessLink
+//             };
+//         });
+
+//         // Encryption logic
+//         // Uses shared utility
+
+//         const responseData = {
+//             page: pageNum,
+//             limit: limitNum,
+//             totalResults: totalResults,
+//             results: formattedResults
+//         };
+
+//         return res.json({
+//             success: true,
+//             message: "Fetched successfully",
+//             payload: encryptResponse(responseData)
+//         });
+
+//     } catch (err) {
+//         next(err);
+//     }
+// };
+
+
 const searchBusinesses = async (req, res, next) => {
     try {
         const {
             lat,
             lng,
             q,
+            location, // Added location parameter
             category,
             minRating,
-            radius = 5000,
+            minPrice,
+            maxPrice,
+            service,
+            offers,
+            radius = 20000,
             sort,
             page = 1,
             limit = 20
         } = req.query;
 
         // 1. Validation & Setup
-        // lat/lng are optional now to support "All Locations" default view.
         let hasLocation = false;
         let latitude, longitude;
-
         if (lat && lng) {
             latitude = parseFloat(lat);
             longitude = parseFloat(lng);
-            if (!isNaN(latitude) && !isNaN(longitude)) {
-                hasLocation = true;
-            }
+            if (!isNaN(latitude) && !isNaN(longitude)) hasLocation = true;
         }
 
-        const maxDistance = parseInt(radius) || 5000;
+        const maxDistance = parseInt(radius) || 20000; // Default to 20km for wider reach (Pan India friendly)
         const pageNum = Math.max(1, parseInt(page));
         const limitNum = Math.min(Math.max(parseInt(limit), 1), 50);
 
-        // 2. Build Pipeline
+        // 2. Build Aggregation Pipeline
         const pipeline = [];
 
-        // Base match criteria (always required)
+        // Base match criteria
         const baseMatch = {
             isActive: true,
             'settings.appointmentSettings.allowOnlineBooking': true
         };
 
         if (hasLocation) {
-            // Stage 1: GeoNear
             pipeline.push({
                 $geoNear: {
                     near: { type: "Point", coordinates: [longitude, latitude] },
                     distanceField: "distance",
                     maxDistance: maxDistance,
                     spherical: true,
-                    query: baseMatch // $text cannot be here
+                    query: baseMatch
                 }
             });
-
-            // Lookup Services for Search
-            pipeline.push({
-                $lookup: {
-                    from: "services",
-                    localField: "_id",
-                    foreignField: "business",
-                    as: "serviceDetails"
-                }
-            });
-
-            // Stage 2: Match (Smart Regex for q: supports "spa london" etc.)
-            const matchStage = {};
-            if (q) {
-                // Split query into terms to allow "Spa London" (Category + City)
-                const terms = q.trim().split(/\s+/);
-                const termConditions = terms.map(term => {
-                    const regex = new RegExp(term, 'i');
-                    return {
-                        $or: [
-                            { name: regex },
-                            { category: regex },
-                            { "tags": regex },
-                            { description: regex },
-                            { address: regex },
-                            { city: regex },
-                            { state: regex },
-                            { zipCode: regex },
-                            { "serviceDetails.name": regex }
-                        ]
-                    };
-                });
-
-                if (termConditions.length > 0) {
-                    matchStage.$and = termConditions;
-                }
-            }
-
-            // Add Category filter
-            if (category) {
-                matchStage.type = { $regex: category, $options: 'i' };
-            }
-
-            // Add Min Rating
-            if (minRating) {
-                matchStage['ratings.average'] = { $gte: parseFloat(minRating) };
-            }
-
-            if (Object.keys(matchStage).length > 0) {
-                pipeline.push({ $match: matchStage });
-            }
-
         } else {
-            // Global Search (No Location)
-            // Match base criteria -> Lookup -> Match Query
             pipeline.push({ $match: baseMatch });
+        }
 
-            pipeline.push({
-                $lookup: {
-                    from: "services",
-                    localField: "_id",
-                    foreignField: "business",
-                    as: "serviceDetails"
-                }
+        // Lookup services
+        pipeline.push({
+            $lookup: {
+                from: "services",
+                localField: "_id",
+                foreignField: "business",
+                as: "serviceDetails"
+            }
+        });
+
+        // Build dynamic match for search query and filters
+        const matchStage = {};
+
+        if (q) {
+            const terms = q.trim().split(/\s+/);
+            matchStage.$and = terms.map(term => {
+                const regex = new RegExp(term, "i");
+                return {
+                    $or: [
+                        { name: regex },
+                        { category: regex },
+                        { tags: regex },
+                        { description: regex },
+                        { address: regex },
+                        { city: regex },
+                        { state: regex },
+                        { zipCode: regex },
+                        { "serviceDetails.name": regex }
+                    ]
+                };
             });
+        }
 
-            if (q) {
-                // Smart Regex Search Implementation
-                const terms = q.trim().split(/\s+/);
-                const termConditions = terms.map(term => {
-                    const regex = new RegExp(term, 'i');
-                    return {
-                        $or: [
-                            { name: regex },
-                            { category: regex },
-                            { "tags": regex },
-                            { description: regex },
-                            { address: regex },
-                            { city: regex },
-                            { state: regex },
-                            { zipCode: regex },
-                            { "serviceDetails.name": regex }
-                        ]
-                    };
-                });
+        // Location text filter (independent of geo coords)
+        // ONLY apply this if we didn't search by Lat/Lng.
+        // If we have Lat/Lng, we trust the radius.
+        if (location && !hasLocation) {
+            const locationRegex = new RegExp(location.trim(), "i");
+            // If matchStage.$and exists, push to it, otherwise create it or just add properties if simpler
+            // But we might have 'q' AND 'location' -> both must be true.
+            // Simplified: Add to the $and array if it exists, or create $and query
+            const locationCondition = {
+                $or: [
+                    { city: locationRegex },
+                    { address: locationRegex },
+                    { state: locationRegex },
+                    { branch: locationRegex }
+                ]
+            };
 
-                if (termConditions.length > 0) {
-                    pipeline.push({ $match: { $and: termConditions } });
-                }
-            }
-
-            const secondaryMatch = {};
-            if (category) {
-                secondaryMatch.type = { $regex: category, $options: 'i' };
-            }
-            if (minRating) {
-                secondaryMatch['ratings.average'] = { $gte: parseFloat(minRating) };
-            }
-
-            if (Object.keys(secondaryMatch).length > 0) {
-                pipeline.push({ $match: secondaryMatch });
+            if (matchStage.$and) {
+                matchStage.$and.push(locationCondition);
+            } else {
+                matchStage.$and = [locationCondition];
             }
         }
 
-        // Stage 3: Project (Format & Snippet)
+        if (category) matchStage.type = { $regex: category, $options: "i" };
+        if (minRating) matchStage['ratings.average'] = { $gte: parseFloat(minRating) };
+        if (service) matchStage['serviceDetails.name'] = { $regex: service, $options: 'i' };
+        if (offers) matchStage['offers'] = { $exists: true, $ne: [] };
+
+        // Note: Price filtering will be done after $lookup since it depends on serviceDetails
+
+        if (Object.keys(matchStage).length > 0) {
+            console.log("Search Match Stage:", JSON.stringify(matchStage, null, 2)); // Debug log
+            pipeline.push({ $match: matchStage });
+        }
+
+        // Price filtering (after lookup so serviceDetails exists)
+        if (minPrice || maxPrice) {
+            const priceCondition = {};
+            if (minPrice) priceCondition.$gte = Number(minPrice);
+            if (maxPrice) priceCondition.$lte = Number(maxPrice);
+
+            pipeline.push({
+                $match: {
+                    serviceDetails: {
+                        $elemMatch: {
+                            price: priceCondition
+                        }
+                    }
+                }
+            });
+        }
+
+        // Projection stage
         pipeline.push({
             $project: {
                 name: 1,
@@ -830,76 +1076,59 @@ const searchBusinesses = async (req, res, next) => {
                 socialMedia: 1,
                 businessLink: 1,
                 distance: { $ifNull: ["$distance", null] },
-                snippet: {
-                    $concat: [
-                        { $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] },
-                        "..."
-                    ]
-                }
+                snippet: { $concat: [{ $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] }, "..."] },
+                serviceDetails: 1,
+                offers: 1
             }
         });
 
-        // Stage 4: Sort
+        // Sorting
+        // Sorting
         if (sort === 'rating') {
-            pipeline.push({ $sort: { "ratings.average": -1 } });
-        } else if (!hasLocation && !q) {
-            // Default sort for non-geo, non-text search: Newest first
-            pipeline.push({ $sort: { createdAt: -1 } });
+            pipeline.push({ $sort: { 'ratings.average': -1, 'ratings.totalReviews': -1 } });
+        } else if (sort === 'price') {
+            pipeline.push({ $sort: { 'serviceDetails.price': 1 } });
+        } else if (sort === 'distance' && hasLocation) {
+            pipeline.push({ $sort: { distance: 1 } });
+        } else {
+            // Default / Recommended:
+            // If location query is active (geo), prefer distance, then rating.
+            // If text location or no location, prefer rating, then newness.
+            if (hasLocation) {
+                pipeline.push({ $sort: { distance: 1, 'ratings.average': -1 } });
+            } else {
+                pipeline.push({ $sort: { 'ratings.average': -1, createdAt: -1 } });
+            }
         }
 
-        // Stage 5: Pagination Facet
+        // Pagination
         pipeline.push({
             $facet: {
                 results: [
                     { $skip: (pageNum - 1) * limitNum },
                     { $limit: limitNum }
                 ],
-                totalCount: [
-                    { $count: "count" }
-                ]
+                totalCount: [{ $count: "count" }]
             }
         });
 
         // 3. Execute
         const result = await Business.aggregate(pipeline);
+        const businesses = result[0]?.results || [];
+        const totalResults = result[0]?.totalCount[0]?.count || 0;
 
-        const businesses = result[0].results;
-        const totalResults = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
-        const businessIds = businesses.map(b => b._id);
-        const servicesMap = {};
-
-        if (businessIds.length > 0) {
-            const services = await Service.find({
-                business: { $in: businessIds },
-                isActive: true
-            })
-                .select('name business')
-                .lean();
-
-            services.forEach(service => {
-                if (!servicesMap[service.business]) {
-                    servicesMap[service.business] = [];
-                }
-                // Limit to 5 services per business for listing
-                if (servicesMap[service.business].length < 5) {
-                    servicesMap[service.business].push({
-                        name: service.name
-                    });
-                }
-            });
-        }
-
-        // 4. Format Output
+        // Format output
         const formattedResults = businesses.map(b => {
-            // Calculate human readable distance
             let distanceText = "";
             if (b.distance !== null && b.distance !== undefined) {
-                if (b.distance < 1000) {
-                    distanceText = `${Math.round(b.distance)} m`;
-                } else {
-                    distanceText = `${(b.distance / 1000).toFixed(1)} km`;
-                }
+                distanceText = `${(b.distance / 1000).toFixed(1)} km`;
             }
+
+            // Format services from lookup result (max 5)
+            const formattedServices = (b.serviceDetails || [])
+                .filter(s => s.isActive !== false) // Ensure active
+                .slice(0, 5)
+                .map(s => ({ name: s.name, price: s.price }));
 
             return {
                 id: b._id,
@@ -913,23 +1142,22 @@ const searchBusinesses = async (req, res, next) => {
                 image: b.image || b.images?.thumbnail || b.images?.logo,
                 gallery: b.images?.gallery || [],
                 distance: b.distance,
-                distanceText: distanceText,
+                distanceText,
                 snippet: b.snippet,
                 location: b.location,
                 phone: b.phone,
                 socialMedia: b.socialMedia,
-                services: servicesMap[b._id] || [],
+                services: formattedServices,
+                offers: b.offers || [],
                 businessLink: b.businessLink
             };
         });
 
-        // Encryption logic
-        // Uses shared utility
-
+        // Encrypt & respond
         const responseData = {
             page: pageNum,
             limit: limitNum,
-            totalResults: totalResults,
+            totalResults,
             results: formattedResults
         };
 
@@ -943,8 +1171,6 @@ const searchBusinesses = async (req, res, next) => {
         next(err);
     }
 };
-
-
 
 
 const getIndiaLocations = async (req, res, next) => {

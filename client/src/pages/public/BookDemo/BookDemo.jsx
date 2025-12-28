@@ -9,7 +9,7 @@ const summaryPoints = [
   {
     icon: FaCalendarAlt,
     title: '30-Minute Strategy Call',
-    description: 'See exactly how Booking App fits your workflows across scheduling, marketing, and analytics.'
+    description: 'See exactly how Spa Advisor fits your workflows across scheduling, marketing, and analytics.'
   },
   {
     icon: FaClipboardCheck,
@@ -296,7 +296,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
       if (mode === 'modal') {
         onComplete?.(apiData)
       } else {
-        navigate('/search', {
+        navigate('/spa', {
           replace: false,
           state: { intent: 'book-demo', payload: apiData, message: 'BookDemoFormSubmitted' }
         })
@@ -534,7 +534,7 @@ export const BookDemoForm = ({ mode = 'page', onComplete, initialData = {} }) =>
 }
 
 const BookDemo = () => {
-  usePageTitle('Book a Demo - Booking App')
+  usePageTitle('Book a Demo - Spa Advisor')
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -549,12 +549,12 @@ const BookDemo = () => {
               </span>
 
               <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-4">
-                Discover Booking App in{" "}
+                Discover Spa Advisor in{" "}
                 <span className="text-primary-600">one focused session</span>
               </h1>
 
               <p className="text-base text-gray-600 mb-6">
-                See how service businesses use Booking App to manage bookings,
+                See how service businesses use Spa Advisor to manage bookings,
                 improve customer experience, and grow—without complexity.
               </p>
 

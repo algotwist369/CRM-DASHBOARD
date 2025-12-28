@@ -140,10 +140,10 @@ const ChatBot = () => {
 
     if (action === 'search_businesses' || /\b(search|find|book|nearby|explore)\b/.test(msg)) {
       if (msg.includes('go to') || msg.includes('open') || action === 'search_businesses') {
-        return { text: "🔍 **Redirecting** you to our search results... Get ready to find your perfect spa!", redirect: '/search' }
+        return { text: "🔍 **Redirecting** you to our search results... Get ready to find your perfect spa!", redirect: '/spa' }
       }
       return {
-        text: "🔍 **Finding the perfect spa?**\n\nYou can explore top-rated salons, massages, and wellness centers right here. Search by your city or a specific service.\n\n🔗 [Open Search Page](/search)",
+        text: "🔍 **Finding the perfect spa?**\n\nYou can explore top-rated salons, massages, and wellness centers right here. Search by your city or a specific service.\n\n🔗 [Open Search Page](/spa)",
         quickReplies: [
           { text: '📍 Explore Nearby', action: 'search_businesses' },
           { text: '💆 View Services', action: 'popular_services' },

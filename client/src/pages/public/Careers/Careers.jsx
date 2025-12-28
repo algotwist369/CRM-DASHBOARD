@@ -4,7 +4,7 @@ import { FaBriefcase, FaMapMarkerAlt, FaClock, FaEnvelope } from 'react-icons/fa
 import { Link } from 'react-router-dom'
 
 const Careers = () => {
-  usePageTitle('We are Hiring - Booking App')
+  usePageTitle('We are Hiring - Spa Advisor')
 
 const positions = [
   {

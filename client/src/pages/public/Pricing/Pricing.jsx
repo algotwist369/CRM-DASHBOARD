@@ -4,7 +4,7 @@ import { FaCheck, FaRocket } from 'react-icons/fa'
 import { Link } from 'react-router-dom'
 
 const Pricing = () => {
-  usePageTitle('Pricing - Booking App')
+  usePageTitle('Pricing - Spa Advisor')
 
   const plans = [
     {

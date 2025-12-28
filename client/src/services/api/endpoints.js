@@ -242,7 +242,7 @@ const API_ENDPOINTS = {
     AVAILABLE_SLOTS: '/public/available-slots',
     BOOKING: '/public/booking',
     APPOINTMENT_STATUS: '/public/appointment-status',
-    SEARCH: '/business/public/search'
+    SEARCH: '/business/public/spa'
   },
 
   // Free Listing endpoints

@@ -29,19 +29,35 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
         return () => clearInterval(interval);
     }, [timer]);
 
-    const validateInput = () => {
+    const handleChange = useCallback((e) => {
+        const { name, value } = e.target;
+        let cleanedValue = value;
+
+        if (name === 'phone') {
+            cleanedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+        } else if (name === 'otp') {
+            cleanedValue = value.replace(/[^0-9]/g, '');
+        }
+
+        setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
+    }, [errors]);
+
+    const validateInput = useCallback(() => {
         const newErrors = {};
         if (!formData.user_name.trim()) newErrors.user_name = 'Name is required';
         if (!formData.phone.trim()) {
             newErrors.phone = 'Phone number is required';
-        } else if (!/^\d{10}$/.test(formData.phone.replace(/[^0-9]/g, ''))) {
+        } else if (!/^\d{10}$/.test(formData.phone)) {
             newErrors.phone = 'Please enter a valid 10-digit phone number';
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    };
+    }, [formData.user_name, formData.phone]);
 
-    const handleSendOTP = async (e) => {
+    const handleSendOTP = useCallback(async (e) => {
         e.preventDefault();
         if (!validateInput()) return;
 
@@ -56,14 +72,13 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
                 toast.error(response.message || 'Failed to send OTP');
             }
         } catch (error) {
-            console.error('Send OTP Error:', error);
             toast.error(error.message || 'Failed to send OTP');
         } finally {
             setLoading(false);
         }
-    };
+    }, [formData.phone, validateInput]);
 
-    const handleResendOTP = async () => {
+    const handleResendOTP = useCallback(async () => {
         if (timer > 0 || resending) return;
 
         setResending(true);
@@ -80,9 +95,9 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
         } finally {
             setResending(false);
         }
-    };
+    }, [formData.phone, timer, resending]);
 
-    const handleSubmitInquiry = async (e) => {
+    const handleSubmitInquiry = useCallback(async (e) => {
         e.preventDefault();
         if (!formData.otp || formData.otp.length < 4) {
             toast.error('Please enter a valid OTP');
@@ -107,27 +122,35 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
                 toast.error(response.message || 'Failed to submit inquiry');
             }
         } catch (error) {
-            console.error('Submit Inquiry Error:', error);
             toast.error(error.message || 'Failed to submit inquiry');
         } finally {
             setLoading(false);
         }
-    };
+    }, [businessId, formData, onSuccess]);
 
     if (step === 'success') {
         return (
-            <div className="py-8 text-center animate-in fade-in zoom-in duration-300">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
-                    <FaCheckCircle className="text-4xl text-green-600" />
+            <div className="py-10 text-center animate-in fade-in zoom-in duration-300">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-50 rounded-full mb-4">
+                    <FaCheckCircle className="text-3xl text-green-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Inquiry Submitted!</h2>
-                <p className="text-gray-600 mb-8 max-w-sm mx-auto">
-                    Thank you for reaching out to <span className="font-semibold text-primary-600">{businessName}</span>.
-                    The business will contact you shortly using the phone number provided.
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Thank You!</h2>
+                <p className="text-sm text-gray-500 mb-6 px-4">
+                    Your inquiry for <span className="font-semibold text-gray-700">{businessName || 'Business'}</span> has been received.
                 </p>
+
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 mb-8 max-w-[280px] mx-auto text-center">
+                    <p className="text-gray-900 font-bold text-lg leading-tight mb-1">
+                        We'll connect with you within 30 min.
+                    </p>
+                    <p className="text-xs text-gray-500">
+                        Check your phone {formData.phone}
+                    </p>
+                </div>
+
                 <button
                     onClick={onCancel}
-                    className="px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200"
+                    className="w-full max-w-[200px] py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 transition-all active:scale-[0.98] shadow-sm"
                 >
                     Close
                 </button>
@@ -138,64 +161,68 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
     return (
         <div className="p-1">
             <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Inquire with {businessName}</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="text-lg font-bold text-gray-900">Inquire with {businessName || 'Business'}</h2>
+                <p className="text-xs text-gray-500 mt-1">
                     {step === 'input'
-                        ? 'Fill in your details and we\'ll send you a verification code.'
-                        : `Enter the 6-digit code sent to ${formData.phone}`}
+                        ? 'Submit your details to get a callback.'
+                        : `Enter the code sent to ${formData.phone}`}
                 </p>
             </div>
 
             {step === 'input' ? (
                 <form onSubmit={handleSendOTP} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1 ml-1">Name</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <FaUser className="text-gray-400 text-sm" />
+                                <FaUser className="text-gray-400 text-[10px]" />
                             </div>
                             <input
                                 type="text"
+                                name="user_name"
                                 required
-                                className={`block w-full pl-10 pr-3 py-2.5 border ${errors.user_name ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all`}
-                                placeholder="John Doe"
+                                className={`block w-full pl-8 pr-3 py-2 border ${errors.user_name ? 'border-red-300 bg-red-50' : 'border-gray-200'} rounded-lg focus:border-primary-500 transition-all outline-none text-sm`}
+                                placeholder="Enter your name"
                                 value={formData.user_name}
-                                onChange={(e) => setFormData({ ...formData, user_name: e.target.value })}
+                                onChange={handleChange}
                             />
                         </div>
-                        {errors.user_name && <p className="mt-1 text-xs text-red-600">{errors.user_name}</p>}
+                        {errors.user_name && <p className="mt-1 text-[10px] text-red-600 ml-1">{errors.user_name}</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1 ml-1">Mobile Number</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <FaPhoneAlt className="text-gray-400 text-sm" />
+                                <FaPhoneAlt className="text-gray-400 text-[10px]" />
                             </div>
                             <input
                                 type="tel"
+                                name="phone"
                                 required
-                                className={`block w-full pl-10 pr-3 py-2.5 border ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all`}
+                                inputMode="tel"
+                                pattern="[0-9]{10}"
+                                className={`block w-full pl-8 pr-3 py-2 border ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200'} rounded-lg focus:border-primary-500 transition-all outline-none text-sm`}
                                 placeholder="10 digit number"
                                 value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })}
+                                onChange={handleChange}
                             />
                         </div>
-                        {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
+                        {errors.phone && <p className="mt-1 text-[10px] text-red-600 ml-1">{errors.phone}</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">What are you inquiring about?</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1 ml-1">Reason</label>
                         <select
-                            className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                            name="inquiry_type"
+                            className="block w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-primary-500 transition-all outline-none bg-white text-sm"
                             value={formData.inquiry_type}
-                            onChange={(e) => setFormData({ ...formData, inquiry_type: e.target.value })}
+                            onChange={handleChange}
                         >
                             <option value="General Inquiry">General Inquiry</option>
-                            <option value="Pricing">Pricing & Services</option>
-                            <option value="Availability">Availability</option>
-                            <option value="Special Offer">Special Offers</option>
-                            <option value="Corporate Booking">Corporate Booking</option>
+                            <option value="Pricing & Services">Pricing & Services</option>
+                            <option value="Special Offers">Special Offers</option>
+                            <option value="Membership Packages">Membership Packages</option>
                         </select>
                     </div>
 
@@ -203,58 +230,59 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-100"
+                            className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-[0.98] text-sm"
                         >
-                            {loading ? <FaSpinner className="animate-spin" /> : <FaPaperPlane className="text-sm" />}
-                            Send Verification OTP
+                            {loading ? <FaSpinner className="animate-spin" /> : <FaPaperPlane className="text-xs" />}
+                            Send Request
                         </button>
                     </div>
                 </form>
             ) : (
                 <form onSubmit={handleSubmitInquiry} className="space-y-6">
                     <div className="flex flex-col items-center">
-                        <div className="relative w-full max-w-xs">
+                        <div className="relative w-full max-w-[180px]">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <FaLock className="text-gray-400 text-sm" />
+                                <FaLock className="text-gray-400 text-[10px]" />
                             </div>
                             <input
                                 type="text"
+                                name="otp"
                                 required
                                 autoFocus
-                                className="block w-full pl-10 pr-3 py-4 text-center text-2xl font-bold tracking-[0.5em] border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                                placeholder="000000"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                className="block w-full pl-8 pr-3 py-2.5 text-center text-xl font-bold tracking-[0.2em] border border-gray-200 rounded-lg focus:border-primary-500 transition-all outline-none bg-gray-50/50"
+                                placeholder="••••"
                                 maxLength={6}
                                 value={formData.otp}
-                                onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/[^0-9]/g, '') })}
+                                onChange={handleChange}
                             />
                         </div>
 
-                        <div className="mt-4 text-center">
-                            <button
-                                type="button"
-                                onClick={handleResendOTP}
-                                disabled={timer > 0 || resending}
-                                className={`text-sm font-medium ${timer > 0 || resending ? 'text-gray-400' : 'text-primary-600 hover:text-primary-700'}`}
-                            >
-                                {resending ? 'Resending...' : timer > 0 ? `Resend OTP in ${timer}s` : 'Resend OTP'}
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={handleResendOTP}
+                            disabled={timer > 0 || resending}
+                            className={`mt-4 text-xs font-medium transition-colors ${timer > 0 || resending ? 'text-gray-300' : 'text-primary-600 hover:text-primary-700'}`}
+                        >
+                            {resending ? 'Sending...' : timer > 0 ? `Resend in ${timer}s` : 'Resend Code'}
+                        </button>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
                         <button
                             type="button"
                             onClick={() => setStep('input')}
-                            className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
+                            className="flex-1 py-2.5 border border-gray-200 text-gray-500 rounded-lg font-medium hover:bg-gray-50 transition-all text-sm"
                         >
                             Back
                         </button>
                         <button
                             type="submit"
                             disabled={loading || formData.otp.length < 4}
-                            className="flex-[2] py-3 px-4 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-100"
+                            className="flex-[2] py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-[0.98] text-sm"
                         >
-                            {loading ? <FaSpinner className="animate-spin" /> : 'Confirm & Submit'}
+                            {loading ? <FaSpinner className="animate-spin" /> : 'Confirm'}
                         </button>
                     </div>
                 </form>

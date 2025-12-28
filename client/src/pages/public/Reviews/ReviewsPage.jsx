@@ -67,7 +67,7 @@ const REVIEW_PAGES = {
     resources: [
       {
         label: 'Local Search Feature Tour',
-        description: 'See how Booking App manages reviews, photos, and keywords that influence Google rankings.',
+        description: 'See how Spa Advisor manages reviews, photos, and keywords that influence Google rankings.',
         href: '/features'
       },
       {
@@ -78,7 +78,7 @@ const REVIEW_PAGES = {
     ],
     faqs: [
       {
-        question: 'Will connecting Booking App overwrite my existing Google reviews?',
+        question: 'Will connecting Spa Advisor overwrite my existing Google reviews?',
         answer: 'Never. We only read data from your Business Profile and post responses you explicitly approve.'
       },
       {
@@ -141,13 +141,13 @@ const REVIEW_PAGES = {
       },
       {
         label: 'Talk to our Social Team',
-        description: 'Book a strategy call to learn how Booking App powers Facebook & Instagram growth.',
+        description: 'Book a strategy call to learn how Spa Advisor powers Facebook & Instagram growth.',
         href: '/contact'
       }
     ],
     faqs: [
       {
-        question: 'Does Booking App post on Facebook automatically?',
+        question: 'Does Spa Advisor post on Facebook automatically?',
         answer:
           'Only if you schedule it. You always approve content before it goes live, and you can customize every post or story.'
       },
@@ -205,7 +205,7 @@ const REVIEW_PAGES = {
     ],
     resources: [
       {
-        label: 'See Booking App in Action',
+        label: 'See Spa Advisor in Action',
         description: 'Watch a quick demo of how we monitor, respond, and report on Yelp across all locations.',
         href: '/book-demo'
       },
@@ -217,7 +217,7 @@ const REVIEW_PAGES = {
     ],
     faqs: [
       {
-        question: 'Will Yelp hide reviews collected through Booking App?',
+        question: 'Will Yelp hide reviews collected through Spa Advisor?',
         answer:
           'No. We follow Yelp’s recommended practices by focusing on great experiences, timed nudges, and compliant messaging.'
       },
@@ -276,7 +276,7 @@ const REVIEW_PAGES = {
     resources: [
       {
         label: 'Hospitality Success Stories',
-        description: 'See how leading retreats and spas use Booking App to climb TripAdvisor rankings.',
+        description: 'See how leading retreats and spas use Spa Advisor to climb TripAdvisor rankings.',
         href: '/features'
       },
       {
@@ -310,7 +310,7 @@ const REVIEW_PAGES = {
     primaryCta: { label: 'Book a Demo', href: '/book-demo' },
     secondaryCta: { label: 'View Platform Features', href: '/features' },
     stats: [
-      { label: 'Average rating', value: '4.8★', subtext: 'after 90 days on Booking App' },
+      { label: 'Average rating', value: '4.8★', subtext: 'after 90 days on Spa Advisor' },
       { label: 'Review volume', value: '5x', subtext: 'more feedback per location' },
       { label: 'Time saved', value: '18hrs', subtext: 'per month using automation' }
     ],
@@ -345,7 +345,7 @@ const REVIEW_PAGES = {
     resources: [
       {
         label: 'Platform Overview',
-        description: 'Tour the full Booking App suite for capturing, managing, and promoting reviews everywhere.',
+        description: 'Tour the full Spa Advisor suite for capturing, managing, and promoting reviews everywhere.',
         href: '/features'
       },
       {
@@ -390,7 +390,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
   const config = useMemo(() => REVIEW_PAGES[variant] ?? REVIEW_PAGES[DEFAULT_VARIANT], [variant])
   const navigate = useNavigate()
   const { sendOtp, verifyOtp, createReviewRequest, loading: apiLoading } = useReviewManagement()
-  usePageTitle(`${config.title} - Booking App`)
+  usePageTitle(`${config.title} - Spa Advisor`)
 
   const [formValues, setFormValues] = useState({
     businessName: '',
@@ -698,7 +698,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
             <div>
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Authentic Review Growth Program</h2>
               <p className="text-lg text-gray-600 mb-4">
-                Booking App helps your business collect verified, authentic, and long-lasting reviews. We focus on elevating your brand
+                Spa Advisor helps your business collect verified, authentic, and long-lasting reviews. We focus on elevating your brand
                 credibility so you rank higher across search, social, and marketplace platforms.
               </p>
               <div className="bg-primary-50 border border-primary-100  p-6 sm:p-8 mb-6">
@@ -1038,7 +1038,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
                       className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     <label htmlFor="terms" className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                      I agree that Booking App will collect a 10% advance before launching the review campaign. The remaining payment is
+                      I agree that Spa Advisor will collect a 10% advance before launching the review campaign. The remaining payment is
                       due only for reviews that stay live on Google/Facebook/Yelp. All reviews come from real customers and comply with
                       each platform's policies.
                     </label>
@@ -1180,7 +1180,7 @@ const ReviewsPage = ({ variant = DEFAULT_VARIANT }) => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to grow with authentic reviews?</h2>
           <p className="text-lg sm:text-xl text-primary-100 mb-8">
-            Join thousands of high-performing businesses using Booking App to build trust, drive conversions, and win loyal customers.
+            Join thousands of high-performing businesses using Spa Advisor to build trust, drive conversions, and win loyal customers.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
