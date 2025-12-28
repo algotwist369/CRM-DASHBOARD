@@ -182,6 +182,10 @@ app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/inventory", require("./routes/inventoryRoutes"));
 
+// === SEO Routes (served at root level for crawlers) ===
+const sitemapRoutes = require("./routes/sitemapRoutes");
+app.use("/", sitemapRoutes);
+
 
 // ================== Health Check ==================
 app.get("/", (req, res) => res.send("Backend is running ✅"));

@@ -18,7 +18,7 @@ router.get("/public/nearby", businessController.getBusinessesNearby);
 
 // Advanced Search (Location + Text)
 // Query params: lat, lng, q, category, radius, sort, page, limit
-router.get("/public/search", businessController.searchBusinesses);
+router.get("/public/spa", businessController.searchBusinesses);
 
 // Get list of reviews for a business (public)
 router.get("/public/:id/reviews", businessController.getBusinessReviews);
