@@ -41,6 +41,7 @@ import HeroSection from './HeroSection'
 import MediaRenderer from './MediaRenderer'
 import { trackLeadClick } from '../../../../utils/analytics'
 import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
+import SpecialOfferModal from '../../../../components/public/Offer/SpecialOfferModal'
 
 
 import { useQuery } from '@tanstack/react-query'
@@ -67,6 +68,7 @@ const BusinessInfo = () => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
   const [isInquiryOpen, setIsInquiryOpen] = useState(false)
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false)
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [showAllServices, setShowAllServices] = useState(false)
@@ -945,9 +947,23 @@ const BusinessInfo = () => {
       {/* Inquiry Modal */}
       <InquiryModal
         isOpen={isInquiryOpen}
-        onClose={() => setIsInquiryOpen(false)}
+        onClose={() => {
+          setIsInquiryOpen(false)
+          // Open offer modal after a short delay only if services exist
+          if (business?.services?.length > 0) {
+            setTimeout(() => setIsOfferModalOpen(true), 500)
+          }
+        }}
         businessId={business?._id}
         businessName={business?.name}
+        businessLink={businessLink}
+      />
+
+      {/* Special Offer Modal */}
+      <SpecialOfferModal
+        isOpen={isOfferModalOpen}
+        onClose={() => setIsOfferModalOpen(false)}
+        onBookNow={handleBookNow}
       />
 
 

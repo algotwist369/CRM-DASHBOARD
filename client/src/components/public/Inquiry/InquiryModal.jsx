@@ -1,8 +1,8 @@
 import React from 'react';
 import Modal from '../../common/Modal/Modal';
 import InquiryForm from './InquiryForm';
- 
-const InquiryModal = ({ isOpen, onClose, businessId, businessName }) => {
+
+const InquiryModal = ({ isOpen, onClose, businessId, businessName, businessLink }) => {
     return (
         <Modal
             isOpen={isOpen}
@@ -14,6 +14,7 @@ const InquiryModal = ({ isOpen, onClose, businessId, businessName }) => {
             <InquiryForm
                 businessId={businessId}
                 businessName={businessName}
+                businessLink={businessLink}
                 onCancel={onClose}
                 onSuccess={() => {
                 }}

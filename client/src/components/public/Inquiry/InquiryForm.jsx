@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { FaUser, FaPhoneAlt, FaPaperPlane, FaLock, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import inquiryService from '../../../services/public/inquiryService';
 
-const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
+const InquiryForm = ({ businessId, businessName, businessLink, onSuccess, onCancel }) => {
+    const navigate = useNavigate();
     const [step, setStep] = useState('input'); // 'input', 'otp', 'success'
     const [loading, setLoading] = useState(false);
     const [resending, setResending] = useState(false);
@@ -127,6 +129,19 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
             setLoading(false);
         }
     }, [businessId, formData, onSuccess]);
+
+    // Auto-redirect to services page after success
+    useEffect(() => {
+        if (step === 'success') {
+            const timer = setTimeout(() => {
+                if (businessLink) {
+                    navigate(`/book/${businessLink}/services`);
+                }
+                if (onCancel) onCancel(); // Close current modal flow as well
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [step, businessLink, navigate, onCancel]);
 
     if (step === 'success') {
         return (
