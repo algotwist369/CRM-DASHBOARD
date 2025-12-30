@@ -24,6 +24,18 @@ const inquirySchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
         index: true
+    },
+    group_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        index: true
+    },
+    is_source: {
+        type: Boolean,
+        default: false
+    },
+    sync_count: {
+        type: Number,
+        default: 0
     }
 });
 inquirySchema.index({ business_id: 1, createdAt: -1 });

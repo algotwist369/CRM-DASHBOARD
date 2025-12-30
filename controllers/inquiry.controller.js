@@ -71,11 +71,17 @@ const createInquiry = async (req, res) => {
         }).lean().select('_id branch');
 
         // Create inquiries for all matching businesses - Use insertMany for better performance
+        const groupId = new mongoose.Types.ObjectId();
+        const syncCount = relatedBusinesses.length;
+
         const inquiriesData = relatedBusinesses.map(business => ({
             business_id: business._id,
             user_name,
             phone,
-            inquiry_type
+            inquiry_type,
+            group_id: groupId,
+            is_source: business._id.toString() === business_id, // Mark as source if it matches the requested business_id
+            sync_count: business._id.toString() === business_id ? syncCount : 0 // Store count only on source for reference
         }));
 
         const inquiries = await Inquiry.insertMany(inquiriesData);
@@ -238,6 +244,11 @@ const getAllInquiries = async (req, res) => {
                 filter.business_id = business_id;
             } else {
                 filter.business_id = { $in: myBusinesses };
+                // Admin viewing "All": Show only source inquiries OR old inquiries (no group_id)
+                filter.$or = [
+                    { is_source: true },
+                    { group_id: { $exists: false } }
+                ];
             }
         } else if (req.user.role === 'manager' || req.user.role === 'staff') {
             if (business_id && business_id !== req.user.businessId) {
@@ -248,10 +259,20 @@ const getAllInquiries = async (req, res) => {
 
         // Additional Filters
         if (search) {
-            filter.$or = [
+            const searchOr = [
                 { user_name: { $regex: search, $options: 'i' } },
                 { phone: { $regex: search, $options: 'i' } }
             ];
+
+            if (filter.$or) {
+                filter.$and = [
+                    { $or: filter.$or },
+                    { $or: searchOr }
+                ];
+                delete filter.$or;
+            } else {
+                filter.$or = searchOr;
+            }
         }
 
         if (status !== undefined && status !== '') {
