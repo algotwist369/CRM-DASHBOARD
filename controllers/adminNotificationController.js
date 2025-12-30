@@ -8,13 +8,11 @@ const getAdminNotifications = async (req, res, next) => {
     try {
         const adminId = req.user.id;
         const { page = 1, limit = 20, isRead, type, priority } = req.query;
-        const cacheKey = `admin:${adminId}:notifications:${isRead}:${type}:${priority}:${page}:${limit}`;
-
-        // Try cache first
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
-        }
+        // Cache Removed for Real-time
+        // const cachedData = await getCache(cacheKey);
+        // if (cachedData) {
+        //     return res.json({ success: true, source: "cache", ...cachedData });
+        // }
 
         let query = { admin: adminId };
 
@@ -51,8 +49,8 @@ const getAdminNotifications = async (req, res, next) => {
             unreadCount
         };
 
-        // Cache for 1 minute
-        await setCache(cacheKey, response, 60);
+        // Cache Removed for Real-time
+        // await setCache(cacheKey, response, 60);
 
         return res.json(response);
     } catch (err) {
@@ -87,8 +85,8 @@ const markAsRead = async (req, res, next) => {
         notification.readAt = new Date();
         await notification.save();
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:notifications`);
+        // Cache Invalidation Removed
+        // await deleteCache(`admin:${adminId}:notifications`);
 
         // Get updated unread count
         const unreadCount = await AdminNotification.countDocuments({ admin: adminId, isRead: false });
@@ -115,8 +113,8 @@ const markAllAsRead = async (req, res, next) => {
             { $set: { isRead: true, readAt: new Date() } }
         );
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:notifications`);
+        // Cache Invalidation Removed
+        // await deleteCache(`admin:${adminId}:notifications`);
 
         // 🔥 Emit real-time Socket.IO event
         emitToUser(adminId.toString(), 'admin:notification:all-read', {
@@ -140,8 +138,8 @@ const deleteNotification = async (req, res, next) => {
             return res.status(404).json({ success: false, message: "Notification not found" });
         }
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:notifications`);
+        // Cache Invalidation Removed
+        // await deleteCache(`admin:${adminId}:notifications`);
 
         // Get updated unread count
         const unreadCount = await AdminNotification.countDocuments({ admin: adminId, isRead: false });
@@ -166,8 +164,8 @@ const deleteAllNotifications = async (req, res, next) => {
         // Delete all notifications for this admin
         const result = await AdminNotification.deleteMany({ admin: adminId });
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:notifications`);
+        // Cache Invalidation Removed
+        // await deleteCache(`admin:${adminId}:notifications`);
 
         // 🔥 Emit real-time Socket.IO event
         emitToUser(adminId.toString(), 'admin:notification:all-deleted', {
@@ -175,8 +173,8 @@ const deleteAllNotifications = async (req, res, next) => {
             deletedCount: result.deletedCount
         });
 
-        return res.json({ 
-            success: true, 
+        return res.json({
+            success: true,
             message: `All notifications deleted (${result.deletedCount} removed)`,
             deletedCount: result.deletedCount,
             unreadCount: 0
