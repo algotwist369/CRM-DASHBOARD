@@ -8,6 +8,7 @@ const Manager = require("../models/Manager");
 const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
 const { sendTemplateMail } = require("../utils/sendMail");
 const { emitToUser } = require("../config/socket");
+const { sendInquiryWhatsApp } = require("../utils/whatsappSender");
 
 // Send OTP for inquiry (Public)
 const sendInquiryOTP = async (req, res) => {
@@ -215,6 +216,33 @@ const createInquiry = async (req, res) => {
         } catch (notifError) {
             console.error("Notification Error:", notifError);
             // Don't fail the response if notifications fail
+        }
+
+        // --- WhatsApp Notification to Customer (Non-blocking) ---
+        try {
+            // Get business link for booking URL
+            const businessLink = sourceBusiness.link || sourceBusiness._id;
+            const bookingUrl = `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/book/${businessLink}/services`;
+
+            // Send WhatsApp message to customer (async, non-blocking)
+            sendInquiryWhatsApp({
+                customerName: user_name,
+                phone: phone,
+                businessName: sourceBusiness.name,
+                inquiryType: inquiry_type || 'General Inquiry',
+                bookingUrl: bookingUrl
+            }).then(result => {
+                if (result.success) {
+                    console.log(`[Inquiry] WhatsApp sent to ${phone} via ${result.provider}`);
+                } else {
+                    console.warn(`[Inquiry] WhatsApp send failed for ${phone}`);
+                }
+            }).catch(err => {
+                console.error(`[Inquiry] WhatsApp error for ${phone}:`, err.message);
+            });
+        } catch (whatsappError) {
+            console.error("WhatsApp Notification Error:", whatsappError);
+            // Don't fail the request even if WhatsApp fails
         }
 
         // Find the specific inquiry created for the requested business_id to return in response

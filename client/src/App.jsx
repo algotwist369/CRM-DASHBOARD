@@ -114,6 +114,9 @@ const ProductDetails = lazy(() => import('./pages/admin/Inventory/ProductDetails
 const LowStockAlerts = lazy(() => import('./pages/admin/Inventory/LowStockAlerts'))
 const InventoryInsights = lazy(() => import('./pages/admin/Inventory/InventoryInsights'))
 
+// Admin - WhatsApp Setup
+const WhatsAppSetup = lazy(() => import('./pages/admin/WhatsAppSetup'))
+
 
 // Manager Pages
 const ManagerDashboard = lazy(() => import('./pages/manager/Dashboard/ManagerDashboard'))
@@ -318,6 +321,8 @@ function App() {
                       {/* settings routes */}
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="profile" element={<AdminProfile />} />
+                      {/* WhatsApp setup route */}
+                      <Route path="whatsapp-setup" element={<WhatsAppSetup />} />
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     </Route>
 
