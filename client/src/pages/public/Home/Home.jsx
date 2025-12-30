@@ -54,15 +54,16 @@ const SERVICES_DATA = [
 ]
 
 const HERO_IMAGES = [
-  { src: "home/full_body.png", title: "Full Body" },
-  { src: "home/aroma.png", title: "Aromatherapy" },
-  { src: "home/deep_tissue.png", title: "Deep Tissue" },
-  { src: "home/spa_and_relaxatiion.png", title: "Spa & Relaxation" },
-  { src: "home/Facial_&_Skin_Care.png", title: "Facial & Skin Care" },
-  { src: "home/cople.png", title: "Couple Spa" },
-  { src: "home/wellness_theropy.png", title: "Wellness Therapy" },
-  { src: "home/luxary_spa.png", title: "Luxury Spa" },
+  { src: `${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014017/full_body_irijdc.png' || "home/full_body.png"}`, title: "Full Body" },
+  { src: `${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014016/aroma_mfxhxl.png' || "home/aroma.png"}`, title: "Aromatherapy" },
+  { src: `${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014017/deep_tissue_wibcjj.png' || "home/deep_tissue.png"}`, title: "Deep Tissue" },
+  { src: `${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014019/spa_and_relaxatiion_hud1i3.png' || "home/spa_and_relaxatiion.png"}`, title: "Spa & Relaxation" },
+  { src: `${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014018/Facial___Skin_Care_tcdow6.png' || "home/Facial_&_Skin_Care.png"}`, title: "Facial & Skin Care" },
+  { src: `${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014017/cople_rjc13l.png' || "home/cople.png"}`, title: "Couple Spa" },
+  { src:` ${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014018/wellness_theropy_tftzlt.png' || "home/wellness_theropy.png"}`, title: "Wellness Therapy" },
+  { src:` ${'https://res.cloudinary.com/dlcgxozvy/image/upload/v1767014018/luxary_spa_aya3sg.png' || "home/luxary_spa.png"}`, title: "Luxury Spa" },
 ]
+
 
 // Preload critical hero images (first 3-4 visible images)
 const preloadHeroImages = () => {

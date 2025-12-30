@@ -387,7 +387,7 @@ const BusinessInfo = () => {
             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary-600 border-2 border-primary-600 font-semibold text-lg hover:bg-primary-50 transition-colors"
           >
             <FaEnvelope />
-            Send Inquiry
+            Send Enquiry
           </button>
         </>
       ) : (
@@ -1649,10 +1649,10 @@ const BusinessInfo = () => {
             setIsInquiryOpen(true);
           }}
           className="lg:hidden fixed right-0 top-[60%] z-50 flex items-center justify-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-t-xl shadow-xl border-x-2 border-t-2 border-white hover:bg-primary-700 active:bg-primary-800 transition-all duration-300 font-bold -rotate-90 origin-bottom-right"
-          title="Send Inquiry"
+          title="Send Enquiry"
         >
           <FaEnvelope className="text-sm" />
-          <span className="text-xs uppercase tracking-widest">Inquiry</span>
+          <span className="text-xs uppercase tracking-widest">Enquiry</span>
           {/* Notification Dot Animation */}
           <span className="absolute -top-1 -left-1 flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>

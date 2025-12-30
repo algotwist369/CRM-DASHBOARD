@@ -323,14 +323,12 @@ class PublicService {
   async searchBusinesses(searchParams) {
     try {
       const endpoint = buildEndpoint(API_ENDPOINTS.PUBLIC.SEARCH, searchParams)
-      console.log('Searching:', endpoint);
       const response = await apiClient.get(endpoint)
 
       // Decrypt payload if present
       if (response.data?.payload) {
         console.log('Received payload length:', response.data.payload.length);
         const decryptedData = decryptPayload(response.data.payload);
-        console.log('Decrypted data:', decryptedData);
 
         if (decryptedData) {
           return { success: true, data: { ...decryptedData, success: true } }

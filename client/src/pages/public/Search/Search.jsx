@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import publicService from '../../../services/public/publicService';
-import { Button } from '../../../components/common';
 import SkeletonSearch from './SkeletonSearch';
 import LazySection from '../../../components/common/LazySection/LazySection';
 import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter, FiMaximize2 } from 'react-icons/fi';
@@ -265,8 +264,8 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
                 onInquiry(business);
             },
             icon: <FaEnvelope className="w-5 h-5" />,
-            text: <><span className="md:hidden">Inq</span><span className="hidden md:inline">Inquiry</span></>,
-            title: "Send Inquiry",
+            text: <><span className="md:hidden">Inq</span><span className="hidden md:inline">Enquiry</span></>,
+            title: "Send Enquiry",
             className: "bg-white text-primary-600 border-primary-600 hover:bg-primary-50 flex-1 justify-center"
         }
     ], [business, onInquiry]);
@@ -425,7 +424,7 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
                     className="flex-1 flex items-center justify-center gap-2 bg-white text-primary-600 border border-primary-600 font-semibold text-sm hover:bg-primary-50 transition-colors rounded-lg py-2.5 shadow-sm"
                 >
                     <FaEnvelope className="w-4 h-4" />
-                    <span>Inquiry</span>
+                    <span>Enquiry</span>
                 </button>
             </div>
         </div>
@@ -574,7 +573,6 @@ const Search = () => {
                     setIsLocationInitialized(true);
                 },
                 (error) => {
-                    console.log("Location auto-detection failed/denied:", error);
                     setIsLocationInitialized(true);
                 },
                 { timeout: 8000 }
@@ -812,15 +810,17 @@ const Search = () => {
 
     const searchTerm = localQuery || currentCategory || "Spa & Wellness";
 
-    const seoTitle = localQuery && localLocation && localLocation !== "Near Me" && localLocation !== "Current Location"
-        ? `${localQuery} in ${localLocation} - Find Best ${searchTerm} | SpaAdvisor`
-        : localQuery
-            ? `${localQuery} Near Me - Top Rated ${searchTerm} Centers | SpaAdvisor`
-            : currentCategory
-                ? `Best ${currentCategory}s ${locationName} - Reviews & Prices | SpaAdvisor`
-                : `Find Best Spa, Salon & Wellness Centers ${locationName} | SpaAdvisor`;
+    const countPrefix = totalResults > 0 ? `${totalResults} ` : '';
 
-    const seoDesc = `Find the best ${searchTerm} in ${locationName}. Read verified reviews, compare prices, and book appointments online. Pan-India coverage with 20km radius search. ⭐ Top rated services.`;
+    const seoTitle = localQuery && localLocation && localLocation !== "Near Me" && localLocation !== "Current Location"
+        ? `${countPrefix}${localQuery} in ${localLocation} - Find Best ${searchTerm} | SpaAdvisor`
+        : localQuery
+            ? `${countPrefix}${localQuery} Near Me - Top Rated ${searchTerm} Centers | SpaAdvisor`
+            : currentCategory
+                ? `${countPrefix}Best ${currentCategory}s ${locationName} - Reviews & Prices | SpaAdvisor`
+                : `${countPrefix}Find Best Spa, Salon & Wellness Centers ${locationName} | SpaAdvisor`;
+
+    const seoDesc = `Found ${totalResults} best ${searchTerm} in ${locationName}. Read verified reviews, compare prices, and book appointments online. Pan-India coverage with radius-based search. ⭐ Top rated services.`;
 
     const seoKeywords = [
         searchTerm.toLowerCase(),
@@ -918,7 +918,7 @@ const Search = () => {
             </div>
 
             {/* Sidebar Filters */}
-            <div className="max-w-[99rem] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-8 pt-0 md:pt-32">
+            <div className="max-w-[99rem] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-8 pt-6 md:pt-32">
 
                 {/* Desktop Sidebar (New Professional Design) */}
                 <div className="hidden lg:block w-80 flex-shrink-0">
@@ -1040,9 +1040,55 @@ const Search = () => {
                                     className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-500 hover:accent-primary-600"
                                 />
                                 <div className="flex justify-between text-[10px] text-gray-400 mt-1 font-medium">
-                                    <span>5 km</span>
+                                    <span>1 km</span>
                                     <span>50 km</span>
                                 </div>
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* Category Section */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3">Category</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {FILTER_CATEGORIES.map(cat => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => updateParams({ category: currentCategory === cat ? '' : cat })}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${currentCategory === cat
+                                                ? 'bg-primary-600 text-white shadow-sm'
+                                                : 'bg-white text-gray-600 border border-gray-200 hover:border-primary-300 hover:text-primary-600'
+                                                }`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* Offers Section */}
+                            <div>
+                                <label className="flex items-center justify-between cursor-pointer group">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-orange-50 rounded-lg text-orange-600 group-hover:bg-orange-100 transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-700">Special Offers</span>
+                                    </div>
+                                    <div className="relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                        style={{ backgroundColor: searchParams.get('offers') === 'true' ? '#B20000' : '#E5E7EB' }}
+                                        onClick={() => updateParams({ offers: searchParams.get('offers') === 'true' ? undefined : 'true' })}
+                                    >
+                                        <span
+                                            aria-hidden="true"
+                                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${searchParams.get('offers') === 'true' ? 'translate-x-5' : 'translate-x-0'}`}
+                                        />
+                                    </div>
+                                </label>
                             </div>
 
                             <hr className="border-gray-100" />
@@ -1194,7 +1240,8 @@ const Search = () => {
                                 <MapLocationPicker
                                     initialLat={parseFloat(searchParams.get('lat')) || 20.5937}
                                     initialLng={parseFloat(searchParams.get('lng')) || 78.9629}
-                                    radius={parseInt(searchParams.get('radius')) || 20000}
+                                    radius={parseInt(searchParams.get('radius')) || 5000}
+                                    className="h-64 rounded-lg"
                                     onLocationChange={async (coords) => {
                                         // Update coordinates
                                         updateParams({ lat: coords.lat, lng: coords.lng });
@@ -1303,6 +1350,37 @@ const Search = () => {
                             </div>
                         </FilterSection>
 
+                        <FilterSection title="Category">
+                            <div className="flex flex-wrap gap-2">
+                                {FILTER_CATEGORIES.map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => updateParams({ category: currentCategory === cat ? '' : cat })}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${currentCategory === cat
+                                            ? 'bg-primary-600 text-white shadow-sm'
+                                            : 'bg-white text-gray-600 border border-gray-200'
+                                            }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </FilterSection>
+
+                        <FilterSection title="Privilege">
+                            <label className="flex items-center justify-between cursor-pointer">
+                                <span className="text-sm text-gray-700">Show only items with Special Offers</span>
+                                <div className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out"
+                                    style={{ backgroundColor: searchParams.get('offers') === 'true' ? '#B20000' : '#E5E7EB' }}
+                                    onClick={() => updateParams({ offers: searchParams.get('offers') === 'true' ? undefined : 'true' })}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${searchParams.get('offers') === 'true' ? 'translate-x-[1.25rem]' : 'translate-x-0'}`}
+                                    />
+                                </div>
+                            </label>
+                        </FilterSection>
+
                         <FilterSection title="Distance">
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
@@ -1310,15 +1388,15 @@ const Search = () => {
                                 </div>
                                 <input
                                     type="range"
-                                    min="5000"
+                                    min="1000"
                                     max="50000"
-                                    step="5000"
-                                    value={searchParams.get('radius') || 20000}
+                                    step="1000"
+                                    value={searchParams.get('radius') || 5000}
                                     onChange={(e) => updateParams({ radius: e.target.value })}
                                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-500"
                                 />
                                 <div className="flex justify-between text-xs text-gray-500">
-                                    <span>5 km</span>
+                                    <span>1 km</span>
                                     <span>50 km</span>
                                 </div>
                             </div>

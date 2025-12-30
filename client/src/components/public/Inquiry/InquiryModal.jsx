@@ -7,7 +7,7 @@ const InquiryModal = ({ isOpen, onClose, businessId, businessName }) => {
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Submit Inquiry"
+            title="Submit Enquiry"
             size="md"
             draggable={false}
         >
