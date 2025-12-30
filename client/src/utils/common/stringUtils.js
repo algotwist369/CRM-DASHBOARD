@@ -191,14 +191,7 @@ export const truncateWords = (str, length, suffix = '...') => {
   return truncated + suffix
 }
 
-/**
- * Pad string
- * @param {string} str - String to pad
- * @param {number} length - Target length
- * @param {string} padChar - Character to use for padding
- * @param {string} direction - Direction to pad
- * @returns {string} Padded string
- */
+ 
 export const pad = (str, length, padChar = ' ', direction = 'right') => {
   if (!str || typeof str !== 'string') return ''
   if (str.length >= length) return str
@@ -217,54 +210,27 @@ export const pad = (str, length, padChar = ' ', direction = 'right') => {
   }
 }
 
-/**
- * Center string
- * @param {string} str - String to center
- * @param {number} width - Width to center in
- * @param {string} padChar - Character to use for padding
- * @returns {string} Centered string
- */
+ 
 export const center = (str, width, padChar = ' ') => {
   return pad(str, width, padChar, 'both')
 }
 
-/**
- * Left align string
- * @param {string} str - String to align
- * @param {number} width - Width to align in
- * @param {string} padChar - Character to use for padding
- * @returns {string} Left aligned string
- */
+ 
 export const leftAlign = (str, width, padChar = ' ') => {
   return pad(str, width, padChar, 'right')
 }
 
-/**
- * Right align string
- * @param {string} str - String to align
- * @param {number} width - Width to align in
- * @param {string} padChar - Character to use for padding
- * @returns {string} Right aligned string
- */
+ 
 export const rightAlign = (str, width, padChar = ' ') => {
   return pad(str, width, padChar, 'left')
 }
 
-/**
- * Remove HTML tags
- * @param {string} str - String with HTML tags
- * @returns {string} String without HTML tags
- */
+ 
 export const stripHtml = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str.replace(/<[^>]*>/g, '')
 }
-
-/**
- * Escape HTML
- * @param {string} str - String to escape
- * @returns {string} Escaped string
- */
+ 
 export const escapeHtml = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str
@@ -274,12 +240,7 @@ export const escapeHtml = (str) => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 }
-
-/**
- * Unescape HTML
- * @param {string} str - String to unescape
- * @returns {string} Unescaped string
- */
+ 
 export const unescapeHtml = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str
@@ -289,33 +250,18 @@ export const unescapeHtml = (str) => {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
 }
-
-/**
- * Normalize whitespace
- * @param {string} str - String to normalize
- * @returns {string} Normalized string
- */
+ 
 export const normalizeWhitespace = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str.replace(/\s+/g, ' ').trim()
 }
 
-/**
- * Remove line breaks
- * @param {string} str - String to remove line breaks from
- * @returns {string} String without line breaks
- */
 export const removeLineBreaks = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str.replace(/[\r\n]+/g, ' ')
 }
 
-/**
- * Add line breaks
- * @param {string} str - String to add line breaks to
- * @param {number} maxLength - Maximum length per line
- * @returns {string} String with line breaks
- */
+ 
 export const addLineBreaks = (str, maxLength = 80) => {
   if (!str || typeof str !== 'string') return ''
   
@@ -337,31 +283,18 @@ export const addLineBreaks = (str, maxLength = 80) => {
   return lines.join('\n')
 }
 
-/**
- * Reverse string
- * @param {string} str - String to reverse
- * @returns {string} Reversed string
- */
+ 
 export const reverse = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str.split('').reverse().join('')
 }
 
-/**
- * Reverse words
- * @param {string} str - String to reverse words
- * @returns {string} String with reversed words
- */
+ 
 export const reverseWords = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str.split(' ').reverse().join(' ')
 }
-
-/**
- * Shuffle string
- * @param {string} str - String to shuffle
- * @returns {string} Shuffled string
- */
+ 
 export const shuffle = (str) => {
   if (!str || typeof str !== 'string') return ''
   
@@ -374,12 +307,7 @@ export const shuffle = (str) => {
   return chars.join('')
 }
 
-/**
- * Generate random string
- * @param {number} length - Length of random string
- * @param {string} charset - Character set to use
- * @returns {string} Random string
- */
+ 
 export const randomString = (length, charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') => {
   let result = ''
   for (let i = 0; i < length; i++) {
@@ -387,12 +315,7 @@ export const randomString = (length, charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef
   }
   return result
 }
-
-/**
- * Generate slug
- * @param {string} str - String to convert to slug
- * @returns {string} Slug
- */
+ 
 export const slugify = (str) => {
   if (!str || typeof str !== 'string') return ''
   return str
@@ -401,13 +324,7 @@ export const slugify = (str) => {
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
-
-/**
- * Generate initials
- * @param {string} str - String to generate initials from
- * @param {number} maxLength - Maximum length of initials
- * @returns {string} Initials
- */
+ 
 export const initials = (str, maxLength = 2) => {
   if (!str || typeof str !== 'string') return ''
   
@@ -417,23 +334,12 @@ export const initials = (str, maxLength = 2) => {
     .join('')
     .slice(0, maxLength)
 }
-
-/**
- * Count words
- * @param {string} str - String to count words
- * @returns {number} Number of words
- */
+ 
 export const wordCount = (str) => {
   if (!str || typeof str !== 'string') return 0
   return str.trim().split(/\s+/).filter(word => word.length > 0).length
 }
-
-/**
- * Count characters
- * @param {string} str - String to count characters
- * @param {boolean} includeSpaces - Include spaces in count
- * @returns {number} Number of characters
- */
+ 
 export const charCount = (str, includeSpaces = true) => {
   if (!str || typeof str !== 'string') return 0
   return includeSpaces ? str.length : str.replace(/\s/g, '').length
@@ -471,28 +377,14 @@ export const readingTime = (str, wordsPerMinute = 200) => {
   return Math.ceil(words / wordsPerMinute)
 }
 
-/**
- * Highlight text
- * @param {string} str - String to highlight
- * @param {string} searchTerm - Term to highlight
- * @param {string} className - CSS class for highlighting
- * @returns {string} String with highlighted terms
- */
+ 
 export const highlight = (str, searchTerm, className = 'highlight') => {
   if (!str || typeof str !== 'string' || !searchTerm) return str
   
   const regex = new RegExp(`(${searchTerm})`, 'gi')
   return str.replace(regex, `<span class="${className}">$1</span>`)
 }
-
-/**
- * Mask string
- * @param {string} str - String to mask
- * @param {number} visibleStart - Number of characters to show at start
- * @param {number} visibleEnd - Number of characters to show at end
- * @param {string} maskChar - Character to use for masking
- * @returns {string} Masked string
- */
+ 
 export const mask = (str, visibleStart = 2, visibleEnd = 2, maskChar = '*') => {
   if (!str || typeof str !== 'string') return ''
   if (str.length <= visibleStart + visibleEnd) return str

@@ -8,12 +8,20 @@
  * @param {string} format - Format to use
  * @returns {string} Formatted phone number
  */
+export const sanitizePhoneNumber = (phone) => {
+  if (!phone || typeof phone !== 'string') return ''
+  return phone.replace(/\D/g, '')
+}
+
+/**
+ * Format phone number
+ */
 export const formatPhoneNumber = (phone, format = 'US') => {
   if (!phone || typeof phone !== 'string') return ''
-  
+
   // Remove all non-digit characters
   const digits = phone.replace(/\D/g, '')
-  
+
   switch (format) {
     case 'US':
       if (digits.length === 10) {
@@ -22,41 +30,41 @@ export const formatPhoneNumber = (phone, format = 'US') => {
         return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
       }
       break
-      
+
     case 'INTERNATIONAL':
       if (digits.length >= 10) {
         return `+${digits}`
       }
       break
-      
+
     case 'DASHES':
       if (digits.length === 10) {
         return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
       }
       break
-      
+
     case 'DOTS':
       if (digits.length === 10) {
         return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`
       }
       break
-      
+
     case 'SPACES':
       if (digits.length === 10) {
         return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
       }
       break
-      
+
     case 'PARENTHESES':
       if (digits.length === 10) {
         return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6)}`
       }
       break
-      
+
     default:
       return digits
   }
-  
+
   return phone
 }
 
@@ -67,9 +75,9 @@ export const formatPhoneNumber = (phone, format = 'US') => {
  */
 export const parsePhoneNumber = (phone) => {
   if (!phone || typeof phone !== 'string') return null
-  
+
   const digits = phone.replace(/\D/g, '')
-  
+
   if (digits.length === 10) {
     return {
       countryCode: '1',
@@ -91,7 +99,7 @@ export const parsePhoneNumber = (phone) => {
       e164: `+${digits}`
     }
   }
-  
+
   return null
 }
 
@@ -103,40 +111,40 @@ export const parsePhoneNumber = (phone) => {
  */
 export const isValidPhoneNumber = (phone, country = 'US') => {
   if (!phone || typeof phone !== 'string') return false
-  
+
   const digits = phone.replace(/\D/g, '')
-  
+
   switch (country) {
     case 'US':
       return digits.length === 10 || (digits.length === 11 && digits[0] === '1')
-      
+
     case 'CA':
       return digits.length === 10 || (digits.length === 11 && digits[0] === '1')
-      
+
     case 'UK':
       return digits.length >= 10 && digits.length <= 15
-      
+
     case 'AU':
       return digits.length >= 9 && digits.length <= 12
-      
+
     case 'DE':
       return digits.length >= 10 && digits.length <= 15
-      
+
     case 'FR':
       return digits.length >= 10 && digits.length <= 15
-      
+
     case 'JP':
       return digits.length >= 10 && digits.length <= 15
-      
+
     case 'CN':
       return digits.length >= 10 && digits.length <= 15
-      
+
     case 'IN':
       return digits.length >= 10 && digits.length <= 15
-      
+
     case 'BR':
       return digits.length >= 10 && digits.length <= 15
-      
+
     default:
       return digits.length >= 7 && digits.length <= 15
   }
@@ -149,31 +157,31 @@ export const isValidPhoneNumber = (phone, country = 'US') => {
  */
 export const getPhoneNumberType = (phone) => {
   if (!phone || typeof phone !== 'string') return 'unknown'
-  
+
   const digits = phone.replace(/\D/g, '')
-  
+
   if (digits.length === 10) {
     const areaCode = digits.slice(0, 3)
     const exchange = digits.slice(3, 6)
-    
+
     // Check for toll-free numbers
     if (['800', '833', '844', '855', '866', '877', '888'].includes(areaCode)) {
       return 'toll-free'
     }
-    
+
     // Check for premium rate numbers
     if (['900', '976'].includes(areaCode)) {
       return 'premium'
     }
-    
+
     // Check for special services
     if (['911', '411', '311', '211', '511'].includes(digits.slice(0, 3))) {
       return 'emergency'
     }
-    
+
     return 'standard'
   }
-  
+
   return 'unknown'
 }
 
@@ -187,14 +195,14 @@ export const getPhoneNumberType = (phone) => {
  */
 export const maskPhoneNumber = (phone, visibleStart = 3, visibleEnd = 4, maskChar = '*') => {
   if (!phone || typeof phone !== 'string') return ''
-  
+
   const digits = phone.replace(/\D/g, '')
   if (digits.length <= visibleStart + visibleEnd) return phone
-  
+
   const start = digits.slice(0, visibleStart)
   const end = digits.slice(-visibleEnd)
   const middle = maskChar.repeat(digits.length - visibleStart - visibleEnd)
-  
+
   return start + middle + end
 }
 
@@ -205,18 +213,18 @@ export const maskPhoneNumber = (phone, visibleStart = 3, visibleEnd = 4, maskCha
  */
 export const extractPhoneNumbers = (text) => {
   if (!text || typeof text !== 'string') return []
-  
+
   const phoneRegex = /(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/g
   const matches = []
   let match
-  
+
   while ((match = phoneRegex.exec(text)) !== null) {
     const fullMatch = match[0]
     const countryCode = match[1] || ''
     const areaCode = match[2]
     const exchange = match[3]
     const number = match[4]
-    
+
     matches.push({
       full: fullMatch,
       countryCode: countryCode.replace(/\D/g, ''),
@@ -227,7 +235,7 @@ export const extractPhoneNumbers = (text) => {
       formatted: formatPhoneNumber(fullMatch, 'US')
     })
   }
-  
+
   return matches
 }
 
@@ -238,15 +246,15 @@ export const extractPhoneNumbers = (text) => {
  */
 export const normalizePhoneNumber = (phone) => {
   if (!phone || typeof phone !== 'string') return ''
-  
+
   const digits = phone.replace(/\D/g, '')
-  
+
   if (digits.length === 10) {
     return digits
   } else if (digits.length === 11 && digits[0] === '1') {
     return digits.slice(1)
   }
-  
+
   return digits
 }
 
@@ -258,7 +266,7 @@ export const normalizePhoneNumber = (phone) => {
  */
 export const formatPhoneForDisplay = (phone, format = 'US') => {
   if (!phone || typeof phone !== 'string') return ''
-  
+
   const normalized = normalizePhoneNumber(phone)
   return formatPhoneNumber(normalized, format)
 }
@@ -270,9 +278,9 @@ export const formatPhoneForDisplay = (phone, format = 'US') => {
  */
 export const getPhoneCountry = (phone) => {
   if (!phone || typeof phone !== 'string') return 'unknown'
-  
+
   const digits = phone.replace(/\D/g, '')
-  
+
   if (digits.length >= 10) {
     if (digits.length === 10 || (digits.length === 11 && digits[0] === '1')) {
       return 'US'
@@ -294,7 +302,7 @@ export const getPhoneCountry = (phone) => {
       return 'BR'
     }
   }
-  
+
   return 'unknown'
 }
 
@@ -306,10 +314,10 @@ export const getPhoneCountry = (phone) => {
  */
 export const comparePhoneNumbers = (phone1, phone2) => {
   if (!phone1 || !phone2) return false
-  
+
   const normalized1 = normalizePhoneNumber(phone1)
   const normalized2 = normalizePhoneNumber(phone2)
-  
+
   return normalized1 === normalized2
 }
 
@@ -320,10 +328,10 @@ export const comparePhoneNumbers = (phone1, phone2) => {
  */
 export const getPhoneNumberInfo = (phone) => {
   if (!phone || typeof phone !== 'string') return null
-  
+
   const digits = phone.replace(/\D/g, '')
   const parsed = parsePhoneNumber(phone)
-  
+
   return {
     original: phone,
     digits,
@@ -380,6 +388,7 @@ export const COUNTRY_CODES = {
 }
 
 export default {
+  sanitizePhoneNumber,
   formatPhoneNumber,
   parsePhoneNumber,
   isValidPhoneNumber,

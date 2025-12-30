@@ -9,6 +9,7 @@ import {
     FaChevronRight
 } from 'react-icons/fa'
 import { IoMdCall } from 'react-icons/io'
+import { sanitizePhoneNumber } from '../../../utils/format/phoneUtils'
 
 /**
  * Memoized BusinessCard Component
@@ -89,7 +90,7 @@ const BusinessCard = memo(({
     // We rely on the parent using a proper key (business.id) to remount the component if the business changes completely
 
     // Format phone number for WhatsApp
-    const whatsappNumber = business?.phone?.replace(/[^0-9]/g, '') || business?.socialMedia?.whatsapp?.replace(/[^0-9]/g, '') || ''
+    const whatsappNumber = sanitizePhoneNumber(business?.phone) || sanitizePhoneNumber(business?.socialMedia?.whatsapp)
     const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi ${business?.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}` : null
 
     // Format location address with fallback

@@ -11,6 +11,7 @@ import { FaWhatsapp, FaStar, FaPhoneAlt, FaEnvelope } from 'react-icons/fa';
 import SEO from '../../../components/common/SEO';
 import InquiryModal from '../../../components/public/Inquiry/InquiryModal';
 import MapLocationPicker from '../../../components/common/MapLocationPicker';
+import { sanitizePhoneNumber } from '../../../utils/format/phoneUtils';
 
 // Static Constants - Outside component to prevent recreation
 // Spa-specific service categories aligned with backend API
@@ -248,7 +249,7 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
         },
         {
             condition: !!business.socialMedia?.whatsapp,
-            href: `https://wa.me/${business.socialMedia?.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`,
+            href: `https://wa.me/${sanitizePhoneNumber(business.socialMedia?.whatsapp)}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`,
             target: "_blank",
             rel: "noopener noreferrer",
             onClick: (e) => e.stopPropagation(),
