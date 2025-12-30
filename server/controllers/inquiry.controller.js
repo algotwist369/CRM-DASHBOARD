@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Inquiry = require("../models/Inquiry");
 const Business = require("../models/Business");
 const Otp = require("../models/OTP");
