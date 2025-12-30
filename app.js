@@ -183,7 +183,7 @@ app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/inventory", require("./routes/inventoryRoutes"));
 
 // === SEO Routes (served at root level for crawlers) ===
-const sitemapRoutes = require("./routes/sitemapRoutes");
+const sitemapRoutes = require("./routes/sitemap");
 app.use("/", sitemapRoutes);
 
 

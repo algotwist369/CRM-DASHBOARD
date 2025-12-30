@@ -94,7 +94,7 @@ const getPublicBusinesses = async (req, res, next) => {
         const skip = useCursor ? 0 : (pageNumber - 1) * limitNumber;
 
         const businesses = await Business.find(query)
-            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags createdAt')
+            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags createdAt seo')
             .sort({ createdAt: -1, _id: -1 })
             .skip(skip)
             .limit(limitNumber)
@@ -163,6 +163,7 @@ const getPublicBusinesses = async (req, res, next) => {
                 allowOnlineBooking: business.settings?.appointmentSettings?.allowOnlineBooking,
                 slotDuration: business.settings?.appointmentSettings?.slotDuration
             },
+            seo: business.seo,
             createdAt: business.createdAt
         }));
 
@@ -222,7 +223,7 @@ const getBusinessInfoByLink = async (req, res, next) => {
         const { businessLink } = req.params;
 
         const business = await Business.findOne({ businessLink, isActive: true })
-            .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods')
+            .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods seo')
             .lean();
 
         if (!business) {
@@ -273,7 +274,8 @@ const getBusinessInfoByLink = async (req, res, next) => {
             workingHours: business.settings?.workingHours,
             appointmentSettings: business.settings?.appointmentSettings,
             currency: business.settings?.currency,
-            timezone: business.settings?.timezone
+            timezone: business.settings?.timezone,
+            seo: business.seo
         };
 
         return res.json({ success: true, data: businessInfo });
@@ -426,7 +428,8 @@ const getBusinessesNearby = async (req, res, next) => {
                     amenities: 1,
                     'settings.workingHours': 1,
                     'settings.appointmentSettings': 1,
-                    distance: 1
+                    distance: 1,
+                    seo: 1
                 }
             },
             {
@@ -554,7 +557,8 @@ const getBusinessesNearby = async (req, res, next) => {
                 },
                 distance: Math.round(distance),
                 distanceKm: parseFloat((distance / 1000).toFixed(2)),
-                distanceMeters: distance
+                distanceMeters: distance,
+                seo: business.seo
             };
         });
 
@@ -1149,7 +1153,8 @@ const searchBusinesses = async (req, res, next) => {
                 socialMedia: b.socialMedia,
                 services: formattedServices,
                 offers: b.offers || [],
-                businessLink: b.businessLink
+                businessLink: b.businessLink,
+                seo: b.seo
             };
         });
 
