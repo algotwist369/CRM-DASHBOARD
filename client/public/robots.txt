@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://spaadvisor.in/seo/sitemap.xml
+Sitemap: https://spaadvisor.in/api/sitemap.xml

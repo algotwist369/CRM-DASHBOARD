@@ -687,6 +687,8 @@ const Search = () => {
         };
     }, [results]);
 
+
+
     // Infinite Scroll Observer
     const observer = useRef();
     const lastBusinessElementRef = useCallback(node => {
@@ -804,46 +806,52 @@ const Search = () => {
     const currentRating = parseInt(searchParams.get('rating') || '0');
     const currentSort = searchParams.get('sort') || 'recommended';
 
-    // Dynamic SEO Metadata
-    const locationName = localLocation && localLocation !== "Near Me" && localLocation !== "Current Location"
-        ? localLocation
-        : "Near You";
+    // SEO Dynamic Meta Tags
+    const seoMeta = useMemo(() => {
+        const query = searchParams.get('q') || '';
+        const loc = searchParams.get('location') || '';
+        const cat = searchParams.get('category') || '';
 
-    const searchTerm = localQuery || currentCategory || "Spa & Wellness";
+        // Helpers for keywords
+        const locName = (loc && loc !== "Near Me" && loc !== "Current Location") ? loc : "Near You";
+        const term = query || cat || "Spa & Wellness";
 
-    const countPrefix = totalResults > 0 ? `${totalResults} ` : '';
+        let title = 'Search Spas, Salons & Wellness Centers - SpaAdvisor';
+        let description = 'Find the best spas, salons, and wellness centers near you. Compare prices, read reviews, and book appointments online.';
 
-    const seoTitle = localQuery && localLocation && localLocation !== "Near Me" && localLocation !== "Current Location"
-        ? `${countPrefix}${localQuery} in ${localLocation} - Find Best ${searchTerm} | SpaAdvisor`
-        : localQuery
-            ? `${countPrefix}${localQuery} Near Me - Top Rated ${searchTerm} Centers | SpaAdvisor`
-            : currentCategory
-                ? `${countPrefix}Best ${currentCategory}s ${locationName} - Reviews & Prices | SpaAdvisor`
-                : `${countPrefix}Find Best Spa, Salon & Wellness Centers ${locationName} | SpaAdvisor`;
+        if (query || loc || cat) {
+            const parts = [];
+            if (query) parts.push(query);
+            if (cat) parts.push(cat);
+            const what = parts.length > 0 ? parts.join(' ') : 'Best Spas & Salons';
+            const where = loc ? `in ${loc}` : 'Near Me';
 
-    const seoDesc = `Found ${totalResults} best ${searchTerm} in ${locationName}. Read verified reviews, compare prices, and book appointments online. Pan-India coverage with radius-based search. ⭐ Top rated services.`;
+            title = `${totalResults > 0 ? `${totalResults} ` : ''}${what} ${where} - Search Results | SpaAdvisor`;
+            description = `Found ${totalResults} results for ${what} ${where}. Book top-rated ${what.toLowerCase()} appointments instantly on SpaAdvisor.`;
+        }
 
-    const seoKeywords = [
-        searchTerm.toLowerCase(),
-        `${searchTerm.toLowerCase()} near me`,
-        `best ${searchTerm.toLowerCase()} in ${locationName.toLowerCase()}`,
-        `${searchTerm.toLowerCase()} ${locationName.toLowerCase()}`,
-        "spa booking",
-        "salon near me",
-        "wellness center",
-        currentCategory ? `${currentCategory.toLowerCase()} near me` : "",
-        "affordable spa",
-        "luxury spa"
-    ].filter(Boolean).join(", ");
+        const keywords = [
+            `${term.toLowerCase()} near me`,
+            `best ${term.toLowerCase()} in ${locName.toLowerCase()}`,
+            `${term.toLowerCase()} ${locName.toLowerCase()}`,
+            "spa booking",
+            "salon near me",
+            "wellness center",
+            cat ? `${cat.toLowerCase()} near me` : "",
+            "affordable spa",
+            "luxury spa"
+        ].filter(Boolean).join(", ");
 
+        return { title, description, keywords };
+    }, [searchParams, totalResults]);
 
     return (
         <div className="bg-gray-50 min-h-screen">
             <SEO
-                title={seoTitle}
-                description={seoDesc}
-                keywords={seoKeywords}
-                canonical={`/spa?q=${localQuery || ''}&category=${currentCategory || ''}`}
+                title={seoMeta.title}
+                description={seoMeta.description}
+                keywords={seoMeta.keywords}
+                canonical={`${window.location.origin}/spa?q=${searchParams.get('q') || ''}&category=${currentCategory || ''}`}
             />
             {structuredData && (
                 <Helmet>
