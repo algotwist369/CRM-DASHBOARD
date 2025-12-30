@@ -845,6 +845,56 @@ const BusinessInfo = () => {
     )
   }, [isImageModalOpen, allImages, modalImageIndex, business, closeImageModal, prevModalImage, nextModalImage])
 
+  // SEO Configuration
+  const seoConfig = useMemo(() => {
+    if (!business) return null;
+
+    return {
+      title: business.seo?.metaTitle || `${business.name} | ${business.category || 'Business'} in ${business.city}`,
+      description: business.seo?.metaDescription || business.description?.substring(0, 160) || `Book appointments at ${business.name} in ${business.city}. Check reviews, services, and working hours.`,
+      keywords: business.seo?.keywords?.join(', ') || [business.name, business.category, business.city, business.services?.map(s => s.name)].flat().filter(Boolean).join(', '),
+      ogImage: business.seo?.ogImage || business.images?.banner || business.images?.logo,
+      ogUrl: window.location.href,
+      canonical: window.location.href
+    };
+  }, [business]);
+
+  // Structured Data (JSON-LD)
+  const structuredData = useMemo(() => {
+    if (!business) return null;
+
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": business.name,
+      "image": business.images?.banner || business.images?.logo,
+      "telephone": business.phone,
+      "email": business.email,
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": business.address,
+        "addressLocality": business.city,
+        "addressRegion": business.state,
+        "addressCountry": business.country
+      },
+      "geo": business.location?.coordinates ? {
+        "@type": "GeoCoordinates",
+        "latitude": business.location.coordinates[1],
+        "longitude": business.location.coordinates[0]
+      } : undefined,
+      "url": window.location.href,
+      "priceRange": "$$", // Dynamic if available
+      "openingHoursSpecification": business.workingHours?.days?.map((day, index) => ({
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": day.charAt(0).toUpperCase() + day.slice(1),
+        "opens": business.workingHours.open,
+        "closes": business.workingHours.close
+      }))
+    };
+
+    return JSON.stringify(schema);
+  }, [business]);
+
   if (loading) {
     return <SkeletonBusinessInfo />
   }
@@ -871,13 +921,23 @@ const BusinessInfo = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0 overflow-x-hidden">
-      <SEO
-        title={business.name}
-        description={business.description}
-        image={business.images?.banner || business.images?.thumbnail}
-        canonical={`/${businessLink}`}
-        type="business.business"
-      />
+      {/* SEO Meta Tags */}
+      {seoConfig && (
+        <SEO
+          title={seoConfig.title}
+          description={seoConfig.description}
+          keywords={seoConfig.keywords}
+          ogImage={seoConfig.ogImage}
+          ogUrl={seoConfig.ogUrl}
+          canonical={seoConfig.canonical}
+        />
+      )}
+      {/* Structured Data */}
+      {structuredData && (
+        <script type="application/ld+json">
+          {structuredData}
+        </script>
+      )}
       <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
