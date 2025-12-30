@@ -65,11 +65,15 @@ const createInquiry = async (req, res) => {
         }
 
         // Find all businesses owned by the same admin in the same branch - Use lean() and selection
+        // Find all businesses owned by the same admin in the same branch - Use lean() and selection
+        // Using regex for case-insensitive branch matching
         const relatedBusinesses = await Business.find({
             admin: sourceBusiness.admin,
-            branch: sourceBusiness.branch,
+            branch: { $regex: new RegExp(`^${sourceBusiness.branch}$`, 'i') },
             isActive: true
         }).lean().select('_id branch');
+
+        console.log(`[Inquiry Sync] Found ${relatedBusinesses.length} businesses for branch '${sourceBusiness.branch}' (Admin: ${sourceBusiness.admin})`);
 
         // Create inquiries for all matching businesses - Use insertMany for better performance
         const groupId = new mongoose.Types.ObjectId();
