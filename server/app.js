@@ -182,6 +182,9 @@ app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/inventory", require("./routes/inventoryRoutes"));
 
+// === WhatsApp Web.js Integration ===
+app.use('/api/admin/whatsapp', require("./routes/whatsappQR"));
+
 // === SEO Routes (served at root level for crawlers) ===
 const sitemapRoutes = require("./routes/sitemap");
 app.use("/", sitemapRoutes);

@@ -1564,6 +1564,47 @@ class AdminService {
       }
     }
   }
+
+  // ================== WHATSAPP INTEGRATION ==================
+
+  // Get WhatsApp QR code
+  async getWhatsAppQR() {
+    try {
+      const response = await apiClient.get('/admin/whatsapp/qr')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get QR code'
+      }
+    }
+  }
+
+  // Get WhatsApp connection status
+  async getWhatsAppStatus() {
+    try {
+      const response = await apiClient.get('/admin/whatsapp/status')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get status'
+      }
+    }
+  }
+
+  // Logout from WhatsApp
+  async logoutWhatsApp() {
+    try {
+      const response = await apiClient.post('/admin/whatsapp/logout')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to logout'
+      }
+    }
+  }
 }
 
 export default new AdminService()
