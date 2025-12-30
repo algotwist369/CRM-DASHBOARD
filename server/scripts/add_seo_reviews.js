@@ -61,7 +61,7 @@ const generateReview = (businessId) => {
 
     return {
         business: businessId,
-        customer: new mongoose.Types.ObjectId(), // Fake customer ID or null if schema allows, but schema requires customer. We might need a dummy customer or create guests? Schema says: customer required if !guestName. So we use guestName.
+        // customer is not required when guestName is provided (schema validation)
         guestName: fullName,
         guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(Math.random() * 100)}@gmail.com`,
         rating: rating,
@@ -115,25 +115,77 @@ const updateBusinessStats = async (businessId) => {
     }
 };
 
-const seedReviews = async () => {
+const seedReviews = async (businessId = null, zeroReviewsMode = false, businessType = null) => {
     try {
         console.log('Connecting to MongoDB...');
         await mongoose.connect(process.env.MONGO_URI);
         console.log('Connected!');
 
-        const businesses = await Business.find({ type: 'spa' });
-        console.log(`Found ${businesses.length} spa businesses.`);
+        let businesses = [];
+
+        // If business ID is provided, find only that business
+        if (businessId) {
+            // Validate if it's a valid ObjectId
+            if (!mongoose.Types.ObjectId.isValid(businessId)) {
+                console.error(`❌ Error: Invalid business ID format: ${businessId}`);
+                console.log('💡 Business ID must be a valid MongoDB ObjectId (24 character hex string)');
+                process.exit(1);
+            }
+
+            const business = await Business.findById(businessId);
+            if (!business) {
+                console.error(`❌ Error: Business not found with ID: ${businessId}`);
+                process.exit(1);
+            }
+            businesses = [business];
+            console.log(`✅ Found business: ${business.name} (${business.type})`);
+        } else if (zeroReviewsMode) {
+            // Find businesses with 0 reviews
+            const query = {};
+            if (businessType) {
+                query.type = businessType;
+            }
+
+            // Get all businesses matching the query
+            const allBusinesses = await Business.find(query);
+            console.log(`🔍 Checking ${allBusinesses.length} businesses for zero reviews...`);
+
+            // Filter businesses that have 0 published reviews
+            for (const business of allBusinesses) {
+                const reviewCount = await Review.countDocuments({
+                    business: business._id,
+                    isPublished: true,
+                    status: 'approved'
+                });
+
+                if (reviewCount === 0) {
+                    businesses.push(business);
+                }
+            }
+
+            console.log(`✅ Found ${businesses.length} businesses with 0 reviews${businessType ? ` (type: ${businessType})` : ''}`);
+        } else {
+            // If no business ID provided, get all spa businesses (original behavior)
+            businesses = await Business.find({ type: 'spa' });
+            console.log(`Found ${businesses.length} spa businesses.`);
+        }
+
+        if (businesses.length === 0) {
+            console.log('⚠️  No businesses found to add reviews to.');
+            process.exit(0);
+        }
 
         for (const business of businesses) {
             // Cleanup previous SEO reviews for this business (matched by title pattern)
-            await Review.deleteMany({
+            const deleteResult = await Review.deleteMany({
                 business: business._id,
                 title: { $regex: /Experience$/ },
                 source: { $in: ['google', 'website'] }
             });
+            console.log(`🧹 Cleaned up ${deleteResult.deletedCount} previous SEO reviews for ${business.name}`);
 
             const reviewCount = Math.floor(Math.random() * (150 - 100 + 1)) + 100; // Random between 100 and 150
-            console.log(`Generating ${reviewCount} reviews for ${business.name}...`);
+            console.log(`\n📝 Generating ${reviewCount} Indian reviews for ${business.name}...`);
 
             const reviews = [];
             for (let i = 0; i < reviewCount; i++) {
@@ -142,32 +194,104 @@ const seedReviews = async () => {
 
             // Debug: Log first review to check guestName
             if (reviews.length > 0) {
-                console.log('Sample Generated Review:', {
+                console.log('📋 Sample Generated Review:', {
                     guestName: reviews[0].guestName,
                     rating: reviews[0].rating,
-                    title: reviews[0].title
+                    title: reviews[0].title,
+                    source: reviews[0].source
                 });
             }
 
             // Insert in chunks
             await Review.insertMany(reviews);
+            console.log(`✅ Successfully inserted ${reviews.length} reviews`);
 
             // Update business ratings
             await updateBusinessStats(business._id);
         }
 
-        console.log('All done! SEO reviews added successfully.');
+        console.log('\n🎉 All done! SEO reviews added successfully.');
         process.exit(0);
 
     } catch (error) {
-        console.error('Error seeding reviews:', error);
+        console.error('❌ Error seeding reviews:', error);
         process.exit(1);
     }
-
-    // Call seedReviews() is at line 167 in original, so I need to make sure I don't delete calling it.
-    // Wait, I am replacing up to 167. 
-    // The original file call to seedReviews() was at line 167.
-    // I need to include calling it or ensure it's there.
 };
 
-seedReviews();
+// Get arguments from command line
+// Usage examples:
+//   node add_seo_reviews.js                          - Add reviews to all spa businesses
+//   node add_seo_reviews.js <businessId>             - Add reviews to specific business
+//   node add_seo_reviews.js --zero-reviews           - Add reviews to all businesses with 0 reviews
+//   node add_seo_reviews.js --zero-reviews spa       - Add reviews to spa businesses with 0 reviews
+const args = process.argv.slice(2);
+let businessId = null;
+let zeroReviewsMode = false;
+let businessType = null;
+
+// Parse arguments
+if (args.length > 0) {
+    const firstArg = args[0].toLowerCase();
+    
+    // Check for zero-reviews flag
+    if (firstArg === '--zero-reviews' || firstArg === '--zero' || firstArg === 'zero-reviews' || firstArg === 'zero') {
+        zeroReviewsMode = true;
+        // Check if business type is provided as second argument
+        if (args.length > 1) {
+            businessType = args[1].toLowerCase();
+        }
+    } else if (mongoose.Types.ObjectId.isValid(firstArg)) {
+        // If it's a valid ObjectId, treat it as business ID
+        businessId = firstArg;
+    } else {
+        console.error(`❌ Error: Unknown argument: ${firstArg}`);
+        console.log('\n💡 Usage:');
+        console.log('  node add_seo_reviews.js                          - Add reviews to all spa businesses');
+        console.log('  node add_seo_reviews.js <businessId>             - Add reviews to specific business');
+        console.log('  node add_seo_reviews.js --zero-reviews            - Add reviews to all businesses with 0 reviews');
+        console.log('  node add_seo_reviews.js --zero-reviews <type>    - Add reviews to businesses with 0 reviews of specific type');
+        process.exit(1);
+    }
+}
+
+// Display mode information
+if (businessId) {
+    console.log(`🎯 Target Business ID: ${businessId}`);
+} else if (zeroReviewsMode) {
+    console.log(`🎯 Mode: Zero Reviews${businessType ? ` (Business Type: ${businessType})` : ' (All Types)'}`);
+} else {
+    console.log('📌 No business ID provided. Will add reviews to all spa businesses.');
+}
+
+seedReviews(businessId, zeroReviewsMode, businessType);
+
+
+
+
+ 
+// New feature: Zero reviews mode
+// The script now supports adding reviews to businesses with 0 reviews.
+// Usage options:
+// All spa businesses (default):
+//    node scripts/add_seo_reviews.js
+// Specific business by ID:
+//    node scripts/add_seo_reviews.js 507f1f77bcf86cd799439011
+// All businesses with 0 reviews:
+//    node scripts/add_seo_reviews.js --zero-reviews
+// or
+//    node scripts/add_seo_reviews.js --zero
+// Businesses with 0 reviews of a specific type:
+//    node scripts/add_seo_reviews.js --zero-reviews spa   
+//    node scripts/add_seo_reviews.js --zero-reviews salon  
+//    node scripts/add_seo_reviews.js --zero-reviews restaurant
+// How it works:
+// The script first checks if a business ID is provided. If not, it adds reviews to all spa businesses.
+// If a business ID is provided, it adds reviews to that business.
+// If the --zero-reviews flag is provided, it adds reviews to all businesses with 0 reviews.
+// If the --zero-reviews flag is provided with a business type, it adds reviews to businesses with 0 reviews of that type.
+// The script uses the Review model to add reviews to businesses.
+// The script uses the Business model to get businesses and update business ratings.
+// The script uses the Review model to delete previous SEO reviews for a business.
+// The script uses the Review model to insert new reviews.
+// The script uses the Business model to update business ratings.

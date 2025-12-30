@@ -12,7 +12,7 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
     const [formData, setFormData] = useState({
         user_name: '',
         phone: '',
-        inquiry_type: 'General Inquiry',
+        inquiry_type: 'General Enquiry',
         otp: ''
     });
 
@@ -119,10 +119,10 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
                 setStep('success');
                 if (onSuccess) onSuccess(response.data);
             } else {
-                toast.error(response.message || 'Failed to submit inquiry');
+                toast.error(response.message || 'Failed to submit enquiry');
             }
         } catch (error) {
-            toast.error(error.message || 'Failed to submit inquiry');
+            toast.error(error.message || 'Failed to submit enquiry');
         } finally {
             setLoading(false);
         }
@@ -136,7 +136,7 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Thank You!</h2>
                 <p className="text-sm text-gray-500 mb-6 px-4">
-                    Your inquiry for <span className="font-semibold text-gray-700">{businessName || 'Business'}</span> has been received.
+                    Your enquiry for <span className="font-semibold text-gray-700">{businessName || 'Business'}</span> has been received.
                 </p>
 
                 <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 mb-8 max-w-[280px] mx-auto text-center">
@@ -219,7 +219,7 @@ const InquiryForm = ({ businessId, businessName, onSuccess, onCancel }) => {
                             value={formData.inquiry_type}
                             onChange={handleChange}
                         >
-                            <option value="General Inquiry">General Inquiry</option>
+                            <option value="General Inquiry">General Enquiry</option>
                             <option value="Pricing & Services">Pricing & Services</option>
                             <option value="Special Offers">Special Offers</option>
                             <option value="Membership Packages">Membership Packages</option>

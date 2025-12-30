@@ -23,7 +23,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Hello! 👋 Welcome to **Spa Concierge**!\n\nI'm here to make your booking journey smooth and effortless. I can help you find top-rated spas, manage your appointments, or explain our services.\n\nType your query or select an option below:",
+      text: "Hello! 👋 Welcome to **Spa Advisor**!\n\nI'm here to make your booking journey smooth and effortless. I can help you find top-rated spas, manage your appointments, or explain our services.\n\nType your query or select an option below:",
       sender: 'bot',
       timestamp: new Date(),
       quickReplies: [
@@ -298,7 +298,7 @@ const ChatBot = () => {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-bold text-gray-900">Spa Concierge 🕊️</h4>
+                    <h4 className="font-bold text-gray-900">Spa Advisor 🕊️</h4>
                     <button onClick={() => setShowNotification(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                       <FaTimes className="text-xs" />
                     </button>
@@ -348,7 +348,7 @@ const ChatBot = () => {
                   <img src="/chatbot_avatar.png" alt="AI Assistant" className="w-full h-full object-cover" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 leading-tight text-lg">Spa Concierge</h3>
+                  <h3 className="font-bold text-gray-900 leading-tight text-lg">Spa Advisor</h3>
                   <p className="text-xs text-green-500 font-medium flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                     Ready to Assist
