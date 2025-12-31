@@ -37,6 +37,13 @@ class WhatsAppWebService extends EventEmitter {
         try {
             console.log('[WhatsApp Web] Initializing client...');
 
+            // Ensure clean slate
+            if (this.client) {
+                try {
+                    await this.client.destroy();
+                } catch (e) { /* ignore */ }
+            }
+
             this.client = new Client({
                 authStrategy: new LocalAuth({
                     clientId: this.sessionName,
@@ -58,14 +65,29 @@ class WhatsAppWebService extends EventEmitter {
             });
 
             this._setupEventHandlers();
-            await this.client.initialize();
+
+            // Set flag immediately to prevent race
             this.isInitialized = true;
+
+            await this.client.initialize();
 
         } catch (error) {
             console.error('[WhatsApp Web] Initialization failed:', error.message);
+            this.isInitialized = false; // Reset on failure
             this.emit('error', error);
-            this._handleReconnect();
+            // Don't auto-reconnect immediately loop if init failed hard
         }
+    }
+
+    /**
+     * Force re-initialization of the client
+     */
+    async reinitialize() {
+        console.log('[WhatsApp Web] Forcing re-initialization...');
+        this.isInitialized = false;
+        this.isClientReady = false;
+        this.qrCode = null;
+        await this.initialize();
     }
 
     /**
@@ -286,7 +308,7 @@ class WhatsAppWebService extends EventEmitter {
         return this.qrCode;
     }
 
-    
+
     async waitForQR(timeoutMs = 15000) {
         if (this.qrCode) return this.qrCode;
         if (this.isClientReady) return null; // Already connected
