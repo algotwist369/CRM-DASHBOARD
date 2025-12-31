@@ -11,7 +11,7 @@ const getQRCode = async (req, res) => {
         // If QR not immediately available, wait for it (up to 15s)
         if (!qrCode) {
             console.log('[QR Controller] QR not cached, waiting for generation...');
-            qrCode = await whatsappWebService.waitForQR();
+            qrCode = await whatsappWebService.waitForQR(15000);
         }
 
         if (qrCode) {
@@ -21,6 +21,16 @@ const getQRCode = async (req, res) => {
                 message: 'Scan this QR code with your WhatsApp mobile app'
             });
         }
+
+        // If still no QR code, something might be stuck. Trigger re-init.
+        console.log('[QR Controller] QR generation timed out. Triggering service reload...');
+        whatsappWebService.reinitialize().catch(err => console.error('Reinit failed:', err));
+
+        return res.status(503).json({
+            success: false,
+            message: 'WhatsApp service is reloading. Please click "Refresh QR Code" again in 10 seconds.',
+            shouldRetry: true
+        });
 
         // Check if already authenticated
         const status = await whatsappWebService.getStatus();
