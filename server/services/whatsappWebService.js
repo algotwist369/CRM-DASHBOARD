@@ -83,10 +83,39 @@ class WhatsAppWebService extends EventEmitter {
      * Force re-initialization of the client
      */
     async reinitialize() {
-        console.log('[WhatsApp Web] Forcing re-initialization...');
+        const fs = require('fs');
+        const path = require('path');
+
+        // Force clean slate
         this.isInitialized = false;
         this.isClientReady = false;
         this.qrCode = null;
+
+        if (this.client) {
+            try {
+                console.log('[WhatsApp Web] destroying client...');
+                await this.client.destroy();
+            } catch (e) { console.error('Destroy failed', e); }
+            this.client = null;
+        }
+
+        // Clean up session data if requested
+        const authPath = './.wwebjs_auth';
+        if (fs.existsSync(authPath)) {
+            try {
+                console.log('[WhatsApp Web] Deleting session data...');
+                fs.rmSync(authPath, { recursive: true, force: true });
+            } catch (e) {
+                console.error('[WhatsApp Web] Failed to delete session data:', e.message);
+            }
+        }
+
+        // Wait a bit before restart
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Force env reload just in case
+        require('dotenv').config();
+
         await this.initialize();
     }
 
