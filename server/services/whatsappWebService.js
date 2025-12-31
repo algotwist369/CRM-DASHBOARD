@@ -286,6 +286,38 @@ class WhatsAppWebService extends EventEmitter {
         return this.qrCode;
     }
 
+    
+    async waitForQR(timeoutMs = 15000) {
+        if (this.qrCode) return this.qrCode;
+        if (this.isClientReady) return null; // Already connected
+
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                cleanup();
+                resolve(null);
+            }, timeoutMs);
+
+            const onQr = (qr) => {
+                cleanup();
+                resolve(qr);
+            };
+
+            const onReady = () => {
+                cleanup();
+                resolve(null); // Connected, no QR needed
+            };
+
+            const cleanup = () => {
+                this.off('qr', onQr);
+                this.off('ready', onReady);
+                clearTimeout(timeout);
+            };
+
+            this.on('qr', onQr);
+            this.on('ready', onReady);
+        });
+    }
+
     /**
      * Get current connection status
      * @returns {Object}

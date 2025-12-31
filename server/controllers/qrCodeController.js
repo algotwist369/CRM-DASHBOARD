@@ -6,7 +6,13 @@ const whatsappWebService = require('../services/whatsappWebService');
  */
 const getQRCode = async (req, res) => {
     try {
-        const qrCode = whatsappWebService.getQR();
+        let qrCode = whatsappWebService.getQR();
+
+        // If QR not immediately available, wait for it (up to 15s)
+        if (!qrCode) {
+            console.log('[QR Controller] QR not cached, waiting for generation...');
+            qrCode = await whatsappWebService.waitForQR();
+        }
 
         if (qrCode) {
             return res.status(200).json({
