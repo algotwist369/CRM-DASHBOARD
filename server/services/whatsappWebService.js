@@ -338,13 +338,16 @@ class WhatsAppWebService extends EventEmitter {
     }
 
 
-    async waitForQR(timeoutMs = 15000) {
+    async waitForQR(timeoutMs = 45000) {
         if (this.qrCode) return this.qrCode;
         if (this.isClientReady) return null; // Already connected
+
+        console.log(`[WhatsApp Web] Waiting for QR (Timeout: ${timeoutMs}ms)...`);
 
         return new Promise((resolve) => {
             const timeout = setTimeout(() => {
                 cleanup();
+                console.log('[WhatsApp Web] WaitForQR timed out.');
                 resolve(null);
             }, timeoutMs);
 
@@ -358,14 +361,29 @@ class WhatsAppWebService extends EventEmitter {
                 resolve(null); // Connected, no QR needed
             };
 
+            const onClose = () => {
+                cleanup();
+                resolve(null);
+            };
+
+            const onError = (err) => {
+                cleanup();
+                console.error('[WhatsApp Web] Init Error caught in waitForQR:', err.message);
+                resolve({ error: err.message }); // Return error object
+            };
+
             const cleanup = () => {
                 this.off('qr', onQr);
                 this.off('ready', onReady);
+                this.off('disconnected', onClose);
+                this.off('error', onError);
                 clearTimeout(timeout);
             };
 
             this.on('qr', onQr);
             this.on('ready', onReady);
+            this.on('disconnected', onClose);
+            this.on('error', onError);
         });
     }
 
