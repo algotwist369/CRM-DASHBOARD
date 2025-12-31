@@ -8,13 +8,23 @@ const getQRCode = async (req, res) => {
     try {
         let qrCode = whatsappWebService.getQR();
 
-        // If QR not immediately available, wait for it (up to 15s)
+        // If QR not immediately available, wait for it (up to 45s for production)
         if (!qrCode) {
             console.log('[QR Controller] QR not cached, waiting for generation...');
-            qrCode = await whatsappWebService.waitForQR(15000);
+            const result = await whatsappWebService.waitForQR(45000);
+
+            // Handle explicit error from service
+            if (result && result.error) {
+                return res.status(500).json({
+                    success: false,
+                    message: `Service Error: ${result.error}. Check server logs.`
+                });
+            }
+
+            qrCode = result;
         }
 
-        if (qrCode) {
+        if (qrCode && typeof qrCode === 'string') {
             return res.status(200).json({
                 success: true,
                 qrCode,
