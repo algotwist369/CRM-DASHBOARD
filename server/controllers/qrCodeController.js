@@ -99,8 +99,33 @@ const logout = async (req, res) => {
     }
 };
 
+/**
+ * Force reset connection (Connect New WhatsApp)
+ * Clears session and restarts service
+ */
+const resetConnection = async (req, res) => {
+    try {
+        console.log('[QR Controller] Manual reset requested');
+        // Trigger re-init without waiting (fire and forget)
+        whatsappWebService.reinitialize().catch(err => console.error('Reset failed:', err));
+
+        res.status(200).json({
+            success: true,
+            message: 'WhatsApp service is resetting. Please wait 10-15 seconds then refresh QR.',
+            shouldRetry: true
+        });
+    } catch (error) {
+        console.error('[QR Controller] Reset error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     getQRCode,
     getConnectionStatus,
-    logout
+    logout,
+    resetConnection
 };
