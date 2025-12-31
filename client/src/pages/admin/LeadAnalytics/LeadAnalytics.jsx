@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { HiOutlineChartBar, HiOutlineCursorClick, HiOutlinePhone, HiOutlineCalendar, HiOutlineGlobe, HiOutlineRefresh } from 'react-icons/hi';
+import { HiOutlineChartBar, HiOutlineCursorClick, HiOutlinePhone, HiOutlineCalendar, HiOutlineGlobe, HiOutlineRefresh, HiOutlineEye } from 'react-icons/hi';
 import { FaWhatsapp } from "react-icons/fa6";
 import leadAnalyticsService from '../../../services/admin/leadAnalyticsService';
 import DatePicker from '../../../components/common/DatePicker/DatePicker';
@@ -26,7 +26,8 @@ const LeadAnalytics = () => {
         totalClicks: 0,
         totalCallClicks: 0,
         totalWhatsappClicks: 0,
-        totalBookingClicks: 0
+        totalBookingClicks: 0,
+        totalVisits: 0
     });
     const [businessBreakdown, setBusinessBreakdown] = useState([]);
     const [ipJourneys, setIpJourneys] = useState([]);
@@ -126,7 +127,13 @@ const LeadAnalytics = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <StatsCard
+                    title="Total Visits"
+                    value={summary.totalVisits}
+                    icon={<HiOutlineEye className="w-6 h-6 text-indigo-600" />}
+                    color="text-indigo-600"
+                />
                 <StatsCard
                     title="Total Clicks"
                     value={summary.totalClicks}

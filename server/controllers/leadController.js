@@ -104,14 +104,15 @@ exports.getAnalyticsSummary = async (req, res) => {
                     totalCallClicks: 0,
                     totalWhatsappClicks: 0,
                     totalBookingClicks: 0,
-                    totalClicks: 0
+                    totalClicks: 0,
+                    totalVisits: 0
                 }
             });
         }
 
         const matchStage = { date: queryDate };
 
-        // 2. Filter by businessId
+        // 2. Filter by businessId for click counts
         if (businessId) {
             // Check if admin owns this business
             const isOwner = myBusinesses.some(id => id.toString() === businessId);
@@ -124,32 +125,68 @@ exports.getAnalyticsSummary = async (req, res) => {
             matchStage.businessId = { $in: myBusinesses };
         }
 
-        // Aggregate total clicks for the date (and optional business)
-        const todayStats = await DailyClickCount.aggregate([
-            { $match: matchStage },
-            {
-                $group: {
-                    _id: null,
-                    totalCallClicks: { $sum: "$callClicks" },
-                    totalWhatsappClicks: { $sum: "$whatsappClicks" },
-                    totalBookingClicks: { $sum: "$bookingClicks" },
-                    totalClicks: {
-                        $sum: { $add: ["$callClicks", "$whatsappClicks", "$bookingClicks"] }
+        // 3. Build date range for IpPageJourney (for total visits)
+        const startOfDay = new Date(queryDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(queryDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const visitMatchStage = {
+            lastVisitedAt: { $gte: startOfDay, $lte: endOfDay }
+        };
+
+        if (businessId) {
+            visitMatchStage.businessId = new mongoose.Types.ObjectId(businessId);
+        } else {
+            visitMatchStage.businessId = { $in: myBusinesses };
+        }
+
+        // Run both aggregations in parallel for performance
+        const [todayStats, visitStats] = await Promise.all([
+            // Aggregate total clicks for the date (and optional business)
+            DailyClickCount.aggregate([
+                { $match: matchStage },
+                {
+                    $group: {
+                        _id: null,
+                        totalCallClicks: { $sum: "$callClicks" },
+                        totalWhatsappClicks: { $sum: "$whatsappClicks" },
+                        totalBookingClicks: { $sum: "$bookingClicks" },
+                        totalClicks: {
+                            $sum: { $add: ["$callClicks", "$whatsappClicks", "$bookingClicks"] }
+                        }
                     }
                 }
-            }
+            ]),
+            // Count unique visitors (unique IPs) for the date
+            IpPageJourney.aggregate([
+                { $match: visitMatchStage },
+                {
+                    $group: {
+                        _id: "$ipAddress" // Group by unique IP
+                    }
+                },
+                {
+                    $count: "totalVisits"
+                }
+            ])
         ]);
 
-        const stats = todayStats[0] || {
+        const clickStats = todayStats[0] || {
             totalCallClicks: 0,
             totalWhatsappClicks: 0,
             totalBookingClicks: 0,
             totalClicks: 0
         };
 
+        const totalVisits = visitStats[0]?.totalVisits || 0;
+
         res.status(200).json({
             success: true,
-            data: stats
+            data: {
+                ...clickStats,
+                totalVisits
+            }
         });
     } catch (error) {
         console.error("Analytics Summary Error:", error);
