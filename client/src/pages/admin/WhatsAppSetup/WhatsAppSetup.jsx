@@ -48,11 +48,35 @@ const WhatsAppSetup = () => {
                     toast.success('QR Code loaded. Scan with your WhatsApp.');
                 }
             } else {
-                toast.error(response.message || 'Failed to get QR code');
+                // Handle 503 Service Loading/Reloading
+                if (response.shouldRetry) {
+                    toast("Service reloading... please wait 10s", {
+                        icon: '⏳',
+                        duration: 5000,
+                        style: {
+                            background: '#EFF6FF',
+                            color: '#1E40AF',
+                        }
+                    });
+
+                    // Optional: Auto-retry once after 10s
+                    setTimeout(() => {
+                        if (!status.connected) fetchQRCode();
+                    }, 10000);
+
+                } else {
+                    toast.error(response.message || 'Failed to get QR code');
+                }
             }
         } catch (error) {
-            toast.error('Failed to load QR code');
-            console.error(error);
+            // Check for 503 from interceptor if it throws
+            if (error.response && error.response.status === 503) {
+                toast("Service is reloading... retrying in 10s", { icon: '🔄' });
+                setTimeout(() => fetchQRCode(), 10000);
+            } else {
+                toast.error('Failed to load QR code');
+                console.error(error);
+            }
         } finally {
             setRefreshing(false);
         }
