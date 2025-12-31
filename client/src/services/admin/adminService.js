@@ -1605,6 +1605,19 @@ class AdminService {
       }
     }
   }
+
+  // Force Reset WhatsApp (Connect New)
+  async resetWhatsApp() {
+    try {
+      const response = await apiClient.post('/admin/whatsapp/reset')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reset'
+      }
+    }
+  }
 }
 
 export default new AdminService()
