@@ -1,6 +1,7 @@
 const DailyClickCount = require("../models/DailyClickCount");
 const IpPageJourney = require("../models/IpPageJourney");
 const Business = require("../models/Business");
+const Inquiry = require("../models/Inquiry");
 const mongoose = require("mongoose");
 
 // Helper to get start of day in local time or UTC (using simplified YYYY-MM-DD string as per model)
@@ -141,8 +142,18 @@ exports.getAnalyticsSummary = async (req, res) => {
             visitMatchStage.businessId = { $in: myBusinesses };
         }
 
-        // Run both aggregations in parallel for performance
-        const [todayStats, visitStats] = await Promise.all([
+        const inquiryMatchStage = {
+            createdAt: { $gte: startOfDay, $lte: endOfDay }
+        };
+
+        if (businessId) {
+            inquiryMatchStage.business_id = new mongoose.Types.ObjectId(businessId);
+        } else {
+            inquiryMatchStage.business_id = { $in: myBusinesses };
+        }
+
+        // Run all aggregations in parallel for performance
+        const [todayStats, visitStats, totalInquiries] = await Promise.all([
             // Aggregate total clicks for the date (and optional business)
             DailyClickCount.aggregate([
                 { $match: matchStage },
@@ -169,7 +180,8 @@ exports.getAnalyticsSummary = async (req, res) => {
                 {
                     $count: "totalVisits"
                 }
-            ])
+            ]),
+            Inquiry.countDocuments(inquiryMatchStage)
         ]);
 
         const clickStats = todayStats[0] || {
@@ -185,7 +197,8 @@ exports.getAnalyticsSummary = async (req, res) => {
             success: true,
             data: {
                 ...clickStats,
-                totalVisits
+                totalVisits,
+                totalInquiries
             }
         });
     } catch (error) {
