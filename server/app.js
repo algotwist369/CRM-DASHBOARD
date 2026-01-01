@@ -177,6 +177,7 @@ app.use("/api/settings", businessSettingsRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/inquiries", inquiryRoutes);
+app.use("/api/payments", require("./routes/paymentRoutes"));
 
 // === PHASE 2 ENHANCEMENT: New Routes ===
 app.use("/api/expenses", require("./routes/expenseRoutes"));

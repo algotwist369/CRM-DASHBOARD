@@ -75,4 +75,7 @@ router.post("/:id/review", appointmentController.addReview);
 // Update appointment status
 router.patch("/:id/status", appointmentController.updateAppointmentStatus);
 
+// Download Invoice
+router.get("/:id/invoice", appointmentController.downloadInvoice);
+
 module.exports = router;

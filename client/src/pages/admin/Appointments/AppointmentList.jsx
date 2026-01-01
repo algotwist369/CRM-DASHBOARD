@@ -15,7 +15,8 @@ import {
   HiOutlineFilter,
   HiOutlineDuplicate,
   HiChevronDown,
-  HiChevronUp
+  HiChevronUp,
+  HiOutlineDownload
 } from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
@@ -64,7 +65,7 @@ const CollapsibleSection = memo(({ title, isExpanded, onToggle, badge, children 
   </div>
 ));
 
-const AppointmentRow = memo(({ appointment, onView }) => {
+const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     confirmed: 'bg-blue-100 text-blue-800',
@@ -170,7 +171,19 @@ const AppointmentRow = memo(({ appointment, onView }) => {
       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
         {createdAt ? createdAt.toLocaleDateString() : 'N/A'}
       </td>
-      <td className="px-3 py-2 whitespace-nowrap text-right">
+      <td className="px-3 py-2 whitespace-nowrap text-right flex items-center justify-end gap-1">
+        {paymentStatus === 'paid' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownloadInvoice(appointment._id, appointment.bookingNumber);
+            }}
+            className="text-green-600 hover:text-green-900 p-1.5 rounded-full hover:bg-green-50 transition-colors"
+            title="Download Invoice"
+          >
+            <HiOutlineDownload className="w-4 h-4" />
+          </button>
+        )}
         <button onClick={() => onView(appointment._id)} className="text-blue-600 hover:text-blue-900 p-1.5 rounded-full hover:bg-blue-50 transition-colors">
           <HiOutlineEye className="w-4 h-4" />
         </button>
@@ -300,6 +313,29 @@ const AppointmentList = () => {
 
   const handlePageChange = useCallback((newPage) => {
     setCurrentPage(newPage);
+  }, []);
+
+  const handleDownloadInvoice = useCallback(async (id, bookingNumber) => {
+    const toastId = toast.loading('Generating invoice...');
+    try {
+      const response = await adminService.downloadInvoice(id);
+      if (response.success) {
+        // Create blob link to download
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `invoice-${bookingNumber}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('Invoice downloaded', { id: toastId });
+      } else {
+        toast.error(response.error || 'Failed to download', { id: toastId });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error downloading invoice', { id: toastId });
+    }
   }, []);
 
   return (
@@ -670,6 +706,7 @@ const AppointmentList = () => {
                     key={appointment._id || appointment.id || `appointment-${index}`}
                     appointment={appointment}
                     onView={handleViewAppointment}
+                    onDownloadInvoice={handleDownloadInvoice}
                   />
                 ))
               )}
