@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
     FaSpinner,
     FaCheckCircle,
-    FaArrowRight,
     FaArrowLeft,
     FaExclamationTriangle,
     FaCopy,
@@ -13,16 +12,15 @@ import {
     FaUser,
     FaPhoneAlt,
     FaEnvelope,
-    FaDollarSign,
-    FaPrint,
     FaCreditCard,
     FaMobileAlt,
     FaWallet,
     FaMoneyBillWave,
     FaUserTie, // Added for Staff
-    FaWhatsapp
+    FaWhatsapp,
 } from 'react-icons/fa'
 import appointmentService from '../../../../services/public/appointmentService'
+import { paymentService } from '../../../../services/public/paymentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 
@@ -43,9 +41,10 @@ const BookingConfirmation = () => {
     const [lastBookingPayload, setLastBookingPayload] = useState(null)
     const [resendingOTP, setResendingOTP] = useState(false)
     const [showExitConfirmation, setShowExitConfirmation] = useState(false)
+    const [showPromoModal, setShowPromoModal] = useState(false) // New Promo Modal State
 
     // Online payment discount configuration
-    const ONLINE_PAYMENT_DISCOUNT = 10
+    const ONLINE_PAYMENT_DISCOUNT = business?.onlineDiscount || 0;
     const onlinePaymentMethods = ['upi', 'card', 'netbanking', 'wallet', 'online']
     const isOnlinePayment = onlinePaymentMethods.includes(paymentMethod)
 
@@ -60,6 +59,50 @@ const BookingConfirmation = () => {
         loadBookingData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [businessLink])
+
+    // Self-healing: Refresh business data if onlineDiscount is missing (stale session)
+    const refreshAttempted = useRef(false);
+
+    useEffect(() => {
+        const refreshStaleData = async () => {
+            if (business && typeof business.onlineDiscount === 'undefined' && !refreshAttempted.current) {
+                refreshAttempted.current = true; // Prevent infinite loop
+                try {
+                    const result = await appointmentService.getBusinessInfo(businessLink)
+                    if (result.success && result.data?.data) {
+                        const freshData = result.data.data
+
+                        setBusiness(prev => {
+                            const updated = { ...prev, ...freshData }
+                            sessionStorage.setItem('bookingBusiness', JSON.stringify(updated))
+                            return updated
+                        })
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh stale data:', error)
+                }
+            }
+        }
+        refreshStaleData()
+    }, [business, businessLink])
+
+    useEffect(() => {
+        if (!business) return
+
+        // Show promo modal after a short delay if not already paying online
+        const timer = setTimeout(() => {
+            const hasOnlineOptions = business?.paymentMethods?.card ||
+                business?.paymentMethods?.upi ||
+                business?.paymentMethods?.netBanking ||
+                business?.paymentMethods?.wallet
+
+            if (hasOnlineOptions && !isOnlinePayment) {
+                setShowPromoModal(true)
+            }
+        }, 1500)
+
+        return () => clearTimeout(timer)
+    }, [business, isOnlinePayment])
 
     useEffect(() => {
         let timer
@@ -282,8 +325,122 @@ const BookingConfirmation = () => {
                 services: servicesArray,
                 staffId: bookingData.staff?._id || bookingData.staff?.id || null,
                 customerNotes: bookingData.customer.notes || '',
-                paymentMethod: paymentMethod
+                paymentMethod: paymentMethod,
+                paymentStatus: 'pending' // Default to pending
             }
+
+            // --- ONLINE PAYMENT FLOW ---
+            if (isOnlinePayment) {
+                try {
+                    // 1. Create Order
+                    // Calculate amount in correct currency unit (Rupees)
+                    // We send the ORIGINAL TOTAL PRICE to the backend. The backend applies the ONLINE_DISCOUNT.
+                    const originalPrice = calculateTotalPrice();
+
+                    console.log('[BookingConfirmation] Creating Order for Business ID:', business._id);
+
+                    const order = await paymentService.createOrder(
+                        originalPrice,
+                        'INR',
+                        `booking_${Date.now()}`,
+                        business._id
+                    )
+
+                    // 2. Open Razorpay Checkouot
+                    // 2. Open Razorpay Checkouot
+                    await new Promise(async (resolve, reject) => {
+                        // Fetch the correct key from backend to ensure sync (Live/Test)
+                        let keyId = await paymentService.getRazorpayKey();
+                        if (!keyId) {
+                            // Fallback mechanism if fetch fails
+                            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                            keyId = isLocal ? 'rzp_test_RyaDtElerFdmmh' : (import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_RyaDtElerFdmmh');
+                        }
+
+                        const options = {
+                            key: keyId,
+                            amount: order.order.amount, // This comes from backend (discounted)
+                            currency: order.order.currency,
+                            name: business.name,
+                            description: `Booking for ${business.name}`,
+                            image: business.images?.logo || "/logo.png",
+                            order_id: order.order.id,
+                            handler: async function (response) {
+                                try {
+                                    // 3. Verify Payment
+                                    const verification = await paymentService.verifyPayment({
+                                        razorpay_order_id: response.razorpay_order_id,
+                                        razorpay_payment_id: response.razorpay_payment_id,
+                                        razorpay_signature: response.razorpay_signature
+                                    })
+
+                                    // Payment Successful - Update Payload
+                                    bookingPayload.paymentStatus = 'paid'
+                                    bookingPayload.transactionId = response.razorpay_payment_id
+
+                                    // Update payload with actual paid amount from Razorpay
+                                    if (order.discount) {
+                                        bookingPayload.paidAmount = order.discount.finalAmount;
+                                        bookingPayload.discount = order.discount.amount;
+                                    } else {
+                                        bookingPayload.paidAmount = originalPrice;
+                                    }
+
+                                    bookingPayload.paymentDetails = {
+                                        orderId: response.razorpay_order_id,
+                                        paymentId: response.razorpay_payment_id,
+                                        signature: response.razorpay_signature
+                                    }
+
+                                    resolve(true)
+                                } catch (err) {
+                                    reject(err)
+                                }
+                            },
+                            prefill: {
+                                name: bookingData.customer.name,
+                                email: bookingData.customer.email,
+                                contact: bookingData.customer.phone
+                            },
+                            theme: {
+                                color: "#007070"
+                            },
+                            modal: {
+                                ondismiss: function () {
+                                    reject(new Error("Payment cancelled"))
+                                }
+                            }
+                        }
+
+                        // Load Script if not present
+                        const loadScript = (src) => {
+                            return new Promise((resolve) => {
+                                const script = document.createElement('script')
+                                script.src = src
+                                script.onload = () => resolve(true)
+                                script.onerror = () => resolve(false)
+                                document.body.appendChild(script)
+                            })
+                        }
+
+                        loadScript('https://checkout.razorpay.com/v1/checkout.js').then(loaded => {
+                            if (!loaded) {
+                                reject(new Error("Razorpay SDK failed to load"))
+                                return
+                            }
+                            const rzp = new window.Razorpay(options)
+                            rzp.open()
+                        })
+                    })
+
+                } catch (paymentError) {
+                    console.error("Payment Error:", paymentError)
+                    toast.error(paymentError.message || "Payment failed")
+                    setSubmitting(false)
+                    return // Stop booking if payment fails
+                }
+            }
+            // --- END ONLINE PAYMENT FLOW ---
 
             const result = await appointmentService.bookAppointment(businessLink, bookingPayload)
 
@@ -577,7 +734,7 @@ const BookingConfirmation = () => {
                                                         </div>
                                                     </div>
                                                     {getServicePrice(service) > 0 && (
-                                                        <span className="text-gray-600 text-xs">₹{getServicePrice(service).toLocaleString()}</span>
+                                                        <span className="text-gray-600 text-xs">{getServicePrice(service).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
                                                     )}
                                                 </div>
                                             )
@@ -614,7 +771,7 @@ const BookingConfirmation = () => {
                                     <div className="space-y-2 mb-4 bg-gray-50 p-3 rounded">
                                         <div className="flex justify-between text-gray-600 text-xs">
                                             <span>Subtotal</span>
-                                            <span>₹{basePrice.toLocaleString()}</span>
+                                            <span>{basePrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
                                         </div>
 
                                         {isOnlinePayment && (
@@ -622,14 +779,14 @@ const BookingConfirmation = () => {
                                                 <span className="flex items-center gap-2">
                                                     Discount <span className="text-xs bg-green-100 px-1 py-0.5 font-bold uppercase rounded">{ONLINE_PAYMENT_DISCOUNT}% OFF</span>
                                                 </span>
-                                                <span>-₹{discount.toLocaleString()}</span>
+                                                <span>-{discount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
                                             </div>
                                         )}
 
                                         <div className="pt-2 mt-1 border-t border-gray-200 flex justify-between items-end">
                                             <span className="text-gray-900 font-semibold text-sm">Total to Pay</span>
                                             <span className="text-lg font-bold text-gray-900">
-                                                ₹{isOnlinePayment ? finalPrice.toLocaleString() : basePrice.toLocaleString()}
+                                                {isOnlinePayment ? finalPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) : basePrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                                             </span>
                                         </div>
                                     </div>
@@ -677,12 +834,9 @@ const BookingConfirmation = () => {
                                             business?.paymentMethods?.card ||
                                             business?.paymentMethods?.netBanking ||
                                             business?.paymentMethods?.wallet) && (
-                                            <div className="bg-blue-50 border border-blue-100 p-2 mb-4 flex gap-2 items-start rounded">
-                                                <div className="bg-blue-100 p-1 rounded-full text-blue-600 shrink-0 mt-0.5">
-                                                    <FaDollarSign size={10} />
-                                                </div>
+                                            <div className="bg-blue-50 border border-blue-100 p-2 mb-4 flex gap-2 items-start">
                                                 <div>
-                                                    <p className="text-xs font-bold text-blue-900">Save ₹{discount.toLocaleString()}</p>
+                                                    <p className="text-xs font-bold text-blue-900">Save {((basePrice * ONLINE_PAYMENT_DISCOUNT) / 100).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
                                                     <p className="text-xs text-blue-700 mt-0.5">Pay online now to save {ONLINE_PAYMENT_DISCOUNT}% on your booking.</p>
                                                 </div>
                                             </div>
@@ -800,25 +954,50 @@ const BookingConfirmation = () => {
                                             <FaWhatsapp className="text-lg" /> Share Booking via WhatsApp
                                         </a>
                                     )}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button
-                                            onClick={handlePrint}
-                                            className="flex items-center justify-center gap-2 px-3 py-2 border text-gray-700 hover:bg-gray-50 text-xs"
-                                        >
-                                            <FaPrint /> Print
-                                        </button>
-                                        <button
-                                            onClick={handleViewAppointment}
-                                            className="flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 text-white hover:bg-primary-700 text-xs"
-                                        >
-                                            <FaArrowRight size={10} /> View Appointment
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
+
+                {/* --- PROMO MODAL --- */}
+                {showPromoModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-xl p-6 max-w-sm w-full relative transform transition-all scale-100 shadow-2xl border border-primary-100">
+                            <button
+                                onClick={() => setShowPromoModal(false)}
+                                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                ✕
+                            </button>
+                            <div className="text-center pt-2">
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Save {ONLINE_PAYMENT_DISCOUNT}% Instantly!</h3>
+                                <p className="text-gray-600 mb-6 text-sm leading-relaxed px-2">
+                                    Pay online now via UPI or Card and get an <span className="font-bold text-primary-700">extra {ONLINE_PAYMENT_DISCOUNT}% discount</span> on this booking.
+                                </p>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => {
+                                            setPaymentMethod('upi') // Or 'card'
+                                            setShowPromoModal(false)
+                                            toast.success("Discount Applied!")
+                                        }}
+                                        className="w-full py-3.5 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 transition-all shadow-lg hover:shadow-primary-500/30 flex items-center justify-center gap-2"
+                                    >
+                                        <FaCreditCard /> Pay Online & Save
+                                    </button>
+                                    <button
+                                        onClick={() => setShowPromoModal(false)}
+                                        className="w-full py-2 text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors"
+                                    >
+                                        No thanks, I'll pay full price with Cash
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* OTP Modal */}
                 {showOTPModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -894,47 +1073,48 @@ const BookingConfirmation = () => {
                         </div>
                     </div>
                 )}
-            </div>
 
-            {/* Exit Intent Retention Modal */}
-            {showExitConfirmation && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-                    <div className="bg-white rounded max-w-md w-full overflow-hidden">
-                        <div className="bg-amber-50 p-4 text-center border-b">
-                            <div className="w-12 h-12 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <FaExclamationTriangle size={24} />
-                            </div>
-                            <h3 className="text-base font-semibold text-gray-900 mb-1">Wait! Don't lose your spot!</h3>
-                            <p className="text-gray-600 text-xs">
-                                You are just one step away from confirming your appointment.
-                            </p>
-                        </div>
-                        <div className="p-4">
-                            <div className="bg-red-50 border border-red-100 rounded p-3 mb-4">
-                                <div className="text-xs text-red-800">
-                                    <p className="font-bold">Last Chance for 40% OFF</p>
-                                    <p>If you leave now, you will lose your <span className="font-bold">40% discount</span> and your preferred specific time slot might be taken by someone else.</p>
+                {/* Exit Intent Retention Modal */}
+                {showExitConfirmation && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+                        <div className="bg-white rounded max-w-md w-full overflow-hidden">
+                            <div className="bg-amber-50 p-4 text-center border-b">
+                                <div className="w-12 h-12 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <FaExclamationTriangle size={24} />
                                 </div>
+                                <h3 className="text-base font-semibold text-gray-900 mb-1">Wait! Don't lose your spot!</h3>
+                                <p className="text-gray-600 text-xs">
+                                    You are just one step away from confirming your appointment.
+                                </p>
                             </div>
+                            <div className="p-4">
+                                <div className="bg-red-50 border border-red-100 rounded p-3 mb-4">
+                                    <div className="text-xs text-red-800">
+                                        <p className="font-bold">Last Chance for 40% OFF</p>
+                                        <p>If you leave now, you will lose your <span className="font-bold">40% discount</span> and your preferred specific time slot might be taken by someone else.</p>
+                                    </div>
+                                </div>
 
-                            <div className="flex flex-col gap-2">
-                                <button
-                                    onClick={cancelExit}
-                                    className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded text-sm"
-                                >
-                                    Complete Booking
-                                </button>
-                                <button
-                                    onClick={confirmExit}
-                                    className="w-full py-2 text-gray-400 hover:text-gray-600 text-xs hover:underline"
-                                >
-                                    Leave Anyway
-                                </button>
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        onClick={cancelExit}
+                                        className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded text-sm"
+                                    >
+                                        Complete Booking
+                                    </button>
+                                    <button
+                                        onClick={confirmExit}
+                                        className="w-full py-2 text-gray-400 hover:text-gray-600 text-xs hover:underline"
+                                    >
+                                        Leave Anyway
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+
+            </div>
         </div>
     )
 }

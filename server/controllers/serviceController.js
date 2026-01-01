@@ -5,6 +5,7 @@ const Manager = require("../models/Manager");
 const Appointment = require("../models/Appointment");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+require("dotenv").config();
 
 // ================== Create Service ==================
 const createService = async (req, res, next) => {
@@ -537,7 +538,8 @@ const getPublicBusinessServices = async (req, res, next) => {
                     appointmentSettings: business.settings?.appointmentSettings || {},
                     currency: business.settings?.currency || "INR",
                     allowOnlineBooking:
-                        business.settings?.appointmentSettings?.allowOnlineBooking !== false
+                        business.settings?.appointmentSettings?.allowOnlineBooking !== false,
+                    onlineDiscount: process.env.ONLINE_DISCOUNT ? parseInt(process.env.ONLINE_DISCOUNT) : 0
                 },
                 services: normalizedServices
             }
