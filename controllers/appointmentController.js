@@ -1,8 +1,10 @@
-// appointmentController.js - Appointment/Booking management
 const Appointment = require("../models/Appointment");
 const Customer = require("../models/Customer");
 const Service = require("../models/Service");
 const Business = require("../models/Business");
+const crypto = require("crypto");
+const Razorpay = require("razorpay");
+const PDFDocument = require("pdfkit");
 const Manager = require("../models/Manager");
 const Transaction = require("../models/Transaction");
 const AdminNotification = require("../models/AdminNotification");
@@ -1610,11 +1612,14 @@ const getBusinessInfoForBooking = async (req, res, next) => {
         // Uses shared utility
 
 
+        const onlineDiscount = process.env.ONLINE_DISCOUNT ? parseInt(process.env.ONLINE_DISCOUNT) : 0;
+
         const responseData = {
             ...business,
             services: services || [],
             workingHours: business.settings?.workingHours,
-            appointmentSettings: business.settings?.appointmentSettings
+            appointmentSettings: business.settings?.appointmentSettings,
+            onlineDiscount
         };
 
         return res.json({
@@ -1992,6 +1997,59 @@ const executeBooking = async (bookingData, businessLink) => {
         currency: s.currency
     }));
 
+    // Verify Payment Signature logic
+    let verifiedPaymentStatus = bookingData.paymentStatus || 'pending';
+    if (verifiedPaymentStatus === 'paid' && bookingData.paymentDetails) {
+        try {
+            const { orderId, paymentId, signature } = bookingData.paymentDetails;
+            if (orderId && paymentId && signature) {
+                // 1. Verify Signature
+                const generated_signature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+                    .update(orderId + "|" + paymentId)
+                    .digest('hex');
+
+                console.log(`[PaymentDebug] Order: ${orderId}, Payment: ${paymentId}`);
+                console.log(`[PaymentDebug] Frontend Signature: ${signature}`);
+                console.log(`[PaymentDebug] Backend Generated:  ${generated_signature}`);
+
+                if (generated_signature !== signature) {
+                    console.error("⚠️ Payment Signature Verification FAILED for booking");
+                    verifiedPaymentStatus = 'pending';
+                } else {
+                    // 2. Fetch Payment Status from Razorpay (Double Check)
+                    const instance = new Razorpay({
+                        key_id: process.env.RAZORPAY_KEY_ID,
+                        key_secret: process.env.RAZORPAY_KEY_SECRET,
+                    });
+
+                    const payment = await instance.payments.fetch(paymentId);
+                    console.log(`[PaymentDebug] Razorpay API Status: ${payment.status}`);
+
+                    if (payment.status === 'captured' || payment.status === 'authorized') {
+                        verifiedPaymentStatus = 'paid';
+                    } else {
+                        console.error(`⚠️ Payment status mismatch. Razorpay status: ${payment.status}`);
+                        verifiedPaymentStatus = 'pending';
+                    }
+                }
+            } else {
+                verifiedPaymentStatus = 'pending';
+            }
+        } catch (err) {
+        }
+    }
+
+    // Use the paidAmount from bookingData if available (for online payments)
+    const paidAmount = bookingData.paidAmount ? Number(bookingData.paidAmount) : (verifiedPaymentStatus === 'paid' ? totalPrice : 0);
+    const discount = bookingData.discount ? Number(bookingData.discount) : 0;
+
+    // If discount was applied, the totalAmount stored should be the discounted price?
+    // Or we keep totalAmount as Original and Paid as Discounted?
+    // Usually Total = Service + Charges - Discount.
+    // So let's calculate Total based on that.
+
+    const finalTotalAmount = totalPrice - discount;
+
     const appointment = await Appointment.create({
         business: business._id,
         customer: customer._id,
@@ -2001,18 +2059,24 @@ const executeBooking = async (bookingData, businessLink) => {
         startTime: startTime,
         endTime: endTime,
         duration: totalDuration,
-        servicePrice: totalPrice,
-        totalAmount: totalPrice,
-        customerNotes: customerNotes || '',
-        specialRequests: specialRequests || '',
+        servicePrice: totalPrice, // Original Price
+        additionalCharges: 0,
+        discount: discount,       // Discount Amount
+        tax: 0,
+        totalAmount: finalTotalAmount, // Discounted Total
+        paidAmount: verifiedPaymentStatus === 'paid' ? paidAmount : 0, // Paid Amount
+        paymentStatus: verifiedPaymentStatus,
+        paymentMethod: bookingData.paymentMethod || 'cash',
         bookingSource: 'online',
-        paymentStatus: 'pending',
-        paymentMethod: paymentMethod || 'cash',
+        bookingType: 'regular',
+        customerNotes: bookingData.customerNotes,
+        internalNotes: JSON.stringify({ services: bookingData.services }),
+        paymentDetails: verifiedPaymentStatus === 'paid' ? bookingData.paymentDetails : undefined,
         status: 'pending',
         createdBy: customer._id,
         createdByModel: 'Customer',
         // Store services array in internalNotes as JSON string for retrieval
-        internalNotes: JSON.stringify({ services: servicesData })
+        // internalNotes: JSON.stringify({ services: servicesData }) // This line is now redundant as internalNotes is set above
     });
 
     const confirmationCode = appointment.bookingNumber || `CONF${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -2195,6 +2259,42 @@ const bookAppointmentPublic = async (req, res, next) => {
             });
         }
 
+        // Check for Online Payment (Skip OTP)
+        if (bookingData.paymentStatus === 'paid' && bookingData.paymentDetails) {
+            const { orderId, paymentId, signature } = bookingData.paymentDetails;
+            if (orderId && paymentId && signature) {
+                // Verify Signature
+                const generated_signature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+                    .update(orderId + "|" + paymentId)
+                    .digest('hex');
+
+                if (generated_signature === signature) {
+                    console.log(`[Booking] Online payment verified for ${businessLink}. Skipping OTP.`);
+
+                    const result = await executeBooking(bookingData, businessLink);
+
+                    if (result.success) {
+                        // Send notifications (using helper)
+                        const appointmentId = result.data.appointment._id || result.data.appointment.id;
+                        // Fire and forget notifications
+                        sendConfirmationNotifications(appointmentId, bookingData);
+
+                        return res.json({
+                            success: true,
+                            message: "Booking confirmed successfully!",
+                            requiresOTP: false,
+                            data: result.data
+                        });
+                    } else {
+                        return res.status(result.status || 400).json(result);
+                    }
+                } else {
+                    console.error('[Booking] Payment signature verification failed');
+                    return res.status(400).json({ success: false, message: "Payment verification failed" });
+                }
+            }
+        }
+
         const phone = customerInfo.phone;
         let response;
         try {
@@ -2266,222 +2366,13 @@ const verifyBookingOTP = async (req, res, next) => {
         await Otp.findByIdAndDelete(otpRecord._id);
 
         // Send confirmation notifications (Async)
-        try {
-            let appointment = result.data.appointment;
-            if (appointment) {
-                // Repopulate appointment to get full service data and internalNotes
-                const appointmentId = appointment._id || appointment.id;
-                appointment = await Appointment.findById(appointmentId)
-                    .populate('business', 'name branch address city state country phone email website')
-                    .populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice')
-                    .populate('staff', 'name role specialization phone email')
-                    .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
-                    .lean();
-
-                if (!appointment) {
-                    console.error('[Email] Appointment not found after repopulation');
-                    return res.status(201).json(result);
-                }
-
-                // Get business ID (handle both ObjectId and populated object)
-                const businessId = appointment.business?._id || appointment.business;
-
-                // Repopulate business with admin and managers for email
-                const business = await Business.findById(businessId)
-                    .populate('admin', 'email name')
-                    .populate('managers', 'email name isActive');
-
-                if (!business) {
-                    console.error('[Email] Business not found for email notifications');
-                } else {
-                    // Update appointment business reference
-                    appointment.business = business;
-                }
-
-                // Prepare email data with conditional fields
-                const staffInfo = appointment.staff?.name
-                    ? `<p><strong>Assigned Staff:</strong> ${appointment.staff.name}</p>`
-                    : '';
-                const customerNotesInfo = bookingData.customerNotes
-                    ? `<p><strong>Customer Notes:</strong> ${bookingData.customerNotes}</p>`
-                    : '';
-
-                // Get business name (fallback if business not populated)
-                const businessName = business?.name || appointment.business?.name || 'Business';
-
-                // Extract and format services (handle multiple services)
-                let servicesText = '';
-                let servicesArray = [];
-
-                try {
-                    // Try to parse services from internalNotes (for multiple services)
-                    if (appointment.internalNotes) {
-                        const parsedNotes = JSON.parse(appointment.internalNotes);
-                        if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
-                            servicesArray = parsedNotes.services;
-                        }
-                    }
-                } catch (parseError) {
-                    console.error('[Email] Error parsing services from internalNotes:', parseError);
-                }
-
-                // If no services array found, use single service
-                if (servicesArray.length === 0) {
-                    if (appointment.service) {
-                        // Handle populated service object
-                        const serviceName = appointment.service.name || appointment.service.serviceName || 'Service';
-                        const servicePrice = appointment.service.price || appointment.servicePrice || 0;
-                        const serviceDuration = appointment.service.duration || appointment.duration || 0;
-                        servicesArray = [{
-                            serviceName: serviceName,
-                            price: servicePrice,
-                            duration: serviceDuration,
-                            optionLabel: appointment.service.optionLabel || ''
-                        }];
-                    } else if (bookingData.services && Array.isArray(bookingData.services)) {
-                        // Fallback to bookingData services
-                        servicesArray = bookingData.services.map(s => ({
-                            serviceName: s.serviceName || s.name || 'Service',
-                            price: s.price || 0,
-                            duration: s.duration || 0,
-                            optionLabel: s.optionLabel || s.pricingOptionLabel || ''
-                        }));
-                    } else {
-                        servicesArray = [{
-                            serviceName: appointment.serviceName || 'Service',
-                            price: appointment.servicePrice || 0,
-                            duration: appointment.duration || 0
-                        }];
-                    }
-                }
-
-                // Format services text for email
-                if (servicesArray.length === 1) {
-                    const service = servicesArray[0];
-                    servicesText = service.optionLabel
-                        ? `${service.serviceName} (${service.optionLabel})`
-                        : service.serviceName;
-                } else {
-                    // Multiple services - format with details
-                    servicesText = servicesArray.map((service, index) => {
-                        const name = service.serviceName || service.name || `Service ${index + 1}`;
-                        const option = service.optionLabel || service.pricingOptionLabel || '';
-                        const duration = service.duration || 0;
-                        const price = service.price || 0;
-
-                        let serviceText = `${index + 1}. ${name}`;
-                        if (option) serviceText += ` (${option})`;
-                        if (duration) serviceText += ` - ${duration} min`;
-                        if (price) serviceText += ` - ${price.toFixed(2)}`;
-
-                        return serviceText;
-                    }).join('<br>');
-                }
-
-                const notificationData = {
-                    customerName: appointment.customer?.firstName || bookingData.customerInfo?.name || 'Customer',
-                    businessName: businessName,
-                    appointmentDate: new Date(appointment.appointmentDate).toLocaleDateString('en-IN'),
-                    startTime: appointment.startTime,
-                    endTime: appointment.endTime,
-                    services: servicesText,
-                    confirmationCode: appointment.bookingNumber,
-                    customerEmail: appointment.customer?.email || bookingData.customerInfo?.email || '',
-                    customerPhone: appointment.customer?.phone || bookingData.customerInfo?.phone || '',
-                    staffInfo: staffInfo,
-                    customerNotesInfo: customerNotesInfo
-                };
-
-                const phone = appointment.customer?.phone || bookingData.customerInfo?.phone;
-
-                // Send WhatsApp
-                if (phone) {
-                    console.log(`[Notification] Sending WhatsApp to ${phone}...`);
-                    sendTemplateWhatsApp({
-                        to: phone,
-                        template: 'appointment_confirmation',
-                        data: notificationData
-                    })
-                        .then(res => console.log(`[Notification] WhatsApp sent details:`, JSON.stringify(res)))
-                        .catch(err => console.error('[Notification] WhatsApp confirmation failed:', err.message));
-                }
-
-                // Send SMS
-                if (phone) {
-                    console.log(`[Notification] Sending SMS to ${phone}...`);
-                    sendTemplateSMS({
-                        to: phone,
-                        template: 'appointment_confirmation',
-                        data: notificationData
-                    })
-                        .then(res => console.log(`[Notification] SMS sent details:`, JSON.stringify(res)))
-                        .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
-                }
-
-                // Track sent emails to prevent duplicates
-                const sentEmails = new Set();
-
-                // Send Email to Customer
-                if (notificationData.customerEmail && !sentEmails.has(notificationData.customerEmail.toLowerCase())) {
-                    console.log(`[Email] Sending confirmation email to customer: ${notificationData.customerEmail}...`);
-                    sendTemplateMail({
-                        to: notificationData.customerEmail,
-                        template: 'appointment_confirmation',
-                        data: notificationData
-                    })
-                        .then(res => console.log(`[Email] Customer email sent:`, res.messageId))
-                        .catch(err => console.error('[Email] Customer email failed:', err.message));
-                    sentEmails.add(notificationData.customerEmail.toLowerCase());
-                }
-
-                // Send Email to Admin
-                const adminEmail = business?.admin?.email;
-                if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
-                    console.log(`[Email] Sending notification email to admin: ${adminEmail}...`);
-                    sendTemplateMail({
-                        to: adminEmail,
-                        template: 'new_booking_admin',
-                        data: notificationData
-                    })
-                        .then(res => console.log(`[Email] Admin email sent:`, res.messageId))
-                        .catch(err => console.error('[Email] Admin email failed:', err.message));
-                    sentEmails.add(adminEmail.toLowerCase());
-                }
-
-                // Send Email to Managers
-                const managers = business?.managers || [];
-                const managerEmails = managers
-                    .filter(m => m && m.isActive && m.email)
-                    .map(m => m.email)
-                    .filter(email => email && !sentEmails.has(email.toLowerCase()));
-
-                if (managerEmails.length > 0) {
-                    console.log(`[Email] Sending notification emails to ${managerEmails.length} manager(s)...`);
-                    const emailPromises = managerEmails.map(email => {
-                        sentEmails.add(email.toLowerCase());
-                        return sendTemplateMail({
-                            to: email,
-                            template: 'new_booking_manager',
-                            data: notificationData
-                        })
-                            .then(res => {
-                                console.log(`[Email] Manager email sent to ${email}:`, res.messageId);
-                                return res;
-                            })
-                            .catch(err => {
-                                console.error(`[Email] Manager email failed for ${email}:`, err.message);
-                                return null;
-                            });
-                    });
-                    await Promise.all(emailPromises);
-                }
-            }
-        } catch (notifyErr) {
-            console.error('Notification error:', notifyErr);
-        }
+        // Use helper function to prevent duplication
+        const appointmentId = result.data.appointment._id || result.data.appointment.id;
+        sendConfirmationNotifications(appointmentId, bookingData);
 
         // Ensure services array is included in the response
         if (result.data && result.data.appointment) {
+            const appointment = result.data.appointment;
             // Parse services from internalNotes if not already included
             if (!result.data.appointment.services || result.data.appointment.services.length === 0) {
                 try {
@@ -3018,6 +2909,356 @@ const updateAppointmentStatus = async (req, res, next) => {
     }
 };
 
+// Helper: Download Invoice PDF
+const downloadInvoice = async (req, res) => {
+    try {
+        const appointmentId = req.params.id;
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('business')
+            .populate('customer')
+            .populate('service')
+            .populate('staff');
+
+        if (!appointment) {
+            return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        // Extract Razorpay ID safely
+        let razorpayPaymentId = '';
+        if (appointment.paymentDetails) {
+            // If it's a Mongoose Map
+            if (typeof appointment.paymentDetails.get === 'function') {
+                razorpayPaymentId = appointment.paymentDetails.get('razorpay_payment_id');
+            } else {
+                razorpayPaymentId = appointment.paymentDetails.razorpay_payment_id;
+            }
+        }
+
+        // Create a document
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=invoice-${appointment.bookingNumber}.pdf`);
+
+        doc.pipe(res);
+
+        // --- PDF CONTENT GENERATION ---
+
+        // 1. Header
+        doc.fontSize(20).text('INVOICE', { align: 'right' });
+        doc.fontSize(10).text(`Booking Ref: ${appointment.bookingNumber}`, { align: 'right' });
+        if (appointment.confirmationCode) {
+            doc.text(`Confirmation Code: ${appointment.confirmationCode}`, { align: 'right' });
+        }
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, { align: 'right' });
+
+        doc.moveDown();
+
+        // Business Details (Top Left)
+        doc.fontSize(14).font('Helvetica-Bold').text(appointment.business.name);
+        doc.fontSize(10).font('Helvetica').text(appointment.business.address || '');
+        doc.text(`Phone: ${appointment.business.phone || ''}`);
+        doc.text(`Email: ${appointment.business.email || ''}`);
+
+        doc.moveDown();
+        doc.text('---------------------------------------------------------', { align: 'center' });
+        doc.moveDown();
+
+        // Customer Details
+        doc.fontSize(12).font('Helvetica-Bold').text('Bill To:');
+        doc.fontSize(10).font('Helvetica').text(`${appointment.customer.firstName} ${appointment.customer.lastName}`);
+        doc.text(appointment.customer.phone || '');
+        doc.text(appointment.customer.email || '');
+
+        doc.moveDown();
+
+        // Service Table Header
+        const tableTop = doc.y;
+        const col1 = 50;
+        const col2 = 250;
+        const col3 = 350;
+        const col4 = 450;
+
+        doc.font('Helvetica-Bold');
+        doc.text('Service', col1, tableTop);
+        doc.text('Date', col2, tableTop);
+        doc.text('Duration', col3, tableTop);
+        doc.text('Amount', col4, tableTop);
+
+        doc.moveTo(col1, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+
+        // Service Rows
+        let yPosition = tableTop + 25;
+        doc.font('Helvetica');
+
+        // Parse internal services if available, else use single service
+        let services = [];
+        try {
+            if (appointment.internalNotes) {
+                const notes = JSON.parse(appointment.internalNotes);
+                if (notes.services) services = notes.services;
+            }
+        } catch (e) { }
+
+        if (services.length === 0 && appointment.service) {
+            services.push({
+                serviceName: appointment.service.name,
+                price: appointment.servicePrice || 0,
+                duration: appointment.duration || 0
+            });
+        }
+
+        services.forEach(svc => {
+            doc.text(svc.serviceName || svc.name || 'Service', col1, yPosition);
+            doc.text(new Date(appointment.appointmentDate).toLocaleDateString(), col2, yPosition);
+            doc.text(`${svc.duration || 0} min`, col3, yPosition);
+            doc.text(`Rs. ${svc.price}`, col4, yPosition);
+            yPosition += 20;
+        });
+
+        doc.moveTo(col1, yPosition).lineTo(550, yPosition).stroke();
+        yPosition += 10;
+
+        // Totals
+        const total = appointment.totalAmount || 0;
+        const paid = appointment.paidAmount || 0;
+        const due = total - paid;
+
+        doc.font('Helvetica-Bold');
+        doc.text(`Total Amount: Rs. ${total}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+        yPosition += 15;
+
+        if (appointment.paymentStatus === 'paid') {
+            doc.fillColor('green').text(`PAID: Rs. ${paid}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+            doc.fillColor('black');
+
+            if (razorpayPaymentId) {
+                yPosition += 15;
+                doc.fontSize(9).text(`Razorpay ID: ${razorpayPaymentId}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+                doc.fontSize(10); // Reset
+            }
+        } else {
+            doc.text(`Paid Amount: Rs. ${paid}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+            yPosition += 15;
+            doc.fillColor('red').text(`Balance Due: Rs. ${due}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+            doc.fillColor('black');
+        }
+
+        // Footer
+        doc.moveDown(4);
+        doc.fontSize(10).text('Thank you for your business!', { align: 'center' });
+        doc.fontSize(8).text('This is a computer generated invoice.', { align: 'center' });
+
+        doc.end();
+
+    } catch (error) {
+        console.error("Invoice generation error:", error);
+        res.status(500).json({ success: false, message: "Could not generate invoice" });
+    }
+};
+
+// Helper: Send Confirmation Notifications (Email, SMS, WhatsApp)
+const sendConfirmationNotifications = async (appointmentId, bookingData) => {
+    try {
+        let appointment = await Appointment.findById(appointmentId)
+            .populate('business', 'name branch address city state country phone email website')
+            .populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+            .populate('staff', 'name role specialization phone email')
+            .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
+            .lean();
+
+        if (!appointment) {
+            console.error('[Email] Appointment not found after repopulation');
+            return;
+        }
+
+        // Get business ID (handle both ObjectId and populated object)
+        const businessId = appointment.business?._id || appointment.business;
+
+        // Repopulate business with admin and managers for email
+        const business = await Business.findById(businessId)
+            .populate('admin', 'email name')
+            .populate('managers', 'email name isActive');
+
+        if (!business) {
+            console.error('[Email] Business not found for email notifications');
+        } else {
+            // Update appointment business reference
+            appointment.business = business;
+        }
+
+        // Prepare email data with conditional fields
+        const staffInfo = appointment.staff?.name
+            ? `<p><strong>Assigned Staff:</strong> ${appointment.staff.name}</p>`
+            : '';
+        const customerNotesInfo = bookingData.customerNotes
+            ? `<p><strong>Customer Notes:</strong> ${bookingData.customerNotes}</p>`
+            : '';
+
+        // Get business name (fallback if business not populated)
+        const businessName = business?.name || appointment.business?.name || 'Business';
+
+        // Extract and format services (handle multiple services)
+        let servicesText = '';
+        let servicesArray = [];
+
+        try {
+            // Try to parse services from internalNotes (for multiple services)
+            if (appointment.internalNotes) {
+                const parsedNotes = JSON.parse(appointment.internalNotes);
+                if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                    servicesArray = parsedNotes.services;
+                }
+            }
+        } catch (parseError) {
+            console.error('[Email] Error parsing services from internalNotes:', parseError);
+        }
+
+        // If no services array found, use single service
+        if (servicesArray.length === 0) {
+            if (appointment.service) {
+                // Handle populated service object
+                const serviceName = appointment.service.name || appointment.service.serviceName || 'Service';
+                const servicePrice = appointment.service.price || appointment.servicePrice || 0;
+                const serviceDuration = appointment.service.duration || appointment.duration || 0;
+                servicesArray = [{
+                    serviceName: serviceName,
+                    price: servicePrice,
+                    duration: serviceDuration,
+                    optionLabel: appointment.service.optionLabel || ''
+                }];
+            } else if (bookingData.services && Array.isArray(bookingData.services)) {
+                // Fallback to bookingData services
+                servicesArray = bookingData.services.map(s => ({
+                    serviceName: s.serviceName || s.name || 'Service',
+                    price: s.price || 0,
+                    duration: s.duration || 0,
+                    optionLabel: s.optionLabel || s.pricingOptionLabel || ''
+                }));
+            } else {
+                servicesArray = [{
+                    serviceName: appointment.serviceName || 'Service',
+                    price: appointment.servicePrice || 0,
+                    duration: appointment.duration || 0
+                }];
+            }
+        }
+
+        // Format services text for email
+        if (servicesArray.length === 1) {
+            const service = servicesArray[0];
+            servicesText = service.optionLabel
+                ? `${service.serviceName} (${service.optionLabel})`
+                : service.serviceName;
+        } else {
+            // Multiple services - format with details
+            servicesText = servicesArray.map((service, index) => {
+                const name = service.serviceName || service.name || `Service ${index + 1}`;
+                const option = service.optionLabel || service.pricingOptionLabel || '';
+                const duration = service.duration || 0;
+                const price = service.price || 0;
+
+                let serviceText = `${index + 1}. ${name}`;
+                if (option) serviceText += ` (${option})`;
+                if (duration) serviceText += ` - ${duration} min`;
+                if (price) serviceText += ` - ${price.toFixed(2)}`;
+
+                return serviceText;
+            }).join('<br>');
+        }
+
+        const notificationData = {
+            customerName: appointment.customer?.firstName || bookingData.customerInfo?.name || 'Customer',
+            businessName: businessName,
+            appointmentDate: new Date(appointment.appointmentDate).toLocaleDateString('en-IN'),
+            startTime: appointment.startTime,
+            endTime: appointment.endTime,
+            services: servicesText,
+            confirmationCode: appointment.bookingNumber,
+            customerEmail: appointment.customer?.email || bookingData.customerInfo?.email || '',
+            customerPhone: appointment.customer?.phone || bookingData.customerInfo?.phone || '',
+            staffInfo: staffInfo,
+            customerNotesInfo: customerNotesInfo
+        };
+
+        const phone = appointment.customer?.phone || bookingData.customerInfo?.phone;
+
+        // Send WhatsApp
+        if (phone) {
+            console.log(`[Notification] Sending WhatsApp to ${phone}...`);
+            sendTemplateWhatsApp({
+                to: phone,
+                template: 'appointment_confirmation',
+                data: notificationData
+            })
+                .then(res => console.log(`[Notification] WhatsApp sent details:`, JSON.stringify(res)))
+                .catch(err => console.error('[Notification] WhatsApp confirmation failed:', err.message));
+        }
+
+        // Send SMS
+        if (phone) {
+            console.log(`[Notification] Sending SMS to ${phone}...`);
+            sendTemplateSMS({
+                to: phone,
+                template: 'appointment_confirmation',
+                data: notificationData
+            })
+                .then(res => console.log(`[Notification] SMS sent details:`, JSON.stringify(res)))
+                .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
+        }
+
+        // Track sent emails to prevent duplicates
+        const sentEmails = new Set();
+
+        // Send Email to Customer
+        if (notificationData.customerEmail && !sentEmails.has(notificationData.customerEmail.toLowerCase())) {
+            console.log(`[Email] Sending confirmation email to customer: ${notificationData.customerEmail}...`);
+            sendTemplateMail({
+                to: notificationData.customerEmail,
+                template: 'appointment_confirmation',
+                data: notificationData
+            })
+                .then(res => console.log(`[Email] Customer email sent:`, res.messageId))
+                .catch(err => console.error('[Email] Customer email failed:', err.message));
+            sentEmails.add(notificationData.customerEmail.toLowerCase());
+        }
+
+        // Send Email to Admin
+        const adminEmail = business?.admin?.email;
+        if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
+            console.log(`[Email] Sending confirmation email to admin: ${adminEmail}...`);
+            sendTemplateMail({
+                to: adminEmail,
+                template: 'appointment_notification', // You might want a different template for admin
+                data: { ...notificationData, role: 'Admin' }
+            })
+                .then(res => console.log(`[Email] Admin email sent:`, res.messageId))
+                .catch(err => console.error('[Email] Admin email failed:', err.message));
+            sentEmails.add(adminEmail.toLowerCase());
+        }
+
+        // Send Email to Managers
+        const managers = business?.managers || [];
+        for (const manager of managers) {
+            if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
+                console.log(`[Email] Sending confirmation email to manager: ${manager.email}...`);
+                sendTemplateMail({
+                    to: manager.email,
+                    template: 'appointment_notification',
+                    data: { ...notificationData, role: 'Manager' }
+                })
+                    .then(res => console.log(`[Email] Manager email sent:`, res.messageId))
+                    .catch(err => console.error('[Email] Manager email failed:', err.message));
+                sentEmails.add(manager.email.toLowerCase());
+            }
+        }
+
+    } catch (error) {
+        console.error("Error sending confirmation notifications:", error);
+    }
+};
+
 module.exports = {
     // Public routes
     getBusinessInfoForBooking,
@@ -3040,5 +3281,6 @@ module.exports = {
     markNoShow,
     addReview,
     getAppointmentStats,
-    updateAppointmentStatus
+    updateAppointmentStatus,
+    downloadInvoice
 };

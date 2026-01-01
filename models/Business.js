@@ -63,9 +63,9 @@ const businessSchema = new mongoose.Schema(
         // Payment Methods
         paymentMethods: {
             cash: { type: Boolean, default: true },
-            card: { type: Boolean, default: false },
-            upi: { type: Boolean, default: false },
-            netBanking: { type: Boolean, default: false },
+            card: { type: Boolean, default: true },
+            upi: { type: Boolean, default: true },
+            netBanking: { type: Boolean, default: true },
             wallet: { type: Boolean, default: false }
         },
 
