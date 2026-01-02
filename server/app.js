@@ -7,6 +7,8 @@ const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
+const seoRedirectMiddleware = require("./middleware/seoRedirectMiddleware");
+
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
@@ -119,6 +121,12 @@ app.use(express.urlencoded({
 }));
 
 app.use(cookieParser());
+
+// ================== SEO Redirects ==================
+// IMPORTANT: This must come BEFORE static files and routes
+// to ensure legacy URLs are caught and redirected properly
+app.use(seoRedirectMiddleware);
+
 
 // ================== Static Files (Uploads) ==================
 // Serve SEO files (sitemap, robots)

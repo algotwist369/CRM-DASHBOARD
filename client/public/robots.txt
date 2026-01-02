@@ -1,5 +1,38 @@
+# robots.txt for SpaAdvisor CRM
+# Updated: 2026-01-02
+# Purpose: Guide search engines and prevent indexing of legacy URL patterns
+
 User-agent: *
+
+# Allow all current pages
 Allow: /
+Allow: /search$
+Allow: /business/
+Allow: /careers/
+
+# Disallow old URL patterns (these redirect via 301)
+Disallow: /search/result
+Disallow: /search/search/
+Disallow: /spa/
+Disallow: /job-details
+Disallow: /apply
+Disallow: /facebook
+Disallow: /instagram
+Disallow: /twitter
+Disallow: /free-listing
+
+# Disallow admin and internal areas
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+
+# Disallow search with legacy parameters
+Disallow: /*?area=detectedCity
+Disallow: /*?legacyId=
+
+# Crawl delay to be respectful
+Crawl-delay: 1
 
 # Sitemaps
-Sitemap: https://spaadvisor.in/api/sitemap.xml
+Sitemap: https://spaadvisor.in/sitemap.xml
+
