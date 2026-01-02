@@ -55,15 +55,15 @@ const generateReview = (businessId) => {
 
     const reviewText = template.replace("{adj}", adj.toLowerCase()).replace("{service}", service);
 
-    // Random date within last 6 months
+    // Random date within last 1 years
     const date = new Date();
-    date.setDate(date.getDate() - Math.floor(Math.random() * 180));
+    date.setDate(date.getDate() - Math.floor(Math.random() * 7200)); // 7200 hours = 300 days
 
     return {
         business: businessId,
         // customer is not required when guestName is provided (schema validation)
         guestName: fullName,
-        guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(Math.random() * 100)}@gmail.com`,
+        guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(Math.random() * 600)}@gmail.com`,
         rating: rating,
         review: reviewText,
         title: `${adj} Experience`,
@@ -184,7 +184,7 @@ const seedReviews = async (businessId = null, zeroReviewsMode = false, businessT
             });
             console.log(`🧹 Cleaned up ${deleteResult.deletedCount} previous SEO reviews for ${business.name}`);
 
-            const reviewCount = Math.floor(Math.random() * (150 - 100 + 1)) + 100; // Random between 100 and 150
+            const reviewCount = Math.floor(Math.random() * (950 - 700 + 1)) + 700; // Random between 700 and 950
             console.log(`\n📝 Generating ${reviewCount} Indian reviews for ${business.name}...`);
 
             const reviews = [];
