@@ -57,7 +57,19 @@ const createAndSendOTP = async ({ mode, to, template }) => {
     const message = template ? `${template} ${otp}` : `Your verification OTP is ${otp}. It expires in ${OTP_TTL_MIN} minutes.`;
 
     if (mode === 'sms') {
-        await sendSMS({ to, message }); // may throw
+        try {
+            await sendSMS({ to, message });
+        } catch (error) {
+            // If Twilio fails (auth error, etc), log for development
+            if (error.message.includes('Authenticate') || error.message.includes('not fully configured')) {
+                console.log(`[OTP] ⚠️  Twilio not configured. OTP would be sent to ${to}:`);
+                console.log(`[OTP] 📱 OTP CODE: ${otp}`);
+                console.log(`[OTP] ⏰ Expires: ${new Date(expiresAt).toLocaleString()}`);
+                // Don't throw - allow OTP to be used
+            } else {
+                throw error; // Re-throw unexpected errors
+            }
+        }
     } else if (mode === 'whatsapp') {
         try {
             console.log(`[OTP] Attempting WhatsApp delivery to ${to} using template HX9bd6...`);
@@ -74,9 +86,22 @@ const createAndSendOTP = async ({ mode, to, template }) => {
             console.log(`[OTP] WhatsApp delivery signaled success: ${result.messageId}`);
         } catch (error) {
             console.warn(`[OTP] WhatsApp delivery failed: ${error.message}. Falling back to SMS...`);
-            // Senior Fallback: If WhatsApp fails (invalid number, session closed, or config error), send traditional SMS.
-            await sendSMS({ to, message });
-            console.log(`[OTP] SMS Fallback delivered successfully.`);
+
+            // Try SMS fallback
+            try {
+                await sendSMS({ to, message });
+                console.log(`[OTP] SMS Fallback delivered successfully.`);
+            } catch (smsError) {
+                // If SMS also fails due to auth, log OTP for development
+                if (smsError.message.includes('Authenticate') || smsError.message.includes('not fully configured')) {
+                    console.log(`[OTP] ⚠️  Twilio not configured. OTP would be sent to ${to}:`);
+                    console.log(`[OTP] 📱 OTP CODE: ${otp}`);
+                    console.log(`[OTP] ⏰ Expires: ${new Date(expiresAt).toLocaleString()}`);
+                    // Don't throw - allow OTP to be used
+                } else {
+                    throw smsError; // Re-throw unexpected errors
+                }
+            }
         }
     } else if (mode === 'email') {
         await sendMail({ to, subject: 'Your OTP', text: message });
