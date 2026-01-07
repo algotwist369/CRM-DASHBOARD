@@ -6,6 +6,7 @@ const {
     Special_Offer_Inquiry_Template,
     Membership_Inquiry_Template
 } = require('../whatsappTemplate/Inqury');
+require('dotenv').config();
 
 const sendInquiryWhatsApp = async (options) => {
     const { customerName, phone, businessName, inquiryType, bookingUrl } = options;

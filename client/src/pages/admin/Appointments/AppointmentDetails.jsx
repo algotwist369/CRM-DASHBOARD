@@ -139,12 +139,36 @@ const AppointmentDetails = () => {
   const canCancel = ['pending', 'confirmed'].includes(appointment.status);
   const canMarkNoShow = ['pending', 'confirmed'].includes(appointment.status);
 
+  const formatDate = (dateString, includeTime = false) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (includeTime) {
+      const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return (
+        <div className="flex flex-col">
+          <span>{dateStr}</span>
+          <span className="text-xs text-gray-500">{timeStr}</span>
+        </div>
+      );
+    }
+    return dateStr;
+  };
+
+  const formatTime12Hour = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <BackButton />
+          <BackButton />
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             Appointment Details
             <span className={`px-3 py-1 text-sm rounded-full ${statusColors[appointment.status]}`}>
@@ -232,7 +256,7 @@ const AppointmentDetails = () => {
           <DetailItem label="Service Name" value={appointment.service?.name} />
           <DetailItem label="Category" value={appointment.service?.category} className="capitalize" />
           <div className="flex gap-4">
-            <DetailItem label="Duration" value={`${appointment.service?.duration || 0} mins`} />
+            <DetailItem label="Duration" value={`${appointment.duration || appointment.service?.duration || 0} mins`} />
             <DetailItem label="Price" value={`₹${(appointment.servicePrice || 0).toLocaleString()}`} />
           </div>
         </Section>
@@ -240,12 +264,12 @@ const AppointmentDetails = () => {
         {/* Appointment Details */}
         <Section title="Appointment Details" icon={HiOutlineCalendar}>
           <div className="flex gap-4">
-            <DetailItem label="Date" value={appointment.appointmentDate ? new Date(appointment.appointmentDate).toLocaleDateString() : 'N/A'} />
+            <DetailItem label="Date" value={formatDate(appointment.appointmentDate)} />
             <DetailItem label="Day" value={appointment.appointmentDay} />
           </div>
           <div className="flex gap-4">
-            <DetailItem label="Time" value={`${appointment.startTime} - ${appointment.endTime}`} />
-            <DetailItem label="Duration" value={`${appointment.duration} mins`} />
+            <DetailItem label="Time" value={`${formatTime12Hour(appointment.startTime)} - ${formatTime12Hour(appointment.endTime)}`} />
+            <DetailItem label="Duration" value={`${appointment.duration || appointment.service?.duration || 0} mins`} />
           </div>
           <div className="flex gap-4">
             <DetailItem label="Type" value={appointment.bookingType} className="capitalize" />
@@ -294,7 +318,7 @@ const AppointmentDetails = () => {
             <DetailItem label="Reminder Sent" value={appointment.reminderSent ? 'Yes' : 'No'} />
             <DetailItem label="Confirmation Sent" value={appointment.confirmationSent ? 'Yes' : 'No'} />
             <DetailItem label="Loyalty Earned" value={appointment.loyaltyPointsEarned} />
-            <DetailItem label="Created At" value={new Date(appointment.createdAt).toLocaleString()} />
+            <DetailItem label="Created At" value={formatDate(appointment.createdAt, true)} />
           </div>
           {appointment.status === 'cancelled' && (
             <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">

@@ -46,8 +46,9 @@ const generateReview = (businessId) => {
     const lastName = getRandomElement(LAST_NAMES);
     const fullName = `${firstName} ${lastName}`;
 
-    // 80% chance of 5 stars, 20% chance of 4 stars
-    const rating = Math.random() < 0.8 ? 5 : 4;
+    // 75% 5 stars, 17% 4 stars, 8% 3 stars
+    const rand = Math.random();
+    const rating = rand < 0.75 ? 5 : (rand < 0.92 ? 4 : 3);
 
     const adj = getRandomElement(POSITIVE_ADJECTIVES);
     const service = getRandomElement(SERVICES);
@@ -63,7 +64,7 @@ const generateReview = (businessId) => {
         business: businessId,
         // customer is not required when guestName is provided (schema validation)
         guestName: fullName,
-        guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(Math.random() * 600)}@gmail.com`,
+        guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(Math.random() * 800)}@gmail.com`,
         rating: rating,
         review: reviewText,
         title: `${adj} Experience`,
@@ -184,7 +185,7 @@ const seedReviews = async (businessId = null, zeroReviewsMode = false, businessT
             });
             console.log(`🧹 Cleaned up ${deleteResult.deletedCount} previous SEO reviews for ${business.name}`);
 
-            const reviewCount = Math.floor(Math.random() * (950 - 700 + 1)) + 700; // Random between 700 and 950
+            const reviewCount = Math.floor(Math.random() * (650 - 300 + 1)) + 300; // Random between 300 and 650
             console.log(`\n📝 Generating ${reviewCount} Indian reviews for ${business.name}...`);
 
             const reviews = [];
@@ -233,7 +234,7 @@ let businessType = null;
 // Parse arguments
 if (args.length > 0) {
     const firstArg = args[0].toLowerCase();
-    
+
     // Check for zero-reviews flag
     if (firstArg === '--zero-reviews' || firstArg === '--zero' || firstArg === 'zero-reviews' || firstArg === 'zero') {
         zeroReviewsMode = true;
@@ -269,7 +270,7 @@ seedReviews(businessId, zeroReviewsMode, businessType);
 
 
 
- 
+
 // New feature: Zero reviews mode
 // The script now supports adding reviews to businesses with 0 reviews.
 // Usage options:
@@ -282,8 +283,8 @@ seedReviews(businessId, zeroReviewsMode, businessType);
 // or
 //    node scripts/add_seo_reviews.js --zero
 // Businesses with 0 reviews of a specific type:
-//    node scripts/add_seo_reviews.js --zero-reviews spa   
-//    node scripts/add_seo_reviews.js --zero-reviews salon  
+//    node scripts/add_seo_reviews.js --zero-reviews spa
+//    node scripts/add_seo_reviews.js --zero-reviews salon
 //    node scripts/add_seo_reviews.js --zero-reviews restaurant
 // How it works:
 // The script first checks if a business ID is provided. If not, it adds reviews to all spa businesses.

@@ -157,11 +157,10 @@ const AppointmentDetails = () => {
   const formatDateTime = useCallback((dateString, timeString) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)
-    const formattedDate = date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    const formattedDate = date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
     })
     if (timeString) {
       const [hours, minutes] = timeString.split(':')
@@ -176,13 +175,12 @@ const AppointmentDetails = () => {
   const formatDate = useCallback((dateString) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    return (
+      <div className="flex flex-col">
+        <span>{date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+        <span className="text-xs text-gray-500">{date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+      </div>
+    )
   }, [])
 
   const formatCurrency = useCallback((amount) => {
@@ -426,17 +424,37 @@ const AppointmentDetails = () => {
                   <div className="text-center p-2 bg-gray-50">
                     <FaClock className="text-green-600 text-xl mx-auto mb-2" />
                     <p className="text-xs text-gray-500">Duration</p>
-                    <p className="font-semibold text-green-600">{appointment.service.duration} min</p>
+                    <p className="font-semibold text-green-600">{appointment.duration || appointment.service.duration} min</p>
                   </div>
                   <div className="text-center p-2 bg-gray-50">
                     <FaClock className="text-blue-600 text-xl mx-auto mb-2" />
                     <p className="text-xs text-gray-500">Start Time</p>
-                    <p className="font-semibold text-blue-600">{appointment.startTime}</p>
+                    <p className="font-semibold text-blue-600">
+                      {(() => {
+                        if (!appointment.startTime) return 'N/A';
+                        const [hours, minutes] = appointment.startTime.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const hour12 = hour % 12 || 12;
+                        return `${hour12}:${minutes} ${ampm}`;
+                      })()}
+                    </p>
                   </div>
                   <div className="text-center p-2 bg-gray-50">
                     <FaClock className="text-purple-600 text-xl mx-auto mb-2" />
                     <p className="text-xs text-gray-500">End Time</p>
-                    <p className="font-semibold text-purple-600">{appointment.endTime}</p>
+                    <p className="font-semibold text-purple-600">
+                      {(() => {
+                        if (!appointment.startTime || (!appointment.duration && !appointment.service?.duration)) return 'N/A';
+                        const [hours, minutes] = appointment.startTime.split(':');
+                        const totalMinutes = (parseInt(hours) * 60) + parseInt(minutes) + (appointment.duration || appointment.service.duration);
+                        const endHour = Math.floor(totalMinutes / 60) % 24;
+                        const endMinute = totalMinutes % 60;
+                        const ampm = endHour >= 12 ? 'PM' : 'AM';
+                        const displayHour = endHour % 12 || 12;
+                        return `${displayHour}:${endMinute.toString().padStart(2, '0')} ${ampm}`;
+                      })()}
+                    </p>
                   </div>
                 </div>
               </div>
