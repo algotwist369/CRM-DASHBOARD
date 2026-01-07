@@ -4,7 +4,7 @@
 
 const crypto = require('crypto');
 const { sendMail } = require('./sendMail');
-const { sendSMS } = require('./sendSMS');
+const { sendSMS, sendWhatsApp } = require('./sendSMS');
 
 const OTP_LENGTH = parseInt(process.env.OTP_LENGTH, 10) || 4;
 const OTP_TTL_MIN = parseInt(process.env.OTP_TTL_MIN, 10) || 5; // minutes
@@ -58,6 +58,26 @@ const createAndSendOTP = async ({ mode, to, template }) => {
 
     if (mode === 'sms') {
         await sendSMS({ to, message }); // may throw
+    } else if (mode === 'whatsapp') {
+        try {
+            console.log(`[OTP] Attempting WhatsApp delivery to ${to} using template HX9bd6...`);
+            const result = await sendWhatsApp({
+                to,
+                contentSid: 'HX9bd6542a11a4b04ab43f99275a8d41ea',
+                contentVariables: { 1: otp }
+            });
+
+            if (!result || result.success === false) {
+                const errorMsg = result?.message || result?.error || 'Unknown WhatsApp delivery error';
+                throw new Error(errorMsg);
+            }
+            console.log(`[OTP] WhatsApp delivery signaled success: ${result.messageId}`);
+        } catch (error) {
+            console.warn(`[OTP] WhatsApp delivery failed: ${error.message}. Falling back to SMS...`);
+            // Senior Fallback: If WhatsApp fails (invalid number, session closed, or config error), send traditional SMS.
+            await sendSMS({ to, message });
+            console.log(`[OTP] SMS Fallback delivered successfully.`);
+        }
     } else if (mode === 'email') {
         await sendMail({ to, subject: 'Your OTP', text: message });
     } else {

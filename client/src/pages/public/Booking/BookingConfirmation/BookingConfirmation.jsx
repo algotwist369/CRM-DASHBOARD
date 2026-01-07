@@ -1004,7 +1004,7 @@ const BookingConfirmation = () => {
                         <div className="bg-white rounded p-4 max-w-sm w-full">
                             <h3 className="text-base font-semibold text-gray-900 mb-2">Verify Mobile Number</h3>
                             <p className="text-xs text-gray-500 mb-4">
-                                Enter the OTP sent to <span className="font-medium text-gray-700">{phoneForOTP}</span>
+                                OTP sent (WhatsApp/SMS) - <span className="font-medium text-gray-700">{phoneForOTP}</span>
                             </p>
 
                             <div className="flex gap-2 justify-center mb-6">
