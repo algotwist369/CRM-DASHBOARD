@@ -138,7 +138,7 @@ const sendOTP = async (req, res, next) => {
             return res.status(400).json({ success: false, message: "Phone or email required" });
         }
 
-        const mode = phone ? 'sms' : 'email';
+        const mode = phone ? 'whatsapp' : 'email';
         const to = phone || email;
 
         const { otp, expiresAt, otpHash } = await createAndSendOTP({ mode, to });

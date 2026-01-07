@@ -18,7 +18,7 @@ const sendInquiryOTP = async (req, res) => {
             return res.status(400).json({ success: false, message: "Phone number is required" });
         }
 
-        const { otp, expiresAt, otpHash } = await createAndSendOTP({ mode: 'sms', to: phone });
+        const { otp, expiresAt, otpHash } = await createAndSendOTP({ mode: 'whatsapp', to: phone });
 
         await Otp.create({
             phone,
