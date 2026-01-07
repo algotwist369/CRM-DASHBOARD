@@ -180,7 +180,7 @@ const InquiryForm = ({ businessId, businessName, businessLink, onSuccess, onCanc
                 <p className="text-xs text-gray-500 mt-1">
                     {step === 'input'
                         ? 'Submit your details to get a callback.'
-                        : `Enter the code sent to ${formData.phone}`}
+                        : `Enter the code sent (whatsapp/sms) to ${formData.phone}`}
                 </p>
             </div>
 
@@ -236,8 +236,8 @@ const InquiryForm = ({ businessId, businessName, businessLink, onSuccess, onCanc
                         >
                             <option value="General Inquiry">General Enquiry</option>
                             <option value="Pricing & Services">Pricing & Services</option>
-                            <option value="Special Offers">Special Offers</option>
-                            <option value="Membership Packages">Membership Packages</option>
+                            {/* <option value="Special Offers">Special Offers</option>
+                            <option value="Membership Packages">Membership Packages</option> */}
                         </select>
                     </div>
 

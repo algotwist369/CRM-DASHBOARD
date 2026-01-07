@@ -17,15 +17,7 @@ if (accountSid && authToken) {
         !authToken ? "Auth Token" : ""
     );
 }
-
-/**
- * Send SMS
- * @param {Object} options - SMS options
- * @param {string} options.to - Recipient phone number
- * @param {string} options.message - SMS message
- * @param {string} options.from - Sender phone number (optional)
- * @returns {Promise} - Send result
- */
+ 
 const sendSMS = async (options) => {
     try {
         // Check if Twilio is configured
@@ -140,12 +132,28 @@ const sendWhatsApp = async (options) => {
             toPhone = toPhone.replace('whatsapp:', '');
         }
 
-        const result = await client.messages.create({
-            body: options.message,
-            from: `whatsapp:${whatsappNumber}`,
+        let fromPhone = whatsappNumber;
+        if (fromPhone.startsWith('whatsapp:')) {
+            fromPhone = fromPhone.replace('whatsapp:', '');
+        }
+
+        const messageConfig = {
+            from: `whatsapp:${fromPhone}`,
             to: `whatsapp:${toPhone}`,
-            mediaUrl: options.media || []
-        });
+        };
+
+        if (options.contentSid) {
+            messageConfig.contentSid = options.contentSid;
+            // Ensure contentVariables is a stringified JSON
+            messageConfig.contentVariables = typeof options.contentVariables === 'string'
+                ? options.contentVariables
+                : JSON.stringify(options.contentVariables || {});
+        } else {
+            messageConfig.body = options.message;
+            messageConfig.mediaUrl = options.media || [];
+        }
+
+        const result = await client.messages.create(messageConfig);
 
         return {
             success: true,
@@ -234,11 +242,6 @@ We look forward to seeing you! 😊`
     });
 };
 
-/**
- * Get SMS delivery status
- * @param {string} messageId - Twilio message SID
- * @returns {Promise} - Delivery status
- */
 const getSMSStatus = async (messageId) => {
     try {
         const message = await client.messages(messageId).fetch();

@@ -118,14 +118,7 @@ export const checkBookingAvailability = (bookingData, existingAppointments, busi
   return { isAvailable: true, error: null }
 }
 
-/**
- * Create booking confirmation
- * @param {object} bookingData - Booking data
- * @param {object} customer - Customer data
- * @param {object} service - Service data
- * @param {object} staff - Staff data
- * @returns {object} Booking confirmation
- */
+ 
 export const createBookingConfirmation = (bookingData, customer, service, staff) => {
   if (!bookingData || !customer || !service || !staff) {
     throw new Error('All booking data is required')

@@ -2298,7 +2298,7 @@ const bookAppointmentPublic = async (req, res, next) => {
         const phone = customerInfo.phone;
         let response;
         try {
-            response = await createAndSendOTP({ mode: 'sms', to: phone });
+            response = await createAndSendOTP({ mode: 'whatsapp', to: phone });
         } catch (err) {
             console.error("OTP Send Failed:", err);
             // Return proper error for client handling
@@ -3184,28 +3184,35 @@ const sendConfirmationNotifications = async (appointmentId, bookingData) => {
 
         const phone = appointment.customer?.phone || bookingData.customerInfo?.phone;
 
-        // Send WhatsApp
+        // Send Booking Confirmation (WhatsApp with SMS Fallback)
         if (phone) {
-            console.log(`[Notification] Sending WhatsApp to ${phone}...`);
-            sendTemplateWhatsApp({
-                to: phone,
-                template: 'appointment_confirmation',
-                data: notificationData
-            })
-                .then(res => console.log(`[Notification] WhatsApp sent details:`, JSON.stringify(res)))
-                .catch(err => console.error('[Notification] WhatsApp confirmation failed:', err.message));
-        }
+            (async () => {
+                try {
+                    console.log(`[Notification] Attempting WhatsApp confirmation to ${phone}...`);
+                    const waResult = await sendTemplateWhatsApp({
+                        to: phone,
+                        template: 'appointment_confirmation',
+                        data: notificationData
+                    });
 
-        // Send SMS
-        if (phone) {
-            console.log(`[Notification] Sending SMS to ${phone}...`);
-            sendTemplateSMS({
-                to: phone,
-                template: 'appointment_confirmation',
-                data: notificationData
-            })
-                .then(res => console.log(`[Notification] SMS sent details:`, JSON.stringify(res)))
-                .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
+                    if (!waResult || waResult.success === false) {
+                        throw new Error(waResult?.message || 'WhatsApp failed');
+                    }
+                    console.log(`[Notification] WhatsApp confirmed: ${waResult.messageId}`);
+                } catch (err) {
+                    console.warn(`[Notification] WhatsApp failed (${err.message}). Falling back to SMS...`);
+                    try {
+                        const smsResult = await sendTemplateSMS({
+                            to: phone,
+                            template: 'appointment_confirmation',
+                            data: notificationData
+                        });
+                        console.log(`[Notification] SMS fallback confirmed: ${smsResult.messageId}`);
+                    } catch (smsErr) {
+                        console.error('[Notification] Critical: SMS fallback also failed:', smsErr.message);
+                    }
+                }
+            })();
         }
 
         // Track sent emails to prevent duplicates
