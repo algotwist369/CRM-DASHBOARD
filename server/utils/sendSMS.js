@@ -1,7 +1,9 @@
 // sendSMS.js - SMS sending utility using Twilio
 
-const twilio = require('twilio');
+// CRITICAL: Load environment variables FIRST before initializing Twilio
 require('dotenv').config();
+
+const twilio = require('twilio');
 
 // Initialize Twilio client (only if credentials are available)
 let client = null;
@@ -11,13 +13,14 @@ const fromPhone = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_PHONE;
 
 if (accountSid && authToken) {
     client = twilio(accountSid, authToken);
+    console.log('✅ Twilio client initialized successfully');
 } else {
-    console.warn("Twilio Credentials Missing:",
+    console.warn("⚠️ Twilio Credentials Missing:",
         !accountSid ? "Account SID/TWILIO_SID" : "",
         !authToken ? "Auth Token" : ""
     );
 }
- 
+
 const sendSMS = async (options) => {
     try {
         // Check if Twilio is configured
