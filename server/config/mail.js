@@ -28,7 +28,7 @@ emailTransporter.verify((err, success) => {
 
 // ---------- SMS ----------
 const smsClient = twilio(
-    process.env.TWILIO_SID || "your_twilio_sid",
+    process.env.TWILIO_ACCOUNT_SID || "your_TWILIO_ACCOUNT_SID",
     process.env.TWILIO_AUTH_TOKEN || "your_twilio_auth"
 );
 
