@@ -12,10 +12,9 @@ import {
     HiOutlineFilter,
     HiOutlineChevronLeft,
     HiOutlineChevronRight,
-    HiOutlineDownload,
-    HiOutlineCalendar
+    HiOutlineCalendar,
 } from 'react-icons/hi';
-import { FaQuestionCircle, FaRegEnvelopeOpen, FaFileCsv, FaFilePdf, FaSpinner } from 'react-icons/fa';
+import { FaCopy, FaQuestionCircle, FaRegEnvelopeOpen, FaFileCsv, FaFilePdf, FaSpinner } from 'react-icons/fa';
 import adminService from '../../../services/admin/adminService';
 import managerService from '../../../services/manager/managerService';
 import authService from '../../../services/auth/authService';
@@ -39,7 +38,7 @@ const TableSkeleton = memo(() => (
     </div>
 ));
 
-const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete }) => {
+const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy }) => {
     const createdAt = useMemo(() =>
         inquiry.createdAt ? new Date(inquiry.createdAt).toLocaleString('en-IN', {
             day: '2-digit',
@@ -101,6 +100,16 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete }) => {
             <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100 text-[13px] text-gray-500 font-medium">
                 {createdAt}
             </td>
+            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100 text-center">
+                <button
+                    onClick={() => onCopy(inquiry)}
+                    className="p-2 rounded-lg text-primary-600 hover:bg-primary-50 transition-all active:scale-95"
+                    title="Copy WhatsApp Lead"
+                >
+                    <FaCopy className="w-4 h-4" />
+                </button>
+            </td>
+
             <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100 text-right">
                 <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!inquiry.is_recieved && (
@@ -293,6 +302,23 @@ const InquiryList = () => {
         }
     }, [service, debouncedFilters]);
 
+
+    const handleCopyLead = useCallback((inquiry) => {
+        const message = `
+        New Customer Enquiry – High Priority
+
+        Enquiry Type: ${inquiry.inquiry_type || 'General'}
+        Customer Name: ${inquiry.user_name || 'N/A'}
+        Phone: ${inquiry.phone || 'N/A'}
+        Spa: ${inquiry.business_id?.name || 'N/A'}, ${inquiry.business_id?.branch || ''}
+
+        Note: As instructed by the Head Office, please follow up immediately. Timely response is required.
+        `;
+
+        navigator.clipboard.writeText(message);
+        toast.success('Lead copied for WhatsApp', { duration: 2000 });
+    }, []);
+
     const inquiries = data?.data || [];
     const totalPages = data?.pagination?.pages || 1;
     const totalItems = data?.pagination?.total || 0;
@@ -480,6 +506,9 @@ const InquiryList = () => {
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Type</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Handle Status</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Timestamp</th>
+                                <th className="px-6 py-5 text-center text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">
+                                    Copy Lead
+                                </th>
                                 <th className="px-6 py-5 text-right text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Actions</th>
                             </tr>
                         </thead>
@@ -523,6 +552,7 @@ const InquiryList = () => {
                                             inquiry={inquiry}
                                             onMarkAsReceived={handleMarkAsReceived}
                                             onDelete={handleDelete}
+                                            onCopy={handleCopyLead}
                                         />
                                     ))
                                 )}

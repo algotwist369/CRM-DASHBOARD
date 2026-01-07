@@ -90,7 +90,7 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
   const customerEmail = appointment.customer?.email || '';
 
   const serviceName = appointment.service?.name || 'N/A';
-  const serviceDuration = appointment.service?.duration || appointment.duration || 0;
+  const serviceDuration = appointment.duration || appointment.service?.duration || 0;
 
   const staffName = appointment.staff?.name || 'N/A';
   const staffRole = appointment.staff?.role || '';
@@ -102,6 +102,14 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
   const status = appointment.status || 'pending';
   const paymentStatus = appointment.paymentStatus || 'pending';
   const price = appointment.totalAmount || appointment.servicePrice || 0;
+
+  const formatTime12Hour = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+  };
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
@@ -143,15 +151,15 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
         <div className="text-xs text-gray-900">{serviceName}</div>
-        <div className="text-[10px] text-gray-500">{serviceDuration} mins</div>
+        <div className="text-[10px] text-gray-500 bg-green-200 inline p-1 rounded">{serviceDuration} mins</div>
       </td>
-      <td className="px-3 py-2 whitespace-nowrap">
+      {/* <td className="px-3 py-2 whitespace-nowrap">
         <div className="text-xs text-gray-900">{staffName}</div>
         <div className="text-[10px] text-gray-500 capitalize">{staffRole}</div>
-      </td>
+      </td> */}
       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-        {appointmentDate ? appointmentDate.toLocaleDateString() : 'N/A'}
-        <div className="text-gray-500 text-[10px]">{startTime}</div>
+        {appointmentDate ? appointmentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
+        <div className="text-gray-500 text-[10px]">{formatTime12Hour(startTime)}</div>
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
         <span className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
@@ -169,7 +177,15 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
         <div className="text-[10px] text-gray-500 mt-0.5 capitalize">{appointment.bookingSource?.replace('_', ' ') || 'N/A'}</div>
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-        {createdAt ? createdAt.toLocaleDateString() : 'N/A'}
+        {createdAt ? (() => {
+          const date = new Date(createdAt);
+          return (
+            <div className="flex flex-col">
+              <span className="text-gray-900">{date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+              <span className="text-xs text-gray-500">{date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+            </div>
+          );
+        })() : 'N/A'}
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-right flex items-center justify-end gap-1">
         {paymentStatus === 'paid' && (
@@ -669,7 +685,8 @@ const AppointmentList = () => {
                   "Business",
                   "Customer",
                   "Service",
-                  "Staff",
+
+                  // "Staff", // Hidden as per request
                   "Date & Time",
                   "Status",
                   "Payment",

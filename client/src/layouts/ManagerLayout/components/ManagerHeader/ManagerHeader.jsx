@@ -4,6 +4,7 @@ import { Button } from '../../../../components'
 import { HiMenu, HiX } from 'react-icons/hi'
 import authService from '../../../../services/auth/authService'
 import ManagerNotificationBell from '../../../../components/notifications/ManagerNotificationBell'
+import { TbBrandBooking } from "react-icons/tb";
 
 
 const ManagerHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
@@ -151,17 +152,17 @@ const ManagerHeader = ({ onSidebarToggle, isSidebarCollapsed }) => {
               variant="primary"
               size="md"
               className="text-sm"
+              onClick={() => navigate('/manager/appointments')}
+            >
+              <TbBrandBooking className="mr-1 text-lg" /> New Booking
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              className="text-sm"
               onClick={() => navigate('/manager/transactions/add')}
             >
               + Add Transaction
-            </Button>
-            <Button
-              variant="outline"
-              size="md"
-              className="text-sm"
-              onClick={() => navigate('/manager/appointments')}
-            >
-              + Appointment
             </Button>
             <Button
               variant="outline"

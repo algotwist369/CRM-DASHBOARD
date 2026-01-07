@@ -153,8 +153,11 @@ const sendWhatsApp = async (options) => {
             status: result.status
         };
     } catch (error) {
-        // Handle "Channel not found" (Invalid Sender) gracefully
-        if (error.code === 63007 || error.code === 21211) {
+        // Handle invalid / misconfigured WhatsApp sender numbers gracefully
+        // 63007: Channel not found
+        // 21211: Invalid 'To' phone number
+        // 21212: Invalid 'From' phone number, shortcode, or alphanumeric sender ID
+        if (error.code === 63007 || error.code === 21211 || error.code === 21212) {
             console.warn('[WhatsApp] Sender not valid or not configured. Skipping WhatsApp.', error.message);
             return {
                 success: false,
