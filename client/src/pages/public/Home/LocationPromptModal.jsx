@@ -1,10 +1,6 @@
 import React, { memo } from 'react'
 import { FaMapMarkerAlt, FaSpinner } from 'react-icons/fa'
-
-/**
- * Memoized Location Prompt Modal Component
- * Only re-renders when loading state changes
- */
+ 
 const LocationPromptModal = memo(({
     onAllow,
     onDeny,

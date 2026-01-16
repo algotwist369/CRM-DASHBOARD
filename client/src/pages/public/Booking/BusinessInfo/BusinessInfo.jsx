@@ -42,6 +42,8 @@ import MediaRenderer from './MediaRenderer'
 import { trackLeadClick } from '../../../../utils/analytics'
 import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
 import SpecialOfferModal from '../../../../components/public/Offer/SpecialOfferModal'
+import CallPromptModal from '../../../../components/public/LeadPrompt/CallPromptModal'
+import WhatsAppPromptModal from '../../../../components/public/LeadPrompt/WhatsAppPromptModal'
 
 
 import { useQuery } from '@tanstack/react-query'
@@ -69,6 +71,9 @@ const BusinessInfo = () => {
   const [modalImageIndex, setModalImageIndex] = useState(0)
   const [isInquiryOpen, setIsInquiryOpen] = useState(false)
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false)
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false)
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
+  const hasAutoOpenedRef = useRef(false)
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [showAllServices, setShowAllServices] = useState(false)
@@ -111,8 +116,8 @@ const BusinessInfo = () => {
       }
       return undefined
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: 10 * 60 * 1000,  
+    gcTime: 30 * 60 * 1000,  
     retry: 1
   })
 
@@ -137,15 +142,6 @@ const BusinessInfo = () => {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [businessLink])
-
-  // Auto-open inquiry modal after 10 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInquiryOpen(true)
-    }, 10000)
-
-    return () => clearTimeout(timer)
-  }, [])
 
   const handleBookNow = useCallback(() => {
     if (business && business.services && business.services.length > 0) {
@@ -215,6 +211,21 @@ const BusinessInfo = () => {
     }
     return null
   }, [business])
+
+  useEffect(() => {
+    if (!business || hasAutoOpenedRef.current) return
+    const timer = setTimeout(() => {
+      if (business.phone) {
+        setIsCallModalOpen(true)
+      } else if (whatsappUrl) {
+        setIsWhatsAppModalOpen(true)
+      } else {
+        setIsInquiryOpen(true)
+      }
+      hasAutoOpenedRef.current = true
+    }, 10000)
+    return () => clearTimeout(timer)
+  }, [business, whatsappUrl])
 
   // Memoize all images collection
   const allImages = useMemo(() => {
@@ -943,6 +954,28 @@ const BusinessInfo = () => {
       <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
+      <CallPromptModal
+        isOpen={isCallModalOpen}
+        onClose={() => {
+          setIsCallModalOpen(false)
+          if (whatsappUrl) {
+            setTimeout(() => setIsWhatsAppModalOpen(true), 500)
+          } else {
+            setTimeout(() => setIsInquiryOpen(true), 500)
+          }
+        }}
+        phone={business?.phone}
+        onCall={() => trackLeadClick(business._id, 'call')}
+      />
+      <WhatsAppPromptModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => {
+          setIsWhatsAppModalOpen(false)
+          setTimeout(() => setIsInquiryOpen(true), 500)
+        }}
+        whatsappUrl={whatsappUrl}
+        onWhatsApp={() => trackLeadClick(business._id, 'whatsapp')}
+      />
 
       {/* Inquiry Modal */}
       <InquiryModal
