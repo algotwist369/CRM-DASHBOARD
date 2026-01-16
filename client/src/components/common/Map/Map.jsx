@@ -1,16 +1,7 @@
 import React, { useMemo, useEffect, useRef } from 'react'
 import { FaMapMarkerAlt } from 'react-icons/fa'
 
-/**
- * Map Component - Displays Google Maps embed
- * @param {Object} props
- * @param {Array<number>} props.coordinates - [lng, lat] or [lat, lng] format
- * @param {string} props.googleMapsUrl - Google Maps URL (optional)
- * @param {number} props.zoom - Zoom level (default: 15)
- * @param {string} props.height - Map height (default: '400px')
- * @param {string} props.className - Additional CSS classes
- * @param {boolean} props.showLink - Show "Open in Google Maps" link (default: true)
- */
+
 const Map = ({
   coordinates = null,
   googleMapsUrl = null,
@@ -21,103 +12,125 @@ const Map = ({
 }) => {
   const iframeRef = useRef(null)
 
-  // Extract coordinates from various sources
+  // Extract map data including CID, query, and coordinates
   const mapData = useMemo(() => {
     let lat = null
     let lng = null
+    let query = null
+    let cid = null
     let finalZoom = zoom
 
     // Priority 1: Use provided coordinates
     if (coordinates && Array.isArray(coordinates) && coordinates.length >= 2) {
-      // Handle both [lng, lat] and [lat, lng] formats
-      // Check if first value is likely longitude (usually larger absolute value)
       const [first, second] = coordinates
       if (Math.abs(first) > Math.abs(second)) {
-        // Likely [lng, lat] format
         lng = first
         lat = second
       } else {
-        // Likely [lat, lng] format
         lat = first
         lng = second
       }
     }
 
     // Priority 2: Parse from googleMapsUrl
-    if ((lat === null || lng === null) && googleMapsUrl) {
+    if (googleMapsUrl) {
       try {
         const decodedUrl = decodeURIComponent(googleMapsUrl)
 
-        // Extract coordinates from ll= parameter (lat,lng format)
-        const llMatch = decodedUrl.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
-        if (llMatch) {
-          lat = parseFloat(llMatch[1])
-          lng = parseFloat(llMatch[2])
-          // Extract zoom level if available
-          const zMatch = decodedUrl.match(/[?&]z=(\d+)/)
-          if (zMatch) {
-            finalZoom = parseInt(zMatch[1], 10)
+        // 1. Extract CID (Customer ID) - Highest Prority for reliability
+        // Looks for pattern: !1s0x...:0x(HEX_CID)
+        const cidMatch = decodedUrl.match(/!1s0x[0-9a-f]+:(0x[0-9a-f]+)/i)
+        if (cidMatch && cidMatch[1]) {
+          try {
+            // Convert Hex CID to Decimal String using BigInt
+            cid = BigInt(cidMatch[1]).toString()
+          } catch (e) {
+            console.error('Failed to convert CID:', e)
           }
-        } else {
-          // Extract coordinates from @lat,lng format
-          const coordsMatch = decodedUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/)
-          if (coordsMatch) {
-            lat = parseFloat(coordsMatch[1])
-            lng = parseFloat(coordsMatch[2])
-            // Extract zoom if available (format: @lat,lng,z)
-            const zoomMatch = decodedUrl.match(/@-?\d+\.?\d*,-?\d+\.?\d*,(\d+)/)
-            if (zoomMatch) {
-              finalZoom = parseInt(zoomMatch[1], 10)
+        }
+
+        // 2. Extract Place Name (Query)
+        // Matches /place/Some+Place+Name/
+        if (!cid) {
+          const placeMatch = decodedUrl.match(/\/place\/([^/]+)/)
+          if (placeMatch) {
+            query = placeMatch[1]
+          }
+        }
+
+        // 3. Extract Coordinates if not already found
+        if (lat === null || lng === null) {
+          const llMatch = decodedUrl.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+          if (llMatch) {
+            lat = parseFloat(llMatch[1])
+            lng = parseFloat(llMatch[2])
+          } else {
+            const coordsMatch = decodedUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+            if (coordsMatch) {
+              lat = parseFloat(coordsMatch[1])
+              lng = parseFloat(coordsMatch[2])
             }
           }
+        }
+
+        // Extract zoom
+        const zMatch = decodedUrl.match(/[?&]z=(\d+)/) || decodedUrl.match(/,(\d+)m\/data=/) || decodedUrl.match(/,(\d+)z/)
+        if (zMatch) {
+          finalZoom = parseInt(zMatch[1], 10)
         }
       } catch (e) {
         console.error('Error parsing Google Maps URL:', e)
       }
     }
 
-    return { lat, lng, zoom: finalZoom }
+    return { lat, lng, query, cid, zoom: finalZoom }
   }, [coordinates, googleMapsUrl, zoom])
 
   // Generate embed URL
   const embedUrl = useMemo(() => {
-    if (!mapData.lat || !mapData.lng) return null
+    // Strategy 1: CID Embed (Most Reliable for Businesses)
+    if (mapData.cid) {
+      return `https://maps.google.com/maps?cid=${mapData.cid}&output=embed`
+    }
 
-    // Use the standard Google Maps embed format
-    return `https://maps.google.com/maps?q=${mapData.lat},${mapData.lng}&hl=en&z=${mapData.zoom}&output=embed`
+    // Strategy 2: Place Name Query (Reliable)
+    if (mapData.query) {
+      return `https://maps.google.com/maps?q=${mapData.query}&t=m&z=${mapData.zoom}&output=embed&iwloc=near`
+    }
+
+    // Strategy 3: Coordinates (Least Reliable without API Key)
+    if (mapData.lat && mapData.lng) {
+      return `https://maps.google.com/maps?q=${mapData.lat},${mapData.lng}&t=m&z=${mapData.zoom}&output=embed&iwloc=near`
+    }
+
+    return null
   }, [mapData])
 
-  // Suppress Google Maps console warnings when iframe loads
+  // Suppress Google Maps console warnings
   useEffect(() => {
     if (!embedUrl || !iframeRef.current) return
 
     const originalWarn = console.warn
     const originalError = console.error
-    
+
     // Create a filter to suppress Google Maps API warnings
     const suppressGoogleMapsWarnings = (...args) => {
       const message = String(args[0] || '')
-      // Suppress specific Google Maps warnings
       if (
         message.includes('Permissions policy violation') ||
         message.includes('accelerometer') ||
         message.includes('deviceorientation') ||
-        message.includes('deviceorientation events are blocked') ||
         message.includes('apple-mobile-web-app-capable') ||
         message.includes('Violation')
       ) {
-        return // Suppress these warnings
+        return
       }
-      // Allow other warnings/errors through
       originalWarn.apply(console, args)
     }
 
-    // Temporarily override console methods when iframe loads
     const handleIframeLoad = () => {
       console.warn = suppressGoogleMapsWarnings
       console.error = suppressGoogleMapsWarnings
-      
-      // Restore after a short delay
       setTimeout(() => {
         console.warn = originalWarn
         console.error = originalError
@@ -127,7 +140,6 @@ const Map = ({
     const iframe = iframeRef.current
     if (iframe) {
       iframe.addEventListener('load', handleIframeLoad)
-      // Also set up immediately if already loaded
       if (iframe.complete) {
         handleIframeLoad()
       }
@@ -209,4 +221,3 @@ const Map = ({
 }
 
 export default Map
-

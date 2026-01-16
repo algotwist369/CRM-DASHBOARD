@@ -24,13 +24,30 @@ const CreateManager = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [businesses, setBusinesses] = useState([]);
+  const [businessSearch, setBusinessSearch] = useState("");
 
   // Fetch all businesses
   useEffect(() => {
     const fetchBusinesses = async () => {
-      const res = await businessService.getBusinesses({ page: 1, limit: 100 });
-      if (res.success) {
-        setBusinesses(res.data?.data || []);
+      try {
+        // limit: 0 or large number to get all. Using 10000 to be safe.
+        // Timestamp to prevent caching issues
+        const res = await businessService.getBusinesses({
+          page: 1,
+          limit: 10000,
+          _t: Date.now()
+        });
+
+        if (res.success) {
+          let allBusinesses = res.data?.data || [];
+          // Sort alphabetically by name
+          allBusinesses.sort((a, b) => a.name.localeCompare(b.name));
+          setBusinesses(allBusinesses);
+          console.log(`Loaded ${allBusinesses.length} businesses`);
+        }
+      } catch (error) {
+        console.error("Error fetching businesses", error);
+        toast.error("Failed to load businesses");
       }
     };
     fetchBusinesses();
@@ -189,6 +206,20 @@ const CreateManager = () => {
             <label className="block text-gray-700 text-sm font-medium mb-1">
               Select Business
             </label>
+
+            {/* Search Input */}
+            <div className="relative mb-2">
+              <input
+                type="text"
+                value={businessSearch}
+                onChange={(e) => setBusinessSearch(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                placeholder="Search businesses..."
+              />
+              <FiBriefcase className="absolute top-3 left-3 text-gray-400" />
+            </div>
+
+            {/* Dropdown */}
             <div className="relative">
               <FiBriefcase className="absolute top-3 left-3 text-gray-400" />
               <FiChevronDown className="absolute top-3 right-3 text-gray-400 pointer-events-none" />
@@ -199,11 +230,15 @@ const CreateManager = () => {
                 className="w-full pl-10 pr-8 py-2 border  appearance-none focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
               >
                 <option value="">Select Business</option>
-                {businesses.map((biz) => (
-                  <option key={biz._id} value={biz._id}>
-                    {biz.name}
-                  </option>
-                ))}
+                {businesses
+                  .filter((biz) =>
+                    biz.name.toLowerCase().includes(businessSearch.toLowerCase())
+                  )
+                  .map((biz) => (
+                    <option key={biz._id} value={biz._id}>
+                      {biz.name}
+                    </option>
+                  ))}
               </select>
             </div>
             {errors.businessId && (
@@ -257,11 +292,10 @@ const CreateManager = () => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 text-white font-semibold  transition-colors ${
-              loading
-                ? "bg-primary-300 cursor-not-allowed"
-                : "bg-primary-600 hover:bg-primary-700"
-            }`}
+            className={`w-full py-2 px-4 text-white font-semibold  transition-colors ${loading
+              ? "bg-primary-300 cursor-not-allowed"
+              : "bg-primary-600 hover:bg-primary-700"
+              }`}
           >
             {loading ? "Creating..." : "Create Manager"}
           </button>

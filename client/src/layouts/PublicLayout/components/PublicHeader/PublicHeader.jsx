@@ -121,8 +121,8 @@ const Dropdown = ({
                 <button
                   onClick={() => onSelect(item)}
                   className={`w-full flex items-center justify-between gap-4 px-4 py-2 text-sm font-medium transition-colors duration-150 ${itemIsActive
-                      ? 'text-primary-600 bg-primary-50'
-                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                    ? 'text-primary-600 bg-primary-50'
+                    : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
                     }`}
                 >
                   <span className="flex-1 text-left">{item.name}</span>
@@ -142,8 +142,8 @@ const Dropdown = ({
                           key={child.name}
                           onClick={() => onSelect(child)}
                           className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors duration-150 ${childIsActive
-                              ? 'text-primary-600 bg-primary-50'
-                              : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                            ? 'text-primary-600 bg-primary-50'
+                            : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
                             }`}
                         >
                           {child.name}
@@ -295,8 +295,8 @@ const PublicHeader = () => {
                   key={item.name}
                   onClick={() => handleAction(item)}
                   className={`text-left px-4 py-2 text-sm sm:text-base font-medium transition-colors duration-150 ${itemIsActive
-                      ? 'text-primary-600 bg-primary-50 border-l-4 border-primary-600'
-                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                    ? 'text-primary-600 bg-primary-50 border-l-4 border-primary-600'
+                    : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
                     }`}
                 >
                   {item.name}
@@ -331,7 +331,9 @@ const PublicHeader = () => {
             >
               {/* Logo */}
               <img
-                src="/logo/main_logo.png" 
+                src="/logo/main_logo.png"
+                srcSet="/logo/main_logo_small.png 400w, /logo/main_logo_medium.png 800w, /logo/main_logo.png 2813w"
+                sizes="(max-width: 768px) 150px, 200px"
                 alt="SpaAdvisor"
                 className="md:w-[200px] w-[150px] h-full object-contain"
               />
@@ -365,8 +367,8 @@ const PublicHeader = () => {
               <Link
                 to="/advertise"
                 className={`relative flex items-center gap-1 text-sm xl:text-base font-medium transition-all duration-200 whitespace-nowrap px-2 py-1 rounded-md ${location.pathname === '/advertise'
-                    ? 'text-primary-600 bg-primary-50'
-                    : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  ? 'text-primary-600 bg-primary-50'
+                  : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
                   }`}
               >
                 <span className="inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5">
@@ -411,13 +413,13 @@ const PublicHeader = () => {
             {/* Tablet Actions */}
             <div className="hidden md:flex lg:hidden items-center space-x-2">
               <button
-              onClick={() => handleNavigate('/notifications')}
-              className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors duration-200 rounded-md hover:bg-gray-50"
-              aria-label="Notifications"
-            >
-              <FaBell className="w-5 h-5" />
-              {NotificationBadge}
-            </button>
+                onClick={() => handleNavigate('/notifications')}
+                className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors duration-200 rounded-md hover:bg-gray-50"
+                aria-label="Notifications"
+              >
+                <FaBell className="w-5 h-5" />
+                {NotificationBadge}
+              </button>
               <div className="flex items-center gap-2">
                 <Button variant="primary" onClick={handleOpenBookDemo} className="text-sm px-3 py-1.5">
                   Book Demo

@@ -336,6 +336,7 @@ const ManagerList = () => {
   const [businesses, setBusinesses] = useState([]);
   const [showPinSection, setShowPinSection] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [businessSearch, setBusinessSearch] = useState("");
 
   // Lazy load businesses only when needed (for dropdown)
   const fetchBusinesses = useCallback(async () => {
@@ -343,9 +344,16 @@ const ManagerList = () => {
     if (businesses.length > 0) return;
 
     try {
-      const res = await businessService.getBusinesses({ page: 1, limit: 100 });
+      const res = await businessService.getBusinesses({
+        page: 1,
+        limit: 10000,
+        _t: Date.now()
+      });
       if (res.success) {
-        setBusinesses(res.data?.data || []);
+        let allBusinesses = res.data?.data || [];
+        // Sort alphabetically by name
+        allBusinesses.sort((a, b) => a.name.localeCompare(b.name));
+        setBusinesses(allBusinesses);
       }
     } catch (e) {
       console.error("Failed to fetch businesses:", e);
@@ -625,6 +633,14 @@ const ManagerList = () => {
             <AiOutlineUserAdd className="text-base sm:text-lg" />
             <span className="hidden sm:inline">Add Manager</span>
           </button>
+
+          {/* <button
+            onClick={() => navigate('/admin/managers/create')}
+            className="flex items-center gap-2 bg-primary-600 text-white px-3 sm:px-4 py-2  hover:bg-primary-700 transition-colors text-sm font-medium"
+          >
+            <AiOutlineUserAdd className="text-base sm:text-lg" />
+            <span className="hidden sm:inline">Add Manager</span>
+          </button> */}
         </div>
       </div>
 
@@ -820,16 +836,32 @@ const ManagerList = () => {
             required
           />
 
-          <SelectField
-            label="Business"
-            name="businessId"
-            value={formData.businessId}
-            onChange={handleChange}
-            error={formErrors.businessId}
-            options={businessOptions}
-            icon={FiBriefcase}
-            required
-          />
+          {/* Business Search & Select */}
+          <div>
+            <div className="mb-2">
+              <IconInputField
+                label="Search Business"
+                name="businessSearch"
+                value={businessSearch}
+                onChange={(e) => setBusinessSearch(e.target.value)}
+                placeholder="Type to filter businesses..."
+                icon={FiSearch}
+              />
+            </div>
+
+            <SelectField
+              label="Select Business"
+              name="businessId"
+              value={formData.businessId}
+              onChange={handleChange}
+              error={formErrors.businessId}
+              options={businessOptions.filter(opt =>
+                opt.label.toLowerCase().includes(businessSearch.toLowerCase())
+              )}
+              icon={FiBriefcase}
+              required
+            />
+          </div>
 
           <IconInputField
             label="Email (optional)"
