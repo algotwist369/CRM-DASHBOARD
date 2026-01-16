@@ -1,6 +1,15 @@
 import React, { useMemo, useEffect, useRef } from 'react'
 import { FaMapMarkerAlt } from 'react-icons/fa'
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
 
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+})
 
 const Map = ({
   coordinates = null,
@@ -10,6 +19,7 @@ const Map = ({
   className = '',
   showLink = true
 }) => {
+  const apiKey = import.meta.env.VITE_GMAPS_EMBED_KEY
   const iframeRef = useRef(null)
 
   // Extract map data including CID, query, and coordinates
@@ -86,27 +96,36 @@ const Map = ({
     return { lat, lng, query, cid, zoom: finalZoom }
   }, [coordinates, googleMapsUrl, zoom])
 
-  // Generate embed URL
   const embedUrl = useMemo(() => {
-    // Strategy 1: CID Embed (Most Reliable for Businesses)
+    if (apiKey) {
+      if (mapData.lat && mapData.lng) {
+        return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${mapData.lat},${mapData.lng}&zoom=${mapData.zoom || zoom}`
+      }
+      if (mapData.query) {
+        const q = mapData.query.replace(/\+/g, ' ')
+        return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(q)}&zoom=${mapData.zoom || zoom}`
+      }
+      if (googleMapsUrl) {
+        return `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${encodeURIComponent(googleMapsUrl)}`
+      }
+      return null
+    }
+
     if (mapData.cid) {
       return `https://maps.google.com/maps?cid=${mapData.cid}&output=embed`
     }
 
-    // Strategy 2: Place Name Query (Reliable)
     if (mapData.query) {
       return `https://maps.google.com/maps?q=${mapData.query}&t=m&z=${mapData.zoom}&output=embed&iwloc=near`
     }
 
-    // Strategy 3: Coordinates (Least Reliable without API Key)
     if (mapData.lat && mapData.lng) {
       return `https://maps.google.com/maps?q=${mapData.lat},${mapData.lng}&t=m&z=${mapData.zoom}&output=embed&iwloc=near`
     }
 
     return null
-  }, [mapData])
+  }, [apiKey, mapData, googleMapsUrl, zoom])
 
-  // Suppress Google Maps console warnings
   useEffect(() => {
     if (!embedUrl || !iframeRef.current) return
 
@@ -154,8 +173,7 @@ const Map = ({
     }
   }, [embedUrl])
 
-  // If no coordinates available, return placeholder
-  if (!embedUrl && !googleMapsUrl) {
+  if (!embedUrl && !googleMapsUrl && !mapData.lat && !mapData.lng) {
     return (
       <div className={`overflow-hidden border border-gray-200 bg-gray-100 rounded flex items-center justify-center ${className}`} style={{ height }}>
         <div className="text-center p-4">
@@ -166,9 +184,68 @@ const Map = ({
     )
   }
 
+  const hasCoordinates = Boolean(mapData.lat && mapData.lng)
+  const hasApiKey = Boolean(apiKey)
+
   return (
-    <div className={`overflow-hidden border border-gray-200 rounded ${className}`}>
-      {embedUrl ? (
+    <div className={`overflow-hidden border border-gray-200 rounded z-0 ${className}`}>
+      {hasApiKey && embedUrl ? (
+        <>
+          <iframe
+            ref={iframeRef}
+            width="100%"
+            height={height}
+            style={{ border: 0 }}
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+            src={embedUrl}
+            title="Location Map"
+            className="w-full"
+          />
+          {showLink && googleMapsUrl && (
+            <div className="mt-3">
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors"
+              >
+                <FaMapMarkerAlt className="text-xs" />
+                <span>Open in Google Maps</span>
+              </a>
+            </div>
+          )}
+        </>
+      ) : hasCoordinates ? (
+        <>
+          <MapContainer
+            center={[mapData.lat, mapData.lng]}
+            zoom={mapData.zoom || zoom}
+            scrollWheelZoom={false}
+            style={{ height, width: '100%' }}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap contributors"
+            />
+            <Marker position={[mapData.lat, mapData.lng]} />
+          </MapContainer>
+          {showLink && googleMapsUrl && (
+            <div className="mt-3">
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors"
+              >
+                <FaMapMarkerAlt className="text-xs" />
+                <span>Open in Google Maps</span>
+              </a>
+            </div>
+          )}
+        </>
+      ) : embedUrl ? (
         <>
           <iframe
             ref={iframeRef}
