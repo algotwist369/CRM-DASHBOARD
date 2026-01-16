@@ -28,7 +28,7 @@ const WhatsAppPromptModal = ({ isOpen, onClose, whatsappUrl, onWhatsApp }) => {
       draggable={false}
       showCloseButton={false}
     >
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden z-40">
         <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-white to-green-50" />
         <div className="relative p-5 space-y-5">
           <button
