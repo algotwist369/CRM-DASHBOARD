@@ -99,15 +99,19 @@ const Modal = ({
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black bg-opacity-50 backdrop-blur-sm"
       onClick={handleOverlayClick}
+      style={{ isolation: 'isolate', zIndex: 9999 }}
+      data-modal-overlay
     >
       <div 
         ref={modalRef}
         className={`bg-white  shadow-xl w-full ${sizeClasses[size]} ${className} transition-shadow ${isDragging ? 'shadow-2xl' : ''}`}
         style={{
           transform: `translate(${position.x}px, ${position.y}px)`,
-          cursor: isDragging ? 'grabbing' : 'auto'
+          cursor: isDragging ? 'grabbing' : 'auto',
+          zIndex: 10000,
+          position: 'relative'
         }}
       >
         {/* Header */}

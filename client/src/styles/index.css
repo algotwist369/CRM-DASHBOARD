@@ -44,3 +44,16 @@
     transform: translateY(0);
   }
 }
+
+/* Ensure modals always appear above Google Maps iframes */
+iframe[src*="google.com/maps"],
+iframe[src*="maps.googleapis.com"],
+iframe[src*="maps.google.com"] {
+  z-index: 1 !important;
+  position: relative;
+}
+
+/* Ensure modal overlays are always on top */
+[data-modal-overlay] {
+  z-index: 9999 !important;
+}

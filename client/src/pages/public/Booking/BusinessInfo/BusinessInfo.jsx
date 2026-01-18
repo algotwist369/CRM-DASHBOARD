@@ -42,8 +42,7 @@ import MediaRenderer from './MediaRenderer'
 import { trackLeadClick } from '../../../../utils/analytics'
 import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
 import SpecialOfferModal from '../../../../components/public/Offer/SpecialOfferModal'
-import CallPromptModal from '../../../../components/public/LeadPrompt/CallPromptModal'
-import WhatsAppPromptModal from '../../../../components/public/LeadPrompt/WhatsAppPromptModal'
+import ContactPromptModal from '../../../../components/public/LeadPrompt/ContactPromptModal'
 
 
 import { useQuery } from '@tanstack/react-query'
@@ -71,9 +70,20 @@ const BusinessInfo = () => {
   const [modalImageIndex, setModalImageIndex] = useState(0)
   const [isInquiryOpen, setIsInquiryOpen] = useState(false)
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false)
-  const [isCallModalOpen, setIsCallModalOpen] = useState(false)
-  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
-  const hasAutoOpenedRef = useRef(false)
+  
+  // New popup queue system
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false)
+  const hasShownFirstPopupRef = useRef(false)
+  const firstInteractionTimeRef = useRef(null)
+  const inquiryTimerRef = useRef(null)
+  const offerTimerRef = useRef(null)
+  const currentModalRef = useRef(null) // Track which modal is currently open
+  const lastScrollYRef = useRef(0)
+  const hasScrolledDownRef = useRef(false)
+  // Track which popups have been shown to prevent duplicates
+  const hasShownContactRef = useRef(false)
+  const hasShownInquiryRef = useRef(false)
+  const hasShownOfferRef = useRef(false)
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [showAllServices, setShowAllServices] = useState(false)
@@ -212,20 +222,189 @@ const BusinessInfo = () => {
     return null
   }, [business])
 
-  useEffect(() => {
-    if (!business || hasAutoOpenedRef.current) return
-    const timer = setTimeout(() => {
-      if (business.phone) {
-        setIsCallModalOpen(true)
-      } else if (whatsappUrl) {
-        setIsWhatsAppModalOpen(true)
+  // Popup queue management
+  const showNextModal = useCallback(() => {
+    // Only show next modal if no modal is currently open
+    if (currentModalRef.current) return
+
+    // Check what's in queue
+    if (!hasShownFirstPopupRef.current) {
+      hasShownFirstPopupRef.current = true
+      firstInteractionTimeRef.current = Date.now()
+      
+      // Show contact modal first if phone or WhatsApp is available
+      if (business?.phone || whatsappUrl) {
+        // Only show if not already shown
+        if (!hasShownContactRef.current) {
+          hasShownContactRef.current = true
+          setIsContactModalOpen(true)
+          currentModalRef.current = 'contact'
+          
+          // Schedule inquiry modal after 25 seconds from first popup
+          inquiryTimerRef.current = setTimeout(() => {
+            // Only show if no other modal is currently open and not already shown
+            if (currentModalRef.current === null && !hasShownInquiryRef.current) {
+              hasShownInquiryRef.current = true
+              setIsInquiryOpen(true)
+              currentModalRef.current = 'inquiry'
+              
+              // Schedule offer modal 25 seconds after inquiry shows
+              if (offerTimerRef.current) clearTimeout(offerTimerRef.current)
+              offerTimerRef.current = setTimeout(() => {
+                // Only show if no other modal is currently open, services exist, and not already shown
+                if (currentModalRef.current === null && business?.services?.length > 0 && !hasShownOfferRef.current) {
+                  hasShownOfferRef.current = true
+                  setIsOfferModalOpen(true)
+                  currentModalRef.current = 'offer'
+                }
+              }, 25000)
+            }
+          }, 25000)
+        }
       } else {
-        setIsInquiryOpen(true)
+        // If no contact info, show inquiry modal directly
+        if (!hasShownInquiryRef.current) {
+          hasShownInquiryRef.current = true
+          setIsInquiryOpen(true)
+          currentModalRef.current = 'inquiry'
+          firstInteractionTimeRef.current = Date.now()
+          
+          // Schedule offer modal after 25 seconds from first popup
+          offerTimerRef.current = setTimeout(() => {
+            // Only show if no other modal is currently open, services exist, and not already shown
+            if (currentModalRef.current === null && business?.services?.length > 0 && !hasShownOfferRef.current) {
+              hasShownOfferRef.current = true
+              setIsOfferModalOpen(true)
+              currentModalRef.current = 'offer'
+            }
+          }, 25000)
+        }
       }
-      hasAutoOpenedRef.current = true
-    }, 10000)
-    return () => clearTimeout(timer)
+    }
   }, [business, whatsappUrl])
+
+  const closeCurrentModal = useCallback((modalType) => {
+    // Clear current modal reference only if this is the currently open modal
+    if (currentModalRef.current === modalType) {
+      currentModalRef.current = null
+      
+      // Mark as shown when closing to prevent automatic re-showing
+      if (modalType === 'contact') {
+        hasShownContactRef.current = true
+      } else if (modalType === 'inquiry') {
+        hasShownInquiryRef.current = true
+      } else if (modalType === 'offer') {
+        hasShownOfferRef.current = true
+      }
+      
+      // Check if scheduled modals should show now
+      const now = Date.now()
+      const timeSinceFirstPopup = firstInteractionTimeRef.current ? now - firstInteractionTimeRef.current : 0
+      
+      // If inquiry timer hasn't fired yet and 25s have passed, show it
+      if (inquiryTimerRef.current && timeSinceFirstPopup >= 25000) {
+        clearTimeout(inquiryTimerRef.current)
+        inquiryTimerRef.current = null
+        // Small delay to ensure previous modal is fully closed
+        setTimeout(() => {
+          // Only show if not already shown and no other modal is open
+          if (currentModalRef.current === null && !hasShownInquiryRef.current) {
+            hasShownInquiryRef.current = true
+            setIsInquiryOpen(true)
+            currentModalRef.current = 'inquiry'
+            // Schedule offer modal 25 seconds after inquiry shows
+            if (offerTimerRef.current) clearTimeout(offerTimerRef.current)
+            offerTimerRef.current = setTimeout(() => {
+              if (currentModalRef.current === null && business?.services?.length > 0 && !hasShownOfferRef.current) {
+                hasShownOfferRef.current = true
+                setIsOfferModalOpen(true)
+                currentModalRef.current = 'offer'
+              }
+            }, 25000)
+          }
+        }, 300)
+      } else if (inquiryTimerRef.current && timeSinceFirstPopup < 25000) {
+        // If inquiry hasn't been scheduled yet, schedule it 25s from first popup
+        clearTimeout(inquiryTimerRef.current)
+        const remainingTime = 25000 - timeSinceFirstPopup
+        inquiryTimerRef.current = setTimeout(() => {
+          // Only show if not already shown and no other modal is open
+          if (currentModalRef.current === null && !hasShownInquiryRef.current) {
+            hasShownInquiryRef.current = true
+            setIsInquiryOpen(true)
+            currentModalRef.current = 'inquiry'
+            // Schedule offer modal 25 seconds after inquiry shows
+            if (offerTimerRef.current) clearTimeout(offerTimerRef.current)
+            offerTimerRef.current = setTimeout(() => {
+              if (currentModalRef.current === null && business?.services?.length > 0 && !hasShownOfferRef.current) {
+                hasShownOfferRef.current = true
+                setIsOfferModalOpen(true)
+                currentModalRef.current = 'offer'
+              }
+            }, 25000)
+          }
+        }, remainingTime)
+      }
+      
+      // If offer timer hasn't fired yet, check if it should show now
+      if (offerTimerRef.current && modalType === 'inquiry') {
+        // If inquiry is closing and offer timer is set, let it run naturally
+        // The timer will check if modal is open and not already shown when it fires
+      }
+    }
+  }, [business])
+
+  // Track first user interaction (click or scroll back to top)
+  useEffect(() => {
+    if (!business || hasShownFirstPopupRef.current) return
+
+    let hasInteracted = false
+
+    const handleInteraction = () => {
+      if (!hasInteracted && !hasShownFirstPopupRef.current) {
+        hasInteracted = true
+        showNextModal()
+      }
+    }
+
+    // Listen for clicks
+    const handleClick = () => {
+      handleInteraction()
+    }
+
+    // Listen for scroll - only trigger on scroll back to top
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY || window.pageYOffset
+      
+      // Check if user scrolled down
+      if (currentScrollY > lastScrollYRef.current) {
+        hasScrolledDownRef.current = true
+      }
+      
+      // Check if user scrolled back to top (within 100px of top)
+      if (hasScrolledDownRef.current && currentScrollY < 100 && currentScrollY < lastScrollYRef.current) {
+        handleInteraction()
+      }
+      
+      lastScrollYRef.current = currentScrollY
+    }
+
+    window.addEventListener('click', handleClick, { once: true })
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('click', handleClick)
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [business, showNextModal])
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (inquiryTimerRef.current) clearTimeout(inquiryTimerRef.current)
+      if (offerTimerRef.current) clearTimeout(offerTimerRef.current)
+    }
+  }, [])
 
   // Memoize all images collection
   const allImages = useMemo(() => {
@@ -395,6 +574,8 @@ const BusinessInfo = () => {
           <button
             onClick={() => {
               trackLeadClick(business._id, 'inquiry');
+              hasShownInquiryRef.current = true
+              currentModalRef.current = 'inquiry'
               setIsInquiryOpen(true);
             }}
             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary-600 border-2 border-primary-600 font-semibold text-lg hover:bg-primary-50 transition-colors"
@@ -954,26 +1135,17 @@ const BusinessInfo = () => {
       <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
-      <CallPromptModal
-        isOpen={isCallModalOpen}
+      
+      {/* Combined Contact Modal (Call + WhatsApp) */}
+      <ContactPromptModal
+        isOpen={isContactModalOpen}
         onClose={() => {
-          setIsCallModalOpen(false)
-          if (whatsappUrl) {
-            setTimeout(() => setIsWhatsAppModalOpen(true), 500)
-          } else {
-            setTimeout(() => setIsInquiryOpen(true), 500)
-          }
+          setIsContactModalOpen(false)
+          closeCurrentModal('contact')
         }}
         phone={business?.phone}
-        onCall={() => trackLeadClick(business._id, 'call')}
-      />
-      <WhatsAppPromptModal
-        isOpen={isWhatsAppModalOpen}
-        onClose={() => {
-          setIsWhatsAppModalOpen(false)
-          setTimeout(() => setIsInquiryOpen(true), 500)
-        }}
         whatsappUrl={whatsappUrl}
+        onCall={() => trackLeadClick(business._id, 'call')}
         onWhatsApp={() => trackLeadClick(business._id, 'whatsapp')}
       />
 
@@ -982,10 +1154,7 @@ const BusinessInfo = () => {
         isOpen={isInquiryOpen}
         onClose={() => {
           setIsInquiryOpen(false)
-          // Open offer modal after a short delay only if services exist
-          if (business?.services?.length > 0) {
-            setTimeout(() => setIsOfferModalOpen(true), 500)
-          }
+          closeCurrentModal('inquiry')
         }}
         businessId={business?._id}
         businessName={business?.name}
@@ -995,7 +1164,10 @@ const BusinessInfo = () => {
       {/* Special Offer Modal */}
       <SpecialOfferModal
         isOpen={isOfferModalOpen}
-        onClose={() => setIsOfferModalOpen(false)}
+        onClose={() => {
+          setIsOfferModalOpen(false)
+          closeCurrentModal('offer')
+        }}
         onBookNow={handleBookNow}
       />
 
@@ -1755,6 +1927,8 @@ const BusinessInfo = () => {
         <button
           onClick={() => {
             trackLeadClick(business._id, 'inquiry');
+            hasShownInquiryRef.current = true
+            currentModalRef.current = 'inquiry'
             setIsInquiryOpen(true);
           }}
           className="lg:hidden fixed right-0 top-[60%] z-50 flex items-center justify-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-t-xl shadow-xl border-x-2 border-t-2 border-white hover:bg-primary-700 active:bg-primary-800 transition-all duration-300 font-bold -rotate-90 origin-bottom-right"

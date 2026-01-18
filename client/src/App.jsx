@@ -9,6 +9,7 @@ import { SocketProvider } from './contexts/SocketContext'
 
 // Layouts
 import { AuthLayout, AdminLayout, ManagerLayout, StaffLayout, PublicLayout } from './layouts'
+import WhatsappLead from './pages/admin/WhatsappLeads/WhatsappLead'
 
 // Helper Component for Loading State
 const LoadingFallback = () => (
@@ -323,6 +324,7 @@ function App() {
                       <Route path="profile" element={<AdminProfile />} />
                       {/* WhatsApp setup route */}
                       <Route path="whatsapp-setup" element={<WhatsAppSetup />} />
+                      <Route path="watsapp-leads" element={<WhatsappLead />} />
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     </Route>
 
