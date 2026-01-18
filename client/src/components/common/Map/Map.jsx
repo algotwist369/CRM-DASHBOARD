@@ -98,29 +98,39 @@ const Map = ({
 
   const embedUrl = useMemo(() => {
     if (apiKey) {
+      // Use modern Google Maps Embed API v1 with latest parameters
       if (mapData.lat && mapData.lng) {
-        return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${mapData.lat},${mapData.lng}&zoom=${mapData.zoom || zoom}`
+        return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${mapData.lat},${mapData.lng}&zoom=${mapData.zoom || zoom}&maptype=roadmap&language=en`
       }
       if (mapData.query) {
         const q = mapData.query.replace(/\+/g, ' ')
-        return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(q)}&zoom=${mapData.zoom || zoom}`
+        return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(q)}&zoom=${mapData.zoom || zoom}&maptype=roadmap&language=en`
+      }
+      if (mapData.cid) {
+        return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&cid=${mapData.cid}&zoom=${mapData.zoom || zoom}&maptype=roadmap&language=en`
       }
       if (googleMapsUrl) {
-        return `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${encodeURIComponent(googleMapsUrl)}`
+        return `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${encodeURIComponent(googleMapsUrl)}&maptype=roadmap&language=en`
       }
       return null
     }
 
+    // Use the latest Google Maps embed format - this automatically shows the newest interface
+    // Google Maps automatically serves the latest version when using this format
     if (mapData.cid) {
-      return `https://maps.google.com/maps?cid=${mapData.cid}&output=embed`
+      // Use CID with modern embed format
+      return `https://www.google.com/maps?cid=${mapData.cid}&output=embed&hl=en&z=${mapData.zoom || zoom}`
     }
 
     if (mapData.query) {
-      return `https://maps.google.com/maps?q=${mapData.query}&t=m&z=${mapData.zoom}&output=embed&iwloc=near`
+      // Use query with modern embed format
+      const query = encodeURIComponent(mapData.query.replace(/\+/g, ' '))
+      return `https://www.google.com/maps?q=${query}&output=embed&hl=en&z=${mapData.zoom || zoom}`
     }
 
     if (mapData.lat && mapData.lng) {
-      return `https://maps.google.com/maps?q=${mapData.lat},${mapData.lng}&t=m&z=${mapData.zoom}&output=embed&iwloc=near`
+      // Use coordinates with modern embed format - this shows the latest Google Maps interface
+      return `https://www.google.com/maps?q=${mapData.lat},${mapData.lng}&output=embed&hl=en&z=${mapData.zoom || zoom}`
     }
 
     return null
@@ -188,106 +198,148 @@ const Map = ({
   const hasApiKey = Boolean(apiKey)
 
   return (
-    <div className={`overflow-hidden border border-gray-200 rounded z-0 ${className}`}>
+    <div className={`overflow-hidden border border-gray-200 rounded-lg shadow-sm z-0 ${className}`} style={{ zIndex: 0, position: 'relative' }}>
       {hasApiKey && embedUrl ? (
         <>
-          <iframe
-            ref={iframeRef}
-            width="100%"
-            height={height}
-            style={{ border: 0 }}
-            loading="lazy"
-            allowFullScreen
-            referrerPolicy="no-referrer-when-downgrade"
-            src={embedUrl}
-            title="Location Map"
-            className="w-full"
-          />
+          <div className="relative w-full" style={{ height }}>
+            <iframe
+              ref={iframeRef}
+              width="100%"
+              height="100%"
+              style={{ 
+                border: 0,
+                borderRadius: '0.5rem',
+                filter: 'brightness(0.98) contrast(1.02)'
+              }}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={embedUrl}
+              title="Location Map"
+              className="w-full h-full"
+              allow="geolocation *; microphone *; camera *"
+            />
+            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-2 py-1 text-xs text-gray-600">
+              Google Maps
+            </div>
+          </div>
           {showLink && googleMapsUrl && (
-            <div className="mt-3">
+            <div className="mt-3 px-1">
               <a
                 href={googleMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors"
+                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors group"
               >
-                <FaMapMarkerAlt className="text-xs" />
+                <FaMapMarkerAlt className="text-xs group-hover:scale-110 transition-transform" />
                 <span>Open in Google Maps</span>
+                <svg className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </a>
             </div>
           )}
         </>
       ) : hasCoordinates ? (
         <>
-          <MapContainer
-            center={[mapData.lat, mapData.lng]}
-            zoom={mapData.zoom || zoom}
-            scrollWheelZoom={false}
-            style={{ height, width: '100%' }}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
-            <Marker position={[mapData.lat, mapData.lng]} />
-          </MapContainer>
+          <div className="relative w-full" style={{ height }}>
+            <MapContainer
+              center={[mapData.lat, mapData.lng]}
+              zoom={mapData.zoom || zoom}
+              scrollWheelZoom={false}
+              style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
+              className="rounded-lg"
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution="&copy; OpenStreetMap contributors"
+              />
+              <Marker position={[mapData.lat, mapData.lng]} />
+            </MapContainer>
+            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-2 py-1 text-xs text-gray-600">
+              OpenStreetMap
+            </div>
+          </div>
           {showLink && googleMapsUrl && (
-            <div className="mt-3">
+            <div className="mt-3 px-1">
               <a
                 href={googleMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors"
+                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors group"
               >
-                <FaMapMarkerAlt className="text-xs" />
+                <FaMapMarkerAlt className="text-xs group-hover:scale-110 transition-transform" />
                 <span>Open in Google Maps</span>
+                <svg className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </a>
             </div>
           )}
         </>
       ) : embedUrl ? (
         <>
-          <iframe
-            ref={iframeRef}
-            width="100%"
-            height={height}
-            style={{ border: 0 }}
-            loading="lazy"
-            allowFullScreen
-            referrerPolicy="no-referrer-when-downgrade"
-            src={embedUrl}
-            title="Location Map"
-            allow="geolocation"
-            className="w-full"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          />
+          <div className="relative w-full" style={{ height }}>
+            <iframe
+              ref={iframeRef}
+              width="100%"
+              height="100%"
+              style={{ 
+                border: 0,
+                borderRadius: '0.5rem',
+              }}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={embedUrl}
+              title="Location Map"
+              allow="geolocation *; microphone *; camera *"
+              className="w-full h-full"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+            />
+            <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-200">
+              <span className="inline-flex items-center gap-1.5">
+                <svg className="w-3 h-3 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                Google Maps
+              </span>
+            </div>
+          </div>
           {showLink && googleMapsUrl && (
-            <div className="mt-3">
+            <div className="mt-3 px-1">
               <a
                 href={googleMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors"
+                className="inline-flex items-center gap-2 text-primary-600 font-medium text-sm hover:text-primary-700 transition-colors group"
               >
-                <FaMapMarkerAlt className="text-xs" />
+                <FaMapMarkerAlt className="text-xs group-hover:scale-110 transition-transform" />
                 <span>Open in Google Maps</span>
+                <svg className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </a>
             </div>
           )}
         </>
       ) : (
-        <div className="bg-gray-100 flex items-center justify-center rounded" style={{ height }}>
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center rounded-lg" style={{ height }}>
           <div className="text-center p-4">
-            <FaMapMarkerAlt className="text-gray-400 text-4xl mx-auto mb-2" />
-            <p className="text-gray-500 text-sm">Map unavailable</p>
+            <div className="w-16 h-16 mx-auto mb-3 bg-gray-200 rounded-full flex items-center justify-center">
+              <FaMapMarkerAlt className="text-gray-400 text-2xl" />
+            </div>
+            <p className="text-gray-600 font-medium mb-1">Map unavailable</p>
+            <p className="text-gray-400 text-xs mb-3">Location information not available</p>
             {googleMapsUrl && showLink && (
               <a
                 href={googleMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-block text-primary-600 text-sm hover:text-primary-700"
+                className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
               >
-                Open in Google Maps
+                <FaMapMarkerAlt className="text-xs" />
+                <span>Open in Google Maps</span>
               </a>
             )}
           </div>

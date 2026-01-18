@@ -19,15 +19,7 @@ const SpecialOfferModal = ({ isOpen, onClose, onBookNow }) => {
             draggable={false}
             hideHeader={true} // Custom header for visual impact
         >
-            <div className="relative overflow-hidden z-40">
-                {/* Close Button (Custom placement) */}
-                {/* <button
-                    onClick={onClose}
-                    className="absolute top-2 right-2 z-10 p-2 text-white bg-white/20 backdrop-blur-sm rounded-full text-gray-500 hover:text-gray-800 hover:bg-white/40 transition-all"
-                >
-                    <FaTimes />
-                </button> */}
-
+            <div className="relative overflow-hidden" style={{ zIndex: 10001, position: 'relative' }}>
                 {/* Decorative Background Elements */}
                 <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-primary-600 to-primary-800 rounded-b-[50%] scale-x-150 -translate-y-10 z-0" />
 

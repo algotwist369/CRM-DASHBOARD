@@ -328,18 +328,18 @@ const CustomerInfo = () => {
               </div>
 
               {/* Optional Fields */}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="border-gray-200">
                 <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-gray-400 rounded-full"></span>
-                  <span>Additional Details</span>
-                  <span className="text-xs font-normal text-gray-500">(optional)</span>
+                  {/* <span className="w-1 h-5 bg-gray-400 rounded-full"></span> */}
+                  {/* <span>Additional Details</span> */}
+                  {/* <span className="text-xs font-normal text-gray-500">(optional)</span> */}
                 </h2>
                 <div className="space-y-4">
 
                   {/* DOB and Gender Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Date of Birth */}
-                    <div>
+                    <div className='hidden'>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Date of Birth
                       </label>
@@ -377,7 +377,7 @@ const CustomerInfo = () => {
                   </div>
 
                   {/* Notes */}
-                  <div>
+                  <div className='hidden'>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Special Notes</label>
                     <textarea
                       name="notes"
@@ -391,7 +391,7 @@ const CustomerInfo = () => {
 
                   {/* Special Requests */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Special Requests</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Special Requests (optional) </label>
                     <textarea
                       name="specialRequests"
                       value={formData.specialRequests}

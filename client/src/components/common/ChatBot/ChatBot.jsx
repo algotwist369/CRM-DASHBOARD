@@ -291,14 +291,14 @@ const ChatBot = () => {
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className="hidden md:block fixed bottom-24 right-6 z-50 pointer-events-auto"
           >
-            <div className="bg-white shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-primary-100 p-4 rounded-2xl max-w-sm">
+            <div className="hidden bg-white shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-primary-100 p-4 rounded-2xl max-w-sm">
               <div className="flex items-start gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary-50 shadow-sm flex-shrink-0">
                   <img src="/chatbot_avatar.png" alt="AI Support" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-bold text-gray-900">Spa Advisor 🕊️</h4>
+                    <h4 className="font-bold text-gray-900">Spa Advisor</h4>
                     <button onClick={() => setShowNotification(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                       <FaTimes className="text-xs" />
                     </button>

@@ -1,0 +1,114 @@
+📄 Project Overview Document
+
+Title: Google Sheet Lead Auto-Distribution to WhatsApp (Location-Based)
+
+1. Project Summary
+
+This system automatically fetches customer leads from a public Google Sheet and sends each lead to all managers of the same location via WhatsApp using Twilio.
+The entire process runs automatically and requires no manual intervention.
+
+2. Problem Statement
+
+Currently, leads collected in Google Sheets require manual forwarding to managers, which can cause:
+
+Delay in response
+
+Human error
+
+Missed or duplicated leads
+
+3. Solution Overview
+
+The backend system:
+
+Reads leads from a public Google Sheet
+
+Stores unique leads in MongoDB
+
+Identifies managers based on lead location
+
+Sends the lead to all relevant managers on WhatsApp
+
+Tracks how many managers received each lead
+
+4. Data Source (Google Sheet)
+Sheet Columns (Required)
+Customer Name | Location | Customer Phone
+
+Example Sheet Data
+Kushal Suvarna | Vashi    | 918108811811
+Rahul Patil    | Andheri  | 919876543210
+
+5. Manager Configuration
+
+Managers are stored in the system with:
+
+Location
+
+WhatsApp Number
+
+Example Managers
+Location: Vashi
+- +919999999999
+- +918888888888
+
+Location: Andheri
+- +917777777777
+
+6. Workflow (Step-by-Step)
+
+System fetches data from the public Google Sheet (every 5 minutes or manually).
+
+New leads are saved in the database (duplicates are ignored).
+
+For each lead:
+
+The system finds all managers with the same location.
+
+A WhatsApp message is sent to every matching manager.
+
+The lead is marked as sent, and the number of WhatsApp deliveries is recorded.
+
+7. WhatsApp Message Format
+📍 New Lead
+
+Name: Kushal Suvarna
+Phone: 918108811811
+Location: Vashi
+
+8. Database Record Example
+{
+  "customer_name": "Kushal Suvarna",
+  "customer_phone": "918108811811",
+  "location": "Vashi",
+  "sent": true,
+  "sent_to_count": 2
+}
+
+9. Key Features
+
+Automatic lead processing
+
+Location-wise routing
+
+Multiple managers per location
+
+Duplicate lead prevention
+
+WhatsApp delivery tracking
+
+Manual trigger + cron automation
+
+10. One-Line Description (For Clients)
+
+“Leads added to Google Sheet are automatically sent to the right managers on WhatsApp based on location.”
+
+11. Business Benefit
+
+Faster lead response
+
+Zero manual work
+
+No missed leads
+
+Better team coordination

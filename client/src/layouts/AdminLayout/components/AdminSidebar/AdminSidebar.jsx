@@ -6,7 +6,6 @@ import {
   HiOutlineOfficeBuilding,
   HiOutlineUserGroup,
   HiOutlineUsers,
-  HiOutlineChartBar,
   HiOutlineCog,
   HiOutlineBell,
   HiOutlineChevronRight,
@@ -14,12 +13,11 @@ import {
   HiOutlineChevronDown,
   HiOutlineCube,
   HiOutlineCalendar,
-  HiOutlineDocumentText,
-  HiOutlineClipboardList,
   HiOutlineCursorClick,
+  HiOutlineStar,
 } from 'react-icons/hi'
 import { GrAnnounce } from "react-icons/gr";
-import { FaUserCircle, FaLock, FaQuestionCircle } from 'react-icons/fa';
+import { FaUserCircle, FaLock, FaQuestionCircle, FaWhatsapp } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 
 
@@ -181,6 +179,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       name: 'Inquiries',
       href: '/admin/inquiries',
       icon: <FaQuestionCircle className="w-5 h-5" />,
+    },
+     {
+      name: 'WhatsApp Leads',
+      href: '/admin/watsapp-leads',
+      icon: <FaWhatsapp className="w-5 h-5" />,
     },
     // {
     //   name: 'Invoices',
