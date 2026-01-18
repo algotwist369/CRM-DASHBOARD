@@ -3184,33 +3184,24 @@ const sendConfirmationNotifications = async (appointmentId, bookingData) => {
 
         const phone = appointment.customer?.phone || bookingData.customerInfo?.phone;
 
-        // Send Booking Confirmation (WhatsApp with SMS Fallback)
+        // Send Booking Confirmation (DoubleTick.io → Twilio WhatsApp → SMS Fallback)
         if (phone) {
+            const { sendAppointmentConfirmation } = require('../utils/whatsappSender');
             (async () => {
                 try {
-                    console.log(`[Notification] Attempting WhatsApp confirmation to ${phone}...`);
-                    const waResult = await sendTemplateWhatsApp({
-                        to: phone,
-                        template: 'appointment_confirmation',
-                        data: notificationData
+                    console.log(`[Notification] Sending appointment confirmation to ${phone}...`);
+                    const result = await sendAppointmentConfirmation({
+                        phone: phone,
+                        confirmationCode: appointment.bookingNumber
                     });
 
-                    if (!waResult || waResult.success === false) {
-                        throw new Error(waResult?.message || 'WhatsApp failed');
+                    if (result.success) {
+                        console.log(`[Notification] ✅ Confirmation sent via ${result.provider}: ${result.messageId}`);
+                    } else {
+                        console.error('[Notification] ❌ All delivery methods failed:', result.error);
                     }
-                    console.log(`[Notification] WhatsApp confirmed: ${waResult.messageId}`);
                 } catch (err) {
-                    console.warn(`[Notification] WhatsApp failed (${err.message}). Falling back to SMS...`);
-                    try {
-                        const smsResult = await sendTemplateSMS({
-                            to: phone,
-                            template: 'appointment_confirmation',
-                            data: notificationData
-                        });
-                        console.log(`[Notification] SMS fallback confirmed: ${smsResult.messageId}`);
-                    } catch (smsErr) {
-                        console.error('[Notification] Critical: SMS fallback also failed:', smsErr.message);
-                    }
+                    console.error('[Notification] Critical error sending confirmation:', err.message);
                 }
             })();
         }

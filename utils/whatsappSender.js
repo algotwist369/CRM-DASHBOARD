@@ -1,5 +1,7 @@
 const whatsappWebService = require('../services/whatsappWebService');
 const { sendWhatsApp: sendTwilioWhatsApp, sendSMS: sendTwilioSMS } = require('./sendSMS');
+const { sendWhatsAppOTPDoubleTick } = require('./sendWhatsAppDoubleTick');
+const axios = require('axios');
 const {
     General_Inquiry_Template,
     Pricing_Services_Inquiry_Template,
@@ -7,6 +9,67 @@ const {
     Membership_Inquiry_Template
 } = require('../whatsappTemplate/Inqury');
 require('dotenv').config();
+
+// Helper function to send via DoubleTick.io with templates
+const sendViaDoubleTick = async (phone, templateName, placeholders) => {
+    try {
+        const DOUBLETICK_API_KEY = process.env.DOUBLETICK_API_KEY;
+        const DOUBLETICK_WHATSAPP_FROM = process.env.DOUBLETICK_WHATSAPP_FROM;
+
+        if (!DOUBLETICK_API_KEY || !DOUBLETICK_WHATSAPP_FROM) {
+            console.log('[DoubleTick] Not configured, skipping...');
+            return { success: false, provider: 'none' };
+        }
+
+        // Format phone number
+        let toPhone = phone.toString().replace(/^\+/, '');
+        if (/^\d{10}$/.test(toPhone)) {
+            toPhone = `91${toPhone}`;
+        }
+
+        const payload = {
+            messages: [{
+                to: toPhone,
+                content: {
+                    language: 'en',
+                    templateName: templateName,
+                    templateData: {
+                        body: {
+                            placeholders: placeholders
+                        }
+                    }
+                }
+            }]
+        };
+
+        const response = await axios.post(
+            'https://public.doubletick.io/whatsapp/message/template',
+            payload,
+            {
+                headers: {
+                    'Authorization': DOUBLETICK_API_KEY,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000
+            }
+        );
+
+        if (response.status === 200 || response.status === 201) {
+            console.log(`[DoubleTick] ✅ Message sent successfully`);
+            return {
+                success: true,
+                provider: 'doubletick',
+                messageId: response.data?.messageId || response.data?.id || 'doubletick-' + Date.now()
+            };
+        }
+
+        return { success: false, provider: 'doubletick', error: 'Unexpected response' };
+    } catch (error) {
+        console.error('[DoubleTick] Error:', error.response?.data || error.message);
+        return { success: false, provider: 'doubletick', error: error.message };
+    }
+};
 
 const sendInquiryWhatsApp = async (options) => {
     const { customerName, phone, businessName, inquiryType, bookingUrl } = options;
@@ -20,24 +83,43 @@ const sendInquiryWhatsApp = async (options) => {
     };
 
     // Select appropriate template based on inquiry type
-    let message;
+    let message, doubleTickTemplate, doubleTickPlaceholders;
     switch (inquiryType) {
         case 'Pricing & Services':
             message = Pricing_Services_Inquiry_Template(templateData);
+            doubleTickTemplate = 'pricing_services_inquiry';
+            doubleTickPlaceholders = [businessName, bookingUrl];
             break;
         case 'Special Offers':
             message = Special_Offer_Inquiry_Template(templateData);
+            doubleTickTemplate = 'general_inquiry';
+            doubleTickPlaceholders = [businessName, inquiryType];
             break;
         case 'Membership Packages':
             message = Membership_Inquiry_Template(templateData);
+            doubleTickTemplate = 'general_inquiry';
+            doubleTickPlaceholders = [businessName, inquiryType];
             break;
         case 'General Inquiry':
         default:
             message = General_Inquiry_Template(templateData);
+            doubleTickTemplate = 'general_inquiry';
+            doubleTickPlaceholders = [businessName, inquiryType || 'General Inquiry'];
             break;
     }
 
-    // Try WhatsApp Web.js first
+    // Tier 1: Try DoubleTick.io first
+    console.log('[WhatsApp Sender] Attempting delivery via DoubleTick.io...');
+    const doubleTickResult = await sendViaDoubleTick(phone, doubleTickTemplate, doubleTickPlaceholders);
+
+    if (doubleTickResult.success) {
+        console.log('[WhatsApp Sender] ✅ Delivered via DoubleTick.io');
+        return doubleTickResult;
+    }
+
+    console.log('[WhatsApp Sender] DoubleTick.io failed, trying WhatsApp Web...');
+
+    // Tier 2: Try WhatsApp Web.js
     const isReady = await whatsappWebService.isReady();
     if (isReady) {
         try {
@@ -121,6 +203,60 @@ const sendInquiryWhatsApp = async (options) => {
 };
 
 
+const sendAppointmentConfirmation = async (options) => {
+    const { phone, confirmationCode } = options;
+
+    // Tier 1: Try DoubleTick.io first
+    console.log('[WhatsApp Sender] Sending appointment confirmation via DoubleTick.io...');
+    const doubleTickResult = await sendViaDoubleTick(phone, 'appointment_confirmation', [confirmationCode]);
+
+    if (doubleTickResult.success) {
+        console.log('[WhatsApp Sender] ✅ Appointment confirmation delivered via DoubleTick.io');
+        return doubleTickResult;
+    }
+
+    console.log('[WhatsApp Sender] DoubleTick.io failed, trying Twilio...');
+
+    // Tier 2: Try Twilio WhatsApp
+    try {
+        const result = await sendTwilioWhatsApp({
+            to: phone,
+            message: `Spa Advisor | Booking Confirmed\nCode: ${confirmationCode}\nArrive 10 min early.`
+        });
+
+        if (result.success) {
+            return {
+                success: true,
+                provider: 'twilio-whatsapp',
+                messageId: result.messageId
+            };
+        }
+    } catch (error) {
+        console.error('[WhatsApp Sender] Twilio WhatsApp failed:', error.message);
+    }
+
+    // Tier 3: SMS Fallback
+    console.warn('[WhatsApp Sender] All WhatsApp methods failed. Triggering SMS Fallback...');
+    try {
+        const smsResult = await sendTwilioSMS({
+            to: phone,
+            message: `Spa Advisor | Booking Confirmed\nCode: ${confirmationCode}\nArrive 10 min early.`
+        });
+        return {
+            success: true,
+            provider: 'sms-fallback',
+            messageId: smsResult.messageId
+        };
+    } catch (smsError) {
+        console.error('[WhatsApp Sender] SMS Fallback also failed:', smsError.message);
+        return {
+            success: false,
+            provider: 'none',
+            error: 'All delivery methods failed'
+        };
+    }
+};
+
 const sendViaTwilio = async (phone, message, templateOptions = null) => {
     try {
         const sendOptions = { to: phone, message };
@@ -177,5 +313,6 @@ const getWhatsAppStatus = async () => {
 
 module.exports = {
     sendInquiryWhatsApp,
+    sendAppointmentConfirmation,
     getWhatsAppStatus
 };
