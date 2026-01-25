@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useSearchParams, useNavigate, useParams, Link } from 'react-router-dom';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import publicService from '../../../services/public/publicService';
+import googlePlacesService from '../../../services/public/googlePlacesService';
+import SEO from '../../../components/common/SEO';
 import SkeletonSearch from './SkeletonSearch';
 import LazySection from '../../../components/common/LazySection/LazySection';
 import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter, FiMaximize2 } from 'react-icons/fi';
 import { BiSolidNavigation } from "react-icons/bi";
 import { FaWhatsapp, FaStar, FaPhoneAlt, FaEnvelope } from 'react-icons/fa';
-import SEO from '../../../components/common/SEO';
 import InquiryModal from '../../../components/public/Inquiry/InquiryModal';
 import MapLocationPicker from '../../../components/common/MapLocationPicker';
 import { sanitizePhoneNumber } from '../../../utils/format/phoneUtils';
+import SearchAutocomplete from '../../../components/public/SearchAutocomplete';
 
 // Static Constants - Outside component to prevent recreation
 // Spa-specific service categories aligned with backend API
@@ -443,6 +445,23 @@ const FilterSection = ({ title, children }) => (
     </div>
 );
 
+// Slug Helpers for SEO Friendly URLs
+const toSlug = (text) => {
+    if (!text) return '';
+    return text.toString().toLowerCase()
+        .replace(/\s+/g, '-')           // Replace spaces with -
+        .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+        .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+        .replace(/^-+/, '')             // Trim - from start of text
+        .replace(/-+$/, '');            // Trim - from end of text
+};
+
+const fromSlug = (slug) => {
+    if (!slug) return '';
+    // Replace hyphens with spaces
+    return slug.replace(/-/g, ' ');
+};
+
 const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const { location: routeLocation, query: routeQuery } = useParams();
@@ -474,38 +493,37 @@ const Search = () => {
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
-    // Sync Route Params to Search Params (for /spa/:location/:query)
+    // Sync URL params with local state
     useEffect(() => {
-        if (routeLocation || routeQuery) {
-            const newParams = { ...Object.fromEntries(searchParams.entries()) };
-            let hasChanges = false;
+        // De-slugify route params
+        const decodedLocation = routeLocation ? fromSlug(routeLocation) : '';
+        const decodedQuery = routeQuery ? fromSlug(routeQuery) : '';
 
-            // If route has location, prioritize it over 'lat/lng' or 'location' param
-            if (routeLocation && routeLocation !== 'all') {
-                if (newParams.location !== routeLocation) {
-                    newParams.location = routeLocation;
-                    // Clear coords if text location is provided strictly via route?
-                    // actually if we have coords, we might keep them if they match? 
-                    // simpler to clear to ensure we search by name if name provided.
-                    delete newParams.lat;
-                    delete newParams.lng;
-                    hasChanges = true;
-                }
-            }
-
-            if (routeQuery) {
-                if (newParams.q !== routeQuery) {
-                    newParams.q = routeQuery;
-                    hasChanges = true;
-                    setLocalQuery(routeQuery);
-                }
-            }
-
-            if (hasChanges) {
-                setSearchParams(newParams);
-            }
+        // If route params exist, they take precedence over searchParams 'q'/'location'
+        if (decodedLocation || decodedQuery) {
+            setLocalLocation(decodedLocation);
+            setLocalQuery(decodedQuery);
+        } else {
+            // Fallback to query params
+            const q = searchParams.get('q');
+            const loc = searchParams.get('location');
+            if (q) setLocalQuery(q);
+            if (loc) setLocalLocation(loc);
         }
-    }, [routeLocation, routeQuery, searchParams, setSearchParams]);
+
+        // Only update search params if they differ from route
+        // This prevents infinite loops
+        if (decodedLocation || decodedQuery) {
+            const currentQ = searchParams.get('q');
+            const currentLoc = searchParams.get('location');
+
+            // We want to KEEP them in state/UI but REMOVE them from URL query string
+            // But if we are mounting, we need them for data fetching logic that reads from searchParams?
+            // Actually getSearchParamsObj reads from (searchParams.get('q') || routeQuery)
+            // But routeQuery is SLUGIFIED. 
+            // So we need to update getSearchParamsObj too.
+        }
+    }, [routeLocation, routeQuery, searchParams]);
 
     // Initial Geolocation Logic - Simplified to just setup
     useEffect(() => {
@@ -588,9 +606,29 @@ const Search = () => {
         const current = Object.fromEntries(searchParams.entries());
         const updated = { ...current, ...newParams };
 
-        // Remove undefined/null/empty values
+        // Clean up URL: Remove defaults and empty values
+        const defaults = {
+            rating: '0',
+            minRating: '0',
+            page: '1',
+            limit: '100',
+            radius: '5000',
+            sort: 'recommended',
+            offers: 'false',
+            lat: '',
+            lng: '',
+            q: '',
+            location: ''
+        };
+
         Object.keys(updated).forEach(key => {
-            if (updated[key] === undefined || updated[key] === null || updated[key] === '') {
+            const value = String(updated[key]);
+            if (
+                updated[key] === undefined ||
+                updated[key] === null ||
+                value === '' ||
+                value === defaults[key]
+            ) {
                 delete updated[key];
             }
         });
@@ -601,14 +639,14 @@ const Search = () => {
     // Pagination State
     // 2. React Query for Infinite Search
     const getSearchParamsObj = () => ({
-        q: searchParams.get('q') || routeQuery || '',
+        q: searchParams.get('q') || (routeQuery ? fromSlug(routeQuery) : '') || '',
         lat: searchParams.get('lat') || '',
         lng: searchParams.get('lng') || '',
-        location: searchParams.get('location') || routeLocation || '',
+        location: searchParams.get('location') || (routeLocation ? fromSlug(routeLocation) : '') || '',
         category: searchParams.get('category') || '',
         rating: searchParams.get('rating') || 0,
         sort: searchParams.get('sort') || 'recommended',
-        radius: searchParams.get('radius') || 5000,
+        radius: searchParams.get('radius') || 20000,
         // Add other filters
         offers: searchParams.get('offers'),
         service: searchParams.get('service'),
@@ -628,19 +666,23 @@ const Search = () => {
         queryFn: async ({ pageParam = 1 }) => {
             const params = {
                 ...getSearchParamsObj(),
-                minRating: searchParams.get('rating') || 0, // mapping rating -> minRating
+                minRating: searchParams.get('rating') || 0,
                 page: pageParam,
-                limit: 10
+                limit: 5000 // Reverted to 10 for efficient scrolling
             };
+            const placesResp = await googlePlacesService.searchWithPlaces(params);
+            if (placesResp.success) {
+                return placesResp.data;
+            }
             const response = await publicService.searchBusinesses(params);
             if (!response.success) {
                 throw new Error(response.error || "Failed to fetch results");
             }
-            return response.data; // Expected { results: [], totalResults: X }
+            return response.data;
         },
         getNextPageParam: (lastPage, allPages) => {
-            const currentCount = allPages.flatMap(p => p.results).length;
-            if (currentCount < lastPage.totalResults) {
+            if (lastPage.results.length < 10) return undefined;
+            if (lastPage.totalResults && allPages.flatMap(p => p.results).length < lastPage.totalResults) {
                 return allPages.length + 1;
             }
             return undefined;
@@ -649,6 +691,33 @@ const Search = () => {
         staleTime: 5 * 60 * 1000, // 5 minutes
         keepPreviousData: true
     });
+
+    // 3. Separate Query for Map Data (Fetch ALL businesses)
+    const { data: mapData } = useQuery({
+        queryKey: ['mapSearchResults', getSearchParamsObj()], // Same params, just different limit
+        queryFn: async () => {
+            const params = {
+                ...getSearchParamsObj(),
+                minRating: searchParams.get('rating') || 0,
+                page: 1,
+                limit: 5000 // Fetch all for map pins
+            };
+            const placesResp = await googlePlacesService.searchWithPlaces(params);
+            if (placesResp.success) return placesResp.data;
+
+            const response = await publicService.searchBusinesses(params);
+            if (response.success) return response.data;
+            return { results: [] };
+        },
+        enabled: isLocationInitialized,
+        staleTime: 5 * 60 * 1000,
+        keepPreviousData: true
+    });
+
+    // Use mapData for the map, fallback to list results if mapData loading/empty?
+    const mapBusinesses = mapData?.results || []; // Or fallback to 'results' if we want immediate feedback while mapData loads?
+    // Better to show mapBusinesses, as it eventually has everything.
+
 
     // Flatten results from all pages
     const results = useMemo(() => {
@@ -706,10 +775,34 @@ const Search = () => {
     // Helper to get coordinates for a location string
     const getCoordinatesForLocation = useCallback(async (locationStr) => {
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationStr)}`);
-            const data = await response.json();
+            if (!locationStr) return null;
+
+            // 1. Try exact string first
+            let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationStr)}`);
+            let data = await response.json();
             if (data && data.length > 0) {
                 return { lat: data[0].lat, lng: data[0].lon };
+            }
+
+            // 2. Retry with simpler parts (Nominatim often fails on long/complex strings)
+            const parts = locationStr.split(',').map(s => s.trim()).filter(Boolean);
+            if (parts.length > 1) {
+                // Try removing the first part (e.g. "Bhanunagar, Kalyan West" -> "Kalyan West")
+                // Or just try the last 2 parts (Locality, City)
+                const fallbackStr = parts.slice(Math.max(parts.length - 2, 1)).join(', ');
+                if (fallbackStr !== locationStr) {
+                    response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackStr)}`);
+                    data = await response.json();
+                    if (data && data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
+                }
+
+                // 3. Last Resort: Try just the city/last part
+                const cityStr = parts[parts.length - 1];
+                if (cityStr !== fallbackStr && cityStr !== locationStr) {
+                    response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityStr)}`);
+                    data = await response.json();
+                    if (data && data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
+                }
             }
         } catch (error) {
             console.error("Forward geocoding failed:", error);
@@ -747,18 +840,22 @@ const Search = () => {
         navigate(`${nextPath}?${currentParams.toString()}`);
     };
 
-    const handleSearchSubmit = async () => {
-        const { q, location, params } = parseSearchQuery(localQuery);
+    const handleSearchSubmit = async (overrideQuery, overrideLocation) => {
+        // Use override if provided, otherwise fallback to state
+        const queryToParse = overrideQuery !== undefined ? overrideQuery : localQuery;
+        const locationToUse = overrideLocation !== undefined ? overrideLocation : localLocation;
+
+        const { q, location, params } = parseSearchQuery(queryToParse || '');
 
         // If location found in query (e.g. "in Vashi"), use that
-        // OR if localLocation is set, use that
-        // BUT if extracted 'location' is empty, do NOT fallback to 'localLocation' instantly if we want strict text?
-        // Actually, if I type "Spa" in box while input says "Vashi", I expect "Spa in Vashi".
-        const targetLocation = location || (localLocation !== "Near Me" && localLocation !== "Current Location" ? localLocation : '');
+        // OR use the locationToUse (which might be override or state)
+        const targetLocation = location || (locationToUse !== "Near Me" && locationToUse !== "Current Location" ? locationToUse : '');
 
         if (targetLocation) {
-            // Navigate to clean URL /spa/[location]/[query]
-            const nextPath = q ? `/spa/${encodeURIComponent(targetLocation)}/${encodeURIComponent(q)}` : `/spa/${encodeURIComponent(targetLocation)}`;
+            // Navigate to clean URL /spa/[location-slug]/[query-slug]
+            const locSlug = toSlug(targetLocation);
+            const qSlug = q ? toSlug(q) : '';
+            const nextPath = qSlug ? `/spa/${locSlug}/${qSlug}` : `/spa/${locSlug}`;
 
             // Preserve existing filters + add extracted ones
             const currentParams = new URLSearchParams(searchParams);
@@ -772,24 +869,21 @@ const Search = () => {
             currentParams.delete('q');
             currentParams.delete('location');
 
-            // Geocode target location
+            // Geocode target location if changed or new
             const coords = await getCoordinatesForLocation(targetLocation);
             if (coords) {
                 currentParams.set('lat', coords.lat);
                 currentParams.set('lng', coords.lng);
             } else {
-                // If geocoding fails, maybe should we clear old lat/lng to avoid "Near Me" confusion?
-                // Yes, clear them if we are moving to a new explicitly named location that we couldn't geocode
+                // If geocoding fails, we delete coords but rely on the now-flexible backend text search
                 currentParams.delete('lat');
                 currentParams.delete('lng');
             }
 
             navigate(`${nextPath}?${currentParams.toString()}`);
         } else {
-
             const updates = { q };
             Object.assign(updates, params);
-
             updateParams(updates);
         }
     };
@@ -811,12 +905,11 @@ const Search = () => {
         const query = searchParams.get('q') || '';
         const loc = searchParams.get('location') || '';
         const cat = searchParams.get('category') || '';
-
         // Helpers for keywords
         const locName = (loc && loc !== "Near Me" && loc !== "Current Location") ? loc : "Near You";
         const term = query || cat || "Spa & Wellness";
 
-        let title = 'Search Spas, Salons & Wellness Centers - SpaAdvisor';
+        let title = 'Search Spas, Salons & Wellness Centers';
         let description = 'Find the best spas, salons, and wellness centers near you. Compare prices, read reviews, and book appointments online.';
 
         if (query || loc || cat) {
@@ -826,7 +919,7 @@ const Search = () => {
             const what = parts.length > 0 ? parts.join(' ') : 'Best Spas & Salons';
             const where = loc ? `in ${loc}` : 'Near Me';
 
-            title = `${totalResults > 0 ? `${totalResults} ` : ''}${what} ${where} - Search Results | SpaAdvisor`;
+            title = `${totalResults > 0 ? `${totalResults} ` : ''}${what} ${where}`; // Suffix handled by SEO component
             description = `Found ${totalResults} results for ${what} ${where}. Book top-rated ${what.toLowerCase()} appointments instantly on SpaAdvisor.`;
         }
 
@@ -842,8 +935,10 @@ const Search = () => {
             "luxury spa"
         ].filter(Boolean).join(", ");
 
-        return { title, description, keywords };
-    }, [searchParams, totalResults]);
+        const canonicalPath = `/spa${location.search}`;
+
+        return { title, description, keywords, canonicalPath };
+    }, [searchParams, totalResults, routeQuery, routeLocation, location.search]);
 
     return (
         <div className="bg-gray-50 min-h-screen">
@@ -851,7 +946,8 @@ const Search = () => {
                 title={seoMeta.title}
                 description={seoMeta.description}
                 keywords={seoMeta.keywords}
-                canonical={`${window.location.origin}/spa?q=${searchParams.get('q') || ''}&category=${currentCategory || ''}`}
+                canonical={seoMeta.canonicalPath}
+                type="website"
             />
             {structuredData && (
                 <Helmet>
@@ -867,61 +963,81 @@ const Search = () => {
                 <div className="max-w-7xl mx-auto px-4 py-4">
                     <div className="flex flex-col md:flex-row gap-4 items-center">
                         <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-4">
-                            {/* Location Display (Editable Input) */}
+                            {/* Location Input with Autocomplete */}
                             <div className="relative w-full md:w-1/3">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FiMapPin className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    className="block w-full pl-10 pr-10 py-2 border border-gray-300  leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 sm:text-sm"
-                                    placeholder="Location (e.g. Vashi)"
+                                <SearchAutocomplete
                                     value={localLocation}
-                                    onChange={(e) => setLocalLocation(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleLocationSubmit()}
+                                    onChange={(value) => {
+                                        setLocalLocation(value);
+                                    }}
+                                    onSelect={async (suggestion) => {
+                                        // Handle "Near Me" action
+                                        if (suggestion.action === 'near_me') {
+                                            triggerGeolocation();
+                                            return;
+                                        }
+
+                                        let locationName = suggestion.displayText || suggestion.description || suggestion.main_text || suggestion.name;
+                                        let lat = null;
+                                        let lng = null;
+                                        if (suggestion.place_id) {
+                                            const detail = await googlePlacesService.getPlaceDetails(suggestion.place_id);
+                                            if (detail.success && detail.place) {
+                                                locationName = detail.place.formatted_address || locationName;
+                                                lat = detail.place.lat;
+                                                lng = detail.place.lng;
+                                            }
+                                        }
+                                        setLocalLocation(locationName);
+                                        const updates = {};
+                                        if (lat && lng) {
+                                            updates.lat = lat;
+                                            updates.lng = lng;
+                                        }
+                                        updates.location = locationName;
+                                        updateParams(updates);
+                                        setTimeout(() => handleSearchSubmit(undefined, locationName), 100);
+                                    }}
+                                    placeholder="Location (e.g. Vashi, Mumbai)"
+                                    icon={FiMapPin}
+                                    className=""
+                                    mode="location"
+                                    biasLocation={
+                                        (searchParams.get('lat') && searchParams.get('lng'))
+                                            ? [parseFloat(searchParams.get('lat')), parseFloat(searchParams.get('lng'))]
+                                            : null
+                                    }
                                 />
-                                {localLocation ? (
-                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer" onClick={() => {
-                                        setLocalLocation('');
-                                    }}>
-                                        <FiX className="text-gray-400 hover:text-gray-600" />
-                                    </div>
-                                ) : (
-                                    <div
-                                        className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer group"
-                                        onClick={triggerGeolocation}
-                                        title="Use my location"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                    </div>
-                                )}
                             </div>
 
-                            {/* Search Input */}
+                            {/* Search Input with Autocomplete (for business/service names) */}
                             <div className="relative w-full md:w-2/3">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FiSearch className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300  leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="Search by name, category, service..."
+                                <SearchAutocomplete
                                     value={localQuery}
-                                    onChange={(e) => setLocalQuery(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSearchSubmit()}
+                                    onChange={(value) => {
+                                        setLocalQuery(value);
+                                    }}
+                                    onSelect={(suggestion) => {
+                                        // If it's a business suggestion, use the name
+                                        const queryText = suggestion.name || suggestion.description || suggestion.main_text;
+                                        setLocalQuery(queryText);
+                                        // If business has location, also set it
+                                        if (suggestion.location) {
+                                            setLocalLocation(suggestion.location);
+                                        }
+                                        // Auto-submit immediately with selected query and location
+                                        setTimeout(() => handleSearchSubmit(queryText, suggestion.location || undefined), 100);
+                                    }}
+                                    placeholder="Search spa, massage, salon, wellness..."
+                                    icon={FiSearch}
+                                    className=""
+                                    userLocation={searchParams.lat && searchParams.lng ? {
+                                        lat: parseFloat(searchParams.lat),
+                                        lng: parseFloat(searchParams.lng)
+                                    } : null}
                                 />
                             </div>
                         </div>
-
-                        <button
-                            onClick={handleSearchSubmit}
-                            className="w-full md:w-auto px-6 py-2 border border-transparent text-sm font-medium  text-white bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                        >
-                            Search
-                        </button>
                     </div>
                 </div>
             </div>
@@ -1159,74 +1275,58 @@ const Search = () => {
                         {/* Mobile Search Inputs */}
                         <div className="mb-6 space-y-4 border-b border-gray-100 pb-6">
                             <div className="flex flex-col gap-3">
-                                <div className="relative w-full">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FiMapPin className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        className="w-full pl-10 pr-10 py-2 border border-gray-300 leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 sm:text-sm rounded-md"
-                                        placeholder="Location (e.g. Vashi)"
-                                        value={localLocation}
-                                        onChange={(e) => setLocalLocation(e.target.value)}
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') {
-                                                handleLocationSubmit();
-                                                setIsMobileFiltersOpen(false);
-                                            }
-                                        }}
-                                    />
-                                    {localLocation ? (
-                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer" onClick={() => {
-                                            setLocalLocation('');
-                                        }}>
-                                            <FiX className="text-gray-400 hover:text-gray-600" />
-                                        </div>
-                                    ) : (
-                                        <div
-                                            className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer group"
-                                            onClick={() => {
-                                                triggerGeolocation();
-                                                setIsMobileFiltersOpen(false);
-                                            }}
-                                            title="Use my location"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                        </div>
-                                    )}
-                                </div>
+                                {/* Location Autocomplete */}
+                                <SearchAutocomplete
+                                    value={localLocation}
+                                    onChange={(value) => setLocalLocation(value)}
+                                    onSelect={(suggestion) => {
+                                        if (suggestion.action === 'near_me') {
+                                            triggerGeolocation();
+                                            setIsMobileFiltersOpen(false);
+                                            return;
+                                        }
 
-                                <div className="relative w-full">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FiSearch className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 sm:text-sm"
-                                        placeholder="Search by name, category, service..."
-                                        value={localQuery}
-                                        onChange={(e) => setLocalQuery(e.target.value)}
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') {
-                                                handleSearchSubmit();
-                                                setIsMobileFiltersOpen(false);
-                                            }
-                                        }}
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={() => {
-                                        handleSearchSubmit();
-                                        setIsMobileFiltersOpen(false);
+                                        const locationName = suggestion.displayText || suggestion.description || suggestion.main_text || suggestion.name;
+                                        setLocalLocation(locationName);
+                                        // Auto-submit and close mobile filter
+                                        setTimeout(() => {
+                                            handleSearchSubmit(undefined, locationName);
+                                            setIsMobileFiltersOpen(false);
+                                        }, 100);
                                     }}
-                                    className="w-full px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 focus:outline-none"
-                                >
-                                    Search
-                                </button>
+                                    placeholder="Location (e.g. Vashi, Mumbai)"
+                                    icon={FiMapPin}
+                                    className=""
+                                    userLocation={searchParams.lat && searchParams.lng ? {
+                                        lat: parseFloat(searchParams.lat),
+                                        lng: parseFloat(searchParams.lng)
+                                    } : null}
+                                />
+
+                                {/* Query Autocomplete */}
+                                <SearchAutocomplete
+                                    value={localQuery}
+                                    onChange={(value) => setLocalQuery(value)}
+                                    onSelect={(suggestion) => {
+                                        const queryText = suggestion.name || suggestion.description || suggestion.main_text;
+                                        setLocalQuery(queryText);
+                                        if (suggestion.location) {
+                                            setLocalLocation(suggestion.location);
+                                        }
+                                        // Auto-submit and close mobile filter
+                                        setTimeout(() => {
+                                            handleSearchSubmit(queryText, suggestion.location || undefined);
+                                            setIsMobileFiltersOpen(false);
+                                        }, 100);
+                                    }}
+                                    placeholder="Search spa, massage, salon, wellness..."
+                                    icon={FiSearch}
+                                    className=""
+                                    userLocation={searchParams.lat && searchParams.lng ? {
+                                        lat: parseFloat(searchParams.lat),
+                                        lng: parseFloat(searchParams.lng)
+                                    } : null}
+                                />
                             </div>
                         </div>
 
@@ -1249,11 +1349,12 @@ const Search = () => {
                                 <MapLocationPicker
                                     initialLat={parseFloat(searchParams.get('lat')) || 20.5937}
                                     initialLng={parseFloat(searchParams.get('lng')) || 78.9629}
-                                    radius={parseInt(searchParams.get('radius')) || 5000}
+                                    radius={parseInt(searchParams.get('radius')) || 20000}
+                                    businesses={mapBusinesses} // Pass FULL dataset for map
                                     className="h-64 rounded-lg"
                                     onLocationChange={async (coords) => {
-                                        // Update coordinates
-                                        updateParams({ lat: coords.lat, lng: coords.lng });
+                                        // Update coordinates and set 2km radius as requested
+                                        updateParams({ lat: coords.lat, lng: coords.lng, radius: 2000 });
 
                                         // Reverse geocode to get location name
                                         try {

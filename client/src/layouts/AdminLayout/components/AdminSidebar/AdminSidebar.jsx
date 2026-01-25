@@ -180,8 +180,10 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       href: '/admin/inquiries',
       icon: <FaQuestionCircle className="w-5 h-5" />,
     },
-     {
+    {
       name: 'WhatsApp Leads',
+      // icon: <FaLock className="w-5 h-5 text-gray-500" />,
+      // disabled: true,
       href: '/admin/watsapp-leads',
       icon: <FaWhatsapp className="w-5 h-5" />,
     },

@@ -20,10 +20,20 @@ const inquirySchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-        index: true
+    remark: {
+        type: String,
+    },
+    remarked_by: {
+        type: mongoose.Schema.Types.ObjectId
+    },
+    remarked_by_name: {
+        type: String
+    },
+    remarked_by_role: {
+        type: String
+    },
+    remarked_at: {
+        type: Date
     },
     group_id: {
         type: mongoose.Schema.Types.ObjectId,
@@ -36,7 +46,12 @@ const inquirySchema = new mongoose.Schema({
     sync_count: {
         type: Number,
         default: 0
-    }
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+        index: true
+    },
 });
 inquirySchema.index({ business_id: 1, createdAt: -1 });
 inquirySchema.index({ phone: 1 });

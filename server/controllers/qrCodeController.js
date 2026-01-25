@@ -1,4 +1,4 @@
-const whatsappWebService = require('../services/whatsappWebService');
+const { redis } = require('../config/redis');
 
 /**
  * Get QR code for WhatsApp authentication
@@ -6,25 +6,31 @@ const whatsappWebService = require('../services/whatsappWebService');
  */
 const getQRCode = async (req, res) => {
     try {
-        let qrCode = whatsappWebService.getQR();
+        let qrCode = await redis.get('wa:qr');
 
-        // If QR not immediately available, wait for it (up to 45s for production)
+        // If QR not immediately available, wait for it (polling Redis for up to 45s)
         if (!qrCode) {
-            console.log('[QR Controller] QR not cached, waiting for generation...');
-            const result = await whatsappWebService.waitForQR(45000);
+            console.log('[QR Controller] QR not cached in Redis, waiting...');
 
-            // Handle explicit error from service
-            if (result && result.error) {
-                return res.status(500).json({
-                    success: false,
-                    message: `Service Error: ${result.error}. Check server logs.`
-                });
+            const startTime = Date.now();
+            while (Date.now() - startTime < 45000) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                qrCode = await redis.get('wa:qr');
+                if (qrCode) break;
+
+                // Also check if status became connected
+                const status = await redis.get('wa:status');
+                if (status === 'CONNECTED' || status === 'AUTHENTICATED') {
+                    return res.status(200).json({
+                        success: true,
+                        alreadyConnected: true,
+                        message: 'WhatsApp is already connected'
+                    });
+                }
             }
-
-            qrCode = result;
         }
 
-        if (qrCode && typeof qrCode === 'string') {
+        if (qrCode) {
             return res.status(200).json({
                 success: true,
                 qrCode,
@@ -34,28 +40,12 @@ const getQRCode = async (req, res) => {
 
         // If still no QR code, something might be stuck. Trigger re-init.
         console.log('[QR Controller] QR generation timed out. Triggering service reload...');
-        whatsappWebService.reinitialize().catch(err => console.error('Reinit failed:', err));
+        redis.publish('wa:cmd', JSON.stringify({ action: 'reinit' }));
 
         return res.status(503).json({
             success: false,
             message: 'WhatsApp service is reloading. Please click "Refresh QR Code" again in 10 seconds.',
             shouldRetry: true
-        });
-
-        // Check if already authenticated
-        const status = await whatsappWebService.getStatus();
-
-        if (status.connected) {
-            return res.status(200).json({
-                success: true,
-                alreadyConnected: true,
-                message: 'WhatsApp is already connected'
-            });
-        }
-
-        return res.status(404).json({
-            success: false,
-            message: 'QR code not available. Please restart WhatsApp service or wait for initialization.'
         });
 
     } catch (error) {
@@ -73,11 +63,15 @@ const getQRCode = async (req, res) => {
  */
 const getConnectionStatus = async (req, res) => {
     try {
-        const status = await whatsappWebService.getStatus();
+        const state = await redis.get('wa:status');
+        const connected = state === 'CONNECTED' || state === 'AUTHENTICATED';
+        const qrAvailable = await redis.exists('wa:qr');
 
         res.status(200).json({
             success: true,
-            ...status
+            connected,
+            state: state || 'UNKNOWN',
+            qrAvailable: !!qrAvailable
         });
     } catch (error) {
         console.error('[QR Controller] Error fetching status:', error);
@@ -94,7 +88,7 @@ const getConnectionStatus = async (req, res) => {
  */
 const logout = async (req, res) => {
     try {
-        await whatsappWebService.logout();
+        redis.publish('wa:cmd', JSON.stringify({ action: 'logout' }));
 
         res.status(200).json({
             success: true,
@@ -116,8 +110,8 @@ const logout = async (req, res) => {
 const resetConnection = async (req, res) => {
     try {
         console.log('[QR Controller] Manual reset requested');
-        // Trigger re-init without waiting (fire and forget)
-        whatsappWebService.reinitialize().catch(err => console.error('Reset failed:', err));
+        // Trigger re-init via Redis
+        redis.publish('wa:cmd', JSON.stringify({ action: 'reinit' }));
 
         res.status(200).json({
             success: true,

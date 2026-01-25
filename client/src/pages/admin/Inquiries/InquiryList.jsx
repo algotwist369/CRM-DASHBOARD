@@ -13,6 +13,7 @@ import {
     HiOutlineChevronLeft,
     HiOutlineChevronRight,
     HiOutlineCalendar,
+    HiOutlinePencil
 } from 'react-icons/hi';
 import { FaCopy, FaQuestionCircle, FaRegEnvelopeOpen, FaFileCsv, FaFilePdf, FaSpinner } from 'react-icons/fa';
 import adminService from '../../../services/admin/adminService';
@@ -38,16 +39,14 @@ const TableSkeleton = memo(() => (
     </div>
 ));
 
-const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy }) => {
-    const createdAt = useMemo(() =>
-        inquiry.createdAt ? new Date(inquiry.createdAt).toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }) : 'N/A'
-        , [inquiry.createdAt]);
+const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark, currentUser }) => {
+    const createdAt = useMemo(() => {
+        if (!inquiry.createdAt) return 'N/A';
+        const date = new Date(inquiry.createdAt);
+        const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        return `${dateStr}, ${timeStr}`;
+    }, [inquiry.createdAt]);
 
     return (
         <motion.tr
@@ -86,6 +85,14 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy }) => {
                     {inquiry.inquiry_type || 'General'}
                 </span>
             </td>
+            <td className="px-6 py-4 border-b border-gray-100 text-[13px] text-gray-500 font-medium">
+                <div className="flex flex-col">
+                    {createdAt.split('\n').map((line, i) => (
+                        <span key={i}>{line}</span>
+                    ))}
+                </div>
+            </td>
+
             <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
                 {inquiry.is_recieved ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold border border-green-100 ">
@@ -97,9 +104,20 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy }) => {
                     </span>
                 )}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100 text-[13px] text-gray-500 font-medium">
-                {createdAt}
+
+            <td className="px-6 py-4 border-b border-gray-100">
+                {inquiry.remark ? (
+                    <div className="flex flex-col">
+                        <span className="text-sm text-gray-800 font-medium break-words">{inquiry.remark}</span>
+                        <span className="text-[11px] text-gray-400 mt-0.5">
+                            By {inquiry.remarked_by_name || '—'}{inquiry.remarked_at ? ` • ${new Date(inquiry.remarked_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                )}
             </td>
+
             <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100 text-center">
                 <button
                     onClick={() => onCopy(inquiry)}
@@ -121,6 +139,27 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy }) => {
                             <HiOutlineCheck className="w-5 h-5" />
                         </button>
                     )}
+                    {/* Remark button - enable if current user has same role or no remark yet */}
+                    {(!inquiry.remarked_by ||
+                        (inquiry.remarked_by_role === currentUser?.role)) && (
+                            <button
+                                onClick={() => onRemark(inquiry._id, inquiry.remark)}
+                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
+                                title="Add / Edit Remark"
+                            >
+                                <HiOutlinePencil className="w-5 h-5" />
+                            </button>
+                        )}
+                    {/* View-only remark indicator if different role created it */}
+                    {inquiry.remarked_by &&
+                        inquiry.remarked_by_role !== currentUser?.role && (
+                            <div
+                                className="p-2 text-gray-400 cursor-not-allowed"
+                                title={`Remark created by ${inquiry.remarked_by_name}`}
+                            >
+                                <HiOutlinePencil className="w-5 h-5 opacity-40" />
+                            </div>
+                        )}
                     <button
                         onClick={() => onDelete(inquiry._id)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all active:scale-95"
@@ -132,7 +171,16 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy }) => {
             </td>
         </motion.tr>
     );
-}, (prev, next) => prev.inquiry._id === next.inquiry._id && prev.inquiry.is_recieved === next.inquiry.is_recieved);
+}, (prev, next) =>
+    prev.inquiry._id === next.inquiry._id &&
+    prev.inquiry.is_recieved === next.inquiry.is_recieved &&
+    prev.inquiry.remarked_by_role === next.inquiry.remarked_by_role &&
+    prev.inquiry.remarked_by_name === next.inquiry.remarked_by_name &&
+    prev.onRemark === next.onRemark &&
+    prev.onMarkAsReceived === next.onMarkAsReceived &&
+    prev.onDelete === next.onDelete &&
+    prev.currentUser?.role === next.currentUser?.role
+);
 
 // --- Main Component ---
 
@@ -154,8 +202,9 @@ const InquiryList = () => {
     });
     const [debouncedFilters, setDebouncedFilters] = useState(filters);
     const [page, setPage] = useState(1);
-    const [showFilters, setShowFilters] = useState(true);
+    const [showFilters, setShowFilters] = useState(false);
     const [exporting, setExporting] = useState(null);
+    const [remarkModal, setRemarkModal] = useState({ isOpen: false, inquiryId: null, text: '' });
 
     // Consolidated Debouncing
     useEffect(() => {
@@ -245,6 +294,17 @@ const InquiryList = () => {
         }
     });
 
+    const remarkMutation = useMutation({
+        mutationFn: ({ id, remark }) => service.remarkInquiry(id, { remark }),
+        onSuccess: () => {
+            toast.success('Remark saved');
+            queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+        },
+        onError: () => {
+            toast.error('Failed to save remark');
+        }
+    });
+
     // Handlers
     const handleMarkAsReceived = useCallback((id) => {
         markReceivedMutation.mutate(id);
@@ -255,6 +315,19 @@ const InquiryList = () => {
             deleteMutation.mutate(id);
         }
     }, [deleteMutation]);
+
+    const handleRemark = useCallback((id, currentRemark) => {
+        setRemarkModal({ isOpen: true, inquiryId: id, text: currentRemark || '' });
+    }, []);
+
+    const submitRemark = useCallback(() => {
+        if (!remarkModal.text.trim()) {
+            toast.error('Remark cannot be empty');
+            return;
+        }
+        remarkMutation.mutate({ id: remarkModal.inquiryId, remark: remarkModal.text });
+        setRemarkModal({ isOpen: false, inquiryId: null, text: '' });
+    }, [remarkModal, remarkMutation]);
 
     const handleFilterChange = useCallback((e) => {
         const { name, value } = e.target;
@@ -503,9 +576,10 @@ const InquiryList = () => {
                             <tr className="bg-gray-50/50">
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Customer</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Origin Business</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Type</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Handle Status</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Enquiry Type</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Timestamp</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Status</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Remark</th>
                                 <th className="px-6 py-5 text-center text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">
                                     Copy Lead
                                 </th>
@@ -516,7 +590,7 @@ const InquiryList = () => {
                             <AnimatePresence mode="popLayout" initial={false}>
                                 {isLoading && !inquiries.length ? (
                                     <motion.tr key="skeleton">
-                                        <td colSpan="6" className="p-0">
+                                        <td colSpan="8" className="p-0">
                                             <TableSkeleton />
                                         </td>
                                     </motion.tr>
@@ -527,7 +601,7 @@ const InquiryList = () => {
                                         animate={{ opacity: 1 }}
                                         className="bg-white"
                                     >
-                                        <td colSpan="6" className="px-6 py-32 text-center">
+                                        <td colSpan="8" className="px-6 py-32 text-center">
                                             <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
                                                 <div className="w-20 h-20 bg-primary-50 rounded-3xl flex items-center justify-center text-primary-200">
                                                     <FaRegEnvelopeOpen className="w-10 h-10" />
@@ -553,6 +627,8 @@ const InquiryList = () => {
                                             onMarkAsReceived={handleMarkAsReceived}
                                             onDelete={handleDelete}
                                             onCopy={handleCopyLead}
+                                            onRemark={handleRemark}
+                                            currentUser={user}
                                         />
                                     ))
                                 )}
@@ -609,6 +685,53 @@ const InquiryList = () => {
                     </div>
                 )}
             </div>
+
+            {/* Remark Modal */}
+            <AnimatePresence>
+                {remarkModal.isOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setRemarkModal({ isOpen: false, inquiryId: null, text: '' })}
+                            className="fixed inset-0 bg-black/30 z-40"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 z-50"
+                        >
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Add / Edit Remark</h3>
+                            <p className="text-gray-500 text-sm mb-6">Enter your note for this inquiry</p>
+
+                            <textarea
+                                value={remarkModal.text}
+                                onChange={(e) => setRemarkModal(prev => ({ ...prev, text: e.target.value }))}
+                                placeholder="Type your remark here..."
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 resize-none"
+                                rows={5}
+                            />
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setRemarkModal({ isOpen: false, inquiryId: null, text: '' })}
+                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={submitRemark}
+                                    className="flex-1 px-4 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-all active:scale-95"
+                                >
+                                    Save Remark
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

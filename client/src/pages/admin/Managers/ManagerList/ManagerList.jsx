@@ -93,7 +93,7 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, onStatusChange, is
     <td className="px-4 py-3">
       <div className="flex items-center gap-1">
         <span className="text-gray-600">{manager.username}</span>
-        <CopyButton text={manager.username} label="Username" />
+        {/* <CopyButton text={manager.username} label="Username" /> */}
       </div>
     </td>
     <td className="px-4 py-3">
@@ -101,7 +101,12 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, onStatusChange, is
         <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300 text-gray-700">
           {manager.pin || '••••'}
         </span>
-        {manager.pin && <CopyButton text={manager.pin} label="PIN" />}
+        {manager.pin && <CopyButton text={`
+          LOGIN CREADENTIALS FOR - ${manager.business}
+          Username: ${manager.username}
+          Pin: ${manager.pin} 
+          Login here: https://spaadvisor.in/auth/manager-login
+          `} label="Username & Pin" />}
       </div>
     </td>
     <td className="px-4 py-3 text-gray-600">{manager.email || '—'}</td>

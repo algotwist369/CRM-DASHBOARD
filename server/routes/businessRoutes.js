@@ -20,6 +20,22 @@ router.get("/public/nearby", businessController.getBusinessesNearby);
 // Query params: lat, lng, q, category, radius, sort, page, limit
 router.get("/public/spa", businessController.searchBusinesses);
 
+// Business Autocomplete - Search businesses in database
+// Query params: input (required), limit (optional, default 10)
+router.get("/public/search/business-autocomplete", businessController.getBusinessAutocomplete);
+
+// Google Places API - Autocomplete for location search
+// Query params: input (required), types (optional), location (optional)
+router.get("/public/search/autocomplete", businessController.getPlacesAutocomplete);
+
+// Google Places API - Get place details by place_id
+// Query params: place_id (required)
+router.get("/public/search/place-details", businessController.getPlaceDetails);
+
+// Google Places API - Enhanced search with Google Places + Database merge
+// Query params: lat, lng, q, location, category, minRating, radius, page, limit
+router.get("/public/search/places", businessController.searchWithPlaces);
+
 // Get list of reviews for a business (public)
 router.get("/public/:id/reviews", businessController.getBusinessReviews);
 

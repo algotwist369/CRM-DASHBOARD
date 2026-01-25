@@ -13,6 +13,7 @@ import {
   FaGlobe,
   FaLink,
   FaFilter,
+  FaFileExport,
 } from "react-icons/fa";
 import { FiRefreshCw, FiArrowLeft } from "react-icons/fi";
 import { toast } from "react-hot-toast";
@@ -299,6 +300,7 @@ const BusinessList = () => {
   const [filterType, setFilterType] = useState("");
   const [dashboardStats, setDashboardStats] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, limit: 20 });
 
@@ -484,6 +486,43 @@ const BusinessList = () => {
         (b.id || b._id) === (business.id || business._id) ? { ...b, isActive: business.isActive } : b
       ));
       toast.error("Failed to update status");
+    }
+  }, []);
+
+  const handleExport = useCallback(async () => {
+    try {
+      setExporting(true);
+      const res = await businessService.getBusinesses({ limit: 10000 });
+      if (res.success) {
+        const allBusinesses = res.data?.data || res.data?.businesses || [];
+        const activeLinks = allBusinesses
+          .filter(b => b.isActive && b.businessLink)
+          .map(b => `${window.location.origin}/${b.businessLink}`);
+
+        if (activeLinks.length === 0) {
+          toast.error("No active business links found to export");
+          return;
+        }
+
+        const content = activeLinks.join('\n');
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `active-businesses-sitemap-${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success(`Exported ${activeLinks.length} active business links`);
+      } else {
+        toast.error("Failed to fetch businesses for export");
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export business links");
+    } finally {
+      setExporting(false);
     }
   }, []);
 
@@ -815,12 +854,23 @@ const BusinessList = () => {
           <h2 className="text-base sm:text-lg font-semibold text-gray-700">
             Business List
           </h2>
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base"
-          >
-            <FaPlus /> Add Business
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base disabled:opacity-70"
+              title="Export Active Business Links for Sitemap"
+            >
+              <FaFileExport className={exporting ? "animate-pulse" : ""} />
+              {exporting ? "Exporting..." : "Export Links"}
+            </button>
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base"
+            >
+              <FaPlus /> Add Business
+            </button>
+          </div>
         </div>
 
         {/* Desktop Table View */}

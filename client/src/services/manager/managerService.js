@@ -587,6 +587,18 @@ class ManagerService {
     }
   }
 
+  async remarkInquiry(id, remarkData) {
+    try {
+      const response = await apiClient.patch(endpoints.inquiries.remark(id), remarkData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to remark inquiry'
+      }
+    }
+  }
+
   async exportInquiries(params = {}) {
     try {
       const response = await apiClient.get(endpoints.inquiries.export, {
