@@ -295,6 +295,7 @@ export const endpoints = {
     sendOtp: `${API_BASE_URL}/inquiries/send-otp`,
     create: `${API_BASE_URL}/inquiries`,
     receive: (id) => `${API_BASE_URL}/inquiries/${id}/receive`,
+    remark: (id) => `${API_BASE_URL}/inquiries/${id}/remark`,
     delete: (id) => `${API_BASE_URL}/inquiries/${id}`,
   }
 }

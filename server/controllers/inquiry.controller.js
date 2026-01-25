@@ -444,6 +444,57 @@ const markAsRecieved = async (req, res) => {
     }
 };
 
+// Remark inquiry (Protected)
+const remarkInquiry = async (req, res) => {
+    try {
+        const inquiry = await Inquiry.findById(req.params.id);
+        if (!inquiry) {
+            return res.status(404).json({ success: false, message: "Inquiry not found" });
+        }
+        // Security: Check ownership
+        let isAuthorized = false;
+        if (req.user.role === 'admin') {
+            const business = await Business.findById(inquiry.business_id).lean().select('admin');
+            if (business && business.admin.toString() === req.user.id) {
+                isAuthorized = true;
+            }
+        } else if (req.user.role === 'manager' || req.user.role === 'staff') {
+            if (inquiry.business_id.toString() === req.user.businessId) {
+                isAuthorized = true;
+            }
+        }
+
+        if (!isAuthorized) {
+            return res.status(403).json({ success: false, message: "Not authorized to update this inquiry" });
+        }
+
+        // If remark already exists, only someone with the same role can edit it
+        if (inquiry.remarked_by) {
+            const isSameRole = inquiry.remarked_by_role === req.user.role;
+            if (!isSameRole) {
+                return res.status(403).json({ success: false, message: "Only users with the same role can edit this remark" });
+            }
+        }
+
+        const { remark } = req.body;
+        inquiry.remark = remark;
+        // Track who made the remark (store id, role and readable name)
+        if (req.user && req.user.id) {
+            inquiry.remarked_by = req.user.id;
+            inquiry.remarked_by_role = req.user.role || '';
+            inquiry.remarked_at = new Date();
+            inquiry.remarked_by_name = req.user.name || req.user.username || req.user.email || '';
+        }
+        await inquiry.save();
+        res.status(200).json({
+            success: true,
+            message: "Inquiry remarked successfully"
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+}
+
 // export inquiries (Protected)
 const exportInquiries = async (req, res) => {
     try {
@@ -525,5 +576,6 @@ module.exports = {
     getAllInquiries,
     markAsRecieved,
     deleteInquiry,
+    remarkInquiry,
     exportInquiries
 };

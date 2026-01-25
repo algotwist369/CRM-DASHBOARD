@@ -67,7 +67,7 @@ const sendDoubleTickMessage = async (to, templateParams) => {
                     to: cleanPhone,
                     from: process.env.DOUBLETICK_SENDER_PHONE,
                     content: {
-                        templateName: process.env.DOUBLETICK_TEMPLATE_NAME || "leads_forward",
+                        templateName: process.env.DOUBLETICK_TEMPLATE_NAME || "leads_forward_v2",
                         language: "en",
                         templateData: {
                             body: {

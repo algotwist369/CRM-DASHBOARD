@@ -12,5 +12,6 @@ router.get('/', authMiddleware, inquiryController.getAllInquiries);
 router.get('/export', authMiddleware, inquiryController.exportInquiries);
 router.patch('/:id/receive', authMiddleware, inquiryController.markAsRecieved);
 router.delete('/:id', authMiddleware, inquiryController.deleteInquiry);
+router.patch('/:id/remark', authMiddleware, inquiryController.remarkInquiry);
 
 module.exports = router;

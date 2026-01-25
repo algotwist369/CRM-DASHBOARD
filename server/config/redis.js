@@ -9,10 +9,26 @@ const redisConfig = {
     db: process.env.REDIS_DB || 0,
 
     // Connection pool settings
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null, // Queue commands endlessly while disconnected (prevents crashes)
     retryDelayOnFailover: 100,
     enableReadyCheck: false,
     maxLoadingTimeout: 5000,
+
+    // Custom retry strategy to stop retrying if server is down
+    retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+    },
+
+    // IMPORTANT: Don't crash on connection error
+    reconnectOnError: (err) => {
+        const targetError = 'READONLY';
+        if (err.message.slice(0, targetError.length) === targetError) {
+            // Only reconnect when the error starts with "READONLY"
+            return true;
+        }
+        return false;
+    },
 
     // Performance optimizations
     lazyConnect: true,

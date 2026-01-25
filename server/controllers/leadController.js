@@ -85,7 +85,7 @@ exports.trackLead = async (req, res) => {
 
 exports.getAnalyticsSummary = async (req, res) => {
     try {
-        const { date, businessId } = req.query;
+        const { date, startDate, endDate, businessId } = req.query;
         const queryDate = date || getTodayDateString();
 
         // 1. Get businesses owned by this admin
@@ -111,7 +111,17 @@ exports.getAnalyticsSummary = async (req, res) => {
             });
         }
 
-        const matchStage = { date: queryDate };
+        // Build date filter - support both single date and date range
+        let dateFilter = {};
+        if (startDate && endDate) {
+            // Date range query
+            dateFilter = { date: { $gte: startDate, $lte: endDate } };
+        } else {
+            // Single date query (default)
+            dateFilter = { date: queryDate };
+        }
+
+        const matchStage = { ...dateFilter };
 
         // 2. Filter by businessId for click counts
         if (businessId) {
@@ -126,14 +136,24 @@ exports.getAnalyticsSummary = async (req, res) => {
             matchStage.businessId = { $in: myBusinesses };
         }
 
-        // 3. Build date range for IpPageJourney (for total visits)
-        const startOfDay = new Date(queryDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(queryDate);
-        endOfDay.setHours(23, 59, 59, 999);
+        // 3. Build date range for IpPageJourney and Inquiry
+        let visitStartDate, visitEndDate;
+        if (startDate && endDate) {
+            // Custom date range
+            visitStartDate = new Date(startDate);
+            visitStartDate.setHours(0, 0, 0, 0);
+            visitEndDate = new Date(endDate);
+            visitEndDate.setHours(23, 59, 59, 999);
+        } else {
+            // Single day (default)
+            visitStartDate = new Date(queryDate);
+            visitStartDate.setHours(0, 0, 0, 0);
+            visitEndDate = new Date(queryDate);
+            visitEndDate.setHours(23, 59, 59, 999);
+        }
 
         const visitMatchStage = {
-            lastVisitedAt: { $gte: startOfDay, $lte: endOfDay }
+            lastVisitedAt: { $gte: visitStartDate, $lte: visitEndDate }
         };
 
         if (businessId) {
@@ -143,7 +163,8 @@ exports.getAnalyticsSummary = async (req, res) => {
         }
 
         const inquiryMatchStage = {
-            createdAt: { $gte: startOfDay, $lte: endOfDay }
+            createdAt: { $gte: visitStartDate, $lte: visitEndDate },
+            business_id: { $ne: null } // Only count inquiries that have a business_id
         };
 
         if (businessId) {
@@ -181,7 +202,12 @@ exports.getAnalyticsSummary = async (req, res) => {
                     $count: "totalVisits"
                 }
             ]),
-            Inquiry.countDocuments(inquiryMatchStage)
+            // Count unique inquiries by group_id (to avoid counting synced inquiries multiple times)
+            Inquiry.aggregate([
+                { $match: inquiryMatchStage },
+                { $group: { _id: "$group_id" } },
+                { $count: "uniqueInquiries" }
+            ])
         ]);
 
         const clickStats = todayStats[0] || {
@@ -192,13 +218,14 @@ exports.getAnalyticsSummary = async (req, res) => {
         };
 
         const totalVisits = visitStats[0]?.totalVisits || 0;
+        const totalInquiryCount = totalInquiries[0]?.uniqueInquiries || 0;
 
         res.status(200).json({
             success: true,
             data: {
                 ...clickStats,
                 totalVisits,
-                totalInquiries
+                totalInquiries: totalInquiryCount
             }
         });
     } catch (error) {
@@ -209,10 +236,10 @@ exports.getAnalyticsSummary = async (req, res) => {
 
 exports.getBusinessBreakdown = async (req, res) => {
     try {
-        const { date, businessId, sortBy = 'totalClicks', order = 'desc', limit = 10, page = 1 } = req.query;
+        const { date, startDate, endDate, businessId, sortBy = 'totalClicks', order = 'desc', limit = 20, page = 1 } = req.query;
         const queryDate = date || getTodayDateString();
 
-        const limitNum = parseInt(limit);
+        const limitNum = Math.min(parseInt(limit), 50); // Cap limit at 50
         const skip = (parseInt(page) - 1) * limitNum;
         const sortOrder = order === 'desc' ? -1 : 1;
 
@@ -222,9 +249,10 @@ exports.getBusinessBreakdown = async (req, res) => {
         }
 
         const adminId = req.user.id;
-        const myBusinesses = await Business.find({ admin: adminId }).distinct('_id');
+        const myBusinesses = await Business.find({ admin: adminId }).select('_id').lean();
+        const myBusinessIds = myBusinesses.map(b => b._id);
 
-        if (myBusinesses.length === 0) {
+        if (myBusinessIds.length === 0) {
             return res.status(200).json({
                 success: true,
                 data: [],
@@ -232,39 +260,61 @@ exports.getBusinessBreakdown = async (req, res) => {
             });
         }
 
-        const matchStage = { date: queryDate };
+        // Build date filter - support both single date and date range
+        let dateFilter = {};
+        if (startDate && endDate) {
+            // Date range query
+            dateFilter = { date: { $gte: startDate, $lte: endDate } };
+        } else {
+            // Single date query (default)
+            dateFilter = { date: queryDate };
+        }
+
+        const matchStage = { ...dateFilter };
 
         // 2. Filter by business
         if (businessId) {
-            const isOwner = myBusinesses.some(id => id.toString() === businessId);
+            const isOwner = myBusinessIds.some(id => id.toString() === businessId);
             if (!isOwner) {
                 return res.status(403).json({ success: false, message: "Permission denied for this business" });
             }
             matchStage.businessId = new mongoose.Types.ObjectId(businessId);
         } else {
-            matchStage.businessId = { $in: myBusinesses };
+            matchStage.businessId = { $in: myBusinessIds };
         }
 
         const breakdown = await DailyClickCount.aggregate([
             { $match: matchStage },
+            // Group by business to aggregate across date range
+            {
+                $group: {
+                    _id: "$businessId",
+                    callClicks: { $sum: "$callClicks" },
+                    whatsappClicks: { $sum: "$whatsappClicks" },
+                    bookingClicks: { $sum: "$bookingClicks" },
+                    totalClicks: { $sum: { $add: ["$callClicks", "$whatsappClicks", "$bookingClicks"] } }
+                }
+            },
             // Join with Business collection to get name
             {
                 $lookup: {
                     from: "businesses",
-                    localField: "businessId",
+                    localField: "_id",
                     foreignField: "_id",
-                    as: "business"
+                    as: "business",
+                    pipeline: [{ $project: { name: 1, branch: 1 } }] // Only fetch needed fields
                 }
             },
             { $unwind: "$business" },
             {
                 $project: {
+                    _id: 0,
                     businessName: "$business.name",
                     branch: "$business.branch",
                     callClicks: 1,
                     whatsappClicks: 1,
                     bookingClicks: 1,
-                    totalClicks: { $add: ["$callClicks", "$whatsappClicks", "$bookingClicks"] }
+                    totalClicks: 1
                 }
             },
             { $sort: { [sortBy]: sortOrder } },
@@ -273,7 +323,13 @@ exports.getBusinessBreakdown = async (req, res) => {
         ]);
 
         // Get total count for pagination
-        const totalCount = await DailyClickCount.countDocuments(matchStage);
+        const totalCountResult = await DailyClickCount.aggregate([
+            { $match: matchStage },
+            { $group: { _id: "$businessId" } },
+            { $count: "total" }
+        ]);
+
+        const totalCount = totalCountResult[0]?.total || 0;
 
         res.status(200).json({
             success: true,
@@ -292,7 +348,9 @@ exports.getBusinessBreakdown = async (req, res) => {
 
 exports.getIpJourneys = async (req, res) => {
     try {
-        const { date, businessId, page = 1, limit = 20 } = req.query;
+        const { date, startDate, endDate, businessId, page = 1, limit = 20 } = req.query;
+        const limitNum = Math.min(parseInt(limit), 50); // Cap limit at 50
+        const pageNum = Math.max(1, parseInt(page));
 
         // 1. Security
         if (!req.user || req.user.role !== 'admin') {
@@ -300,41 +358,53 @@ exports.getIpJourneys = async (req, res) => {
         }
 
         const adminId = req.user.id;
-        const myBusinesses = await Business.find({ admin: adminId }).distinct('_id');
-        // Convert ObjectIds to strings for easier comparison with req.query.businessId
-        const myBusinessIds = myBusinesses.map(id => id.toString());
+        const myBusinesses = await Business.find({ admin: adminId }).select('_id').lean();
+        const myBusinessIds = myBusinesses.map(id => id._id);
 
         const filter = {};
 
         if (businessId) {
-            if (!myBusinessIds.includes(businessId)) {
+            if (!myBusinessIds.some(id => id.toString() === businessId)) {
                 return res.status(403).json({ success: false, message: "Permission denied for this business" });
             }
             filter.businessId = businessId;
         } else {
             // Restrict to ANY of my businesses
-            filter.businessId = { $in: myBusinesses };
+            filter.businessId = { $in: myBusinessIds };
         }
 
-        // Filter by date (using start/end of day logic for 'lastVisitedAt')
-        if (date) {
-            const startDate = new Date(date);
-            startDate.setHours(0, 0, 0, 0);
-
-            const endDate = new Date(date);
-            endDate.setHours(23, 59, 59, 999);
+        // Filter by date - support both single date and date range
+        if (startDate && endDate) {
+            // Date range query
+            const rangeStartDate = new Date(startDate);
+            rangeStartDate.setHours(0, 0, 0, 0);
+            const rangeEndDate = new Date(endDate);
+            rangeEndDate.setHours(23, 59, 59, 999);
 
             filter.lastVisitedAt = {
-                $gte: startDate,
-                $lte: endDate
+                $gte: rangeStartDate,
+                $lte: rangeEndDate
+            };
+        } else if (date) {
+            // Single date query
+            const singleDate = new Date(date);
+            singleDate.setHours(0, 0, 0, 0);
+            const singleDateEnd = new Date(date);
+            singleDateEnd.setHours(23, 59, 59, 999);
+
+            filter.lastVisitedAt = {
+                $gte: singleDate,
+                $lte: singleDateEnd
             };
         }
 
+        // Fetch only necessary fields to reduce memory usage
         const journeys = await IpPageJourney.find(filter)
-            .populate('businessId', 'name branch') // Get business details
+            .select('ipAddress lastPageVisited lastVisitedAt totalClicks pagesVisited businessId')
+            .populate('businessId', 'name branch')
             .sort({ lastVisitedAt: -1 })
-            .limit(limit * 1)
-            .skip((page - 1) * limit)
+            .limit(limitNum)
+            .skip((pageNum - 1) * limitNum)
             .lean();
 
         const count = await IpPageJourney.countDocuments(filter);
@@ -344,8 +414,8 @@ exports.getIpJourneys = async (req, res) => {
             data: journeys,
             pagination: {
                 total: count,
-                totalPages: Math.ceil(count / limit),
-                currentPage: page
+                totalPages: Math.ceil(count / limitNum),
+                currentPage: pageNum
             }
         });
     } catch (error) {

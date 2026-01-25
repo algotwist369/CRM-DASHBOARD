@@ -1,7 +1,8 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const EventEmitter = require('events');
-require('dotenv').config();
+
+const { redis } = require('../config/redis');
 
 /**
  * WhatsApp Web Service - Manages single admin WhatsApp session for all businesses
@@ -129,6 +130,10 @@ class WhatsAppWebService extends EventEmitter {
             try {
                 this.qrCode = await QRCode.toDataURL(qr);
                 this.emit('qr', this.qrCode);
+                // Sync to Redis
+                await redis.set('wa:qr', this.qrCode);
+                await redis.set('wa:status', 'QR_READY');
+                await redis.expire('wa:qr', 60); // Expire after 60s
             } catch (error) {
                 console.error('[WhatsApp Web] QR generation failed:', error);
             }
@@ -139,13 +144,18 @@ class WhatsAppWebService extends EventEmitter {
             console.log('[WhatsApp Web] ✅ Authenticated successfully');
             this.qrCode = null; // Clear QR after authentication
             this.retryCount = 0; // Reset retry counter
+            redis.del('wa:qr');
+            redis.set('wa:status', 'AUTHENTICATED');
             this.emit('authenticated');
         });
 
         // Authentication failure
         this.client.on('auth_failure', (msg) => {
             console.error('[WhatsApp Web] ❌ Authentication failed:', msg);
+            console.error('[WhatsApp Web] ❌ Authentication failed:', msg);
             this.qrCode = null;
+            redis.del('wa:qr');
+            redis.set('wa:status', 'AUTH_FAILURE');
             this.emit('auth_failure', msg);
         });
 
@@ -154,6 +164,7 @@ class WhatsAppWebService extends EventEmitter {
             console.log('[WhatsApp Web] 🚀 Client ready! Session is active.');
             this.isClientReady = true;
             this.retryCount = 0;
+            redis.set('wa:status', 'CONNECTED');
             this.emit('ready');
             this._startKeepAlive();
         });
@@ -162,6 +173,7 @@ class WhatsAppWebService extends EventEmitter {
         this.client.on('disconnected', (reason) => {
             console.log('[WhatsApp Web] Disconnected. Reason:', reason);
             this.isClientReady = false;
+            redis.set('wa:status', 'DISCONNECTED');
             this.emit('disconnected', reason);
 
             // Only auto-reconnect if NOT manual logout
@@ -456,6 +468,52 @@ class WhatsAppWebService extends EventEmitter {
         this.isInitialized = false;
         this.isClientReady = false;
         this.client = null;
+    }
+    /**
+     * Start listening for commands from Redis (for clustering support)
+     * Should only be called on the Master process
+     */
+    async startCommandListener() {
+        try {
+            const sub = redis.duplicate();
+
+            // Prevent crash on connection error
+            sub.on('error', (err) => {
+                console.error('[WhatsApp Web] Command Listener Redis Error:', err.message);
+            });
+
+            await sub.subscribe('wa:cmd');
+
+            sub.on('message', async (channel, message) => {
+                if (channel !== 'wa:cmd') return;
+
+                try {
+                    const params = JSON.parse(message);
+                    console.log(`[WhatsApp Web] Received command: ${params.action}`);
+
+                    switch (params.action) {
+                        case 'reinit':
+                            await this.reinitialize();
+                            break;
+                        case 'logout':
+                            await this.logout();
+                            break;
+                        case 'send':
+                            // Handle send message logic if needed via Redis
+                            // For now we assume sendMessage is called directly or via another channel
+                            if (params.phone && params.message) {
+                                await this.sendMessage(params.phone, params.message);
+                            }
+                            break;
+                    }
+                } catch (e) {
+                    console.error('[WhatsApp Web] Command execution error:', e);
+                }
+            });
+            console.log('[WhatsApp Web] Command listener started');
+        } catch (error) {
+            console.error('[WhatsApp Web] Failed to start command listener:', error);
+        }
     }
 }
 

@@ -32,6 +32,7 @@ const businessSettingsRoutes = require("./routes/businessSettingsRoutes");
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const leadRoutes = require("./routes/leadRoutes");
 const inquiryRoutes = require("./routes/inquiryRoutes");
+const googleSheetRoutes = require("./routes/googleSheetRoutes");
 
 const app = express();
 
@@ -193,6 +194,9 @@ app.use("/api/inventory", require("./routes/inventoryRoutes"));
 
 // === WhatsApp Web.js Integration ===
 app.use('/api/admin/whatsapp', require("./routes/whatsappQR"));
+
+// === Google Sheets Integration ===
+app.use("/api/google-sheets", googleSheetRoutes);
 
 // === SEO Routes (served at root level for crawlers) ===
 const sitemapRoutes = require("./routes/sitemap");
