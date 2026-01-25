@@ -1,54 +1,87 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 const http = require("http");
 const app = require("./app");
 const { connectDB } = require("./config/database");
 const { initializeSocket } = require("./config/socket");
 const { startCampaignScheduler } = require("./utils/campaignScheduler");
 const whatsappWebService = require("./services/whatsappWebService");
+const { startGoogleSheetSync, stopGoogleSheetSync } = require("./services/googleSheetSyncService");
+const cluster = require('cluster');
+const os = require('os');
+const { redis } = require('./config/redis');
 
-// Connect to MongoDB
-connectDB();
-
+const numCPUs = os.cpus().length;
 const PORT = process.env.PORT || 5000;
 
-// Create HTTP server
-const server = http.createServer(app);
+if (cluster.isPrimary) {
+    console.log(`🚀 Master process ${process.pid} is running`);
 
-// Initialize Socket.IO
-initializeSocket(server);
+    // ================================================================
+    // MASTER PROCESS - BACKGROUND SERVICES ONLY
+    // ================================================================
 
-// Initialize WhatsApp Web service (non-blocking)
-whatsappWebService.initialize().catch(err => {
-    console.error('[Server] WhatsApp initialization failed:', err.message);
-});
+    // 1. WhatsApp Web Service (Singleton)
+    whatsappWebService.initialize()
+        .then(() => whatsappWebService.startCommandListener())
+        .catch(err => {
+            console.error('[Server] WhatsApp initialization failed:', err.message);
+        });
 
-server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🔌 Socket.IO ready for real-time connections`);
-
-    // Start campaign scheduler for automated and drip campaigns
+    // 2. Campaign Scheduler (Singleton)
     startCampaignScheduler();
-});
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-    console.log('SIGTERM received. Shutting down gracefully...');
+    // 3. Google Sheets Sync (Singleton)
+    startGoogleSheetSync();
 
-    await whatsappWebService.destroy();
+    // Fork workers
+    console.log(`Forking ${numCPUs} workers...`);
+    for (let i = 0; i < numCPUs; i++) {
+        cluster.fork();
+    }
 
-    server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
+    // Handle worker exit
+    cluster.on('exit', (worker, code, signal) => {
+        console.log(`❌ Worker ${worker.process.pid} died. Respawning...`);
+        cluster.fork();
     });
-});
 
-process.on('SIGINT', async () => {
-    console.log('SIGINT received. Shutting down gracefully...');
-
-    await whatsappWebService.destroy();
-
-    server.close(() => {
-        console.log('Server closed');
+    // Graceful shutdown for Master
+    const shutdownMaster = async () => {
+        console.log('Shutting down Master gracefully...');
+        stopGoogleSheetSync();
+        await whatsappWebService.destroy();
         process.exit(0);
+    };
+
+    process.on('SIGTERM', shutdownMaster);
+    process.on('SIGINT', shutdownMaster);
+
+} else {
+    // ================================================================
+    // WORKER PROCESS - HTTP & SOCKET SERVER
+    // ================================================================
+
+    // Connect to MongoDB (each worker needs its own connection)
+    connectDB();
+
+    // Create HTTP server
+    const server = http.createServer(app);
+
+    // Initialize Socket.IO (each worker handles its own sockets, synced via Redis Adapter)
+    initializeSocket(server);
+
+    server.listen(PORT, () => {
+        console.log(`🟢 Worker ${process.pid} started on port ${PORT}`);
     });
-});
+
+    // Graceful shutdown for Worker
+    const shutdownWorker = () => {
+        console.log(`Worker ${process.pid} shutting down...`);
+        server.close(() => {
+            process.exit(0);
+        });
+    };
+
+    process.on('SIGTERM', shutdownWorker);
+    process.on('SIGINT', shutdownWorker);
+}
