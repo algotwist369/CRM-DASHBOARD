@@ -10,13 +10,11 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache duration
 const normalizePhoneNumber = (phone) => {
     if (!phone) return "";
     let cleaned = phone.replace(/\D/g, "");
-    // Standardize Indian numbers to 12 digits (91XXXXXXXXXX)
     if (cleaned.length === 10) {
         cleaned = "91" + cleaned;
     }
     return cleaned;
 };
-
 
 const parseCSV = (csvData) => {
     const lines = csvData.trim().split(/\r?\n/);
@@ -45,9 +43,7 @@ const parseCSV = (csvData) => {
     return leads;
 };
 
-/**
- * Fetch managers for a specific location using fuzzy matching
- */
+// Fetch managers for a specific location using fuzzy matching
 const getManagersForLocation = async (location, adminId) => {
     // Cache key must include adminId to prevent data leakage between admins
     const cacheKey = `${location}|${adminId}`;
@@ -129,9 +125,7 @@ const getManagersForLocation = async (location, adminId) => {
 // CONTROLLER FUNCTIONS
 // ==========================================
 
-/**
- * Sync Google Sheet data to database (Optimized Delta Sync)
- */
+// Sync Google Sheet data to database (Optimized Delta Sync)
 const syncGoogleSheet = async (req, res) => {
     try {
         const csvUrl = process.env.GOOGLE_SHEET_CSV_URL;
@@ -273,9 +267,9 @@ const syncGoogleSheet = async (req, res) => {
                                     to: manager.phone,
                                     templateName: 'leads_forward_v2',
                                     placeholders: [
-                                        lead.customerName || 'Customer', // {{customer_name}}
-                                        lead.location,                   // {{Location}}
-                                        lead.customerPhone               // {{customer_phone}}
+                                        lead.customerName || 'Customer',  
+                                        lead.location,                   
+                                        lead.customerPhone               
                                     ]
                                 })
                             );
@@ -286,7 +280,7 @@ const syncGoogleSheet = async (req, res) => {
 
             Promise.allSettled(notificationPromises).then(results => {
                 const sent = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-                console.log(`[GoogleSheet Sync] 🔔 Notifications Sent: ${sent} / ${notificationPromises.length}`);
+                console.log(`[GoogleSheet Sync] 🔔Notifications Sent: ${sent} / ${notificationPromises.length}`);
             });
         }
 
@@ -323,9 +317,7 @@ const syncGoogleSheet = async (req, res) => {
     }
 };
 
-/**
- * Get all Google Sheet leads with pagination and filtering
- */
+// Get all Google Sheet leads with pagination and filtering
 const getAllLeads = async (req, res) => {
     try {
         const {
@@ -411,99 +403,11 @@ const getAllLeads = async (req, res) => {
     }
 };
 
-/**
- * Manual sync trigger endpoint
- */
+// Manual sync trigger endpoint
 const manualSync = async (req, res) => {
     await syncGoogleSheet(req, res);
 };
-
-/**
- * Manual forward lead to managers (All or Specific)
- */
-// const forwardLeadToManagers = async (req, res) => {
-//     try {
-//         const { lead, managerIds, location } = req.body;
-
-//         if (!lead || !location) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Missing lead data or location"
-//             });
-//         }
-
-//         let targetManagers = [];
-
-//         // 1. Determine Target Managers
-//         if (managerIds === 'all') {
-//             // Fetch ALL managers for this location
-//             targetManagers = await getManagersForLocation(location, null);
-//         } else if (Array.isArray(managerIds) && managerIds.length > 0) {
-//             // Fetch Specific Managers
-//             // We can reuse getManagersForLocation but filter manually, or just query DB directly.
-//             // For consistency and caching, let's get all for location and filter by ID.
-//             const allManagers = await getManagersForLocation(location, null);
-//             targetManagers = allManagers.filter(m => managerIds.includes(m.id.toString()));
-//         }
-
-//         if (targetManagers.length === 0) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: "No active managers found for this location to forward to."
-//             });
-//         }
-
-//         // 2. Send WhatsApp Messages
-//         const notificationPromises = [];
-
-//         for (const manager of targetManagers) {
-//             if (manager.phone) {
-//                 // Prepare safe placeholders
-//                 const p1 = String(lead.customerName || 'Customer');
-//                 const p2 = String(lead.customerPhone || 'N/A');
-//                 const p3 = String(lead.location || 'Unknown Location');
-
-//                 console.log(`[Forward Lead] Sending to ${manager.name} (${manager.phone}) | Data: ${p1}, ${p2}, ${p3}`);
-
-//                 // Send and track individual promise
-//                 const promise = sendWhatsAppTemplateDoubleTick({
-//                     to: manager.phone,
-//                     templateName: 'new_enquiry',
-//                     placeholders: [p1, p2, p3] // Order: Name, Phone, Location
-//                 }).then(res => ({
-//                     managerId: manager.id,
-//                     success: res.success,
-//                     error: res.error
-//                 })).catch(err => ({
-//                     managerId: manager.id,
-//                     success: false,
-//                     error: err.message
-//                 }));
-
-//                 notificationPromises.push(promise);
-//             }
-//         }
-
-//         const outcomes = await Promise.all(notificationPromises);
-//         const successCount = outcomes.filter(o => o.success).length;
-
-//         // 3. Response
-//         res.status(200).json({
-//             success: true,
-//             message: `Lead forwarded to ${successCount}/${targetManagers.length} managers.`,
-//             details: outcomes
-//         });
-
-//     } catch (error) {
-//         console.error("[Forward Lead] Error:", error.message);
-//         res.status(500).json({
-//             success: false,
-//             message: "Failed to forward lead",
-//             error: error.message
-//         });
-//     }
-// };
-
+ 
 const forwardLeadToManagers = async (req, res) => {
     try {
         const { lead, managerIds, location } = req.body;
@@ -588,11 +492,406 @@ const forwardLeadToManagers = async (req, res) => {
     }
 };
 
+// ==========================================
+// FUNCTION 1: Manager Views Leads by Location
+// ==========================================
+// This function allows a manager to see only leads for their assigned location(s)
+// If a location has multiple managers, all of them can see all leads for that location
+// Includes manager call/whatsapp tracking information
+const getLeadsForManager = async (req, res) => {
+    try {
+        const managerId = req.user?.id; // Extracted from auth middleware
+        const {
+            page = 1,
+            limit = 10,
+            search,
+            sortBy = "createdAt",
+            sortOrder = "desc",
+            filterByStatus // 'called', 'whatsapped', 'pending', 'all'
+        } = req.query;
+
+        if (!managerId) {
+            return res.status(401).json({
+                success: false,
+                message: "Manager ID not found in request"
+            });
+        }
+
+        // 1. Fetch manager details
+        const manager = await Manager.findById(managerId)
+            .select('assignedBranches accessScope business')
+            .lean();
+
+        if (!manager || !manager.isActive) {
+            return res.status(403).json({
+                success: false,
+                message: "Manager not found or inactive"
+            });
+        }
+
+        // 2. Determine allowed locations based on manager's access scope
+        let allowedLocations = [];
+
+        if (manager.accessScope === 'all_branches') {
+            // Manager can see all locations - fetch all distinct locations
+            allowedLocations = await GoogleSheetLead.distinct('location');
+        } else if (manager.accessScope === 'own_branch' || manager.accessScope === 'specific_branches') {
+            // Manager can only see their assigned branches
+            allowedLocations = manager.assignedBranches || [];
+        }
+
+        if (allowedLocations.length === 0) {
+            return res.status(200).json({
+                success: true,
+                data: [],
+                pagination: {
+                    total: 0,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    pages: 0
+                },
+                message: "No locations assigned to this manager"
+            });
+        }
+
+        // 3. Build query with location filter and optional search
+        const query = {
+            location: { $in: allowedLocations }
+        };
+
+        if (search) {
+            query.$or = [
+                { customerName: { $regex: search, $options: "i" } },
+                { customerPhone: { $regex: search, $options: "i" } }
+            ];
+        }
+
+        // 4. Apply status filter (called, whatsapped, pending)
+        if (filterByStatus && filterByStatus !== 'all') {
+            if (filterByStatus === 'called') {
+                query.isCalled = true;
+            } else if (filterByStatus === 'whatsapped') {
+                query.isWhatsapp = true;
+            } else if (filterByStatus === 'pending') {
+                query.isCalled = false;
+                query.isWhatsapp = false;
+            }
+        }
+
+        // 5. Pagination and sorting
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const limitNum = parseInt(limit);
+        const sortOptions = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
+
+        // 6. Fetch leads and total count
+        const [leads, total] = await Promise.all([
+            GoogleSheetLead.find(query)
+                .sort(sortOptions)
+                .limit(limitNum)
+                .skip(skip)
+                .populate('isCalledBy', 'name phone') // Populate manager who called
+                .populate('isWhatsappBy', 'name phone') // Populate manager who whatsapped
+                .lean(),
+            GoogleSheetLead.countDocuments(query)
+        ]);
+
+        // 7. Enhance lead data with manager details and formatting
+        const enhancedLeads = leads.map(lead => ({
+            ...lead,
+            callDetails: lead.isCalled && lead.isCalledBy ? {
+                managerId: lead.isCalledBy._id,
+                managerName: lead.isCalledBy.name,
+                managerPhone: lead.isCalledBy.phone
+            } : null,
+            whatsappDetails: lead.isWhatsapp && lead.isWhatsappBy ? {
+                managerId: lead.isWhatsappBy._id,
+                managerName: lead.isWhatsappBy.name,
+                managerPhone: lead.isWhatsappBy.phone
+            } : null,
+            status: lead.isCalled ? 'called' : (lead.isWhatsapp ? 'whatsapped' : 'pending')
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: enhancedLeads,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: limitNum,
+                pages: Math.ceil(total / limitNum)
+            },
+            manager: {
+                id: managerId,
+                assignedLocations: allowedLocations,
+                accessScope: manager.accessScope
+            }
+        });
+
+    } catch (error) {
+        console.error("[Get Leads For Manager] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch leads for manager",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 2: Update Call/WhatsApp Status
+// ==========================================
+// Admin/System can track which manager called or whatsapped a lead
+// This function updates the lead with manager tracking information
+const updateLeadContactStatus = async (req, res) => {
+    try {
+        const managerId = req.user?.id; // Current manager making the update
+        const { leadId, contactType } = req.body; // contactType: 'call' or 'whatsapp'
+
+        if (!managerId) {
+            return res.status(401).json({
+                success: false,
+                message: "Manager ID not found in request"
+            });
+        }
+
+        if (!leadId || !contactType || !['call', 'whatsapp'].includes(contactType)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid leadId or contactType. contactType must be 'call' or 'whatsapp'"
+            });
+        }
+
+        // 1. Fetch the lead
+        const lead = await GoogleSheetLead.findById(leadId);
+
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found"
+            });
+        }
+
+        // 2. Verify manager has access to this lead's location
+        const manager = await Manager.findById(managerId)
+            .select('assignedBranches accessScope')
+            .lean();
+
+        if (!manager) {
+            return res.status(403).json({
+                success: false,
+                message: "Manager not found"
+            });
+        }
+
+        // Check if manager has access to this location
+        const hasAccess = manager.accessScope === 'all_branches' ||
+            (manager.assignedBranches && manager.assignedBranches.some(
+                branch => branch.trim().toLowerCase() === lead.location.trim().toLowerCase()
+            ));
+
+        if (!hasAccess) {
+            return res.status(403).json({
+                success: false,
+                message: "Manager does not have access to this lead's location"
+            });
+        }
+
+        // 3. Update lead based on contact type
+        const updatePayload = {
+            lastModified: new Date()
+        };
+
+        if (contactType === 'call') {
+            updatePayload.isCalled = true;
+            updatePayload.isCalledBy = managerId;
+        } else if (contactType === 'whatsapp') {
+            updatePayload.isWhatsapp = true;
+            updatePayload.isWhatsappBy = managerId;
+        }
+
+        const updatedLead = await GoogleSheetLead.findByIdAndUpdate(
+            leadId,
+            { $set: updatePayload },
+            { new: true }
+        )
+            .populate('isCalledBy', 'name phone email')
+            .populate('isWhatsappBy', 'name phone email');
+
+        res.status(200).json({
+            success: true,
+            message: `Lead ${contactType} status updated successfully`,
+            data: {
+                leadId: updatedLead._id,
+                customerName: updatedLead.customerName,
+                customerPhone: updatedLead.customerPhone,
+                location: updatedLead.location,
+                isCalled: updatedLead.isCalled,
+                isWhatsapp: updatedLead.isWhatsapp,
+                callDetails: updatedLead.isCalled && updatedLead.isCalledBy ? {
+                    managerId: updatedLead.isCalledBy._id,
+                    managerName: updatedLead.isCalledBy.name,
+                    managerPhone: updatedLead.isCalledBy.phone,
+                    managerEmail: updatedLead.isCalledBy.email
+                } : null,
+                whatsappDetails: updatedLead.isWhatsapp && updatedLead.isWhatsappBy ? {
+                    managerId: updatedLead.isWhatsappBy._id,
+                    managerName: updatedLead.isWhatsappBy.name,
+                    managerPhone: updatedLead.isWhatsappBy.phone,
+                    managerEmail: updatedLead.isWhatsappBy.email
+                } : null,
+                lastModified: updatedLead.lastModified
+            }
+        });
+
+    } catch (error) {
+        console.error("[Update Lead Contact Status] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update lead contact status",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 3: Admin View - See All Leads with Manager Tracking
+// ==========================================
+// Admin can see all leads across all locations with details about which manager
+// called or whatsapped each lead. Useful for monitoring and analytics.
+const getLeadsForAdmin = async (req, res) => {
+    try {
+        const adminId = req.user?.id; // Extracted from auth middleware
+        const {
+            page = 1,
+            limit = 10,
+            location,
+            search,
+            sortBy = "createdAt",
+            sortOrder = "desc",
+            filterByStatus // 'called', 'whatsapped', 'pending', 'all'
+        } = req.query;
+
+        if (!adminId) {
+            return res.status(401).json({
+                success: false,
+                message: "Admin ID not found in request"
+            });
+        }
+
+        // 1. Verify user is admin (optional - depends on your auth system)
+        // const user = await User.findById(adminId).select('role').lean();
+        // if (user?.role !== 'admin') {
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: "Only admins can access this endpoint"
+        //     });
+        // }
+
+        // 2. Build query with optional filters
+        const query = {};
+
+        if (location && location !== "All") {
+            query.location = location;
+        }
+
+        if (search) {
+            query.$or = [
+                { customerName: { $regex: search, $options: "i" } },
+                { customerPhone: { $regex: search, $options: "i" } },
+                { location: { $regex: search, $options: "i" } }
+            ];
+        }
+
+        // 3. Apply status filter
+        if (filterByStatus && filterByStatus !== 'all') {
+            if (filterByStatus === 'called') {
+                query.isCalled = true;
+            } else if (filterByStatus === 'whatsapped') {
+                query.isWhatsapp = true;
+            } else if (filterByStatus === 'pending') {
+                query.isCalled = false;
+                query.isWhatsapp = false;
+            }
+        }
+
+        // 4. Pagination and sorting
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const limitNum = parseInt(limit);
+        const sortOptions = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
+
+        // 5. Fetch leads with manager details populated
+        const [leads, total, allLocations] = await Promise.all([
+            GoogleSheetLead.find(query)
+                .sort(sortOptions)
+                .limit(limitNum)
+                .skip(skip)
+                .populate('isCalledBy', 'name phone email business')
+                .populate('isWhatsappBy', 'name phone email business')
+                .lean(),
+            GoogleSheetLead.countDocuments(query),
+            GoogleSheetLead.distinct('location')
+        ]);
+
+        // 6. Enhance lead data with formatted manager information
+        const enhancedLeads = leads.map(lead => ({
+            _id: lead._id,
+            customerName: lead.customerName,
+            customerPhone: lead.customerPhone,
+            location: lead.location,
+            syncedAt: lead.syncedAt,
+            createdAt: lead.createdAt,
+            lastModified: lead.lastModified,
+            contactStatus: {
+                isCalled: lead.isCalled,
+                isWhatsapp: lead.isWhatsapp,
+                status: lead.isCalled ? 'called' : (lead.isWhatsapp ? 'whatsapped' : 'pending')
+            },
+            callDetails: lead.isCalled && lead.isCalledBy ? {
+                managerId: lead.isCalledBy._id,
+                managerName: lead.isCalledBy.name,
+                managerPhone: lead.isCalledBy.phone,
+                managerEmail: lead.isCalledBy.email
+            } : null,
+            whatsappDetails: lead.isWhatsapp && lead.isWhatsappBy ? {
+                managerId: lead.isWhatsappBy._id,
+                managerName: lead.isWhatsappBy.name,
+                managerPhone: lead.isWhatsappBy.phone,
+                managerEmail: lead.isWhatsappBy.email
+            } : null
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: enhancedLeads,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: limitNum,
+                pages: Math.ceil(total / limitNum)
+            },
+            filters: {
+                locations: ["All", ...allLocations.sort()],
+                statuses: ["all", "called", "whatsapped", "pending"]
+            }
+        });
+
+    } catch (error) {
+        console.error("[Get Leads For Admin] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch leads for admin",
+            error: error.message
+        });
+    }
+};
 
 module.exports = {
     syncGoogleSheet,
     getAllLeads,
     manualSync,
     getManagersForLocation, // Exported for use in sync service
-    forwardLeadToManagers
+    forwardLeadToManagers,
+    getLeadsForManager,
+    updateLeadContactStatus,
+    getLeadsForAdmin
 };
