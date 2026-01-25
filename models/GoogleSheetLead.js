@@ -44,6 +44,22 @@ const googleSheetLeadSchema = new mongoose.Schema(
             type: Date,
             default: Date.now
         },
+        isCalled: {
+            type: Boolean,
+            default: false
+        },
+        isWhatsapp: {
+            type: Boolean,
+            default: false
+        },
+        isCalledBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Manager"
+        },
+        isWhatsappBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Manager"
+        },
         lastModified: {
             type: Date,
             default: Date.now
