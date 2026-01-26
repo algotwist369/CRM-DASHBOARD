@@ -63,6 +63,19 @@ const googleSheetLeadSchema = new mongoose.Schema(
         lastModified: {
             type: Date,
             default: Date.now
+        },
+        // Admin status tracking for analytics
+        status: {
+            type: String,
+            enum: ['pending', 'forwarded', 'done'],
+            default: 'pending',
+            index: true
+        },
+        statusUpdatedAt: {
+            type: Date
+        },
+        statusUpdatedBy: {
+            type: String // Stores the name of the admin/user who updated the status
         }
     },
     {

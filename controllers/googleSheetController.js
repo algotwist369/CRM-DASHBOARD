@@ -2,7 +2,7 @@ const axios = require("axios");
 const GoogleSheetLead = require("../models/GoogleSheetLead");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
-const { sendWhatsAppTemplateDoubleTick, sendWhatsAppTextDoubleTick } = require("../utils/sendWhatsAppDoubleTick");
+const { sendWhatsAppTemplateDoubleTick } = require("../utils/sendWhatsAppDoubleTick");
 
 let locationCache = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache duration
@@ -60,7 +60,11 @@ const getManagersForLocation = async (location, adminId) => {
         const escapedLoc = location.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
         const businessQuery = {
-            branch: { $regex: new RegExp(escapedLoc, "i") }, // Fuzzy match
+            $or: [
+                { branch: { $regex: new RegExp(escapedLoc, "i") } }, // Fuzzy match branch
+                { name: { $regex: new RegExp(escapedLoc, "i") } },   // Fuzzy match business name
+                { city: { $regex: new RegExp(escapedLoc, "i") } }    // Fuzzy match city
+            ],
             isActive: true
         };
 
@@ -69,7 +73,8 @@ const getManagersForLocation = async (location, adminId) => {
             businessQuery.admin = adminId;
         }
 
-        const businesses = await Business.find(businessQuery).select('_id').lean();
+        // Fetch branch, name, city info too for permission checking
+        const businesses = await Business.find(businessQuery).select('_id branch name city').lean();
 
         if (businesses.length === 0) {
             locationCache[cacheKey] = { managers: [], timestamp: now };
@@ -77,27 +82,34 @@ const getManagersForLocation = async (location, adminId) => {
         }
 
         const businessIds = businesses.map(b => b._id);
+        const businessMap = {};
+        businesses.forEach(b => businessMap[b._id.toString()] = b);
 
         // 2. Find active managers linked to these businesses
         const managers = await Manager.find({
             business: { $in: businessIds },
             isActive: true
-        }).select('_id name phone email accessScope assignedBranches').lean();
+        }).select('_id name phone email accessScope assignedBranches business').lean();
 
         // 3. Filter managers based on access scope and branch assignment
         const managersForLocation = [];
         const seenManagerIds = new Set();
-        const normalizedLoc = location.trim().toLowerCase();
 
         for (const manager of managers) {
             let hasAccess = false;
 
+            // Get the specific business context this manager was found under
+            const linkedBusiness = businessMap[manager.business.toString()];
+            if (!linkedBusiness) continue;
+
             if (manager.accessScope === 'all_branches' || manager.accessScope === 'own_branch') {
                 hasAccess = true;
             } else if (manager.accessScope === 'specific_branches' && manager.assignedBranches) {
-                // Fuzzy check: does any assigned branch contain the location string?
+                // Check if the business's branch is in the manager's assigned list
+                const currentBranch = linkedBusiness.branch.trim().toLowerCase();
                 hasAccess = manager.assignedBranches.some(
-                    branch => branch.trim().toLowerCase().includes(normalizedLoc)
+                    assigned => assigned.trim().toLowerCase() === currentBranch ||
+                        currentBranch.includes(assigned.trim().toLowerCase())
                 );
             }
 
@@ -267,9 +279,9 @@ const syncGoogleSheet = async (req, res) => {
                                     to: manager.phone,
                                     templateName: 'leads_forward_v2',
                                     placeholders: [
-                                        lead.customerName || 'Customer',  
-                                        lead.location,                   
-                                        lead.customerPhone               
+                                        lead.customerName || 'Customer',
+                                        lead.location,
+                                        lead.customerPhone
                                     ]
                                 })
                             );
@@ -407,7 +419,7 @@ const getAllLeads = async (req, res) => {
 const manualSync = async (req, res) => {
     await syncGoogleSheet(req, res);
 };
- 
+
 const forwardLeadToManagers = async (req, res) => {
     try {
         const { lead, managerIds, location } = req.body;
@@ -475,6 +487,15 @@ const forwardLeadToManagers = async (req, res) => {
 
         const outcomes = await Promise.all(notificationPromises);
         const successCount = outcomes.filter(o => o.success).length;
+
+        // Update lead status if at least one message was sent successfully
+        if (successCount > 0) {
+            await GoogleSheetLead.findByIdAndUpdate(lead._id, {
+                status: 'forwarded',
+                statusUpdatedAt: new Date(),
+                lastModified: new Date()
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -841,10 +862,13 @@ const getLeadsForAdmin = async (req, res) => {
             syncedAt: lead.syncedAt,
             createdAt: lead.createdAt,
             lastModified: lead.lastModified,
+            status: lead.status, // Return the RAW database status for accurate tracking
+            statusUpdatedAt: lead.statusUpdatedAt,
+            statusUpdatedBy: lead.statusUpdatedBy,
             contactStatus: {
                 isCalled: lead.isCalled,
                 isWhatsapp: lead.isWhatsapp,
-                status: lead.isCalled ? 'called' : (lead.isWhatsapp ? 'whatsapped' : 'pending')
+                derivedStatus: lead.isCalled ? 'called' : (lead.isWhatsapp ? 'whatsapped' : 'pending')
             },
             callDetails: lead.isCalled && lead.isCalledBy ? {
                 managerId: lead.isCalledBy._id,
@@ -885,13 +909,168 @@ const getLeadsForAdmin = async (req, res) => {
     }
 };
 
+// ==========================================
+// FUNCTION 4: Update Lead Status (Admin)
+// ==========================================
+// Allow admin to mark lead as 'done' or other statuses manually
+const updateLeadAdminStatus = async (req, res) => {
+    try {
+        const { leadId, status } = req.body;
+
+        if (!leadId || !['pending', 'forwarded', 'done'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid leadId or status"
+            });
+        }
+
+        const lead = await GoogleSheetLead.findByIdAndUpdate(
+            leadId,
+            {
+                status: status,
+                statusUpdatedAt: new Date(),
+                statusUpdatedBy: req.user ? req.user.name : 'Unknown', // Track WHO updated it
+                lastModified: new Date()
+            },
+            { new: true }
+        );
+
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Lead status updated to ${status}`,
+            data: lead
+        });
+    } catch (error) {
+        console.error("[Update Admin Status] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update status",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 5: Lead Analytics
+// ==========================================
+// Get counts for leads (Received, Sent/Forwarded, Pending, Done) by date range
+const getLeadAnalytics = async (req, res) => {
+    try {
+        const { timeframe, startDate, endDate } = req.query; // timeframe: 'today', 'yesterday', 'custom'
+
+        // 1. Determine Date Range
+        const now = new Date();
+        let queryStart = new Date();
+        let queryEnd = new Date();
+
+        if (timeframe === 'yesterday') {
+            queryStart.setDate(now.getDate() - 1);
+            queryStart.setHours(0, 0, 0, 0);
+            queryEnd.setDate(now.getDate() - 1);
+            queryEnd.setHours(23, 59, 59, 999);
+        } else if (timeframe === 'custom' && startDate && endDate) {
+            queryStart = new Date(startDate);
+            queryStart.setHours(0, 0, 0, 0);
+            queryEnd = new Date(endDate);
+            queryEnd.setHours(23, 59, 59, 999);
+        } else {
+            // Default: Today
+            queryStart.setHours(0, 0, 0, 0);
+            queryEnd.setHours(23, 59, 59, 999);
+        }
+
+        // 2. Build Aggregation Query
+        // Match leads created within the time range
+        // Note: We use 'syncedAt' or 'createdAt' as the timestamp for "Received"
+        const matchStage = {
+            syncedAt: { $gte: queryStart, $lte: queryEnd }
+        };
+
+        const stats = await GoogleSheetLead.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: null,
+                    totalReceived: { $sum: 1 },
+                    pending: {
+                        $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] }
+                    },
+                    forwarded: {
+                        $sum: { $cond: [{ $eq: ["$status", "forwarded"] }, 1, 0] }
+                    },
+                    done: {
+                        $sum: { $cond: [{ $eq: ["$status", "done"] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        const result = stats.length > 0 ? stats[0] : { totalReceived: 0, pending: 0, forwarded: 0, done: 0 };
+        delete result._id; // Remove _id field
+
+        res.status(200).json({
+            success: true,
+            data: result,
+            dateRange: {
+                start: queryStart,
+                end: queryEnd,
+                timeframe: timeframe || 'today'
+            }
+        });
+
+    } catch (error) {
+        console.error("[Lead Analytics] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch analytics",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 6: Get Managers for Location
+// ==========================================
+const getManagersByLocation = async (req, res) => {
+    try {
+        const { location } = req.query;
+        if (!location) {
+            return res.status(400).json({ success: false, message: "Location is required" });
+        }
+
+        const managers = await getManagersForLocation(location, null); // adminId null to get all valid managers for loc
+
+        res.status(200).json({
+            success: true,
+            data: managers
+        });
+    } catch (error) {
+        console.error("[Get Managers] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch managers",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     syncGoogleSheet,
     getAllLeads,
     manualSync,
-    getManagersForLocation, // Exported for use in sync service
+    getManagersForLocation,
     forwardLeadToManagers,
     getLeadsForManager,
     updateLeadContactStatus,
-    getLeadsForAdmin
+    getLeadsForAdmin,
+    updateLeadAdminStatus,
+    getLeadAnalytics,
+    getManagersByLocation
 };

@@ -14,6 +14,15 @@ router.post('/forward-lead', protect, roleMiddleware(['admin']), googleSheetCont
 // Get all leads with manager tracking (Admin view)
 router.get('/leads/admin', protect, roleMiddleware(['admin']), googleSheetController.getLeadsForAdmin);
 
+// Analytics
+router.get('/leads/analytics', protect, roleMiddleware(['admin']), googleSheetController.getLeadAnalytics);
+
+// Managers for a location (for manual forwarding)
+router.get('/leads/managers', protect, roleMiddleware(['admin']), googleSheetController.getManagersByLocation);
+
+// Update lead status (Admin manually marking as done)
+router.post('/leads/admin-status', protect, roleMiddleware(['admin']), googleSheetController.updateLeadAdminStatus);
+
 // ==========================================
 // MANAGER PROTECTED ROUTES
 // ==========================================
