@@ -865,6 +865,7 @@ const getLeadsForAdmin = async (req, res) => {
             status: lead.status, // Return the RAW database status for accurate tracking
             statusUpdatedAt: lead.statusUpdatedAt,
             statusUpdatedBy: lead.statusUpdatedBy,
+            remarks: lead.remarks || [], // Return remarks history
             contactStatus: {
                 isCalled: lead.isCalled,
                 isWhatsapp: lead.isWhatsapp,
@@ -1061,6 +1062,51 @@ const getManagersByLocation = async (req, res) => {
     }
 };
 
+// ==========================================
+// FUNCTION 7: Add Remark
+// ==========================================
+const addLeadRemark = async (req, res) => {
+    try {
+        const { leadId, text } = req.body;
+        if (!leadId || !text) {
+            return res.status(400).json({ success: false, message: "Lead ID and Remark Text are required" });
+        }
+
+        const lead = await GoogleSheetLead.findByIdAndUpdate(
+            leadId,
+            {
+                $push: {
+                    remarks: {
+                        text,
+                        by: req.user ? req.user.name : 'Unknown',
+                        createdAt: new Date()
+                    }
+                },
+                $set: { lastModified: new Date() }
+            },
+            { new: true }
+        );
+
+        if (!lead) {
+            return res.status(404).json({ success: false, message: "Lead not found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Remark added successfully",
+            data: lead.remarks
+        });
+
+    } catch (error) {
+        console.error("[Add Remark] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to add remark",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     syncGoogleSheet,
     getAllLeads,
@@ -1072,5 +1118,6 @@ module.exports = {
     getLeadsForAdmin,
     updateLeadAdminStatus,
     getLeadAnalytics,
-    getManagersByLocation
+    getManagersByLocation,
+    addLeadRemark
 };

@@ -11,7 +11,8 @@ import {
   FaSyncAlt,
   FaCheckCircle,
   FaChartBar,
-  FaUserTie
+  FaUserTie,
+  FaCommentDots
 } from "react-icons/fa";
 import { MdOutlineDoneAll, MdSend, MdClose, MdPendingActions, MdDone } from "react-icons/md";
 import axios from "axios";
@@ -53,6 +54,12 @@ const WhatsappLead = () => {
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState('today'); // 'today', 'yesterday', 'custom'
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   const [showCustomDateInputs, setShowCustomDateInputs] = useState(false);
+
+  // === REMARK MODAL STATE ===
+  const [remarkModalOpen, setRemarkModalOpen] = useState(false);
+  const [currentLeadRemark, setCurrentLeadRemark] = useState(null);
+  const [newRemark, setNewRemark] = useState("");
+  const [remarkLoading, setRemarkLoading] = useState(false);
 
   const searchValue = search.toLowerCase();
 
@@ -107,6 +114,7 @@ const WhatsappLead = () => {
             status: uiStatus,
             dbStatus: lead.status || 'pending',
             statusUpdatedBy: lead.statusUpdatedBy,
+            remarks: lead.remarks || [],
 
             callDetails: lead.callDetails,
             whatsappDetails: lead.whatsappDetails
@@ -262,6 +270,31 @@ const WhatsappLead = () => {
     } catch (err) {
       console.error("Error forwarding lead:", err);
       setSendingState({ loading: false, success: false, error: err.response?.data?.message || "Failed to send" });
+    }
+  };
+
+  const handleOpenRemark = (lead) => {
+    setCurrentLeadRemark(lead);
+    setNewRemark("");
+    setRemarkModalOpen(true);
+  };
+
+  const submitRemark = async () => {
+    if (!newRemark.trim()) return;
+    try {
+      setRemarkLoading(true);
+      const token = localStorage.getItem("authToken");
+      await axios.post(`${API_BASE_URL}/google-sheets/leads/remark`,
+        { leadId: currentLeadRemark.id, text: newRemark },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setRemarkModalOpen(false);
+      fetchLeads(); // refresh to show new remark count/content
+    } catch (err) {
+      console.error("Error adding remark:", err);
+      alert("Failed to add remark");
+    } finally {
+      setRemarkLoading(false);
     }
   };
 
@@ -577,6 +610,7 @@ const WhatsappLead = () => {
                     "Copy",
                     "Forward",
                     "Status Action",
+                    "Remark"
                   ].map((h) => (
                     <th key={h} className="p-3 border">
                       {h}
@@ -744,6 +778,22 @@ const WhatsappLead = () => {
                           </button>
                         )}
                       </td>
+
+                      {/* REMARK BUTTON */}
+                      <td className="p-3 border">
+                        <button
+                          onClick={() => handleOpenRemark(lead)}
+                          className="text-gray-500 hover:text-[#007070] transition relative"
+                          title="View/Add Remarks"
+                        >
+                          <FaCommentDots size={18} />
+                          {lead.remarks && lead.remarks.length > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">
+                              {lead.remarks.length}
+                            </span>
+                          )}
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -780,6 +830,60 @@ const WhatsappLead = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* REMARK MODAL */}
+      {remarkModalOpen && currentLeadRemark && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setRemarkModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-red-500"
+            >
+              <MdClose size={24} />
+            </button>
+
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FaCommentDots className="text-[#007070]" />
+              Remarks for {currentLeadRemark.customerName}
+            </h3>
+
+            {/* History */}
+            <div className="bg-gray-50 rounded p-3 mb-4 h-48 overflow-y-auto border">
+              {currentLeadRemark.remarks && currentLeadRemark.remarks.length > 0 ? (
+                currentLeadRemark.remarks.slice().reverse().map((rem, idx) => (
+                  <div key={idx} className="mb-3 border-b last:border-0 pb-2">
+                    <p className="text-sm text-gray-800">{rem.text}</p>
+                    <div className="text-xs text-gray-500 flex justify-between mt-1">
+                      <span>{rem.by}</span>
+                      <span>{new Date(rem.createdAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-400 text-center text-sm py-4">No remarks yet.</p>
+              )}
+            </div>
+
+            {/* Add New */}
+            <div className="flex flex-col gap-2">
+              <textarea
+                className="w-full border rounded p-2 text-sm focus:outline-none focus:border-[#007070]"
+                placeholder="Type a remark..."
+                rows="3"
+                value={newRemark}
+                onChange={(e) => setNewRemark(e.target.value)}
+              ></textarea>
+              <button
+                onClick={submitRemark}
+                disabled={remarkLoading || !newRemark.trim()}
+                className="bg-[#007070] text-white py-2 rounded font-semibold text-sm hover:bg-[#014b4b] disabled:opacity-50 transition"
+              >
+                {remarkLoading ? "Saving..." : "Add Remark"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
