@@ -76,7 +76,13 @@ const googleSheetLeadSchema = new mongoose.Schema(
         },
         statusUpdatedBy: {
             type: String // Stores the name of the admin/user who updated the status
-        }
+        },
+        // Remarks / Notes
+        remarks: [{
+            text: { type: String, required: true },
+            by: { type: String, required: true }, // User/Admin name
+            createdAt: { type: Date, default: Date.now }
+        }]
     },
     {
         timestamps: true

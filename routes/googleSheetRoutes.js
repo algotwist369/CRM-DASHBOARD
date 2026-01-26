@@ -23,6 +23,9 @@ router.get('/leads/managers', protect, roleMiddleware(['admin']), googleSheetCon
 // Update lead status (Admin manually marking as done)
 router.post('/leads/admin-status', protect, roleMiddleware(['admin']), googleSheetController.updateLeadAdminStatus);
 
+// Add Remark
+router.post('/leads/remark', protect, roleMiddleware(['admin']), googleSheetController.addLeadRemark);
+
 // ==========================================
 // MANAGER PROTECTED ROUTES
 // ==========================================
