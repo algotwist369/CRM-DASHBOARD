@@ -928,7 +928,7 @@ const searchBusinesses = async (req, res, next) => {
             lat,
             lng,
             q,
-            location, // Added location parameter
+            location, // Location parameter for text-based location search
             category,
             minRating,
             minPrice,
@@ -944,6 +944,8 @@ const searchBusinesses = async (req, res, next) => {
         // 1. Validation & Setup
         let hasLocation = false;
         let latitude, longitude;
+        let hasLocationFilter = false; // Track if we're filtering by location text
+
         if (lat && lng) {
             latitude = parseFloat(lat);
             longitude = parseFloat(lng);
@@ -954,7 +956,26 @@ const searchBusinesses = async (req, res, next) => {
         const pageNum = Math.max(1, parseInt(page));
         const limitNum = Math.min(Math.max(parseInt(limit), 1), 5000); // Increased limit cap to 5000 for map view
 
-        // 2. Build Aggregation Pipeline
+        // Check for location-only searches (no lat/lng but has location parameter)
+        hasLocationFilter = !!location && !hasLocation;
+
+        // 2. Build Cache Key for location-only searches
+        let cacheKey = null;
+        if (hasLocationFilter && !q && !category && !minRating) {
+            // Simple location search - cache it
+            cacheKey = `search:location:${location}:${sort}:${page}:${limit}`;
+            const cachedData = await getCache(cacheKey);
+            if (cachedData) {
+                return res.json({
+                    success: true,
+                    message: "Fetched successfully",
+                    source: "cache",
+                    payload: encryptResponse(cachedData)
+                });
+            }
+        }
+
+        // 3. Build Aggregation Pipeline
         const pipeline = [];
 
         // Base match criteria
@@ -989,24 +1010,28 @@ const searchBusinesses = async (req, res, next) => {
 
         // Build dynamic match for search query and filters
         const matchStage = {};
+        let matchConditions = [];
 
+        // Text-based search (q parameter)
         if (q) {
             const terms = q.trim().split(/\s+/);
-            matchStage.$and = terms.map(term => {
-                const regex = new RegExp(term, "i");
-                return {
-                    $or: [
-                        { name: regex },
-                        { category: regex },
-                        { tags: regex },
-                        { description: regex },
-                        { address: regex },
-                        { city: regex },
-                        { state: regex },
-                        { zipCode: regex },
-                        { "serviceDetails.name": regex }
-                    ]
-                };
+            matchConditions.push({
+                $and: terms.map(term => {
+                    const regex = new RegExp(term, "i");
+                    return {
+                        $or: [
+                            { name: regex },
+                            { category: regex },
+                            { tags: regex },
+                            { description: regex },
+                            { address: regex },
+                            { city: regex },
+                            { state: regex },
+                            { zipCode: regex },
+                            { "serviceDetails.name": regex }
+                        ]
+                    };
+                })
             });
         }
 
@@ -1015,45 +1040,75 @@ const searchBusinesses = async (req, res, next) => {
         // If we have Lat/Lng, we trust the radius.
         if (location && !hasLocation) {
             // Flexible Location Matching
-            // 1. Full string match
-            // 2. Comma-separated parts match (e.g. "Vashi" from "Vashi, Navi Mumbai")
-            const locationParts = location.split(',').map(p => p.trim()).filter(p => p.length > 2);
-            const regexes = [new RegExp(location.trim(), "i")]; // Always include full string
+            // Normalize location string
+            const normalizedLocation = location.trim().toLowerCase();
+            
+            // Split by comma for compound locations (e.g., "Vashi, Navi Mumbai")
+            const locationParts = location.split(',')
+                .map(p => p.trim())
+                .filter(p => p.length > 0); // Include parts of any length
 
+            // Create regex patterns with higher specificity for exact matches
+            const regexes = [new RegExp(`^${normalizedLocation}$`, "i")]; // Exact match
+            regexes.push(new RegExp(normalizedLocation, "i")); // Partial match
+
+            // Add individual parts as separate search terms
             locationParts.forEach(part => {
-                if (part.toLowerCase() !== location.trim().toLowerCase()) {
-                    regexes.push(new RegExp(part, "i"));
+                const trimmedPart = part.trim();
+                if (trimmedPart.length > 0 && trimmedPart.toLowerCase() !== normalizedLocation) {
+                    regexes.push(new RegExp(`^${trimmedPart}$`, "i")); // Exact match for parts
+                    regexes.push(new RegExp(trimmedPart, "i")); // Partial match for parts
                 }
             });
 
-            // Build regex conditions for each derived location part
-            const orConditions = [];
-            regexes.forEach(regex => {
-                orConditions.push({ city: regex });
-                orConditions.push({ address: regex });
-                orConditions.push({ state: regex });
-                orConditions.push({ branch: regex });
-                orConditions.push({ area: regex }); // Also check area if schema supports it or it exists
+            // Build OR conditions for each location field
+            // Priority: city > state > address > branch
+            const locationOrConditions = [];
+            
+            // Add exact match conditions first (highest priority)
+            [new RegExp(`^${normalizedLocation}$`, "i")].forEach(regex => {
+                locationOrConditions.push({ city: regex });
+                locationOrConditions.push({ state: regex });
             });
 
-            // If matchStage.$and exists, push to it
-            const locationCondition = { $or: orConditions };
+            // Add partial match conditions
+            regexes.forEach(regex => {
+                locationOrConditions.push({ city: regex });
+                locationOrConditions.push({ state: regex });
+                locationOrConditions.push({ address: regex });
+                locationOrConditions.push({ branch: regex });
+            });
 
-            if (matchStage.$and) {
-                matchStage.$and.push(locationCondition);
-            } else {
-                matchStage.$and = [locationCondition];
-            }
+            matchConditions.push({ $or: locationOrConditions });
         }
 
-        if (category) matchStage.type = { $regex: category, $options: "i" };
-        if (minRating) matchStage['ratings.average'] = { $gte: parseFloat(minRating) };
-        if (service) matchStage['serviceDetails.name'] = { $regex: service, $options: 'i' };
-        if (offers) matchStage['offers'] = { $exists: true, $ne: [] };
+        // Category filter
+        if (category) {
+            matchConditions.push({ type: { $regex: category, $options: "i" } });
+        }
 
-        // Note: Price filtering will be done after $lookup since it depends on serviceDetails
+        // Rating filter
+        if (minRating) {
+            matchConditions.push({ 'ratings.average': { $gte: parseFloat(minRating) } });
+        }
 
-        if (Object.keys(matchStage).length > 0) {
+        // Service filter
+        if (service) {
+            matchConditions.push({ 'serviceDetails.name': { $regex: service, $options: 'i' } });
+        }
+
+        // Offers filter
+        if (offers) {
+            matchConditions.push({ 'offers': { $exists: true, $ne: [] } });
+        }
+
+        // Combine all match conditions
+        if (matchConditions.length > 0) {
+            if (matchConditions.length === 1) {
+                Object.assign(matchStage, matchConditions[0]);
+            } else {
+                matchStage.$and = matchConditions;
+            }
             console.log("Search Match Stage:", JSON.stringify(matchStage, null, 2)); // Debug log
             pipeline.push({ $match: matchStage });
         }
@@ -1082,6 +1137,8 @@ const searchBusinesses = async (req, res, next) => {
                 type: 1,
                 branch: 1,
                 address: 1,
+                city: 1,
+                state: 1,
                 location: 1,
                 images: 1,
                 image: { $ifNull: ["$images.thumbnail", { $ifNull: ["$images.logo", { $ifNull: ["$images.banner", null] }] }] },
@@ -1095,11 +1152,12 @@ const searchBusinesses = async (req, res, next) => {
                 distance: { $ifNull: ["$distance", null] },
                 snippet: { $concat: [{ $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] }, "..."] },
                 serviceDetails: 1,
-                offers: 1
+                offers: 1,
+                createdAt: 1
             }
         });
 
-        // Scoring for Exact/Partial Match
+        // Scoring for Exact/Partial Match (for q parameter)
         if (q) {
             const cleanQ = q.trim().toLowerCase();
             pipeline.push({
@@ -1123,8 +1181,10 @@ const searchBusinesses = async (req, res, next) => {
             pipeline.push({ $addFields: { exactMatchScore: 0 } });
         }
 
-        // Sorting
-        // Sorting
+        // Sorting Logic
+        // For location-only searches, prioritize rating and recency
+        // For geo searches, prioritize distance then rating
+        // For text searches, prioritize exact match score
         if (sort === 'rating') {
             pipeline.push({ $sort: { exactMatchScore: -1, 'ratings.average': -1, 'ratings.totalReviews': -1 } });
         } else if (sort === 'price') {
@@ -1132,12 +1192,15 @@ const searchBusinesses = async (req, res, next) => {
         } else if (sort === 'distance' && hasLocation) {
             pipeline.push({ $sort: { exactMatchScore: -1, distance: 1 } });
         } else {
-            // Default / Recommended:
-            // If location query is active (geo), prefer Exact Match, then distance, then rating.
-            // If text location or no location, prefer Exact Match, then rating, then newness.
+            // Default / Recommended sorting
             if (hasLocation) {
+                // Geo-based: prioritize distance, then rating
                 pipeline.push({ $sort: { exactMatchScore: -1, distance: 1, 'ratings.average': -1 } });
+            } else if (hasLocationFilter) {
+                // Location text filter: prioritize rating, then recency
+                pipeline.push({ $sort: { 'ratings.average': -1, 'ratings.totalReviews': -1, createdAt: -1 } });
             } else {
+                // General search or no filter: prioritize exact match, then rating, then recency
                 pipeline.push({ $sort: { exactMatchScore: -1, 'ratings.average': -1, createdAt: -1 } });
             }
         }
@@ -1153,7 +1216,7 @@ const searchBusinesses = async (req, res, next) => {
             }
         });
 
-        // 3. Execute
+        // 4. Execute Query
         const result = await Business.aggregate(pipeline);
         const businesses = result[0]?.results || [];
         const totalResults = result[0]?.totalCount[0]?.count || 0;
@@ -1177,6 +1240,8 @@ const searchBusinesses = async (req, res, next) => {
                 type: b.type,
                 branch: b.branch,
                 address: b.address,
+                city: b.city,
+                state: b.state,
                 category: b.category,
                 tags: b.tags,
                 ratings: b.ratings,
@@ -1200,16 +1265,25 @@ const searchBusinesses = async (req, res, next) => {
             page: pageNum,
             limit: limitNum,
             totalResults,
-            results: formattedResults
+            results: formattedResults,
+            searchType: hasLocation ? 'geo' : hasLocationFilter ? 'location' : 'general'
         };
 
-        return res.json({
+        const secureResponse = {
             success: true,
             message: "Fetched successfully",
             payload: encryptResponse(responseData)
-        });
+        };
+
+        // Cache location-only searches for 5 minutes
+        if (cacheKey) {
+            await setCache(cacheKey, responseData, 300);
+        }
+
+        return res.json(secureResponse);
 
     } catch (err) {
+        console.error('Error in searchBusinesses:', err);
         next(err);
     }
 };
