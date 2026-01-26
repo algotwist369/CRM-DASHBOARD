@@ -150,16 +150,6 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
                                 <HiOutlinePencil className="w-5 h-5" />
                             </button>
                         )}
-                    {/* View-only remark indicator if different role created it */}
-                    {inquiry.remarked_by &&
-                        inquiry.remarked_by_role !== currentUser?.role && (
-                            <div
-                                className="p-2 text-gray-400 cursor-not-allowed"
-                                title={`Remark created by ${inquiry.remarked_by_name}`}
-                            >
-                                <HiOutlinePencil className="w-5 h-5 opacity-40" />
-                            </div>
-                        )}
                     <button
                         onClick={() => onDelete(inquiry._id)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all active:scale-95"
