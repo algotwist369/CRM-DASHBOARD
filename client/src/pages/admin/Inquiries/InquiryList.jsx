@@ -139,17 +139,53 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
                             <HiOutlineCheck className="w-5 h-5" />
                         </button>
                     )}
-                    {/* Remark button - enable if current user has same role or no remark yet */}
-                    {(!inquiry.remarked_by ||
-                        (inquiry.remarked_by_role === currentUser?.role)) && (
+                    {/* Remark Edit Button - Admins can edit any remark, others can only edit their own */}
+                    {(() => {
+                        // Check for admin role in various possible property names
+                        const userRole = currentUser?.role || currentUser?.userRole || currentUser?.account_type || '';
+                        const isAdmin = userRole.toLowerCase().includes('admin');
+
+                        // ALWAYS log for debugging (remove after fix)
+                        console.log('🔍 Remark Check:', {
+                            user: currentUser,
+                            userRole,
+                            isAdmin,
+                            remarkedBy: inquiry.remarked_by,
+                        });
+
+                        // ADMINS CAN ALWAYS EDIT - Early return
+                        if (isAdmin) {
+                            return (
+                                <button
+                                    onClick={() => onRemark(inquiry._id, inquiry.remark)}
+                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
+                                    title="Edit Remark (Admin)"
+                                >
+                                    <HiOutlinePencil className="w-5 h-5" />
+                                </button>
+                            );
+                        }
+
+                        // Non-admins: can only edit their own remarks or add new ones
+                        const canEdit = !inquiry.remarked_by || inquiry.remarked_by === currentUser?.id;
+
+                        return canEdit ? (
                             <button
                                 onClick={() => onRemark(inquiry._id, inquiry.remark)}
                                 className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
-                                title="Add / Edit Remark"
+                                title={inquiry.remarked_by ? "Edit Your Remark" : "Add Remark"}
                             >
                                 <HiOutlinePencil className="w-5 h-5" />
                             </button>
-                        )}
+                        ) : (
+                            <div
+                                className="p-2 text-gray-400"
+                                title={`Remark by ${inquiry.remarked_by_name} (view only)`}
+                            >
+                                <HiOutlinePencil className="w-5 h-5 opacity-40" />
+                            </div>
+                        );
+                    })()}
                     <button
                         onClick={() => onDelete(inquiry._id)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all active:scale-95"
@@ -161,16 +197,22 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
             </td>
         </motion.tr>
     );
-}, (prev, next) =>
-    prev.inquiry._id === next.inquiry._id &&
-    prev.inquiry.is_recieved === next.inquiry.is_recieved &&
-    prev.inquiry.remarked_by_role === next.inquiry.remarked_by_role &&
-    prev.inquiry.remarked_by_name === next.inquiry.remarked_by_name &&
-    prev.onRemark === next.onRemark &&
-    prev.onMarkAsReceived === next.onMarkAsReceived &&
-    prev.onDelete === next.onDelete &&
-    prev.currentUser?.role === next.currentUser?.role
-);
+}, (prev, next) => {
+    // Debug: Log currentUser to verify structure (remove after debugging)
+    if (next.currentUser && Math.random() < 0.1) { // Log 10% of the time to avoid console spam
+        console.log('InquiryRow - currentUser:', next.currentUser);
+        console.log('InquiryRow - currentUser.role:', next.currentUser.role);
+    }
+
+    return prev.inquiry._id === next.inquiry._id &&
+        prev.inquiry.is_recieved === next.inquiry.is_recieved &&
+        prev.inquiry.remarked_by_role === next.inquiry.remarked_by_role &&
+        prev.inquiry.remarked_by_name === next.inquiry.remarked_by_name &&
+        prev.onRemark === next.onRemark &&
+        prev.onMarkAsReceived === next.onMarkAsReceived &&
+        prev.onDelete === next.onDelete &&
+        prev.currentUser?.role === next.currentUser?.role;
+});
 
 // --- Main Component ---
 
@@ -179,7 +221,30 @@ const InquiryList = () => {
     const { socket } = useSocket() || {};
 
     // Auth & Service Context
-    const user = useMemo(() => authService.getCurrentUser(), []);
+    const user = useMemo(() => {
+        let currentUser = authService.getCurrentUser();
+
+        // Fallback: if authService returns null, try to get from localStorage directly
+        if (!currentUser) {
+            try {
+                const storedUser = localStorage.getItem('user');
+                const userRole = localStorage.getItem('userRole');
+
+                if (storedUser) {
+                    currentUser = JSON.parse(storedUser);
+                } else if (userRole) {
+                    // Minimal user object with role
+                    currentUser = { role: userRole };
+                }
+
+                console.log('📌 User from fallback:', currentUser);
+            } catch (e) {
+                console.error('Error reading user from localStorage:', e);
+            }
+        }
+
+        return currentUser;
+    }, []);
     const service = useMemo(() => user?.role === 'admin' ? adminService : managerService, [user]);
 
     // UI States
