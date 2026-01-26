@@ -670,10 +670,7 @@ const Search = () => {
                 page: pageParam,
                 limit: 5000 // Reverted to 10 for efficient scrolling
             };
-            const placesResp = await googlePlacesService.searchWithPlaces(params);
-            if (placesResp.success) {
-                return placesResp.data;
-            }
+            // Only fetch from database - no Google Places
             const response = await publicService.searchBusinesses(params);
             if (!response.success) {
                 throw new Error(response.error || "Failed to fetch results");
@@ -702,9 +699,7 @@ const Search = () => {
                 page: 1,
                 limit: 5000 // Fetch all for map pins
             };
-            const placesResp = await googlePlacesService.searchWithPlaces(params);
-            if (placesResp.success) return placesResp.data;
-
+            // Only fetch from database - no Google Places
             const response = await publicService.searchBusinesses(params);
             if (response.success) return response.data;
             return { results: [] };
