@@ -8,10 +8,12 @@ import {
   FaWhatsapp,
   FaCopy,
   FaSearch,
-  FaSyncAlt
+  FaSyncAlt,
+  FaCheckCircle,
+  FaChartBar,
+  FaUserTie
 } from "react-icons/fa";
-import { MdOutlineDoneAll, MdSend, MdClose } from "react-icons/md";
-import { FaUserTie } from "react-icons/fa";
+import { MdOutlineDoneAll, MdSend, MdClose, MdPendingActions, MdDone } from "react-icons/md";
 import axios from "axios";
 
 // API Base URL - matches the rest of the app's configuration
@@ -41,6 +43,17 @@ const WhatsappLead = () => {
   const [currentManagers, setCurrentManagers] = useState([]);
   const [sendingState, setSendingState] = useState({ loading: false, success: false, error: null });
 
+  // === ANALYTICS STATE ===
+  const [analyticsData, setAnalyticsData] = useState({
+    totalReceived: 0,
+    pending: 0,
+    forwarded: 0,
+    done: 0
+  });
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState('today'); // 'today', 'yesterday', 'custom'
+  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
+  const [showCustomDateInputs, setShowCustomDateInputs] = useState(false);
+
   const searchValue = search.toLowerCase();
 
   /* ---------------- API FUNCTIONS ---------------- */
@@ -51,7 +64,7 @@ const WhatsappLead = () => {
 
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        `${API_BASE_URL}/google-sheets/leads`,
+        `${API_BASE_URL}/google-sheets/leads/admin`, // Use the Admin endpoint for better data
         {
           headers: { Authorization: `Bearer ${token}` },
           params: {
@@ -61,37 +74,81 @@ const WhatsappLead = () => {
         }
       );
 
-
       if (response.data.success) {
         // Transform API data to match existing UI format
-        const transformedData = response.data.data.map((lead, index) => ({
-          id: lead._id,
-          location: lead.location,
-          customerName: lead.customerName || `Customer ${index + 1}`,
-          customerPhone: formatPhoneNumber(lead.customerPhone),
-          createdAt: lead.createdAt, // Store creation time
-          isNew: (new Date() - new Date(lead.createdAt)) < 5 * 60 * 1000, // New if < 5 mins old
-          totalManagers: lead.totalManagers || 0,
-          status: lead.totalManagers > 0 ? "Sent" : "Pending", // Status based on manager assignment
-          managers: (lead.managers || []).map(manager => ({
-            id: manager.id || manager._id, // Ensure ID is mapped
-            name: manager.name,
-            phone: manager.phone || '',
-            email: manager.email || '',
-            status: "Delivered" // Default status - can be updated with real WhatsApp status later
-          }))
-        }));
+        const transformedData = response.data.data.map((lead, index) => {
+          // Determine overall status for UI display
+          let uiStatus = "Pending";
+          if (lead.status === 'done') {
+            uiStatus = "Done";
+          } else if (lead.status === 'forwarded') {
+            uiStatus = "Sent";
+          } else if (lead.contactStatus?.derivedStatus === 'called') {
+            uiStatus = "Called";
+          } else if (lead.contactStatus?.derivedStatus === 'whatsapped') {
+            uiStatus = "Whatsapped";
+          }
+
+          return {
+            id: lead._id, // Ensure we use _id for unique keys and actions
+            location: lead.location,
+            customerName: lead.customerName || `Customer ${index + 1}`,
+            customerPhone: formatPhoneNumber(lead.customerPhone),
+            createdAt: lead.createdAt || lead.syncedAt,
+            isNew: (new Date() - new Date(lead.createdAt || lead.syncedAt)) < 5 * 60 * 1000,
+
+            // Manager / Contact Info
+            totalManagers: lead.totalManagers || 0, // Admin endpoint might not retrun this directly, let's trust populated arrays if available
+            managers: [],
+
+            // Store raw lead for popover dynamic fetching if needed
+            rawLocation: lead.location,
+
+            status: uiStatus,
+            dbStatus: lead.status || 'pending',
+            statusUpdatedBy: lead.statusUpdatedBy,
+
+            callDetails: lead.callDetails,
+            whatsappDetails: lead.whatsappDetails
+          };
+        });
 
         setLeadsData(transformedData);
         setLastSyncTime(new Date());
       }
     } catch (err) {
       console.error("Error fetching leads:", err);
+      // Fallback: If admin endpoint fails, perhaps try the old one? Or just show error.
       setError(err.response?.data?.message || "Failed to fetch leads");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const params = { timeframe: analyticsTimeframe };
+      if (analyticsTimeframe === 'custom') {
+        params.startDate = customDateRange.start;
+        params.endDate = customDateRange.end;
+      }
+
+      const response = await axios.get(
+        `${API_BASE_URL}/google-sheets/leads/analytics`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: params
+        }
+      );
+
+      if (response.data.success) {
+        setAnalyticsData(response.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching analytics:", err);
+    }
+  }, [analyticsTimeframe, customDateRange]);
 
   const handleSync = useCallback(async () => {
     try {
@@ -109,8 +166,7 @@ const WhatsappLead = () => {
 
       if (response.data.success) {
         console.log("Sync completed:", response.data.stats);
-        // Refresh data after sync
-        await fetchLeads();
+        await Promise.all([fetchLeads(), fetchAnalytics()]);
       }
     } catch (err) {
       console.error("Error syncing leads:", err);
@@ -118,10 +174,48 @@ const WhatsappLead = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [fetchLeads]);
+  }, [fetchLeads, fetchAnalytics]);
+
+  // Fetch managers dynamically when popover opens
+  const fetchManagersForPopover = async (location) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await axios.get(
+        `${API_BASE_URL}/google-sheets/leads/managers`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { location }
+        }
+      );
+      if (response.data.success) {
+        return response.data.data; // Array of managers
+      }
+      return [];
+    } catch (err) {
+      console.error("Failed to fetch managers for location", err);
+      return [];
+    }
+  };
+
+  const updateLeadStatus = async (leadId, newStatus) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      await axios.post(
+        `${API_BASE_URL}/google-sheets/leads/admin-status`,
+        { leadId, status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Refresh data
+      fetchLeads();
+      fetchAnalytics();
+    } catch (err) {
+      console.error("Error updating status:", err);
+      alert("Failed to update status");
+    }
+  }
 
   const handleOpenPopover = async (lead) => {
-    // Toggle if already open
     if (activePopover === lead.id) {
       setActivePopover(null);
       return;
@@ -132,20 +226,10 @@ const WhatsappLead = () => {
     setCurrentManagers([]);
     setSendingState({ loading: false, success: false, error: null });
 
-    // Fetch managers for this specific location to get fresh status if needed
-    // Actually, we already have managers in lead.managers but let's assume we want full details or fresh fetch
-    // For now, let's filter from the lead object itself as it was hydrated by backend
-    // But wait, the backend hydrates it. But if we want to add new managers who might have been added recently?
-    // Ideally we should have an endpoint to fetch managers for location, but let's rely on what we have OR
-    // we can reuse the backend logic if we want.
-    // Since backend logic `getManagersForLocation` is internal, let's rely on the lead.managers array which is populated by getAllLeads
-    // However, getAllLeads might be cached or slightly stale. 
-    // Important: The user wants to see "how many managers are there". 
-    // If we want to be super real-time we could add an endpoint. 
-    // But lead.managers comes from `getAllLeads` which calls `getManagersForLocation`. So it is fresh enough (per page load).
+    // Fetch active managers for this location
+    const managers = await fetchManagersForPopover(lead.location);
+    setCurrentManagers(managers);
 
-    // Let's us the lead.managers data.
-    setCurrentManagers(lead.managers);
     setPopoverLoading(false);
   };
 
@@ -171,10 +255,9 @@ const WhatsappLead = () => {
 
       if (response.data.success) {
         setSendingState({ loading: false, success: true, error: null });
-        // Close popover after short delay
         setTimeout(() => setActivePopover(null), 1500);
-        // Refresh leads to update statuses if we track them
         fetchLeads();
+        fetchAnalytics(); // Update stats
       }
     } catch (err) {
       console.error("Error forwarding lead:", err);
@@ -185,21 +268,28 @@ const WhatsappLead = () => {
   /* ---------------- EFFECTS ---------------- */
   useEffect(() => {
     fetchLeads();
+    fetchAnalytics();
 
-    // Auto-refresh every 50 seconds
     const intervalId = setInterval(() => {
       fetchLeads();
+      fetchAnalytics();
     }, 50000);
 
     return () => clearInterval(intervalId);
-  }, [fetchLeads]);
+  }, [fetchLeads, fetchAnalytics]);
+
+  // Effect to refetch analytics when timeframe changes
+  useEffect(() => {
+    fetchAnalytics();
+  }, [analyticsTimeframe, customDateRange]);
+
 
   /* ---------------- HELPER FUNCTIONS ---------------- */
   const formatPhoneNumber = (phone) => {
     if (!phone) return "";
-    // Format as +91 XXXXXXXXXX
-    if (phone.length === 12 && phone.startsWith("91")) {
-      return `+${phone.slice(0, 2)} ${phone.slice(2)}`;
+    let clean = phone.replace(/\D/g, "");
+    if (clean.length === 12 && clean.startsWith("91")) {
+      return `+${clean.slice(0, 2)} ${clean.slice(2)}`;
     }
     return phone;
   };
@@ -217,14 +307,12 @@ const WhatsappLead = () => {
       if (locationFilter !== "All" && lead.location !== locationFilter)
         return false;
 
-      if (statusFilter !== "All" && lead.status !== statusFilter)
-        return false;
-
-      if (
-        managerStatusFilter !== "All" &&
-        !lead.managers.some((m) => m.status === managerStatusFilter)
-      )
-        return false;
+      // Update filter to match new status logic
+      if (statusFilter !== "All") {
+        if (statusFilter === 'Done' && lead.status !== 'Done') return false;
+        if (statusFilter === 'Sent' && lead.status !== 'Sent') return false;
+        if (statusFilter === 'Pending' && lead.status !== 'Pending') return false;
+      }
 
       return true;
     });
@@ -233,7 +321,6 @@ const WhatsappLead = () => {
     searchValue,
     locationFilter,
     statusFilter,
-    managerStatusFilter,
   ]);
 
   /* ---------------- PAGINATION ---------------- */
@@ -257,16 +344,16 @@ const WhatsappLead = () => {
 
   const copyToClipboard = useCallback((id, location, name, phone) => {
     const text = `
-    New Customer Lead 🚨  
-    Name: *${name}*
-    Phone: ${phone}
-    Location: *${location}*
-    
-    Note: As instructed by the *Head Office*, follow up immediately.
+    *${location}*
+    *${name}* , ${phone}
     `;
 
     navigator.clipboard.writeText(text);
     setCopiedId(id);
+
+    // Auto-mark as done when copied
+    updateLeadStatus(id, 'done');
+
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
@@ -277,12 +364,104 @@ const WhatsappLead = () => {
   /* ---------------- UI ---------------- */
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* HEADER + SYNC */}
+
+      {/* 1. ANALYTICS DASHBOARD */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <FaChartBar className="text-[#007070]" />
+              Analytics Dashboard
+            </h2>
+            <p className="text-sm text-gray-500">Track lead performance and manager activity</p>
+          </div>
+
+          {/* Date Filters */}
+          <div className="flex items-center bg-gray-100 p-1 rounded-md">
+            <button
+              onClick={() => { setAnalyticsTimeframe('today'); setShowCustomDateInputs(false); }}
+              className={`px-3 py-1.5 text-sm font-medium rounded ${analyticsTimeframe === 'today' ? 'bg-white shadow text-[#007070]' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => { setAnalyticsTimeframe('yesterday'); setShowCustomDateInputs(false); }}
+              className={`px-3 py-1.5 text-sm font-medium rounded ${analyticsTimeframe === 'yesterday' ? 'bg-white shadow text-[#007070]' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Yesterday
+            </button>
+            <button
+              onClick={() => { setAnalyticsTimeframe('custom'); setShowCustomDateInputs(true); }}
+              className={`px-3 py-1.5 text-sm font-medium rounded ${analyticsTimeframe === 'custom' ? 'bg-white shadow text-[#007070]' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Custom
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Date Inputs */}
+        {showCustomDateInputs && (
+          <div className="flex gap-2 items-center mb-4 justify-end">
+            <input
+              type="date"
+              className="border rounded px-2 py-1 text-sm"
+              onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+            />
+            <span className="text-gray-400">-</span>
+            <input
+              type="date"
+              className="border rounded px-2 py-1 text-sm"
+              onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+            />
+          </div>
+        )}
+
+        {/* Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Total Received */}
+          <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-blue-600 text-sm font-medium">Total Received</span>
+              <FaSyncAlt className="text-blue-300" />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{analyticsData.totalReceived}</div>
+          </div>
+
+          {/* Pending */}
+          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-yellow-600 text-sm font-medium">Pending</span>
+              <MdPendingActions className="text-yellow-300" size={20} />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{analyticsData.pending}</div>
+          </div>
+
+          {/* Forwarded */}
+          <div className="bg-purple-50 border border-purple-100 p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-purple-600 text-sm font-medium">Sent / Forwarded</span>
+              <MdSend className="text-purple-300" />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{analyticsData.forwarded}</div>
+          </div>
+
+          {/* Done */}
+          <div className="bg-green-50 border border-green-100 p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-green-600 text-sm font-medium">Marked Done</span>
+              <MdDone className="text-green-300" size={22} />
+            </div>
+            <div className="text-2xl font-bold text-gray-800">{analyticsData.done}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. LEADS LIST HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-lg font-bold flex items-center gap-2 text-gray-700">
             <FaWhatsapp className="text-green-500" />
-            WhatsApp Leads (Google Sheets)
+            Leads Management
           </h1>
           {lastSyncTime && (
             <p className="text-xs text-gray-500 mt-1">
@@ -300,7 +479,7 @@ const WhatsappLead = () => {
             }`}
         >
           <FaSyncAlt className={isSyncing ? "animate-spin" : ""} />
-          {isSyncing ? "Syncing..." : "Sync Leads"}
+          {isSyncing ? "Syncing..." : "Sync Sheet"}
         </button>
       </div>
 
@@ -348,8 +527,8 @@ const WhatsappLead = () => {
                 { label: "Sanpada", value: "Sanpada" },
                 { label: "Kharghar", value: "Kharghar" },
               ].map((loc) => (
-                <option key={loc} value={loc.label}>
-                  {loc === "All" ? "All Locations" : loc.value}
+                <option key={loc.value} value={loc.label}>
+                  {loc.value === "All" ? "All Locations" : loc.value}
                 </option>
               ))}
             </select>
@@ -364,21 +543,9 @@ const WhatsappLead = () => {
               }}
             >
               <option value="All">All Status</option>
-              <option value="Sent">Sent</option>
+              <option value="Sent">Sent (Forwarded)</option>
+              <option value="Done">Marked Done</option>
               <option value="Pending">Pending</option>
-            </select>
-
-            <select
-              className="border rounded px-3 py-2 text-sm"
-              value={managerStatusFilter}
-              onChange={(e) => {
-                setManagerStatusFilter(e.target.value);
-                resetPage();
-              }}
-            >
-              <option value="All">All Manager Status</option>
-              <option value="Seen">Seen</option>
-              <option value="Delivered">Delivered</option>
             </select>
 
             <select
@@ -389,12 +556,10 @@ const WhatsappLead = () => {
                 resetPage();
               }}
             >
-              <option value={5}>5 Rows</option>
               <option value={10}>10 Rows</option>
               <option value={20}>20 Rows</option>
               <option value={50}>50 Rows</option>
               <option value={100}>100 Rows</option>
-              <option value={150}>150 Rows</option>
             </select>
           </div>
 
@@ -408,11 +573,10 @@ const WhatsappLead = () => {
                     "Location",
                     "Customer",
                     "Phone",
-                    "Managers",
+                    // "Managers",
                     "Copy",
-                    // "Mark"
-                    "Send",
-                    "Status",
+                    "Forward",
+                    "Status Action",
                   ].map((h) => (
                     <th key={h} className="p-3 border">
                       {h}
@@ -430,20 +594,19 @@ const WhatsappLead = () => {
                   </tr>
                 ) : (
                   currentData.map((lead, index) => (
-                    <tr key={lead.id} className="hover:bg-gray-50 text-center relative">
+                    <tr key={lead.id} className={`hover:bg-gray-50 text-center relative ${lead.dbStatus === 'done' ? 'bg-gray-100' : ''}`}>
                       <td className="p-3 border relative">
                         {startIndex + index + 1}
-                        {/* New Badge (Green Dot) */}
                         {lead.isNew && (
-                          <span className="absolute top-1 left-1 h-4 w-4 bg-green-500 rounded-full animate-pulse" title="New Lead (< 5 mins)"></span>
+                          <span className="absolute top-1 left-1 h-3 w-3 bg-red-500 rounded-full animate-pulse" title="New Lead (< 5 mins)"></span>
                         )}
                       </td>
-                      <td className="p-3 border font-semibold text-gray-500">
+                      <td className="p-3 border font-semibold text-gray-600">
                         {lead.location}
                       </td>
                       <td className="p-3 border">{lead.customerName}</td>
-                      <td className="p-3 border">{lead.customerPhone}</td>
-                      <td className="p-3 border">{lead.totalManagers}</td>
+                      <td className="p-3 border font-mono text-xs">{lead.customerPhone}</td>
+                      {/* <td className="p-3 border">{lead.totalManagers}</td> */}
 
                       {/* COPY */}
                       <td className="p-3 border">
@@ -451,84 +614,45 @@ const WhatsappLead = () => {
                           onClick={() =>
                             copyToClipboard(lead.id, lead.location, lead.customerName, lead.customerPhone)
                           }
-                          className={`flex items-center justify-center gap-1 mx-auto ${copiedId === lead.id
-                            ? "text-green-600 font-semibold"
-                            : "text-[#007070]"
+                          className={`p-2 rounded-full transition ${lead.dbStatus === 'done'
+                            ? "text-gray-300 "
+                            : (copiedId === lead.id ? "text-green-600 scale-110" : "text-[#007070] hover:bg-teal-50")
                             }`}
+                          title={lead.dbStatus === 'done' ? "Already Done" : "Copy details (Mark as Done)"}
                         >
                           <FaCopy />
-                          {copiedId === lead.id ? "Copied" : ""}
                         </button>
                       </td>
 
-                      {/* STATUS + HOVER */}
-                      {/* <td className="p-3 border relative group">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${lead.status === "Sent"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                            }`}
-                        >
-                          {lead.status}
-                        </span>
-
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border rounded shadow-lg opacity-0 invisible group-hover:visible group-hover:opacity-100 transition z-50">
-                          <div className="p-3 text-left">
-                            <p className="font-semibold text-sm mb-2">
-                              Manager WhatsApp Status
-                            </p>
-
-                            {lead.managers.map((mgr, i) => (
-                              <div
-                                key={i}
-                                className="flex justify-between items-center text-sm mb-1"
-                              >
-                                <span>{mgr.name}</span>
-                                <span
-                                  className={`flex items-center gap-1 ${mgr.status === "Seen"
-                                    ? "text-blue-600"
-                                    : "text-gray-500"
-                                    }`}
-                                >
-                                  <FaWhatsapp />
-                                  {mgr.status}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </td> */}
-
-                      {/* SEND */}
-                      <td className="p-3 border cursor-pointer flex justify-center items-center relative">
-                        {/* {lead.status === "Sent" ? (
-                             <MdOutlineDoneAll className="h-6 w-6 text-green-500 font-extrabold" />
-                        ) : (
-                            // Show Send Button/Icon
-                             <button
-                                onClick={() => handleOpenPopover(lead)}
-                                className="text-gray-500 hover:text-green-600 transition"
-                                title="Forward to Managers"
-                             >
-                                <FaWhatsapp size={22} />
-                             </button>
-                        )} */}
-
-                        {/* Always show the send button to allow re-sending or sending to new managers, 
-                            bu maybe color it differently if already sent? 
-                            User said: "if admin hover on the whatsapp icon in send colom admin can see how many managers"
-                        */}
+                      {/* FORWARD */}
+                      <td className="p-3 border cursor-pointer flex justify-center items-center relative h-full">
                         <div className="relative">
-                          <button
-                            onClick={() => handleOpenPopover(lead)}
-                            className={`transition ${lead.status === 'Sent' ? 'text-green-600' : 'text-gray-400 hover:text-green-600'}`}
-                          >
-                            <FaWhatsapp size={24} />
-                          </button>
+                          {lead.dbStatus === 'forwarded' || lead.status === 'Sent' ? (
+                            <button
+                              onClick={() => handleOpenPopover(lead)}
+                              className="text-purple-600 hover:text-purple-800 transition flex flex-col items-center"
+                              title="Already Sent. Click to send again."
+                            >
+                              <MdOutlineDoneAll size={20} />
+                              <span className="text-[10px] font-medium">Forwarded</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenPopover(lead)}
+                              className={`transition ${lead.dbStatus === 'done'
+                                ? 'text-gray-300' // Negate color if done
+                                : 'text-green-600 hover:scale-110' // Green if not done
+                                }`}
+                              title="Forward to Managers"
+                            >
+                              <FaWhatsapp size={24} />
+                            </button>
+                          )}
+
 
                           {/* POPOVER */}
                           {activePopover === lead.id && (
-                            <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-200 shadow-xl rounded-lg z-50 p-4 text-left">
+                            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 shadow-xl rounded-lg z-50 p-4 text-left">
                               <div className="flex justify-between items-center mb-3">
                                 <h3 className="font-bold text-gray-700 text-sm">Forward Lead</h3>
                                 <button onClick={() => setActivePopover(null)} className="text-gray-400 hover:text-red-500">
@@ -541,7 +665,7 @@ const WhatsappLead = () => {
                                 Location: <span className="font-medium text-gray-700">{lead.location}</span>
                               </p>
                               <p className="text-xs text-gray-500 mb-4">
-                                Active Managers: <span className="font-medium text-gray-700">{lead.managers?.length || 0}</span>
+                                Active Managers: <span className="font-medium text-gray-700">{currentManagers.length || 0}</span>
                               </p>
 
                               {/* Main Actions */}
@@ -549,7 +673,7 @@ const WhatsappLead = () => {
                                 {/* Send All Button */}
                                 <button
                                   onClick={() => handleSendLead(lead, 'all')}
-                                  disabled={sendingState.loading || lead.managers.length === 0}
+                                  disabled={sendingState.loading || currentManagers.length === 0}
                                   className="w-full bg-[#007070] text-white py-2 rounded text-sm font-medium hover:bg-[#014b4b] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
                                   {sendingState.loading ? "Sending..." : "Send to All Managers"}
@@ -560,70 +684,65 @@ const WhatsappLead = () => {
                                 <div className="border-t my-2"></div>
 
                                 {/* Individual Managers */}
-                                <div className="max-h-40 overflow-y-auto space-y-2">
-                                  {lead.managers.length > 0 ? lead.managers.map((mgr, idx) => (
-                                    <div key={idx} className="flex justify-between items-center text-sm p-1 hover:bg-gray-50 rounded">
-                                      <div className="flex items-center gap-2 overflow-hidden">
-                                        <FaUserTie className="text-gray-400 flex-shrink-0" />
-                                        <span className="truncate text-gray-700" title={mgr.name}>{mgr.name}</span>
+                                {popoverLoading ? (
+                                  <div className="text-center py-2 text-gray-400 text-xs">Loading managers...</div>
+                                ) : (
+                                  <div className="max-h-40 overflow-y-auto space-y-2">
+                                    {currentManagers.length > 0 ? currentManagers.map((mgr, idx) => (
+                                      <div key={idx} className="flex justify-between items-center text-sm p-1 hover:bg-gray-50 rounded">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                          <FaUserTie className="text-gray-400 flex-shrink-0" />
+                                          <span className="truncate text-gray-700" title={mgr.name}>{mgr.name}</span>
+                                        </div>
+
+                                        <button
+                                          onClick={() => handleSendLead(lead, [mgr.id])}
+                                          className="text-[#007070] hover:bg-[#e6f2f2] p-1 rounded"
+                                          title="Send to this manager only"
+                                        >
+                                          <MdSend />
+                                        </button>
                                       </div>
-                                      {/* We need the ID for individual send. 
-                                                        Wait, the mapped managers in fetchLeads only had name/phone/email/status.
-                                                        We need to ensure we map the ID too in fetchLeads logic! 
-                                                        I need to update fetchLeads to include _id/id.
-                                                    */}
-                                      {/* Assuming we will fix fetchLeads mapping below this change or have it available */}
-                                      {/* Wait, I cannot modify fetchLeads in the same step easily if I missed it.
-                                                        Let me check fetchLeads in the ViewFile output...
-                                                        Line 69: managers: (lead.managers || []).map(manager => ({
-                                                            name: manager.name,
-                                                            phone: manager.phone || '', ...
-                                                        }))
-                                                        
-                                                        I missed mapping the ID in the original file view!
-                                                        I must update fetchLeads first or in this same multi-replace.
-                                                    */}
-
-                                      <button
-                                        // Fallback if ID is missing (which it is currently), we can't send individual correctly without ID.
-                                        // I will fix the fetchLeads mapping in this same multi_replace call.
-                                        onClick={() => handleSendLead(lead, [mgr.id])}
-                                        className="text-[#007070] hover:bg-[#e6f2f2] p-1 rounded"
-                                        title="Send to this manager only"
-                                      >
-                                        <MdSend />
-                                      </button>
-                                    </div>
-                                  )) : (
-                                    <p className="text-xs text-gray-400 text-center py-2">No managers found.</p>
-                                  )}
-                                </div>
+                                    )) : (
+                                      <p className="text-xs text-gray-400 text-center py-2">No active managers found.</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-
                               {sendingState.success && (
                                 <div className="mt-2 text-xs text-green-600 font-semibold text-center animate-pulse">
-                                  Successfully Sent!
-                                </div>
-                              )}
-                              {sendingState.error && (
-                                <div className="mt-2 text-xs text-red-600 font-semibold text-center">
-                                  {sendingState.error}
+                                  Sent Successfully!
                                 </div>
                               )}
                             </div>
                           )}
                         </div>
-
                       </td>
 
-                      {/* status */}
+                      {/* MARK DONE STATUS */}
                       <td className="p-3 border">
-                        <button
-                          onClick={() => sendWhatsApp(lead.customerPhone)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          <MdOutlineDoneAll size={20}/>
-                        </button>
+                        {lead.dbStatus === 'done' ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => updateLeadStatus(lead.id, 'pending')}
+                              className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold hover:bg-green-200 transition flex items-center gap-1"
+                              title="Click to undo"
+                            >
+                              <FaCheckCircle /> Done
+                            </button>
+                            <span className="text-[10px] text-gray-500 mt-1 font-medium">
+                              by: {lead.statusUpdatedBy || 'Admin'}
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => updateLeadStatus(lead.id, 'done')}
+                            className="px-3 py-1 border border-yellow-400 bg-yellow-50 text-yellow-700 rounded-full text-xs hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition flex items-center gap-1 mx-auto"
+                            title="Click to Mark Done"
+                          >
+                            <MdPendingActions /> Pending
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
