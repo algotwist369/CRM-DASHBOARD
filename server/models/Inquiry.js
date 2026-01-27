@@ -35,6 +35,11 @@ const inquirySchema = new mongoose.Schema({
     remarked_at: {
         type: Date
     },
+    remark_color: {
+        type: String,
+        enum: ['red', 'green', 'yellow', 'gray'],
+        default: 'gray'
+    },
     group_id: {
         type: mongoose.Schema.Types.ObjectId,
         index: true

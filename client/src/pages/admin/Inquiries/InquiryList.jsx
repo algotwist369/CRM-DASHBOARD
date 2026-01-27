@@ -108,7 +108,18 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
             <td className="px-6 py-4 border-b border-gray-100">
                 {inquiry.remark ? (
                     <div className="flex flex-col">
-                        <span className="text-sm text-gray-800 font-medium break-words">{inquiry.remark}</span>
+                        <span
+                            className={`text-sm font-medium break-words px-3 py-2 rounded-lg inline-block
+                                    ${inquiry.remark_color === 'red'
+                                    ? 'bg-red-100 text-red-800'
+                                    : inquiry.remark_color === 'yellow'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-600 text-white'
+                                }
+`}
+                        >
+                            {inquiry.remark}
+                        </span>
                         <span className="text-[11px] text-gray-400 mt-0.5">
                             By {inquiry.remarked_by_name || '—'}{inquiry.remarked_at ? ` • ${new Date(inquiry.remarked_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
                         </span>
@@ -157,7 +168,7 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
                         if (isAdmin) {
                             return (
                                 <button
-                                    onClick={() => onRemark(inquiry._id, inquiry.remark)}
+                                    onClick={() => onRemark(inquiry._id, inquiry.remark, inquiry.remark_color)}
                                     className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
                                     title="Edit Remark (Admin)"
                                 >
@@ -259,7 +270,7 @@ const InquiryList = () => {
     const [page, setPage] = useState(1);
     const [showFilters, setShowFilters] = useState(false);
     const [exporting, setExporting] = useState(null);
-    const [remarkModal, setRemarkModal] = useState({ isOpen: false, inquiryId: null, text: '' });
+    const [remarkModal, setRemarkModal] = useState({ isOpen: false, inquiryId: null, text: '', color: 'gray' });
 
     // Consolidated Debouncing
     useEffect(() => {
@@ -350,7 +361,8 @@ const InquiryList = () => {
     });
 
     const remarkMutation = useMutation({
-        mutationFn: ({ id, remark }) => service.remarkInquiry(id, { remark }),
+        mutationFn: ({ id, remark, color }) =>
+            service.remarkInquiry(id, { remark, remark_color: color }),
         onSuccess: () => {
             toast.success('Remark saved');
             queryClient.invalidateQueries({ queryKey: ['inquiries'] });
@@ -371,8 +383,13 @@ const InquiryList = () => {
         }
     }, [deleteMutation]);
 
-    const handleRemark = useCallback((id, currentRemark) => {
-        setRemarkModal({ isOpen: true, inquiryId: id, text: currentRemark || '' });
+    const handleRemark = useCallback((id, currentRemark, currentColor) => {
+        setRemarkModal({
+            isOpen: true,
+            inquiryId: id,
+            text: currentRemark || '',
+            color: currentColor || 'gray'
+        });
     }, []);
 
     const submitRemark = useCallback(() => {
@@ -380,7 +397,11 @@ const InquiryList = () => {
             toast.error('Remark cannot be empty');
             return;
         }
-        remarkMutation.mutate({ id: remarkModal.inquiryId, remark: remarkModal.text });
+        remarkMutation.mutate({
+            id: remarkModal.inquiryId,
+            remark: remarkModal.text,
+            color: remarkModal.color
+        });
         setRemarkModal({ isOpen: false, inquiryId: null, text: '' });
     }, [remarkModal, remarkMutation]);
 
@@ -768,6 +789,33 @@ const InquiryList = () => {
                                 className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 resize-none"
                                 rows={5}
                             />
+
+                            <div className="mt-4">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                                    Remark Color
+                                </p>
+
+                                <div className="flex gap-3">
+                                    {[
+                                        { key: 'red', label: 'Red', class: 'bg-red-100 border-red-300 text-red-800' },
+                                        { key: 'yellow', label: 'Green', class: 'bg-green-100 border-green-300 text-green-800 outeline-none' },
+                                        { key: 'gray', label: 'Gray', class: 'bg-gray-900 border-gray-900 text-white' }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.key}
+                                            onClick={() =>
+                                                setRemarkModal(prev => ({ ...prev, color: opt.key }))
+                                            }
+                                            className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all
+                                                ${opt.class}
+                                                ${remarkModal.color === opt.key ? 'ring-2 ring-offset-2 ring-primary-500' : ''}
+                                                `}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                             <div className="flex gap-3 mt-6">
                                 <button
