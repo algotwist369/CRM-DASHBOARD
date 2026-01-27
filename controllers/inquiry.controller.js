@@ -451,10 +451,16 @@ const remarkInquiry = async (req, res) => {
         if (!inquiry) {
             return res.status(404).json({ success: false, message: "Inquiry not found" });
         }
-        // Security: Check ownership
+
+        // Authorization
         let isAuthorized = false;
+
         if (req.user.role === 'admin') {
-            const business = await Business.findById(inquiry.business_id).lean().select('admin');
+            const business = await Business
+                .findById(inquiry.business_id)
+                .lean()
+                .select('admin');
+
             if (business && business.admin.toString() === req.user.id) {
                 isAuthorized = true;
             }
@@ -465,35 +471,63 @@ const remarkInquiry = async (req, res) => {
         }
 
         if (!isAuthorized) {
-            return res.status(403).json({ success: false, message: "Not authorized to update this inquiry" });
+            return res.status(403).json({
+                success: false,
+                message: "Not authorized to update this inquiry"
+            });
         }
 
-        // If remark already exists, only someone with the same role can edit it
+        // Role restriction
         if (inquiry.remarked_by) {
             const isSameRole = inquiry.remarked_by_role === req.user.role;
             if (!isSameRole) {
-                return res.status(403).json({ success: false, message: "Only users with the same role can edit this remark" });
+                return res.status(403).json({
+                    success: false,
+                    message: "Only users with the same role can edit this remark"
+                });
             }
         }
 
-        const { remark } = req.body;
+        const { remark, remark_color } = req.body;
+
+        // Validate color
+        const allowedColors = ['red', 'yellow', 'gray'];
+        if (remark_color && !allowedColors.includes(remark_color)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid remark color"
+            });
+        }
+
         inquiry.remark = remark;
-        // Track who made the remark (store id, role and readable name)
+        inquiry.remark_color = remark_color || inquiry.remark_color || 'gray';
+
+        // Tracking metadata
         if (req.user && req.user.id) {
             inquiry.remarked_by = req.user.id;
             inquiry.remarked_by_role = req.user.role || '';
             inquiry.remarked_at = new Date();
-            inquiry.remarked_by_name = req.user.name || req.user.username || req.user.email || '';
+            inquiry.remarked_by_name =
+                req.user.name ||
+                req.user.username ||
+                req.user.email ||
+                '';
         }
+
         await inquiry.save();
+
         res.status(200).json({
             success: true,
             message: "Inquiry remarked successfully"
         });
+
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-}
+};
 
 // export inquiries (Protected)
 const exportInquiries = async (req, res) => {
