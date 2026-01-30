@@ -538,9 +538,10 @@ const getLeadsForManager = async (req, res) => {
             });
         }
 
-        // 1. Fetch manager details
+        // 1. Fetch manager details with business populated
         const manager = await Manager.findById(managerId)
-            .select('assignedBranches accessScope business')
+            .select('assignedBranches accessScope business isActive name phone')
+            .populate('business', 'name branch')
             .lean();
 
         if (!manager || !manager.isActive) {
@@ -550,15 +551,29 @@ const getLeadsForManager = async (req, res) => {
             });
         }
 
-        // 2. Determine allowed locations based on manager's access scope
+        // 2. Determine allowed locations based on manager's business branch
+        // Priority: business.branch > accessScope > assignedBranches
         let allowedLocations = [];
 
-        if (manager.accessScope === 'all_branches') {
-            // Manager can see all locations - fetch all distinct locations
+        console.log(`[DEBUG] Manager ID: ${managerId}`);
+        console.log(`[DEBUG] Manager accessScope: ${manager.accessScope}`);
+        console.log(`[DEBUG] Manager business:`, manager.business);
+
+        // First priority: If manager has a business with a branch, use that
+        if (manager.business && manager.business.branch) {
+            allowedLocations = [manager.business.branch];
+            console.log(`[DEBUG] Using business branch for filtering:`, manager.business.branch);
+        }
+        // Second priority: Check accessScope for admin/regional managers without specific business
+        else if (manager.accessScope === 'all_branches') {
+            // Only allow all_branches access if no specific business is assigned
             allowedLocations = await GoogleSheetLead.distinct('location');
-        } else if (manager.accessScope === 'own_branch' || manager.accessScope === 'specific_branches') {
-            // Manager can only see their assigned branches
-            allowedLocations = manager.assignedBranches || [];
+            console.log(`[DEBUG] Manager has 'all_branches' access (no business), allowedLocations:`, allowedLocations);
+        }
+        // Third priority: Fall back to assignedBranches
+        else if (manager.assignedBranches && manager.assignedBranches.length > 0) {
+            allowedLocations = manager.assignedBranches;
+            console.log(`[DEBUG] Fallback to assignedBranches:`, allowedLocations);
         }
 
         if (allowedLocations.length === 0) {
@@ -576,8 +591,12 @@ const getLeadsForManager = async (req, res) => {
         }
 
         // 3. Build query with location filter and optional search
+        // Use case-insensitive regex to handle variations like "Kharghar" vs "KHARGHAR"
+        // Also trim() to handle potential whitespace issues
+        const locationRegexes = allowedLocations.map(loc => new RegExp(`^${loc.trim()}$`, 'i'));
+
         const query = {
-            location: { $in: allowedLocations }
+            location: { $in: locationRegexes }
         };
 
         if (search) {
@@ -610,27 +629,68 @@ const getLeadsForManager = async (req, res) => {
                 .sort(sortOptions)
                 .limit(limitNum)
                 .skip(skip)
-                .populate('isCalledBy', 'name phone') // Populate manager who called
-                .populate('isWhatsappBy', 'name phone') // Populate manager who whatsapped
                 .lean(),
             GoogleSheetLead.countDocuments(query)
         ]);
 
-        // 7. Enhance lead data with manager details and formatting
-        const enhancedLeads = leads.map(lead => ({
-            ...lead,
-            callDetails: lead.isCalled && lead.isCalledBy ? {
-                managerId: lead.isCalledBy._id,
-                managerName: lead.isCalledBy.name,
-                managerPhone: lead.isCalledBy.phone
-            } : null,
-            whatsappDetails: lead.isWhatsapp && lead.isWhatsappBy ? {
-                managerId: lead.isWhatsappBy._id,
-                managerName: lead.isWhatsappBy.name,
-                managerPhone: lead.isWhatsappBy.phone
-            } : null,
-            status: lead.isCalled ? 'called' : (lead.isWhatsapp ? 'whatsapped' : 'pending')
-        }));
+        // 7. Manually fetch manager details (can't use populate due to separate DB)
+        const managerIds = new Set();
+        leads.forEach(lead => {
+            if (lead.isCalledBy) managerIds.add(lead.isCalledBy.toString());
+            if (lead.isWhatsappBy) managerIds.add(lead.isWhatsappBy.toString());
+        });
+
+        const managers = await Manager.find({ _id: { $in: Array.from(managerIds) } })
+            .select('name phone')
+            .lean();
+
+        const managerMap = {};
+        managers.forEach(m => {
+            managerMap[m._id.toString()] = m;
+        });
+
+        // 8. Enhance lead data with PROTECTED VISIBILITY
+        const enhancedLeads = leads.map(lead => {
+            const myStatusEntry = lead.managerStatus?.find(ms => ms.managerId === managerId);
+            const amICalled = myStatusEntry?.action === 'call';
+            const amIWhatsapp = myStatusEntry?.action === 'whatsapp';
+
+            // Legacy fallbacks (only if I was the one recorded in global fields and no array entry yet)
+            const legacyCall = !myStatusEntry && lead.isCalled && lead.isCalledBy?.toString() === managerId;
+            const legacyWhatsapp = !myStatusEntry && lead.isWhatsapp && lead.isWhatsappBy?.toString() === managerId;
+
+            const showCalled = amICalled || legacyCall;
+            const showWhatsapp = amIWhatsapp || legacyWhatsapp;
+
+            return {
+                ...lead,
+                // Redact all other manager statuses
+                managerStatus: myStatusEntry ? [myStatusEntry] : [],
+
+                // Override global flags
+                isCalled: showCalled,
+                isWhatsapp: showWhatsapp,
+                status: showCalled ? 'called' : (showWhatsapp ? 'whatsapped' : 'pending'),
+
+                // Hide Details of others
+                callDetails: showCalled ? {
+                    managerId: managerId,
+                    managerName: manager.name,
+                    managerPhone: manager.phone
+                } : null,
+
+                whatsappDetails: showWhatsapp ? {
+                    managerId: managerId,
+                    managerName: manager.name,
+                    managerPhone: manager.phone
+                } : null,
+
+                // Redact sensitive global fields
+                isCalledBy: undefined,
+                isWhatsappBy: undefined,
+                statusUpdatedBy: undefined
+            };
+        });
 
         res.status(200).json({
             success: true,
@@ -694,7 +754,7 @@ const updateLeadContactStatus = async (req, res) => {
 
         // 2. Verify manager has access to this lead's location
         const manager = await Manager.findById(managerId)
-            .select('assignedBranches accessScope')
+            .select('assignedBranches accessScope name') // Just added name here
             .lean();
 
         if (!manager) {
@@ -730,13 +790,63 @@ const updateLeadContactStatus = async (req, res) => {
             updatePayload.isWhatsappBy = managerId;
         }
 
+        // AUTO-UPDATE MAIN STATUS: If pending, mark as done
+        if (lead.status === 'pending') {
+            updatePayload.status = 'done';
+            updatePayload.statusUpdatedAt = new Date();
+            updatePayload.statusUpdatedBy = manager.name;
+        }
+
+        // MANAGER SPECIFIC STATUS TRACKING
+        // Update the managerStatus array: Remove old entry for this manager, add new one
+        await GoogleSheetLead.findByIdAndUpdate(leadId, {
+            $pull: { managerStatus: { managerId: managerId } }
+        });
+
+        await GoogleSheetLead.findByIdAndUpdate(leadId, {
+            $push: {
+                managerStatus: {
+                    managerId: managerId,
+                    managerName: manager.name,
+                    action: contactType,
+                    timestamp: new Date()
+                }
+            }
+        });
+
         const updatedLead = await GoogleSheetLead.findByIdAndUpdate(
             leadId,
             { $set: updatePayload },
             { new: true }
-        )
-            .populate('isCalledBy', 'name phone email')
-            .populate('isWhatsappBy', 'name phone email');
+        ).lean();
+
+        // Manually fetch manager details (can't use populate due to separate DB)
+        let callDetails = null;
+        let whatsappDetails = null;
+
+        if (updatedLead.isCalledBy) {
+            const manager = await Manager.findById(updatedLead.isCalledBy).select('name phone email').lean();
+            if (manager) {
+                callDetails = {
+                    managerId: manager._id,
+                    managerName: manager.name,
+                    managerPhone: manager.phone,
+                    managerEmail: manager.email
+                };
+            }
+        }
+
+        if (updatedLead.isWhatsappBy) {
+            const manager = await Manager.findById(updatedLead.isWhatsappBy).select('name phone email').lean();
+            if (manager) {
+                whatsappDetails = {
+                    managerId: manager._id,
+                    managerName: manager.name,
+                    managerPhone: manager.phone,
+                    managerEmail: manager.email
+                };
+            }
+        }
 
         res.status(200).json({
             success: true,
@@ -748,18 +858,8 @@ const updateLeadContactStatus = async (req, res) => {
                 location: updatedLead.location,
                 isCalled: updatedLead.isCalled,
                 isWhatsapp: updatedLead.isWhatsapp,
-                callDetails: updatedLead.isCalled && updatedLead.isCalledBy ? {
-                    managerId: updatedLead.isCalledBy._id,
-                    managerName: updatedLead.isCalledBy.name,
-                    managerPhone: updatedLead.isCalledBy.phone,
-                    managerEmail: updatedLead.isCalledBy.email
-                } : null,
-                whatsappDetails: updatedLead.isWhatsapp && updatedLead.isWhatsappBy ? {
-                    managerId: updatedLead.isWhatsappBy._id,
-                    managerName: updatedLead.isWhatsappBy.name,
-                    managerPhone: updatedLead.isWhatsappBy.phone,
-                    managerEmail: updatedLead.isWhatsappBy.email
-                } : null,
+                callDetails,
+                whatsappDetails,
                 lastModified: updatedLead.lastModified
             }
         });
@@ -840,20 +940,34 @@ const getLeadsForAdmin = async (req, res) => {
         const limitNum = parseInt(limit);
         const sortOptions = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
 
-        // 5. Fetch leads with manager details populated
+        // 5. Fetch leads WITHOUT populate (separate DB issue)
         const [leads, total, allLocations] = await Promise.all([
             GoogleSheetLead.find(query)
                 .sort(sortOptions)
                 .limit(limitNum)
                 .skip(skip)
-                .populate('isCalledBy', 'name phone email business')
-                .populate('isWhatsappBy', 'name phone email business')
                 .lean(),
             GoogleSheetLead.countDocuments(query),
             GoogleSheetLead.distinct('location')
         ]);
 
-        // 6. Enhance lead data with formatted manager information
+        // 6. Manually fetch manager details (can't use populate due to separate DB)
+        const managerIds = new Set();
+        leads.forEach(lead => {
+            if (lead.isCalledBy) managerIds.add(lead.isCalledBy.toString());
+            if (lead.isWhatsappBy) managerIds.add(lead.isWhatsappBy.toString());
+        });
+
+        const managers = await Manager.find({ _id: { $in: Array.from(managerIds) } })
+            .select('name phone email business')
+            .lean();
+
+        const managerMap = {};
+        managers.forEach(m => {
+            managerMap[m._id.toString()] = m;
+        });
+
+        // 7. Enhance lead data with formatted manager information
         const enhancedLeads = leads.map(lead => ({
             _id: lead._id,
             customerName: lead.customerName,
@@ -872,16 +986,16 @@ const getLeadsForAdmin = async (req, res) => {
                 derivedStatus: lead.isCalled ? 'called' : (lead.isWhatsapp ? 'whatsapped' : 'pending')
             },
             callDetails: lead.isCalled && lead.isCalledBy ? {
-                managerId: lead.isCalledBy._id,
-                managerName: lead.isCalledBy.name,
-                managerPhone: lead.isCalledBy.phone,
-                managerEmail: lead.isCalledBy.email
+                managerId: lead.isCalledBy,
+                managerName: managerMap[lead.isCalledBy.toString()]?.name || 'Unknown',
+                managerPhone: managerMap[lead.isCalledBy.toString()]?.phone || '',
+                managerEmail: managerMap[lead.isCalledBy.toString()]?.email || ''
             } : null,
             whatsappDetails: lead.isWhatsapp && lead.isWhatsappBy ? {
-                managerId: lead.isWhatsappBy._id,
-                managerName: lead.isWhatsappBy.name,
-                managerPhone: lead.isWhatsappBy.phone,
-                managerEmail: lead.isWhatsappBy.email
+                managerId: lead.isWhatsappBy,
+                managerName: managerMap[lead.isWhatsappBy.toString()]?.name || 'Unknown',
+                managerPhone: managerMap[lead.isWhatsappBy.toString()]?.phone || '',
+                managerEmail: managerMap[lead.isWhatsappBy.toString()]?.email || ''
             } : null
         }));
 
@@ -923,6 +1037,32 @@ const updateLeadAdminStatus = async (req, res) => {
                 success: false,
                 message: "Invalid leadId or status"
             });
+        }
+
+        // MANAGER SPECIFIC STATUS TRACKING
+        if (req.user && req.user.role === 'manager') {
+            if (status === 'done') {
+                // Remove existing
+                await GoogleSheetLead.findByIdAndUpdate(leadId, {
+                    $pull: { managerStatus: { managerId: req.user.id } }
+                });
+                // Add new 'done' status
+                await GoogleSheetLead.findByIdAndUpdate(leadId, {
+                    $push: {
+                        managerStatus: {
+                            managerId: req.user.id,
+                            managerName: req.user.name || 'Unknown',
+                            action: 'done',
+                            timestamp: new Date()
+                        }
+                    }
+                });
+            } else if (status === 'pending') {
+                // Remove entry ensures it shows as 'new' for this manager
+                await GoogleSheetLead.findByIdAndUpdate(leadId, {
+                    $pull: { managerStatus: { managerId: req.user.id } }
+                });
+            }
         }
 
         const lead = await GoogleSheetLead.findByIdAndUpdate(
@@ -1091,6 +1231,18 @@ const addLeadRemark = async (req, res) => {
             return res.status(404).json({ success: false, message: "Lead not found" });
         }
 
+        // EMIT REAL-TIME UPDATE
+        try {
+            const { emitToAll } = require('../config/socket');
+            emitToAll('lead_remark_added', {
+                leadId: lead._id,
+                remarks: lead.remarks
+            });
+        } catch (socketError) {
+            console.error("[Add Remark] Socket Emit Error:", socketError.message);
+            // Don't fail the request if socket fails
+        }
+
         res.status(200).json({
             success: true,
             message: "Remark added successfully",
@@ -1102,6 +1254,127 @@ const addLeadRemark = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to add remark",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 8: Double Tick Webhook (Direct API)
+// ==========================================
+const receiveWebhookLead = async (req, res) => {
+    try {
+        console.log("[Webhook] Received Payload:", JSON.stringify(req.body));
+
+        // 1. Extract Data
+        // Support multiple field names just in case (Double Tick might send 'phone', 'mobile', etc if configured differently)
+        let { location, customerPhone, customerName, phone, mobile, name } = req.body;
+
+        customerPhone = customerPhone || phone || mobile;
+        customerName = customerName || name || "Customer";
+
+        if (!location || !customerPhone) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: location and customerPhone"
+            });
+        }
+
+        // 2. Normalize Data
+        const normalizedPhone = normalizePhoneNumber(customerPhone);
+        const trimmedLocation = location.trim();
+
+        // 3. Upsert Lead (Insert if new, Update if exists)
+        // We use findOneAndUpdate to atomically handle duplicates
+        const now = new Date();
+        const lead = await GoogleSheetLead.findOneAndUpdate(
+            {
+                location: trimmedLocation,
+                customerPhone: normalizedPhone
+            },
+            {
+                $set: {
+                    customerName: customerName.trim(),
+                    lastModified: now,
+                    syncedAt: now, // Treat this as a sync event
+                },
+                $setOnInsert: {
+                    createdAt: now,
+                    status: 'pending',
+                    isCalled: false,
+                    isWhatsapp: false
+                }
+            },
+            {
+                new: true, // Return the modified document
+                upsert: true, // Create if not exists
+                includeResultMetadata: true // Mongoose 7+ to get lastErrorObject
+            }
+        );
+
+        console.log("[Webhook] DB Result:", JSON.stringify(lead));
+
+        // Check if it was an insert or update
+        // Mongoose 8 returns { value, lastErrorObject, ok }
+        const isNew = !lead?.lastErrorObject?.updatedExisting;
+        const leadDoc = lead?.value;
+
+        if (!leadDoc) {
+            console.error("[Webhook] No lead document returned!");
+            return res.status(500).json({ success: false, message: "Database error: No document returned" });
+        }
+
+        // 4. Trigger Notifications if NEW
+        if (isNew) {
+            console.log(`[Webhook] 🔔 New Lead Created: ${trimmedLocation} - ${normalizedPhone}. Notifying managers...`);
+
+            // Fetch managers for this location
+            const managers = await getManagersForLocation(trimmedLocation, null);
+
+            if (managers.length > 0) {
+                const notificationPromises = [];
+                for (const manager of managers) {
+                    if (manager.phone) {
+                        notificationPromises.push(
+                            sendWhatsAppTemplateDoubleTick({
+                                to: manager.phone,
+                                templateName: 'leads_forward_v2',
+                                placeholders: [
+                                    leadDoc.customerName || 'Customer',
+                                    trimmedLocation,
+                                    normalizedPhone
+                                ]
+                            })
+                        );
+                    }
+                }
+
+                // Execute notifications in background (don't block response)
+                Promise.allSettled(notificationPromises).then(results => {
+                    const sent = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+                    console.log(`[Webhook] 🔔 Notifications Sent: ${sent} / ${notificationPromises.length}`);
+                });
+            } else {
+                console.log(`[Webhook] No managers found for location: ${trimmedLocation}`);
+            }
+        } else {
+            console.log(`[Webhook] Existing Lead Updated: ${trimmedLocation} - ${normalizedPhone}`);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: isNew ? "Lead created and processed" : "Lead updated",
+            data: {
+                id: leadDoc._id,
+                isNew
+            }
+        });
+
+    } catch (error) {
+        console.error("[Webhook] Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to process webhook",
             error: error.message
         });
     }
@@ -1119,5 +1392,6 @@ module.exports = {
     updateLeadAdminStatus,
     getLeadAnalytics,
     getManagersByLocation,
-    addLeadRemark
+    addLeadRemark,
+    receiveWebhookLead
 };

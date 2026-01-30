@@ -1,8 +1,6 @@
 const mongoose = require("mongoose");
 
-// MICROSERVICE ARCHITECTURE: Separate Database Connection for Google Sheets Data
-// This decouples the leads data from the main CRM database.
-// If the URI is not provided, it falls back to the default connection (for dev/testing).
+
 const itemsURI = process.env.MONGO_URI_FOR_GOOGLE_SHEET || "mongodb+srv://infoalgotwist_db_user:oqgmuAaUJMvyISsR@cluster0.mrvbcuo.mongodb.net/whatsapp-leads";
 
 let dbConnection;
@@ -77,6 +75,13 @@ const googleSheetLeadSchema = new mongoose.Schema(
         statusUpdatedBy: {
             type: String // Stores the name of the admin/user who updated the status
         },
+        // Detailed tracking for multiple managers
+        managerStatus: [{
+            managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Manager' },
+            managerName: { type: String },
+            action: { type: String }, // 'call', 'whatsapp', 'done'
+            timestamp: { type: Date, default: Date.now }
+        }],
         // Remarks / Notes
         remarks: [{
             text: { type: String, required: true },

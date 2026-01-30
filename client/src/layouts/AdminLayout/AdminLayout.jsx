@@ -5,6 +5,7 @@ import authService from '../../services/auth/authService'
 import SocketDebugPanel from '../../components/debug/SocketDebugPanel'
 import { useSocket } from '../../contexts/SocketContext'
 import toast from 'react-hot-toast'
+import ProtectedFooter from '../../components/common/ProtectedFooter'
 
 const AdminLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -121,26 +122,7 @@ const AdminLayout = () => {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center space-x-4">
-              <span>© 2024 SpaAdvisor CRM</span>
-              <span>•</span>
-              <span>Version 1.0.0</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <a href="/admin/help" className="hover:text-gray-900">
-                Help
-              </a>
-              <a href="/admin/support" className="hover:text-gray-900">
-                Support
-              </a>
-              <a href="/admin/privacy" className="hover:text-gray-900">
-                Privacy
-              </a>
-            </div>
-          </div>
-        </footer>
+        <ProtectedFooter />
       </div>
 
       {/* Mobile Sidebar Overlay */}

@@ -14,7 +14,7 @@ import {
   HiOutlineChevronLeft,
   HiOutlineChevronDown,
 } from 'react-icons/hi'
-import { FaBullhorn, FaQuestionCircle } from 'react-icons/fa'
+import { FaBullhorn, FaQuestionCircle, FaWhatsapp } from 'react-icons/fa'
 import { FaUserCircle } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 import authService from '../../../../services/auth/authService';
@@ -142,6 +142,13 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       name: 'Inquiries',
       href: '/manager/inquiries',
       icon: <FaQuestionCircle className="w-5 h-5 text-amber-500" />,
+    },
+    {
+      name: 'WhatsApp Leads',
+      // icon: <FaLock className="w-5 h-5 text-gray-500" />,
+      // disabled: true,
+      href: '/manager/watsapp-leads',
+      icon: <FaWhatsapp className="w-5 h-5 text-green-400" />,
     },
     {
       name: 'Transactions',

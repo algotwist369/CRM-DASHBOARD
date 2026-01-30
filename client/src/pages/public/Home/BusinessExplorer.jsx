@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fa'
 import { IoMdCall } from 'react-icons/io'
 import { apiClient } from '../../../services/api'
+import leadService from '../../../services/public/leadService'
 import { decryptPayload } from '../../../utils/encryption'
 import BusinessCard from './BusinessCard'
 import LocationPromptModal from './LocationPromptModal'
@@ -576,6 +577,7 @@ const BusinessExplorer = () => {
             buttons.push({
                 type: 'link',
                 href: `tel:${business.phone}`,
+                onClick: () => leadService.trackClick(business._id, 'call', 'home_page'),
                 className: 'flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 xs:px-2 py-2.5 xs:py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md font-medium text-[10px] xs:text-xs transition-all duration-200 hover:bg-blue-100 hover:border-blue-300 active:bg-blue-200 active:scale-95 min-h-[40px] touch-manipulation',
                 icon: IoMdCall,
                 label: 'Call',
@@ -588,6 +590,7 @@ const BusinessExplorer = () => {
             buttons.push({
                 type: 'link',
                 href: whatsappUrl,
+                onClick: () => leadService.trackClick(business._id, 'whatsapp', 'home_page'),
                 target: '_blank',
                 rel: 'noopener noreferrer',
                 className: 'flex-1 min-w-0 flex items-center justify-center gap-0.5 px-1.5 xs:px-2 py-2.5 xs:py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-md font-medium text-[10px] xs:text-xs transition-all duration-200 hover:bg-green-100 hover:border-green-300 active:bg-green-200 active:scale-95 min-h-[40px] touch-manipulation',
@@ -608,6 +611,7 @@ const BusinessExplorer = () => {
             buttons.push({
                 type: 'link',
                 href: `tel:${business.phone}`,
+                onClick: () => leadService.trackClick(business._id, 'call', 'home_page'),
                 className: 'flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 font-medium text-md transition-colors duration-200 hover:bg-blue-100 hover:border-blue-300',
                 icon: IoMdCall,
                 label: 'Call',
@@ -619,6 +623,7 @@ const BusinessExplorer = () => {
             buttons.push({
                 type: 'link',
                 href: whatsappUrl,
+                onClick: () => leadService.trackClick(business._id, 'whatsapp', 'home_page'),
                 target: '_blank',
                 rel: 'noopener noreferrer',
                 className: 'flex items-center justify-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 font-medium text-md transition-colors duration-200 hover:bg-green-100 hover:border-green-300',

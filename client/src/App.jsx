@@ -141,6 +141,9 @@ const AppointmentList = lazy(() => import('./pages/manager/Appointments').then(m
 const AppointmentDetails = lazy(() => import('./pages/manager/Appointments').then(module => ({ default: module.AppointmentDetails })))
 const AppointmentCalendar = lazy(() => import('./pages/manager/Appointments').then(module => ({ default: module.AppointmentCalendar })))
 
+// Manager - Leads (uses shared WhatsappLead component with role-based filtering)
+const ManagerLeads = lazy(() => import('./pages/admin/WhatsappLeads/WhatsappLead'))
+
 // Manager - Transactions
 const TransactionList = lazy(() => import('./pages/manager/Transactions').then(module => ({ default: module.TransactionList })))
 const AddTransaction = lazy(() => import('./pages/manager/Transactions').then(module => ({ default: module.AddTransaction })))
@@ -362,6 +365,7 @@ function App() {
                       <Route path="campaigns/:id/analytics" element={<CampaignAnalytics />} />
                       <Route path="campaigns/analytics" element={<CampaignAnalyticsOverview />} />
                       <Route path="inquiries" element={<InquiryList />} />
+                      <Route path="watsapp-leads" element={<ManagerLeads />} />
                       <Route path="reports" element={<ManagerReports />} />
                       {/* Phase 3: expense & inventory routes */}
                       <Route path="expenses" element={<MyExpenses />} />
@@ -396,7 +400,7 @@ function App() {
                       <Route path="spas" element={<Search />} />
                       <Route path="spa/:location" element={<Search />} />
                       <Route path="spa/:location/:query" element={<Search />} />
-                      <Route path="contact" element={<Contact />} />
+                      <Route path="contact2" element={<Contact />} />
                       <Route path="free-listing" element={<FreeListing />} />
                       <Route path="book-demo" element={<BookDemo />} />
                       <Route path="google-my-business-reviews" element={<GoogleMyBusinessReviews />} />

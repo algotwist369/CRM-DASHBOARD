@@ -4,6 +4,13 @@ const googleSheetController = require('../controllers/googleSheetController');
 const protect = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 
+
+// ==========================================
+// PUBLIC WEBHOOKS (Double Tick)
+// ==========================================
+// Endpoint to receive leads directly from WhatsApp automation
+router.post('/webhook', googleSheetController.receiveWebhookLead);
+
 // ==========================================
 // ADMIN PROTECTED ROUTES
 // ==========================================
@@ -20,11 +27,9 @@ router.get('/leads/analytics', protect, roleMiddleware(['admin']), googleSheetCo
 // Managers for a location (for manual forwarding)
 router.get('/leads/managers', protect, roleMiddleware(['admin']), googleSheetController.getManagersByLocation);
 
-// Update lead status (Admin manually marking as done)
-router.post('/leads/admin-status', protect, roleMiddleware(['admin']), googleSheetController.updateLeadAdminStatus);
+// Update lead status (Admin/Manager manually marking as done)
+router.post('/leads/admin-status', protect, roleMiddleware(['admin', 'manager']), googleSheetController.updateLeadAdminStatus);
 
-// Add Remark
-router.post('/leads/remark', protect, roleMiddleware(['admin']), googleSheetController.addLeadRemark);
 
 // ==========================================
 // MANAGER PROTECTED ROUTES
@@ -36,4 +41,6 @@ router.get('/leads/manager', protect, roleMiddleware(['manager']), googleSheetCo
 // Update lead contact status (mark as called or whatsapped)
 router.post('/leads/update-status', protect, roleMiddleware(['manager']), googleSheetController.updateLeadContactStatus);
 
+// Add Remark
+router.post('/leads/remark', protect, roleMiddleware(['admin', 'manager']), googleSheetController.addLeadRemark);
 module.exports = router;

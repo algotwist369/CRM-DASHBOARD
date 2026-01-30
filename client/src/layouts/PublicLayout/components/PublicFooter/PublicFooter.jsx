@@ -21,9 +21,11 @@ const PublicFooter = () => {
           <Link to="/terms" className="text-gray-500 hover:text-gray-900">
             Terms
           </Link> */}
-          <Link to="/contact" className="text-gray-500 hover:text-gray-900">
+          {/* <Link to="/contact" className="text-gray-500 hover:text-gray-900">
             Contact
-          </Link>
+          </Link> */}
+
+          support - dishaspaadvisor@gmail.com
         </div>
 
       </div>

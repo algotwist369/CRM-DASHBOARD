@@ -556,7 +556,7 @@ const BusinessCard = memo(({
                                 }
                             }}
                             className="w-full flex items-center justify-center gap-1.5 xs:gap-2 px-4 xs:px-4 py-2.5 xs:py-2.5 bg-primary-600 text-white font-semibold border-0  text-sm xs:text-sm transition-all duration-200 hover:bg-primary-700 active:bg-primary-800 active:scale-[0.98] min-h-[44px] touch-manipulation"
-                        >
+                            >
                             <FaCalendarAlt className="text-sm xs:text-sm flex-shrink-0" />
                             <span>Book Appointment</span>
                         </button>
@@ -580,7 +580,12 @@ const BusinessCard = memo(({
                                     <a
                                         key={idx}
                                         href={btn.href || '#'}
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            if (btn.onClick && typeof btn.onClick === 'function') {
+                                                btn.onClick(e)
+                                            }
+                                        }}
                                         className={`${btn.className || ''} min-h-[40px] touch-manipulation active:scale-95 transition-transform duration-150`}
                                         {...(btn.target && { target: btn.target })}
                                         {...(btn.rel && { rel: btn.rel })}
