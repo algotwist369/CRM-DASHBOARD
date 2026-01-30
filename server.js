@@ -20,18 +20,26 @@ if (cluster.isPrimary) {
     // MASTER PROCESS - BACKGROUND SERVICES ONLY
     // ================================================================
 
-    // 1. WhatsApp Web Service (Singleton)
-    whatsappWebService.initialize()
-        .then(() => whatsappWebService.startCommandListener())
-        .catch(err => {
-            console.error('[Server] WhatsApp initialization failed:', err.message);
-        });
+    // Connect to MongoDB first (required for background services)
+    connectDB().then(() => {
+        console.log('✅ Master process connected to MongoDB');
 
-    // 2. Campaign Scheduler (Singleton)
-    startCampaignScheduler();
+        // 1. WhatsApp Web Service (Singleton)
+        whatsappWebService.initialize()
+            .then(() => whatsappWebService.startCommandListener())
+            .catch(err => {
+                console.error('[Server] WhatsApp initialization failed:', err.message);
+            });
 
-    // 3. Google Sheets Sync (Singleton)
-    startGoogleSheetSync();
+        // 2. Campaign Scheduler (Singleton)
+        startCampaignScheduler();
+
+        // 3. Google Sheets Sync (Singleton)
+        startGoogleSheetSync();
+    }).catch(err => {
+        console.error('❌ Master process failed to connect to MongoDB:', err.message);
+        process.exit(1);
+    });
 
     // Fork workers
     console.log(`Forking ${numCPUs} workers...`);
@@ -61,27 +69,36 @@ if (cluster.isPrimary) {
     // WORKER PROCESS - HTTP & SOCKET SERVER
     // ================================================================
 
-    // Connect to MongoDB (each worker needs its own connection)
-    connectDB();
+    // Async wrapper to ensure DB connects before starting server
+    (async () => {
+        try {
+            // Connect to MongoDB (each worker needs its own connection)
+            await connectDB();
+            console.log(`✅ Worker ${process.pid} connected to MongoDB`);
 
-    // Create HTTP server
-    const server = http.createServer(app);
+            // Create HTTP server
+            const server = http.createServer(app);
 
-    // Initialize Socket.IO (each worker handles its own sockets, synced via Redis Adapter)
-    initializeSocket(server);
+            // Initialize Socket.IO (each worker handles its own sockets, synced via Redis Adapter)
+            initializeSocket(server);
 
-    server.listen(PORT, () => {
-        console.log(`🟢 Worker ${process.pid} started on port ${PORT}`);
-    });
+            server.listen(PORT, () => {
+                console.log(`🟢 Worker ${process.pid} started on port ${PORT}`);
+            });
 
-    // Graceful shutdown for Worker
-    const shutdownWorker = () => {
-        console.log(`Worker ${process.pid} shutting down...`);
-        server.close(() => {
-            process.exit(0);
-        });
-    };
+            // Graceful shutdown for Worker
+            const shutdownWorker = () => {
+                console.log(`Worker ${process.pid} shutting down...`);
+                server.close(() => {
+                    process.exit(0);
+                });
+            };
 
-    process.on('SIGTERM', shutdownWorker);
-    process.on('SIGINT', shutdownWorker);
+            process.on('SIGTERM', shutdownWorker);
+            process.on('SIGINT', shutdownWorker);
+        } catch (err) {
+            console.error(`❌ Worker ${process.pid} failed to start:`, err.message);
+            process.exit(1);
+        }
+    })();
 }

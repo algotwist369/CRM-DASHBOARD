@@ -51,8 +51,8 @@ const login = async (req, res, next) => {
             const isMatch = await comparePassword(password, admin.password);
             if (!isMatch) return res.status(401).json({ success: false, message: "Invalid credentials" });
 
-            const accessToken = createAccessToken({ id: admin._id, role: "admin" });
-            const refreshToken = createRefreshToken({ id: admin._id, role: "admin" });
+            const accessToken = createAccessToken({ id: admin._id, role: "admin", name: admin.name || 'admin' });
+            const refreshToken = createRefreshToken({ id: admin._id, role: "admin", name: admin.name || 'admin' });
 
             // Do not persist refresh tokens to DB to keep login fast and stateless
             return res.json({ success: true, accessToken, refreshToken });
@@ -62,12 +62,12 @@ const login = async (req, res, next) => {
         if (username && pin) {
             // Try manager login first
             const manager = await Manager.findOne({ username, pin })
-                .select('_id business')
+                .select('_id business name')
                 .populate({ path: 'business', select: 'name', options: { lean: true } })
                 .lean();
             if (manager) {
-                const accessToken = createAccessToken({ id: manager._id, role: "manager" });
-                const refreshToken = createRefreshToken({ id: manager._id, role: "manager" });
+                const accessToken = createAccessToken({ id: manager._id, role: "manager", name: manager.name || 'manager' });
+                const refreshToken = createRefreshToken({ id: manager._id, role: "manager", name: manager.name || 'manager' });
 
                 return res.json({
                     success: true,
@@ -79,12 +79,12 @@ const login = async (req, res, next) => {
 
             // Try staff login if manager not found
             const staff = await Staff.findOne({ username, pin })
-                .select('_id business manager')
+                .select('_id business manager name')
                 .populate([{ path: 'business', select: 'name', options: { lean: true } }, { path: 'manager', select: 'name', options: { lean: true } }])
                 .lean();
             if (staff) {
-                const accessToken = createAccessToken({ id: staff._id, role: "staff" });
-                const refreshToken = createRefreshToken({ id: staff._id, role: "staff" });
+                const accessToken = createAccessToken({ id: staff._id, role: "staff", name: staff.name || 'staff' });
+                const refreshToken = createRefreshToken({ id: staff._id, role: "staff", name: staff.name || 'staff' });
 
                 return res.json({
                     success: true,
@@ -115,8 +115,8 @@ const loginManager = async (req, res, next) => {
         const manager = await Manager.findOne({ username, pin }).populate("business");
         if (!manager) return res.status(404).json({ success: false, message: "Manager not found" });
 
-        const accessToken = createAccessToken({ id: manager._id, role: "manager" });
-        const refreshToken = createRefreshToken({ id: manager._id, role: "manager" });
+        const accessToken = createAccessToken({ id: manager._id, role: "manager", name: manager.name || 'manager' });
+        const refreshToken = createRefreshToken({ id: manager._id, role: "manager", name: manager.name || 'manager' });
 
         return res.json({
             success: true,
@@ -198,9 +198,9 @@ const refreshToken = async (req, res, next) => {
         const decoded = verifyRefreshToken(token);
         if (!decoded) return res.status(401).json({ success: false, message: "Invalid refresh token" });
 
-        const { id, role } = decoded;
-        const accessToken = createAccessToken({ id, role });
-        const newRefreshToken = createRefreshToken({ id, role });
+        const { id, role, name } = decoded;
+        const accessToken = createAccessToken({ id, role, name });
+        const newRefreshToken = createRefreshToken({ id, role, name });
 
         if (role === "admin") {
             await Admin.findByIdAndUpdate(id, { refreshToken: newRefreshToken });
