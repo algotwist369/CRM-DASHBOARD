@@ -613,6 +613,47 @@ class ManagerService {
       }
     }
   }
+
+  // ================== Google Sheet Lead Methods ==================
+
+  // Get leads for manager
+  async getManagerLeads(params = {}) {
+    try {
+      const response = await apiClient.get('/google-sheets/leads/manager', { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch manager leads'
+      }
+    }
+  }
+
+  // Update lead status (call/whatsapp)
+  async updateLeadStatus(data) {
+    try {
+      const response = await apiClient.post('/google-sheets/leads/update-status', data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update lead status'
+      }
+    }
+  }
+
+  // Add lead remark
+  async addLeadRemark(data) {
+    try {
+      const response = await apiClient.post('/google-sheets/leads/remark', data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add remark'
+      }
+    }
+  }
 }
 
 export default new ManagerService()

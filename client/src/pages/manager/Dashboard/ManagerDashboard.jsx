@@ -9,7 +9,10 @@ import {
   FaCalendarDay,
   FaCalendarAlt,
   FaCloud,
-  FaWalking
+  FaWalking,
+  FaPhone,
+  FaWhatsapp,
+  FaComment
 } from "react-icons/fa";
 import { HiRefresh } from "react-icons/hi";
 import managerService from "../../../services/manager/managerService";
@@ -50,6 +53,51 @@ const InfoRow = memo(({ label, value, isBorder }) => (
     <span className="text-sm text-gray-500">{label}</span>
     <span className="text-sm font-medium text-gray-900">{value}</span>
   </div>
+));
+
+// Memoized Lead Row
+const LeadRow = memo(({ lead, onAction }) => (
+  <tr className="border-b border-gray-100 hover:bg-gray-50">
+    <td className="px-3 py-2 text-sm text-gray-500">{new Date(lead.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+    <td className="px-3 py-2 text-sm font-medium text-gray-900">
+      <div>{lead.customerName || 'Customer'}</div>
+      <div className="text-xs text-gray-400">{lead.location}</div>
+    </td>
+    <td className="px-3 py-2 text-sm text-gray-500">{lead.customerPhone}</td>
+    <td className="px-3 py-2">
+      <span className={`px-2 py-0.5 text-xs rounded-full border ${lead.status === 'called' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+        lead.status === 'whatsapped' ? 'bg-green-50 text-green-600 border-green-200' :
+          'bg-yellow-50 text-yellow-600 border-yellow-200'
+        }`}>
+        {lead.status === 'called' ? 'Called' : lead.status === 'whatsapped' ? 'Whatsapped' : 'New'}
+      </span>
+    </td>
+    <td className="px-3 py-2">
+      <div className="flex gap-2">
+        <button
+          onClick={() => onAction('call', lead)}
+          title="Mark as Called"
+          className={`p-1.5 rounded hover:bg-gray-100 ${lead.isCalled ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <FaPhone className="text-xs" />
+        </button>
+        <button
+          onClick={() => onAction('whatsapp', lead)}
+          title="Mark as Whatsapped"
+          className={`p-1.5 rounded hover:bg-gray-100 ${lead.isWhatsapp ? 'text-green-600' : 'text-gray-400'}`}
+        >
+          <FaWhatsapp className="text-xs" />
+        </button>
+        <button
+          onClick={() => onAction('remark', lead)}
+          title="Add Remark"
+          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-indigo-600"
+        >
+          <FaComment className="text-xs" />
+        </button>
+      </div>
+    </td>
+  </tr>
 ));
 
 // Memoized Transaction Row
@@ -103,6 +151,8 @@ const ManagerDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
   const [apptStats, setApptStats] = useState(null);
   const [managerStats, setManagerStats] = useState(null);
+  const [leads, setLeads] = useState([]);
+  const [leadsLoading, setLeadsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -157,9 +207,10 @@ const ManagerDashboard = () => {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const [res, managerStatsRes] = await Promise.all([
+      const [res, managerStatsRes, leadsRes] = await Promise.all([
         managerService.getDashboard(),
-        managerService.getStats({ refresh: force })
+        managerService.getStats({ refresh: force }),
+        managerService.getManagerLeads({ limit: 10 })
       ]);
 
       if (res.success) {
@@ -170,6 +221,10 @@ const ManagerDashboard = () => {
 
       if (managerStatsRes.success) {
         setManagerStats(managerStatsRes.data.data || managerStatsRes.data);
+      }
+
+      if (leadsRes.success) {
+        setLeads(leadsRes.data.data || []);
       }
 
 
@@ -191,6 +246,42 @@ const ManagerDashboard = () => {
     setRefreshing(true);
     fetchDashboard(true);
   }, [fetchDashboard]);
+
+  // Handle Lead Actions
+  const handleLeadAction = async (action, lead) => {
+    if (action === 'call' || action === 'whatsapp') {
+      // Optimistic update
+      const updatedLeads = leads.map(l =>
+        l._id === lead._id ? { ...l, status: action === 'call' ? 'called' : 'whatsapped', [action === 'call' ? 'isCalled' : 'isWhatsapp']: true } : l
+      );
+      setLeads(updatedLeads);
+
+      const res = await managerService.updateLeadStatus({
+        leadId: lead._id,
+        contactType: action
+      });
+
+      if (!res.success) {
+        // Revert on failure
+        setError("Failed to update status");
+        fetchDashboard(true); // Re-fetch to sync
+      }
+    } else if (action === 'remark') {
+      const text = window.prompt("Enter remark:");
+      if (!text) return;
+
+      const res = await managerService.addLeadRemark({
+        leadId: lead._id,
+        text
+      });
+
+      if (res.success) {
+        alert("Remark added successfully");
+      } else {
+        alert("Failed to add remark");
+      }
+    }
+  };
 
   // Format helpers - Compact number formatting for large amounts
   const formatCurrency = useCallback((amount) => {
@@ -400,6 +491,44 @@ const ManagerDashboard = () => {
             <InfoRow label="Total Revenue" value={formatCurrency(managerStats?.monthlyRevenue)} isBorder />
           </div>
         </div>
+      </div>
+
+
+      {/* Leads / Enquiries */}
+      <div className="bg-white border border-gray-200 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 bg-primary-600 flex items-center justify-center">
+            <FaComment className="text-white text-sm" />
+          </div>
+          <h2 className="font-semibold text-gray-900">Recent Enquiries</h2>
+        </div>
+
+        {leads.length > 0 ? (
+          <div className="overflow-x-auto -mx-4 px-4">
+            <table className="min-w-full">
+              <thead className="bg-gray-50 border-y border-gray-200">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Date</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Name</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Phone</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map((lead) => (
+                  <LeadRow
+                    key={lead._id}
+                    lead={lead}
+                    onAction={handleLeadAction}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500 text-sm">No new enquiries found</div>
+        )}
       </div>
 
       {/* Transactions */}

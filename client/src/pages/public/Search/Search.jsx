@@ -3,21 +3,24 @@ import { useSearchParams, useNavigate, useParams, Link } from 'react-router-dom'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import publicService from '../../../services/public/publicService';
+import leadService from '../../../services/public/leadService';
 import googlePlacesService from '../../../services/public/googlePlacesService';
 import SEO from '../../../components/common/SEO';
 import SkeletonSearch from './SkeletonSearch';
 import LazySection from '../../../components/common/LazySection/LazySection';
 import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter, FiMaximize2 } from 'react-icons/fi';
 import { BiSolidNavigation } from "react-icons/bi";
-import { FaWhatsapp, FaStar, FaPhoneAlt, FaEnvelope } from 'react-icons/fa';
+import { FaWhatsapp, FaPhoneAlt, FaStar, FaEnvelope } from 'react-icons/fa';
 import InquiryModal from '../../../components/public/Inquiry/InquiryModal';
 import MapLocationPicker from '../../../components/common/MapLocationPicker';
 import { sanitizePhoneNumber } from '../../../utils/format/phoneUtils';
 import SearchAutocomplete from '../../../components/public/SearchAutocomplete';
 
+import { trackLeadClick } from '../../../utils/analytics'
+
 // Static Constants - Outside component to prevent recreation
 // Spa-specific service categories aligned with backend API
-const FILTER_CATEGORIES = ['Spa', 'Massage', 'Salon', 'Ayurvedic', 'Wellness'];
+const FILTER_CATEGORIES = ['Spa', 'Salon',];
 const RATING_OPTIONS = [4, 3, 2];
 const SORT_OPTIONS = [
     { value: 'recommended', label: 'Recommended' },
@@ -243,7 +246,9 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
         {
             condition: !!business.phone,
             href: `tel:${business.phone}`,
-            onClick: (e) => e.stopPropagation(),
+             onClick: () => {
+                trackLeadClick(business._id, 'call');
+            },
             icon: <FaPhoneAlt className="w-5 h-5" style={wiggleAnimation} />,
             text: <><span className="md:hidden">Call</span><span className="hidden md:inline">Call Now</span></>,
             title: "Call Now",
@@ -254,7 +259,9 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
             href: `https://wa.me/${sanitizePhoneNumber(business.socialMedia?.whatsapp)}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`,
             target: "_blank",
             rel: "noopener noreferrer",
-            onClick: (e) => e.stopPropagation(),
+            onClick: () => {
+                trackLeadClick(business._id, 'whatsapp');
+            },
             icon: <FaWhatsapp className="w-5 h-5" />,
             text: <><span className="md:hidden">WA</span><span className="hidden md:inline">WhatsApp</span></>,
             title: "Chat on WhatsApp",
@@ -400,7 +407,10 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
                 {!!business.phone && (
                     <a
                         href={`tel:${business.phone}`}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            leadService.trackClick(business._id, 'call', 'search_results');
+                        }}
                         className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white font-semibold text-sm hover:bg-primary-600 transition-colors rounded-lg py-2.5 shadow-sm"
                     >
                         <FaPhoneAlt className="w-4 h-4" style={wiggleAnimation} />
@@ -412,7 +422,10 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
                         href={`https://wa.me/${business.socialMedia?.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            leadService.trackClick(business._id, 'whatsapp', 'search_results');
+                        }}
                         className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors rounded-lg py-2.5 shadow-sm"
                     >
                         <FaWhatsapp className="w-5 h-5" />
@@ -1175,7 +1188,7 @@ const Search = () => {
                                         <button
                                             key={cat}
                                             onClick={() => updateParams({ category: currentCategory === cat ? '' : cat })}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${currentCategory === cat
+                                            className={`px-3 py-1.5 rounded-full text-xll ${currentCategory === cat
                                                 ? 'bg-primary-600 text-white shadow-sm'
                                                 : 'bg-white text-gray-600 border border-gray-200 hover:border-primary-300 hover:text-primary-600'
                                                 }`}
@@ -1186,30 +1199,6 @@ const Search = () => {
                                 </div>
                             </div>
 
-                            <hr className="border-gray-100" />
-
-                            {/* Offers Section */}
-                            <div>
-                                <label className="flex items-center justify-between cursor-pointer group">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-orange-50 rounded-lg text-orange-600 group-hover:bg-orange-100 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-700">Special Offers</span>
-                                    </div>
-                                    <div className="relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                        style={{ backgroundColor: searchParams.get('offers') === 'true' ? '#B20000' : '#E5E7EB' }}
-                                        onClick={() => updateParams({ offers: searchParams.get('offers') === 'true' ? undefined : 'true' })}
-                                    >
-                                        <span
-                                            aria-hidden="true"
-                                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${searchParams.get('offers') === 'true' ? 'translate-x-5' : 'translate-x-0'}`}
-                                        />
-                                    </div>
-                                </label>
-                            </div>
 
                             <hr className="border-gray-100" />
 
