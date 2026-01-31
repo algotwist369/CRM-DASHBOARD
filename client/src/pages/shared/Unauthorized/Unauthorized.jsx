@@ -126,7 +126,7 @@ const Unauthorized = () => {
                   Check Appointment
                 </button>
                 <button
-                  onClick={() => navigate('/auth/register')}
+                  onClick={() => navigate('/auth/login')}
                   className="text-sm text-primary-600 hover:text-primary-800 hover:underline"
                 >
                   Create Account

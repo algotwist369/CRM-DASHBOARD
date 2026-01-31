@@ -11,6 +11,7 @@ const SearchAutocomplete = ({
     value = '',
     onChange,
     onSelect,
+    onSubmit,
     placeholder = 'Search locations...',
     icon: Icon = FiMapPin,
     debounceMs = 500,
@@ -164,6 +165,9 @@ const SearchAutocomplete = ({
                     handleSelect(suggestions[selectedIndex]);
                 } else {
                     setIsOpen(false);
+                    if (onSubmit) {
+                        onSubmit(inputValue);
+                    }
                 }
                 break;
             case 'Escape':
