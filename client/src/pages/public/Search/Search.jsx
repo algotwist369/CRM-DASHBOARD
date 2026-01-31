@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useSearchParams, useNavigate, useParams, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import publicService from '../../../services/public/publicService';
@@ -15,6 +15,7 @@ import InquiryModal from '../../../components/public/Inquiry/InquiryModal';
 import MapLocationPicker from '../../../components/common/MapLocationPicker';
 import { sanitizePhoneNumber } from '../../../utils/format/phoneUtils';
 import SearchAutocomplete from '../../../components/public/SearchAutocomplete';
+import { toast } from 'react-hot-toast';
 
 import { trackLeadClick } from '../../../utils/analytics'
 
@@ -246,7 +247,7 @@ const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
         {
             condition: !!business.phone,
             href: `tel:${business.phone}`,
-             onClick: () => {
+            onClick: () => {
                 trackLeadClick(business._id, 'call');
             },
             icon: <FaPhoneAlt className="w-5 h-5" style={wiggleAnimation} />,
@@ -475,17 +476,62 @@ const fromSlug = (slug) => {
     return slug.replace(/-/g, ' ');
 };
 
+const COMMON_KEYWORDS = ['spa', 'salon', 'massage', 'facial', 'hair', 'cut', 'waxing', 'treatment', 'therapy', 'gym', 'yoga', 'zumba', 'fitness', 'workout', 'pilates', 'meditation', 'sauna', 'steam', 'hammam', 'ayurveda', 'physiotherapy', 'clinic', 'dermatology', 'skin', 'body', 'makeup', 'nail', 'manicure', 'pedicure'];
+
+const resolveRouteParams = (routeLoc, routeQ, locationState) => {
+    let q = '';
+    let loc = '';
+
+    const decodedLoc = routeLoc ? fromSlug(routeLoc) : '';
+    const decodedQ = routeQ ? fromSlug(routeQ) : '';
+
+    if (decodedLoc && decodedQ) {
+        // Two params: /spa/location/query
+        loc = decodedLoc;
+        q = decodedQ;
+    } else if (decodedLoc) {
+        // One param: /spa/something
+        // Check state first (from navigation)
+        if (locationState?.type === 'keyword') {
+            q = decodedLoc;
+        } else if (locationState?.type === 'location') {
+            loc = decodedLoc;
+        } else {
+            // Heuristic
+            // If it matches a common keyword, treat as query
+            // Exception: "Near Me" is a location concept
+            if (decodedLoc.toLowerCase() === 'near me' || decodedLoc.toLowerCase() === 'near-me') {
+                loc = 'Near Me';
+            } else if (COMMON_KEYWORDS.some(k => decodedLoc.toLowerCase().includes(k))) {
+                q = decodedLoc;
+            } else {
+                loc = decodedLoc;
+            }
+        }
+    }
+
+    return { q, loc };
+};
+
 const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const { location: routeLocation, query: routeQuery } = useParams();
+    const locationObj = useLocation();
     const navigate = useNavigate();
 
+    // Resolve initial params
+    const { q: resolvedQ, loc: resolvedLoc } = useMemo(() =>
+        resolveRouteParams(routeLocation, routeQuery, locationObj.state),
+        [routeLocation, routeQuery, locationObj.state]
+    );
+
     // Derived state for UI inputs from URL - Move Up for initialization
-    const currentLocation = searchParams.get('location') || routeLocation;
+    const currentLocation = searchParams.get('location') || resolvedLoc;
     const currentLat = searchParams.get('lat');
 
     // Local UI State
-    const [localQuery, setLocalQuery] = useState(searchParams.get('q') || routeQuery || '');
+    const [localQuery, setLocalQuery] = useState(searchParams.get('q') || resolvedQ || '');
+
     const [localLocation, setLocalLocation] = useState(currentLocation || '');
     const [inquiryBusiness, setInquiryBusiness] = useState(null);
 
@@ -506,16 +552,15 @@ const Search = () => {
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
+    // Ref to prevent duplicate geolocation calls in React Strict Mode
+    const geolocationTriggered = useRef(false);
+
     // Sync URL params with local state
     useEffect(() => {
-        // De-slugify route params
-        const decodedLocation = routeLocation ? fromSlug(routeLocation) : '';
-        const decodedQuery = routeQuery ? fromSlug(routeQuery) : '';
-
         // If route params exist, they take precedence over searchParams 'q'/'location'
-        if (decodedLocation || decodedQuery) {
-            setLocalLocation(decodedLocation);
-            setLocalQuery(decodedQuery);
+        if (resolvedLoc || resolvedQ) {
+            setLocalLocation(resolvedLoc);
+            setLocalQuery(resolvedQ);
         } else {
             // Fallback to query params
             const q = searchParams.get('q');
@@ -526,22 +571,14 @@ const Search = () => {
 
         // Only update search params if they differ from route
         // This prevents infinite loops
-        if (decodedLocation || decodedQuery) {
-            const currentQ = searchParams.get('q');
-            const currentLoc = searchParams.get('location');
-
-            // We want to KEEP them in state/UI but REMOVE them from URL query string
-            // But if we are mounting, we need them for data fetching logic that reads from searchParams?
-            // Actually getSearchParamsObj reads from (searchParams.get('q') || routeQuery)
-            // But routeQuery is SLUGIFIED. 
-            // So we need to update getSearchParamsObj too.
-        }
-    }, [routeLocation, routeQuery, searchParams]);
+    }, [resolvedLoc, resolvedQ, searchParams]);
 
     // Initial Geolocation Logic - Simplified to just setup
     useEffect(() => {
         window.scrollTo(0, 0);
-        if (isLocationInitialized) return;
+
+        // Prevent duplicate calls in React Strict Mode
+        if (isLocationInitialized || geolocationTriggered.current) return;
 
         const hasLat = searchParams.get('lat');
         const hasLng = searchParams.get('lng');
@@ -549,10 +586,16 @@ const Search = () => {
         const hasCategory = searchParams.get('category');
         const hasLocation = searchParams.get('location');
 
-        if ((hasLat && hasLng) || hasQuery || hasCategory || hasLocation || routeLocation) {
+        // If we have explicit coords, or a query/category/location (that isn't Near Me), skip auto-geo
+        const isNearMe = resolvedLoc === 'Near Me';
+
+        if ((hasLat && hasLng) || ((hasQuery || hasCategory || hasLocation || resolvedLoc) && !isNearMe)) {
             setIsLocationInitialized(true);
             return;
         }
+
+        // Mark as triggered to prevent duplicate calls
+        geolocationTriggered.current = true;
 
         // Trigger Geo
         triggerGeolocation();
@@ -605,7 +648,24 @@ const Search = () => {
                     setIsLocationInitialized(true);
                 },
                 (error) => {
+                    console.warn('Geolocation permission denied or failed:', error);
+                    // Don't add lat/lng to URL when permission is denied
                     setIsLocationInitialized(true);
+
+                    // Show user-friendly message based on error type
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        toast.error('Location access denied.', {
+                            duration: 4000,
+                        });
+                    } else if (error.code === 2) { // POSITION_UNAVAILABLE
+                        toast.error('Unable to determine your location. Please try again or enter manually.', {
+                            duration: 4000
+                        });
+                    } else if (error.code === 3) { // TIMEOUT
+                        toast.error('Location request timed out. Please try again.', {
+                            duration: 4000
+                        });
+                    }
                 },
                 { timeout: 8000 }
             );
@@ -625,7 +685,7 @@ const Search = () => {
             minRating: '0',
             page: '1',
             limit: '100',
-            radius: '5000',
+            radius: '20000',
             sort: 'recommended',
             offers: 'false',
             lat: '',
@@ -651,11 +711,12 @@ const Search = () => {
 
     // Pagination State
     // 2. React Query for Infinite Search
-    const getSearchParamsObj = () => ({
-        q: searchParams.get('q') || (routeQuery ? fromSlug(routeQuery) : '') || '',
+    // Memoize search params to prevent unnecessary re-renders and duplicate API calls
+    const getSearchParamsObj = useMemo(() => ({
+        q: searchParams.get('q') || resolvedQ || '',
         lat: searchParams.get('lat') || '',
         lng: searchParams.get('lng') || '',
-        location: searchParams.get('location') || (routeLocation ? fromSlug(routeLocation) : '') || '',
+        location: searchParams.get('location') || resolvedLoc || '',
         category: searchParams.get('category') || '',
         rating: searchParams.get('rating') || 0,
         sort: searchParams.get('sort') || 'recommended',
@@ -664,7 +725,7 @@ const Search = () => {
         offers: searchParams.get('offers'),
         service: searchParams.get('service'),
         minRating: searchParams.get('minRating'),
-    });
+    }), [searchParams, resolvedQ, resolvedLoc]);
 
     const {
         data,
@@ -675,10 +736,10 @@ const Search = () => {
         isError,
         error
     } = useInfiniteQuery({
-        queryKey: ['searchResults', getSearchParamsObj()],
+        queryKey: ['searchResults', getSearchParamsObj],
         queryFn: async ({ pageParam = 1 }) => {
             const params = {
-                ...getSearchParamsObj(),
+                ...getSearchParamsObj,
                 minRating: searchParams.get('rating') || 0,
                 page: pageParam,
                 limit: 5000 // Reverted to 10 for efficient scrolling
@@ -702,29 +763,8 @@ const Search = () => {
         keepPreviousData: true
     });
 
-    // 3. Separate Query for Map Data (Fetch ALL businesses)
-    const { data: mapData } = useQuery({
-        queryKey: ['mapSearchResults', getSearchParamsObj()], // Same params, just different limit
-        queryFn: async () => {
-            const params = {
-                ...getSearchParamsObj(),
-                minRating: searchParams.get('rating') || 0,
-                page: 1,
-                limit: 5000 // Fetch all for map pins
-            };
-            // Only fetch from database - no Google Places
-            const response = await publicService.searchBusinesses(params);
-            if (response.success) return response.data;
-            return { results: [] };
-        },
-        enabled: isLocationInitialized,
-        staleTime: 5 * 60 * 1000,
-        keepPreviousData: true
-    });
-
-    // Use mapData for the map, fallback to list results if mapData loading/empty?
-    const mapBusinesses = mapData?.results || []; // Or fallback to 'results' if we want immediate feedback while mapData loads?
-    // Better to show mapBusinesses, as it eventually has everything.
+    // Removed duplicate map query - using list results for map if needed
+    // If you need separate map data in the future, consider using the same query with different presentation
 
 
     // Flatten results from all pages
@@ -819,8 +859,10 @@ const Search = () => {
     }, []);
 
     // Handlers
-    const handleLocationSubmit = async () => {
-        if (!localLocation.trim()) {
+    const handleLocationSubmit = async (overrideLocation) => {
+        const loc = (overrideLocation !== undefined ? overrideLocation : localLocation).trim();
+
+        if (!loc) {
             updateParams({ lat: '', lng: '', location: '' });
             if (routeLocation && routeLocation !== 'all') navigate('/spa');
             return;
@@ -828,8 +870,20 @@ const Search = () => {
 
         // Navigate to new location path
         const q = localQuery || '';
-        const loc = localLocation.trim();
-        const nextPath = q ? `/spa/${encodeURIComponent(loc)}/${encodeURIComponent(q)}` : `/spa/${encodeURIComponent(loc)}`;
+
+        // SEO Friendly URL Construction
+        const locSlug = toSlug(loc);
+        const qSlug = q ? toSlug(q) : '';
+
+        let nextPath = '/spa';
+        if (locSlug && qSlug) {
+            nextPath = `/spa/${locSlug}/${qSlug}`;
+        } else if (locSlug) {
+            nextPath = `/spa/${locSlug}`;
+        } else if (qSlug) {
+            // Keyword only - mapped to first param
+            nextPath = `/spa/${qSlug}`;
+        }
 
         // Clear existing coords first
         const currentParams = new URLSearchParams(searchParams);
@@ -859,24 +913,33 @@ const Search = () => {
         // OR use the locationToUse (which might be override or state)
         const targetLocation = location || (locationToUse !== "Near Me" && locationToUse !== "Current Location" ? locationToUse : '');
 
+        // SEO Friendly URL Construction
+        const locSlug = targetLocation ? toSlug(targetLocation) : '';
+        const qSlug = q ? toSlug(q) : '';
+
+        let nextPath = '/spa';
+        if (locSlug && qSlug) {
+            nextPath = `/spa/${locSlug}/${qSlug}`;
+        } else if (locSlug) {
+            nextPath = `/spa/${locSlug}`;
+        } else if (qSlug) {
+            // Keyword only - mapped to first param
+            nextPath = `/spa/${qSlug}`;
+        }
+
+        // Preserve existing filters + add extracted ones
+        const currentParams = new URLSearchParams(searchParams);
+
+        // Add extracted params (offers, price, etc.)
+        Object.entries(params).forEach(([key, value]) => {
+            if (value) currentParams.set(key, value);
+        });
+
+        // Remove q/location params as they are in path
+        currentParams.delete('q');
+        currentParams.delete('location');
+
         if (targetLocation) {
-            // Navigate to clean URL /spa/[location-slug]/[query-slug]
-            const locSlug = toSlug(targetLocation);
-            const qSlug = q ? toSlug(q) : '';
-            const nextPath = qSlug ? `/spa/${locSlug}/${qSlug}` : `/spa/${locSlug}`;
-
-            // Preserve existing filters + add extracted ones
-            const currentParams = new URLSearchParams(searchParams);
-
-            // Add extracted params (offers, price, etc.)
-            Object.entries(params).forEach(([key, value]) => {
-                if (value) currentParams.set(key, value);
-            });
-
-            // Remove q/location params as they are in path
-            currentParams.delete('q');
-            currentParams.delete('location');
-
             // Geocode target location if changed or new
             const coords = await getCoordinatesForLocation(targetLocation);
             if (coords) {
@@ -887,13 +950,20 @@ const Search = () => {
                 currentParams.delete('lat');
                 currentParams.delete('lng');
             }
-
-            navigate(`${nextPath}?${currentParams.toString()}`);
         } else {
-            const updates = { q };
-            Object.assign(updates, params);
-            updateParams(updates);
+            // No location - clear lat/lng unless it's a Near Me intent handled elsewhere?
+            // If query is "near me", we might want to keep current location if we have it?
+            // But usually this function is for explicit search. 
+            // If user searches "Massage" and had a location set, should we keep it?
+            // If they didn't put it in the location box, we assume global search?
+            // Current UX: Location box is separate. If they leave it empty, it's global.
+            if (locationToUse !== "Near Me" && locationToUse !== "Current Location") {
+                currentParams.delete('lat');
+                currentParams.delete('lng');
+            }
         }
+
+        navigate(`${nextPath}?${currentParams.toString()}`);
     };
 
     const handleClearAll = () => {
@@ -970,60 +1040,17 @@ const Search = () => {
             <div className="hidden md:block bg-white border-b border-gray-200 fixed top-14 left-0 right-0 z-20 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 py-4">
                     <div className="flex flex-col md:flex-row gap-4 items-center">
-                        <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-4">
-                            {/* Location Input with Autocomplete */}
-                            <div className="relative w-full md:w-1/3">
-                                <SearchAutocomplete
-                                    value={localLocation}
-                                    onChange={(value) => {
-                                        setLocalLocation(value);
-                                    }}
-                                    onSelect={async (suggestion) => {
-                                        // Handle "Near Me" action
-                                        if (suggestion.action === 'near_me') {
-                                            triggerGeolocation();
-                                            return;
-                                        }
-
-                                        let locationName = suggestion.displayText || suggestion.description || suggestion.main_text || suggestion.name;
-                                        let lat = null;
-                                        let lng = null;
-                                        if (suggestion.place_id) {
-                                            const detail = await googlePlacesService.getPlaceDetails(suggestion.place_id);
-                                            if (detail.success && detail.place) {
-                                                locationName = detail.place.formatted_address || locationName;
-                                                lat = detail.place.lat;
-                                                lng = detail.place.lng;
-                                            }
-                                        }
-                                        setLocalLocation(locationName);
-                                        const updates = {};
-                                        if (lat && lng) {
-                                            updates.lat = lat;
-                                            updates.lng = lng;
-                                        }
-                                        updates.location = locationName;
-                                        updateParams(updates);
-                                        setTimeout(() => handleSearchSubmit(undefined, locationName), 100);
-                                    }}
-                                    placeholder="Location (e.g. Vashi, Mumbai)"
-                                    icon={FiMapPin}
-                                    className=""
-                                    mode="location"
-                                    biasLocation={
-                                        (searchParams.get('lat') && searchParams.get('lng'))
-                                            ? [parseFloat(searchParams.get('lat')), parseFloat(searchParams.get('lng'))]
-                                            : null
-                                    }
-                                />
-                            </div>
-
-                            {/* Search Input with Autocomplete (for business/service names) */}
-                            <div className="relative w-full md:w-2/3">
+                        <div className="flex-1 w-full flex items-center">
+                            {/* Single Smart Search Input */}
+                            <div className="relative w-full">
                                 <SearchAutocomplete
                                     value={localQuery}
                                     onChange={(value) => {
                                         setLocalQuery(value);
+                                    }}
+                                    onSubmit={(value) => {
+                                        setLocalQuery(value);
+                                        handleSearchSubmit(value);
                                     }}
                                     onSelect={(suggestion) => {
                                         // If it's a business suggestion, use the name
@@ -1036,7 +1063,7 @@ const Search = () => {
                                         // Auto-submit immediately with selected query and location
                                         setTimeout(() => handleSearchSubmit(queryText, suggestion.location || undefined), 100);
                                     }}
-                                    placeholder="Search spa, massage, salon, wellness..."
+                                    placeholder="Search for service, business, or location..."
                                     icon={FiSearch}
                                     className=""
                                     userLocation={searchParams.lat && searchParams.lng ? {
@@ -1136,7 +1163,20 @@ const Search = () => {
                                                             setLocalLocation("Current Location");
                                                         }
                                                     },
-                                                    (error) => console.error("Geolocation error:", error)
+                                                    (error) => {
+                                                        console.error("Geolocation error:", error);
+                                                        // Don't add lat/lng to URL when permission is denied
+                                                        if (error.code === 1) { // PERMISSION_DENIED
+                                                            toast.error('Location access denied. Please allow location access in your browser settings.', {
+                                                                duration: 5000,
+                                                                icon: '🚫'
+                                                            });
+                                                        } else {
+                                                            toast.error('Unable to get your location. Please try again.', {
+                                                                duration: 4000
+                                                            });
+                                                        }
+                                                    }
                                                 );
                                             }
                                         }}
@@ -1259,38 +1299,15 @@ const Search = () => {
                         {/* Mobile Search Inputs */}
                         <div className="mb-6 space-y-4 border-b border-gray-100 pb-6">
                             <div className="flex flex-col gap-3">
-                                {/* Location Autocomplete */}
-                                <SearchAutocomplete
-                                    value={localLocation}
-                                    onChange={(value) => setLocalLocation(value)}
-                                    onSelect={(suggestion) => {
-                                        if (suggestion.action === 'near_me') {
-                                            triggerGeolocation();
-                                            setIsMobileFiltersOpen(false);
-                                            return;
-                                        }
-
-                                        const locationName = suggestion.displayText || suggestion.description || suggestion.main_text || suggestion.name;
-                                        setLocalLocation(locationName);
-                                        // Auto-submit and close mobile filter
-                                        setTimeout(() => {
-                                            handleSearchSubmit(undefined, locationName);
-                                            setIsMobileFiltersOpen(false);
-                                        }, 100);
-                                    }}
-                                    placeholder="Location (e.g. Vashi, Mumbai)"
-                                    icon={FiMapPin}
-                                    className=""
-                                    userLocation={searchParams.lat && searchParams.lng ? {
-                                        lat: parseFloat(searchParams.lat),
-                                        lng: parseFloat(searchParams.lng)
-                                    } : null}
-                                />
-
-                                {/* Query Autocomplete */}
+                                {/* Single Smart Search Input */}
                                 <SearchAutocomplete
                                     value={localQuery}
                                     onChange={(value) => setLocalQuery(value)}
+                                    onSubmit={(value) => {
+                                        setLocalQuery(value);
+                                        handleSearchSubmit(value);
+                                        setIsMobileFiltersOpen(false);
+                                    }}
                                     onSelect={(suggestion) => {
                                         const queryText = suggestion.name || suggestion.description || suggestion.main_text;
                                         setLocalQuery(queryText);
@@ -1303,7 +1320,7 @@ const Search = () => {
                                             setIsMobileFiltersOpen(false);
                                         }, 100);
                                     }}
-                                    placeholder="Search spa, massage, salon, wellness..."
+                                    placeholder="Search for service, business, or location..."
                                     icon={FiSearch}
                                     className=""
                                     userLocation={searchParams.lat && searchParams.lng ? {
@@ -1334,7 +1351,7 @@ const Search = () => {
                                     initialLat={parseFloat(searchParams.get('lat')) || 20.5937}
                                     initialLng={parseFloat(searchParams.get('lng')) || 78.9629}
                                     radius={parseInt(searchParams.get('radius')) || 20000}
-                                    businesses={mapBusinesses} // Pass FULL dataset for map
+                                    businesses={results} // Using main query results for map
                                     className="h-64 rounded-lg"
                                     onLocationChange={async (coords) => {
                                         // Update coordinates and set 2km radius as requested
@@ -1405,7 +1422,20 @@ const Search = () => {
                                                             setLocalLocation("Current Location");
                                                         }
                                                     },
-                                                    (error) => console.error("Geolocation error:", error)
+                                                    (error) => {
+                                                        console.error("Geolocation error:", error);
+                                                        // Don't add lat/lng to URL when permission is denied
+                                                        if (error.code === 1) { // PERMISSION_DENIED
+                                                            toast.error('Location access denied. Please allow location access in your browser settings.', {
+                                                                duration: 5000,
+                                                                icon: '🚫'
+                                                            });
+                                                        } else {
+                                                            toast.error('Unable to get your location. Please try again.', {
+                                                                duration: 4000
+                                                            });
+                                                        }
+                                                    }
                                                 );
                                             }
                                         }}

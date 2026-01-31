@@ -83,7 +83,7 @@ const ForBusinesses = () => {
               Everything you need to manage appointments, customers, and grow your business
             </p>
             <Link
-              to="/register"
+              to="/business-registration"
               className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
             >
               Get Started Free
@@ -148,7 +148,7 @@ const ForBusinesses = () => {
                 Start your free trial and see how easy it is to manage your business with our platform.
               </p>
               <Link
-                to="/register"
+                to="/business-registration"
                 className="inline-block px-6 py-3 bg-primary-600 text-white  font-semibold hover:bg-primary-700 transition-colors"
               >
                 Start Free Trial
@@ -166,7 +166,7 @@ const ForBusinesses = () => {
             Join thousands of businesses already using our platform to grow and succeed
           </p>
           <Link
-            to="/register"
+            to="/business-registration"
             className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
           >
             Get Started Free

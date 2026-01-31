@@ -327,7 +327,6 @@ class PublicService {
 
       // Decrypt payload if present
       if (response.data?.payload) {
-        console.log('Received payload length:', response.data.payload.length);
         const decryptedData = decryptPayload(response.data.payload);
 
         if (decryptedData) {

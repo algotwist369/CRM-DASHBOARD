@@ -363,7 +363,7 @@ const OTPVerification = () => {
               <p className="text-sm text-gray-600">
                 Wrong {verificationData.type === 'email' ? 'email' : 'phone number'}?{' '}
                 <Link
-                  to={verificationData.purpose === 'registration' ? '/auth/register' : '/auth/login'}
+                  to={verificationData.purpose === 'registration' ? '/auth/business-registration' : '/auth/login'}
                   className="text-primary-600 hover:text-primary-500 font-medium"
                 >
                   Go back and change

@@ -8,14 +8,15 @@ import {
   HiOutlineCalendar,
   HiOutlineCurrencyDollar,
   HiOutlineChartBar,
-  HiOutlineBell,
   HiOutlineCog,
   HiOutlineChevronRight,
   HiOutlineChevronLeft,
   HiOutlineChevronDown,
+  HiDocumentReport,
 } from 'react-icons/hi'
-import { FaBullhorn, FaQuestionCircle, FaWhatsapp } from 'react-icons/fa'
+import { FaBell, FaQuestionCircle, FaRupeeSign, FaWhatsapp } from 'react-icons/fa'
 import { FaUserCircle } from 'react-icons/fa';
+import { MdCampaign } from "react-icons/md";
 import { RiLogoutBoxRLine } from "react-icons/ri";
 import authService from '../../../../services/auth/authService';
 import managerService from '../../../../services/manager/managerService';
@@ -103,24 +104,27 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
   }, [isCollapsed, pendingSubmenu])
 
   const navigationItems = [
+    //manager dashboard
     {
       name: 'Dashboard',
       href: '/manager/dashboard',
       icon: <HiOutlineHome className="w-5 h-5" />,
     },
+    //manager's staff
     {
       name: 'Staff',
       href: '/manager/staff',
-      icon: <HiOutlineUserGroup className="w-5 h-5" />,
-      submenu: [
-        { name: 'All Staff', href: '/manager/staff' },
-        { name: 'Add Staff', href: '/manager/staff/add' },
-      ],
+      icon: <HiOutlineUsers className="w-5 h-5" />,
+      // submenu: [
+      //   { name: 'All Staff', href: '/manager/staff' },
+      //   { name: 'Add Staff', href: '/manager/staff/add' },
+      // ],
     },
+    //manager's customers
     {
       name: 'Customers',
       href: '/manager/customers',
-      icon: <HiOutlineUsers className="w-5 h-5" />,
+      icon: <HiOutlineUserGroup className="w-5 h-5" />,
       submenu: [
         { name: 'All Customers', href: '/manager/customers' },
         { name: 'Customer Analytics', href: '/manager/customers/analytics' },
@@ -129,6 +133,7 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
         // { name: 'Customer Targeting', href: '/manager/customers/targeting' },
       ],
     },
+    //manager's appointments
     {
       name: 'Appointments',
       href: '/manager/appointments',
@@ -138,11 +143,51 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
         { name: 'Calendar View', href: '/manager/appointments/calendar' },
       ],
     },
+    //manager's transactions
+    {
+      name: 'Transactions',
+      href: '/manager/transactions',
+      icon: <FaRupeeSign className="w-5 h-5" />,
+      submenu: [
+        { name: 'All Transactions', href: '/manager/transactions' },
+        { name: 'Add Transaction', href: '/manager/transactions/add' },
+      ],
+    },
+    // manager's daily business
+    {
+      name: 'Daily Business',
+      href: '/manager/daily-business',
+      icon: <HiOutlineChartBar className="w-5 h-5" />,
+      submenu: [
+        { name: 'Daily Records', href: '/manager/daily-business' },
+        { name: 'Business Analytics', href: '/manager/daily-business/analytics' },
+        { name: 'Close Daily Business', href: '/manager/daily-business/close' },
+      ],
+    },
+    //manager's notifications
+    {
+      name: 'Notifications',
+      href: '/manager/notifications',
+      icon: <FaBell className="w-5 h-5 text-yellow-500" />,
+      badge: notificationCount > 0 ? notificationCount : null,
+    },
+    //manager's marketing campaigns
+    {
+      name: 'Campaigns',
+      href: '/manager/campaigns',
+      icon: <MdCampaign className="text-8xl text-red-500 font-bold"/>,
+      submenu: [
+        { name: 'All Campaigns', href: '/manager/campaigns' },
+        { name: 'Campaign Analytics', href: '/manager/campaigns/analytics' },
+      ],
+    },
+    //manager's inquiries
     {
       name: 'Inquiries',
       href: '/manager/inquiries',
       icon: <FaQuestionCircle className="w-5 h-5 text-amber-500" />,
     },
+    //manager's whatsapp leads
     {
       name: 'WhatsApp Leads',
       // icon: <FaLock className="w-5 h-5 text-gray-500" />,
@@ -150,45 +195,13 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       href: '/manager/watsapp-leads',
       icon: <FaWhatsapp className="w-5 h-5 text-green-400" />,
     },
-    {
-      name: 'Transactions',
-      href: '/manager/transactions',
-      icon: <HiOutlineCurrencyDollar className="w-5 h-5" />,
-      submenu: [
-        { name: 'All Transactions', href: '/manager/transactions' },
-        { name: 'Add Transaction', href: '/manager/transactions/add' },
-      ],
-    },
-    {
-      name: 'Daily Business',
-      href: '/manager/daily-business',
-      icon: <HiOutlineChartBar className="w-5 h-5" />,
-      submenu: [
-        { name: 'Daily Records', href: '/manager/daily-business' },
-        { name: 'Add Record', href: '/manager/daily-business/add' },
-      ],
-    },
-    {
-      name: 'Notifications',
-      href: '/manager/notifications',
-      icon: <HiOutlineBell className="w-5 h-5" />,
-      badge: notificationCount > 0 ? notificationCount : null,
-    },
-    {
-      name: 'Campaigns',
-      href: '/manager/campaigns',
-      icon: <FaBullhorn className="w-5 h-5" />,
-      submenu: [
-        { name: 'All Campaigns', href: '/manager/campaigns' },
-        { name: 'Create Campaign', href: '/manager/campaigns/create' },
-        { name: 'Campaign Analytics', href: '/manager/campaigns/analytics' },
-      ],
-    },
+    //manager's reports
     {
       name: 'Reports',
       href: '/manager/reports',
-      icon: <HiOutlineChartBar className="w-5 h-5" />,
+      icon: <HiDocumentReport className="w-5 h-5" />,
     },
+    //manager's business settings
     {
       name: 'Business Settings',
       href: '/manager/business-settings',
