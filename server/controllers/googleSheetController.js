@@ -636,8 +636,17 @@ const getLeadsForManager = async (req, res) => {
         // 7. Manually fetch manager details (can't use populate due to separate DB)
         const managerIds = new Set();
         leads.forEach(lead => {
-            if (lead.isCalledBy) managerIds.add(lead.isCalledBy.toString());
-            if (lead.isWhatsappBy) managerIds.add(lead.isWhatsappBy.toString());
+            if (Array.isArray(lead.isCalledBy)) {
+                lead.isCalledBy.forEach(id => managerIds.add(id.toString()));
+            } else if (lead.isCalledBy) {
+                managerIds.add(lead.isCalledBy.toString());
+            }
+
+            if (Array.isArray(lead.isWhatsappBy)) {
+                lead.isWhatsappBy.forEach(id => managerIds.add(id.toString()));
+            } else if (lead.isWhatsappBy) {
+                managerIds.add(lead.isWhatsappBy.toString());
+            }
         });
 
         const managers = await Manager.find({ _id: { $in: Array.from(managerIds) } })
@@ -651,21 +660,19 @@ const getLeadsForManager = async (req, res) => {
 
         // 8. Enhance lead data with PROTECTED VISIBILITY
         const enhancedLeads = leads.map(lead => {
-            const myStatusEntry = lead.managerStatus?.find(ms => ms.managerId === managerId);
-            const amICalled = myStatusEntry?.action === 'call';
-            const amIWhatsapp = myStatusEntry?.action === 'whatsapp';
+            const isCalledArray = Array.isArray(lead.isCalledBy) ? lead.isCalledBy : (lead.isCalledBy ? [lead.isCalledBy] : []);
+            const isWhatsappArray = Array.isArray(lead.isWhatsappBy) ? lead.isWhatsappBy : (lead.isWhatsappBy ? [lead.isWhatsappBy] : []);
 
-            // Legacy fallbacks (only if I was the one recorded in global fields and no array entry yet)
-            const legacyCall = !myStatusEntry && lead.isCalled && lead.isCalledBy?.toString() === managerId;
-            const legacyWhatsapp = !myStatusEntry && lead.isWhatsapp && lead.isWhatsappBy?.toString() === managerId;
+            const amICalled = isCalledArray.some(id => id.toString() === managerId);
+            const amIWhatsapp = isWhatsappArray.some(id => id.toString() === managerId);
 
-            const showCalled = amICalled || legacyCall;
-            const showWhatsapp = amIWhatsapp || legacyWhatsapp;
+            const showCalled = amICalled;
+            const showWhatsapp = amIWhatsapp;
 
             return {
                 ...lead,
-                // Redact all other manager statuses
-                managerStatus: myStatusEntry ? [myStatusEntry] : [],
+                // Redact all other manager statuses, only show mine if exists
+                managerStatus: lead.managerStatus?.filter(ms => ms.managerId?.toString() === managerId) || [],
 
                 // Override global flags
                 isCalled: showCalled,
@@ -782,12 +789,35 @@ const updateLeadContactStatus = async (req, res) => {
             lastModified: new Date()
         };
 
+        const field = contactType === 'call' ? 'isCalledBy' : 'isWhatsappBy';
+        try {
+            // Attempt atomic update
+            await GoogleSheetLead.findByIdAndUpdate(leadId, {
+                $addToSet: { [field]: managerId }
+            });
+        } catch (err) {
+            // Robust migration if legacy data (ObjectId) exists instead of array
+            if (err.message.includes('non-array')) {
+                const leadData = await GoogleSheetLead.findById(leadId).select(field).lean();
+                const existingValue = leadData ? leadData[field] : null;
+
+                // Convert single value or null to array
+                const newArray = Array.isArray(existingValue) ? existingValue : (existingValue ? [existingValue] : []);
+
+                // Explicitly set as array
+                await GoogleSheetLead.findByIdAndUpdate(leadId, { $set: { [field]: newArray } });
+
+                // Retry the addToSet
+                await GoogleSheetLead.findByIdAndUpdate(leadId, { $addToSet: { [field]: managerId } });
+            } else {
+                throw err;
+            }
+        }
+
         if (contactType === 'call') {
             updatePayload.isCalled = true;
-            updatePayload.isCalledBy = managerId;
         } else if (contactType === 'whatsapp') {
             updatePayload.isWhatsapp = true;
-            updatePayload.isWhatsappBy = managerId;
         }
 
         // AUTO-UPDATE MAIN STATUS: If pending, mark as done
@@ -824,28 +854,20 @@ const updateLeadContactStatus = async (req, res) => {
         let callDetails = null;
         let whatsappDetails = null;
 
-        if (updatedLead.isCalledBy) {
-            const manager = await Manager.findById(updatedLead.isCalledBy).select('name phone email').lean();
-            if (manager) {
-                callDetails = {
-                    managerId: manager._id,
-                    managerName: manager.name,
-                    managerPhone: manager.phone,
-                    managerEmail: manager.email
-                };
-            }
+        if (updatedLead.isCalledBy && updatedLead.isCalledBy.length > 0) {
+            const managers = await Manager.find({ _id: { $in: updatedLead.isCalledBy } }).select('name').lean();
+            callDetails = managers.map(m => ({
+                managerId: m._id,
+                managerName: m.name
+            }));
         }
 
-        if (updatedLead.isWhatsappBy) {
-            const manager = await Manager.findById(updatedLead.isWhatsappBy).select('name phone email').lean();
-            if (manager) {
-                whatsappDetails = {
-                    managerId: manager._id,
-                    managerName: manager.name,
-                    managerPhone: manager.phone,
-                    managerEmail: manager.email
-                };
-            }
+        if (updatedLead.isWhatsappBy && updatedLead.isWhatsappBy.length > 0) {
+            const managers = await Manager.find({ _id: { $in: updatedLead.isWhatsappBy } }).select('name').lean();
+            whatsappDetails = managers.map(m => ({
+                managerId: m._id,
+                managerName: m.name
+            }));
         }
 
         res.status(200).json({
@@ -954,8 +976,17 @@ const getLeadsForAdmin = async (req, res) => {
         // 6. Manually fetch manager details (can't use populate due to separate DB)
         const managerIds = new Set();
         leads.forEach(lead => {
-            if (lead.isCalledBy) managerIds.add(lead.isCalledBy.toString());
-            if (lead.isWhatsappBy) managerIds.add(lead.isWhatsappBy.toString());
+            if (Array.isArray(lead.isCalledBy)) {
+                lead.isCalledBy.forEach(id => managerIds.add(id.toString()));
+            } else if (lead.isCalledBy) {
+                managerIds.add(lead.isCalledBy.toString());
+            }
+
+            if (Array.isArray(lead.isWhatsappBy)) {
+                lead.isWhatsappBy.forEach(id => managerIds.add(id.toString()));
+            } else if (lead.isWhatsappBy) {
+                managerIds.add(lead.isWhatsappBy.toString());
+            }
         });
 
         const managers = await Manager.find({ _id: { $in: Array.from(managerIds) } })
@@ -985,18 +1016,14 @@ const getLeadsForAdmin = async (req, res) => {
                 isWhatsapp: lead.isWhatsapp,
                 derivedStatus: lead.isCalled ? 'called' : (lead.isWhatsapp ? 'whatsapped' : 'pending')
             },
-            callDetails: lead.isCalled && lead.isCalledBy ? {
-                managerId: lead.isCalledBy,
-                managerName: managerMap[lead.isCalledBy.toString()]?.name || 'Unknown',
-                managerPhone: managerMap[lead.isCalledBy.toString()]?.phone || '',
-                managerEmail: managerMap[lead.isCalledBy.toString()]?.email || ''
-            } : null,
-            whatsappDetails: lead.isWhatsapp && lead.isWhatsappBy ? {
-                managerId: lead.isWhatsappBy,
-                managerName: managerMap[lead.isWhatsappBy.toString()]?.name || 'Unknown',
-                managerPhone: managerMap[lead.isWhatsappBy.toString()]?.phone || '',
-                managerEmail: managerMap[lead.isWhatsappBy.toString()]?.email || ''
-            } : null
+            callDetails: (Array.isArray(lead.isCalledBy) ? lead.isCalledBy : (lead.isCalledBy ? [lead.isCalledBy] : [])).map(id => ({
+                managerId: id,
+                managerName: managerMap[id.toString()]?.name || 'Unknown'
+            })),
+            whatsappDetails: (Array.isArray(lead.isWhatsappBy) ? lead.isWhatsappBy : (lead.isWhatsappBy ? [lead.isWhatsappBy] : [])).map(id => ({
+                managerId: id,
+                managerName: managerMap[id.toString()]?.name || 'Unknown'
+            }))
         }));
 
         res.status(200).json({

@@ -50,14 +50,14 @@ const googleSheetLeadSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
-        isCalledBy: {
+        isCalledBy: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "Manager"
-        },
-        isWhatsappBy: {
+        }],
+        isWhatsappBy: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "Manager"
-        },
+        }],
         lastModified: {
             type: Date,
             default: Date.now
@@ -79,13 +79,13 @@ const googleSheetLeadSchema = new mongoose.Schema(
         managerStatus: [{
             managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Manager' },
             managerName: { type: String },
-            action: { type: String }, // 'call', 'whatsapp', 'done'
+            action: { type: String },
             timestamp: { type: Date, default: Date.now }
         }],
         // Remarks / Notes
         remarks: [{
             text: { type: String, required: true },
-            by: { type: String, required: true }, // User/Admin name
+            by: { type: String, required: true },
             createdAt: { type: Date, default: Date.now }
         }]
     },

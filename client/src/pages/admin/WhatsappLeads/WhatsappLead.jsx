@@ -896,6 +896,32 @@ const WhatsappLead = () => {
                     </div>
                   </div>
 
+                  {/* Multi-Manager Status Details (Admin Only) */}
+                  {isAdmin && (
+                    <div className="mb-3 space-y-1">
+                      {lead.callDetails && lead.callDetails.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          <FaPhoneAlt size={10} className="text-blue-500" />
+                          {lead.callDetails.map((m, idx) => (
+                            <span key={idx} className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] border border-blue-100">
+                              {m.managerName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {lead.whatsappDetails && lead.whatsappDetails.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          <FaWhatsapp size={10} className="text-green-500" />
+                          {lead.whatsappDetails.map((m, idx) => (
+                            <span key={idx} className="bg-green-50 text-green-600 px-1.5 py-0.5 rounded text-[10px] border border-green-100">
+                              {m.managerName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Actions Row */}
                   <div className="flex items-center justify-between border-t border-gray-100 pt-3 gap-2">
                     {/* LEFT: Main Actions */}
@@ -1215,8 +1241,37 @@ const WhatsappLead = () => {
 
                                 // ADMIN VIEW
                                 return (
-                                  <div className="flex flex-col gap-2 w-full">
-                                    {/* Manager List */}
+                                  <div className="flex flex-col gap-1 w-full">
+                                    {/* Multi-Manager Call/WhatsApp Tracking - Colored Columns */}
+                                    <div className="grid grid-cols-2 gap-x-1 px-1">
+                                      {/* Calls Column */}
+                                      <div
+                                        className="flex flex-col max-h-[44px] overflow-y-auto overflow-x-hidden scrollbar-thin bg-blue-50/50 rounded px-1 border border-blue-100/50 cursor-help"
+                                        title={`Total Managers called: ${lead.callDetails?.length || 0}`}
+                                      >
+                                        {lead.callDetails && lead.callDetails.length > 0 && lead.callDetails.map((m, idx) => (
+                                          <div key={`call-${idx}`} className="flex items-center gap-1 text-blue-700">
+                                            <FaPhoneAlt size={7} className="flex-shrink-0 text-blue-400" />
+                                            <span className="truncate text-[9px] font-semibold">{m.managerName}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* WhatsApp Column */}
+                                      <div
+                                        className="flex flex-col max-h-[44px] overflow-y-auto overflow-x-hidden scrollbar-thin bg-green-50/50 rounded px-1 border border-green-100/50 cursor-help"
+                                        title={`Total Managers WhatsApp: ${lead.whatsappDetails?.length || 0}`}
+                                      >
+                                        {lead.whatsappDetails && lead.whatsappDetails.length > 0 && lead.whatsappDetails.map((m, idx) => (
+                                          <div key={`wa-${idx}`} className="flex items-center gap-1 text-green-700 py-[1px]">
+                                            <FaWhatsapp size={9} className="flex-shrink-0 text-green-400" />
+                                            <span className="truncate text-[9px] font-semibold">{m.managerName}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {/* Manager Activity Log (Manual updates) */}
                                     {lead.managerStatus?.length > 0 && (
                                       <div className="w-full mb-1 border-b pb-1">
                                         {lead.managerStatus.map((ms, i) => (
