@@ -1,6 +1,9 @@
 // redis.js - Advanced Redis configuration for high-performance caching
 const Redis = require('ioredis');
 
+// Track all Redis connections for proper cleanup
+const connections = new Set();
+
 // Redis connection configuration
 const redisConfig = {
     host: process.env.REDIS_HOST || 'localhost',
@@ -301,8 +304,58 @@ const cacheKeys = {
     session: (token) => `session:${token}`
 };
 
+/**
+ * Gracefully close all Redis connections
+ * Should be called during server shutdown
+ */
+const shutdown = async () => {
+    console.log('[Redis] Closing all connections...');
+    const closePromises = [];
+
+    // Close main redis connection
+    if (redis && redis.status !== 'end') {
+        closePromises.push(redis.quit().catch(err => {
+            console.error('[Redis] Error closing main connection:', err.message);
+            return redis.disconnect();
+        }));
+    }
+
+    // Close all tracked connections
+    for (const conn of connections) {
+        if (conn && conn.status !== 'end') {
+            closePromises.push(conn.quit().catch(err => {
+                console.error('[Redis] Error closing connection:', err.message);
+                return conn.disconnect();
+            }));
+        }
+    }
+
+    await Promise.all(closePromises);
+    connections.clear();
+    console.log('[Redis] All connections closed');
+};
+
+/**
+ * Create a duplicate Redis connection with tracking
+ * @param {Redis} client - Base client to duplicate
+ * @returns {Redis} - Duplicated client
+ */
+const createTrackedDuplicate = (client) => {
+    const duplicate = client.duplicate();
+    connections.add(duplicate);
+
+    // Remove from tracking when connection ends
+    duplicate.on('end', () => {
+        connections.delete(duplicate);
+    });
+
+    return duplicate;
+};
+
 module.exports = {
     redis,
     cacheManager,
-    cacheKeys
+    cacheKeys,
+    shutdown,
+    createTrackedDuplicate
 };

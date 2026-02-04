@@ -3,6 +3,7 @@ const GoogleSheetLead = require("../models/GoogleSheetLead");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");
 const { sendWhatsAppTemplateDoubleTick } = require("../utils/sendWhatsAppDoubleTick");
+const { emitToRole } = require("../config/socket");
 
 let locationCache = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache duration
@@ -886,6 +887,33 @@ const updateLeadContactStatus = async (req, res) => {
             }
         });
 
+        // Emit Socket.io event for real-time pending count update
+        try {
+            const adminCount = await GoogleSheetLead.countDocuments({
+                status: { $in: ['pending', 'forwarded'] }
+            });
+            emitToRole('admin', 'admin:leads:pending:updated', { count: adminCount });
+
+            // Emit to managers for this location
+            const business = await Business.findOne({ branch: new RegExp((updatedLead.location || '').trim(), 'i') }).select('_id');
+            if (business) {
+                const managers = await Manager.find({ business: business._id }).select('_id');
+                for (const mgr of managers) {
+                    const managerCount = await GoogleSheetLead.countDocuments({
+                        location: new RegExp(updatedLead.location, 'i'),
+                        status: { $in: ['pending', 'forwarded'] }
+                    });
+                    emitToRole('manager', 'manager:leads:pending:updated', {
+                        managerId: mgr._id.toString(),
+                        count: managerCount
+                    });
+                }
+            }
+        } catch (socketErr) {
+            console.error('Error emitting pending count update:', socketErr);
+            // Don't fail the request if socket emit fails
+        }
+
     } catch (error) {
         console.error("[Update Lead Contact Status] Error:", error.message);
         res.status(500).json({
@@ -1115,6 +1143,35 @@ const updateLeadAdminStatus = async (req, res) => {
             message: `Lead status updated to ${status}`,
             data: lead
         });
+
+        // Emit Socket.io event for real-time pending count update
+        try {
+            const adminCount = await GoogleSheetLead.countDocuments({
+                status: { $in: ['pending', 'forwarded'] }
+            });
+            emitToRole('admin', 'admin:leads:pending:updated', { count: adminCount });
+
+            // Emit to managers for this location if lead has location info
+            if (lead.location) {
+                const business = await Business.findOne({ branch: new RegExp(lead.location.trim(), 'i') }).select('_id');
+                if (business) {
+                    const managers = await Manager.find({ business: business._id }).select('_id');
+                    for (const mgr of managers) {
+                        const managerCount = await GoogleSheetLead.countDocuments({
+                            location: new RegExp(lead.location, 'i'),
+                            status: { $in: ['pending', 'forwarded'] }
+                        });
+                        emitToRole('manager', 'manager:leads:pending:updated', {
+                            managerId: mgr._id.toString(),
+                            count: managerCount
+                        });
+                    }
+                }
+            }
+        } catch (socketErr) {
+            console.error('Error emitting pending count update:', socketErr);
+            // Don't fail the request if socket emit fails
+        }
     } catch (error) {
         console.error("[Update Admin Status] Error:", error.message);
         res.status(500).json({
@@ -1407,6 +1464,82 @@ const receiveWebhookLead = async (req, res) => {
     }
 };
 
+// ==========================================
+// FUNCTION 9: Get Pending Leads Count (Admin)
+// ==========================================
+// Returns total count of pending leads across all locations for admin sidebar badge
+const getPendingLeadsCountAdmin = async (req, res) => {
+    try {
+        const count = await GoogleSheetLead.countDocuments({
+            status: { $in: ['pending', 'forwarded'] }
+        });
+
+        return res.status(200).json({
+            success: true,
+            count
+        });
+    } catch (error) {
+        console.error('Error fetching admin pending leads count:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch pending leads count',
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 10: Get Pending Leads Count (Manager)
+// ==========================================
+// Returns count of pending leads for manager's assigned location(s) for sidebar badge
+const getPendingLeadsCountManager = async (req, res) => {
+    try {
+        const managerId = req.user.id;
+
+        // Get manager's business/location
+        const manager = await Manager.findById(managerId).select('business');
+        if (!manager || !manager.business) {
+            console.log('Manager pending count: Manager or business not found', { managerId, manager });
+            return res.status(404).json({
+                success: false,
+                message: 'Manager or business not found'
+            });
+        }
+
+        // Get location name from business (branch name acts as location identifier)
+        const business = await Business.findById(manager.business).select('branch');
+        if (!business || !business.branch) {
+            console.log('Manager pending count: Business branch not found', { business });
+            return res.status(404).json({
+                success: false,
+                message: 'Business branch not found'
+            });
+        }
+
+        const locationName = business.branch.trim();
+        console.log(`Manager pending count: Search location '${locationName}' for manager ${managerId}`);
+
+        // Count pending leads for this location
+        const count = await GoogleSheetLead.countDocuments({
+            location: new RegExp(locationName, 'i'),
+            status: { $in: ['pending', 'forwarded'] }
+        });
+        console.log(`Manager pending count result: ${count}`);
+
+        return res.status(200).json({
+            success: true,
+            count
+        });
+    } catch (error) {
+        console.error('Error fetching manager pending leads count:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch pending leads count',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     syncGoogleSheet,
     getAllLeads,
@@ -1420,5 +1553,7 @@ module.exports = {
     getLeadAnalytics,
     getManagersByLocation,
     addLeadRemark,
-    receiveWebhookLead
+    receiveWebhookLead,
+    getPendingLeadsCountAdmin,
+    getPendingLeadsCountManager
 };
