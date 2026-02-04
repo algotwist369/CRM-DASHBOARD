@@ -2,7 +2,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const EventEmitter = require('events');
 
-const { redis } = require('../config/redis');
+const { redis, createTrackedDuplicate } = require('../config/redis');
 
 /**
  * WhatsApp Web Service - Manages single admin WhatsApp session for all businesses
@@ -18,6 +18,7 @@ class WhatsAppWebService extends EventEmitter {
         this.retryCount = 0;
         this.maxRetries = 5;
         this.sessionName = process.env.WHATSAPP_WEB_SESSION_NAME || 'crm-whatsapp';
+        this.redisSubClient = null; // Track Redis subscription client
     }
 
     /**
@@ -456,6 +457,18 @@ class WhatsAppWebService extends EventEmitter {
             clearInterval(this.keepAliveInterval);
         }
 
+        // Close Redis subscription client
+        if (this.redisSubClient && this.redisSubClient.status !== 'end') {
+            try {
+                await this.redisSubClient.quit();
+                console.log('[WhatsApp Web] Redis subscription client closed');
+            } catch (error) {
+                console.error('[WhatsApp Web] Redis close error:', error.message);
+                await this.redisSubClient.disconnect();
+            }
+            this.redisSubClient = null;
+        }
+
         if (this.client) {
             try {
                 await this.client.destroy();
@@ -475,16 +488,21 @@ class WhatsAppWebService extends EventEmitter {
      */
     async startCommandListener() {
         try {
-            const sub = redis.duplicate();
+            // Close existing subscription if any
+            if (this.redisSubClient) {
+                await this.redisSubClient.quit().catch(() => this.redisSubClient.disconnect());
+            }
+
+            this.redisSubClient = createTrackedDuplicate(redis);
 
             // Prevent crash on connection error
-            sub.on('error', (err) => {
+            this.redisSubClient.on('error', (err) => {
                 console.error('[WhatsApp Web] Command Listener Redis Error:', err.message);
             });
 
-            await sub.subscribe('wa:cmd');
+            await this.redisSubClient.subscribe('wa:cmd');
 
-            sub.on('message', async (channel, message) => {
+            this.redisSubClient.on('message', async (channel, message) => {
                 if (channel !== 'wa:cmd') return;
 
                 try {

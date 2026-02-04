@@ -8,7 +8,8 @@ const whatsappWebService = require("./services/whatsappWebService");
 const { startGoogleSheetSync, stopGoogleSheetSync } = require("./services/googleSheetSyncService");
 const cluster = require('cluster');
 const os = require('os');
-const { redis } = require('./config/redis');
+const { redis, shutdown: redisShutdown } = require('./config/redis');
+const { shutdown: socketShutdown } = require('./config/socket');
 
 const numCPUs = os.cpus().length;
 const PORT = process.env.PORT || 5000;
@@ -56,8 +57,15 @@ if (cluster.isPrimary) {
     // Graceful shutdown for Master
     const shutdownMaster = async () => {
         console.log('Shutting down Master gracefully...');
+
+        // Stop background services
         stopGoogleSheetSync();
         await whatsappWebService.destroy();
+
+        // Close all Redis connections
+        await redisShutdown();
+
+        console.log('✅ Master shutdown complete');
         process.exit(0);
     };
 
@@ -87,9 +95,17 @@ if (cluster.isPrimary) {
             });
 
             // Graceful shutdown for Worker
-            const shutdownWorker = () => {
+            const shutdownWorker = async () => {
                 console.log(`Worker ${process.pid} shutting down...`);
-                server.close(() => {
+
+                // Close Socket.IO and its Redis connections
+                await socketShutdown();
+
+                // Close HTTP server
+                server.close(async () => {
+                    // Close any remaining Redis connections
+                    await redisShutdown();
+                    console.log(`✅ Worker ${process.pid} shutdown complete`);
                     process.exit(0);
                 });
             };

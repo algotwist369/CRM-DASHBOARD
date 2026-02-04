@@ -20,7 +20,9 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
 
-  const SOCKET_URL = 'https://api.sa.ramaai.cloud';
+  // Determine Socket URL based on environment or fallback
+  const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
+    (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://api.sa.ramaai.cloud');
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');

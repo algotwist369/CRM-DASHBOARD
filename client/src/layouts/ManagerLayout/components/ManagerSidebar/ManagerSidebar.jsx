@@ -28,6 +28,22 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
   const [pendingSubmenu, setPendingSubmenu] = useState(null)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [pendingLeadsCount, setPendingLeadsCount] = useState(0)
+
+  // Get manager info from localStorage
+  const getUserInfo = () => {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        return JSON.parse(userStr)
+      } catch (e) {
+        return null
+      }
+    }
+    return null
+  }
+
+  const userInfo = getUserInfo()
 
   // Fetch initial notification count
   useEffect(() => {
@@ -42,10 +58,23 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       }
     };
     fetchCount();
+
+    // Fetch pending leads count
+    const fetchPendingLeadsCount = async () => {
+      try {
+        const result = await managerService.getPendingLeadsCount();
+        if (result.success) {
+          setPendingLeadsCount(result.count || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending leads count:', error);
+      }
+    };
+    fetchPendingLeadsCount();
   }, [])
 
   // Socket integration for real-time notification count
-  const { socket } = useSocket() || {}
+  const { socket, connected } = useSocket() || {}
 
   const handleLogout = () => {
     authService.logout()
@@ -90,6 +119,28 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       socket.off('appointment_cancelled', handleAppointmentCancelled)
     }
   }, [socket])
+
+  // Listen for pending leads count updates
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    const handlePendingLeadsUpdate = (data) => {
+      // Verify if this update is for this manager
+      if (data.managerId && userInfo && userInfo.id !== data.managerId) {
+        return; // Ignore updates for other managers (though server should filter, good to be safe)
+      }
+
+      if (data.count !== undefined) {
+        setPendingLeadsCount(data.count);
+      }
+    };
+
+    socket.on('manager:leads:pending:updated', handlePendingLeadsUpdate);
+
+    return () => {
+      socket.off('manager:leads:pending:updated', handlePendingLeadsUpdate);
+    };
+  }, [socket, connected, userInfo]);
 
   // When sidebar expands and there's a pending submenu, open it
   useEffect(() => {
@@ -175,7 +226,7 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
     {
       name: 'Campaigns',
       href: '/manager/campaigns',
-      icon: <MdCampaign className="text-8xl text-red-500 font-bold"/>,
+      icon: <MdCampaign className="text-8xl text-red-500 font-bold" />,
       submenu: [
         { name: 'All Campaigns', href: '/manager/campaigns' },
         { name: 'Campaign Analytics', href: '/manager/campaigns/analytics' },
@@ -193,7 +244,9 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       // icon: <FaLock className="w-5 h-5 text-gray-500" />,
       // disabled: true,
       href: '/manager/watsapp-leads',
-      icon: <FaWhatsapp className="w-5 h-5 text-green-400" />,
+      icon: <FaWhatsapp className="w-5 h-5 text-red-400" />,
+      badge: pendingLeadsCount > 0 ? pendingLeadsCount : null,
+      badgeColor: 'bg-red-500',
     },
     //manager's reports
     {
@@ -218,21 +271,6 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
 
   const isSubmenuActive = (submenuItems) =>
     submenuItems.some((item) => isActiveRoute(item.href))
-
-  // Get manager info from localStorage
-  const getUserInfo = () => {
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      try {
-        return JSON.parse(userStr)
-      } catch (e) {
-        return null
-      }
-    }
-    return null
-  }
-
-  const userInfo = getUserInfo()
 
   return (
     <div
@@ -307,7 +345,7 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
                 <>
                   <span className="ml-3 flex-1 text-left">{item.name}</span>
                   {item.badge && (
-                    <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+                    <span className={`ml-2 px-2 py-0.5 ${item.badgeColor || 'bg-red-500'} text-white text-xs font-semibold rounded-full`}>
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
@@ -318,6 +356,11 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
                     />
                   )}
                 </>
+              )}
+              {isCollapsed && item.badge && (
+                <span className={`absolute top-0 right-0 min-w-[18px] h-[18px] ${item.badgeColor || 'bg-red-500'} text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-pulse shadow-lg border-2 border-gray-900`}>
+                  {item.badge > 9 ? '9+' : item.badge}
+                </span>
               )}
             </NavLink>
 
