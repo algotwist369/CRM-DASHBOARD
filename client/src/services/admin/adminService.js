@@ -1645,6 +1645,23 @@ class AdminService {
       }
     }
   }
+
+  // ================== WHATSAPP LEADS ==================
+
+  // Get pending leads count for admin sidebar badge
+  async getPendingLeadsCount() {
+    try {
+      const response = await apiClient.get('/google-sheets/pending-count/admin')
+      return { success: true, count: response.data.count || 0 }
+    } catch (error) {
+      console.error('Failed to fetch pending leads count:', error)
+      return {
+        success: false,
+        count: 0,
+        error: error.response?.data?.message || 'Failed to fetch pending leads count'
+      }
+    }
+  }
 }
 
 export default new AdminService()

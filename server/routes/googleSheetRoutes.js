@@ -43,4 +43,15 @@ router.post('/leads/update-status', protect, roleMiddleware(['manager']), google
 
 // Add Remark
 router.post('/leads/remark', protect, roleMiddleware(['admin', 'manager']), googleSheetController.addLeadRemark);
+
+// ==========================================
+// PENDING LEADS COUNT (For Sidebar Badges)
+// ==========================================
+
+// Get pending leads count for admin
+router.get('/pending-count/admin', protect, roleMiddleware(['admin']), googleSheetController.getPendingLeadsCountAdmin);
+
+// Get pending leads count for manager (filtered by location)
+router.get('/pending-count/manager', protect, roleMiddleware(['manager']), googleSheetController.getPendingLeadsCountManager);
+
 module.exports = router;

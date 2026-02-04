@@ -3,11 +3,10 @@ const socketIO = require('socket.io');
 const { verifyAccessToken } = require('../utils/generateToken');
 
 const { createAdapter } = require('@socket.io/redis-adapter');
-const { redis } = require('./redis');
+const { redis, createTrackedDuplicate } = require('./redis');
 
 let io = null;
-
-
+let redisSubClient = null; // Store reference for cleanup
 
 const initializeSocket = (server) => {
     let adapter;
@@ -15,14 +14,14 @@ const initializeSocket = (server) => {
     // Only attempt to use Redis adapter if Redis is configured and not explicitly disabled
     try {
         const pubClient = redis;
-        const subClient = redis.duplicate();
+        redisSubClient = createTrackedDuplicate(redis); // Use tracked duplicate
 
         // CRITICAL: Handle errors on the subClient to prevent crashing
-        subClient.on('error', (err) => {
+        redisSubClient.on('error', (err) => {
             console.error('[Socket.IO] Redis Sub Client Error:', err.message);
         });
 
-        adapter = createAdapter(pubClient, subClient);
+        adapter = createAdapter(pubClient, redisSubClient);
     } catch (err) {
         console.warn('[Socket.IO] Failed to initialize Redis Adapter, falling back to memory adapter:', err.message);
     }
@@ -30,7 +29,13 @@ const initializeSocket = (server) => {
     io = socketIO(server, {
         adapter: adapter, // Will be undefined if failed, triggering default memory adapter
         cors: {
-            origin: process.env.CLIENT_URL || 'https://spaadvisor.in' || 'http://localhost:5173',
+            origin: [
+                process.env.CLIENT_URL,
+                'https://spaadvisor.in',
+                'https://admin.spaadvisor.in', // Added likely admin domain
+                'http://localhost:5173',
+                'http://localhost:3000'
+            ].filter(Boolean),
             methods: ['GET', 'POST'],
             credentials: true
         },
@@ -149,12 +154,37 @@ const getConnectedUsersCount = () => {
     return io.engine.clientsCount;
 };
 
+// Shutdown Socket.IO and close Redis connections
+const shutdown = async () => {
+    console.log('[Socket.IO] Shutting down...');
+
+    if (io) {
+        // Close all socket connections
+        io.close();
+        io = null;
+    }
+
+    // Close Redis sub client
+    if (redisSubClient && redisSubClient.status !== 'end') {
+        try {
+            await redisSubClient.quit();
+        } catch (err) {
+            console.error('[Socket.IO] Error closing Redis sub client:', err.message);
+            await redisSubClient.disconnect();
+        }
+        redisSubClient = null;
+    }
+
+    console.log('[Socket.IO] Shutdown complete');
+};
+
 module.exports = {
     initializeSocket,
     getIO,
     emitToUser,
     emitToRole,
     emitToAll,
-    getConnectedUsersCount
+    getConnectedUsersCount,
+    shutdown
 };
 

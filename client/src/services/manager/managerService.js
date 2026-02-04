@@ -654,6 +654,21 @@ class ManagerService {
       }
     }
   }
+
+  // Get pending leads count for manager sidebar badge
+  async getPendingLeadsCount() {
+    try {
+      const response = await apiClient.get('/google-sheets/pending-count/manager')
+      return { success: true, count: response.data.count || 0 }
+    } catch (error) {
+      console.error('Failed to fetch pending leads count:', error)
+      return {
+        success: false,
+        count: 0,
+        error: error.response?.data?.message || 'Failed to fetch pending leads count'
+      }
+    }
+  }
 }
 
 export default new ManagerService()
