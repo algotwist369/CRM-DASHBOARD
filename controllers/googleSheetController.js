@@ -359,10 +359,25 @@ const getAllLeads = async (req, res) => {
         }
 
         if (search) {
-            query.$or = [
-                { customerName: { $regex: search, $options: "i" } },
-                { customerPhone: { $regex: search, $options: "i" } }
-            ];
+            // Text Search Optimization: use Full Text Search if available
+            // Note: $text requires the text index we added.
+            // If strict text match is needed: query.$text = { $search: search };
+            // But usually users want substring match. 
+            // For 10M+ with regex, we MUST rely on the regex running on an indexed field.
+            // We have indexed customerName and customerPhone.
+
+            // Try to use prefix match which is index-friendly: ^value
+            const isNumeric = /^\d+$/.test(search);
+            if (isNumeric) {
+                // Exact or Prefix match for phone is fast with index
+                query.customerPhone = { $regex: `^${search}`, $options: "i" };
+            } else {
+                query.$or = [
+                    { customerName: { $regex: search, $options: "i" } },
+                    // Also fallback to phone search if mixed
+                    { customerPhone: { $regex: search, $options: "i" } }
+                ];
+            }
         }
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -370,9 +385,17 @@ const getAllLeads = async (req, res) => {
         const sortOptions = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
 
         // 2. Fetch Data (Parallel Execution)
+        // Optimization: Use estimatedDocumentCount for total valid connection if no filter
+        let totalCountPromise;
+        if (Object.keys(query).length === 0) {
+            totalCountPromise = GoogleSheetLead.estimatedDocumentCount();
+        } else {
+            totalCountPromise = GoogleSheetLead.countDocuments(query);
+        }
+
         const [leads, total, allLocations] = await Promise.all([
             GoogleSheetLead.find(query).sort(sortOptions).limit(limitNum).skip(skip).lean(),
-            GoogleSheetLead.countDocuments(query),
+            totalCountPromise,
             GoogleSheetLead.distinct("location") // Keep fetching all distinct for filter dropdown
         ]);
 
