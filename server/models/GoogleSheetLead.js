@@ -101,6 +101,20 @@ googleSheetLeadSchema.index({ location: 1, customerPhone: 1 }, { unique: true })
 googleSheetLeadSchema.index({ syncedAt: -1 });
 googleSheetLeadSchema.index({ createdAt: -1 });
 
+// High-Performance Compound Indexes (10M+ record optimization)
+// optimize "Get Leads by Location and Status" (Manager View)
+googleSheetLeadSchema.index({ location: 1, status: 1, createdAt: -1 });
+// optimize "Get Leads by Location" (Manager View - All)
+googleSheetLeadSchema.index({ location: 1, createdAt: -1 });
+// optimize "Get Leads by Global Status" (Admin View)
+googleSheetLeadSchema.index({ status: 1, createdAt: -1 });
+
+// Text Index for High-Performance Search
+googleSheetLeadSchema.index(
+    { customerName: "text", customerPhone: "text", location: "text" },
+    { weights: { customerPhone: 10, customerName: 5, location: 1 } }
+);
+
 // Pre-save middleware to update lastModified
 googleSheetLeadSchema.pre('save', function (next) {
     this.lastModified = new Date();
