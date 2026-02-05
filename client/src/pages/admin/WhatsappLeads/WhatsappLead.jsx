@@ -49,7 +49,6 @@ const WhatsappLead = () => {
   const { socket } = useSocket();
 
   /* ---------------- ROLE DETECTION ---------------- */
-  /* ---------------- ROLE DETECTION ---------------- */
   const userData = useMemo(() => getUserData(), []);
   const isAdmin = userData?.role === 'admin';
   const isManager = userData?.role === 'manager';
@@ -148,8 +147,11 @@ const WhatsappLead = () => {
       const response = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
         params: {
-          page: 1,
-          limit: 1000000 // Fetch all for client-side filtering
+          page: currentPage,
+          limit: rowsPerPage,
+          location: locationFilter === "All" ? undefined : locationFilter,
+          status: statusFilter === "All" ? undefined : statusFilter,
+          search: search // Send search query to server
         }
       });
 
@@ -178,7 +180,7 @@ const WhatsappLead = () => {
 
             // Manager / Contact Info
             totalManagers: lead.totalManagers || 0, // Admin endpoint might not retrun this directly, let's trust populated arrays if available
-            managers: [],
+            managers: lead.managers || [], // Now coming from backend
 
             // Store raw lead for popover dynamic fetching if needed
             rawLocation: lead.location,
@@ -226,6 +228,7 @@ const WhatsappLead = () => {
         });
 
         setLeadsData(transformedData);
+        setTotalRecords(response.data.pagination?.total || 0);
 
         // Update available locations from API if provided
         if (response.data.filters && response.data.filters.locations) {
@@ -241,7 +244,7 @@ const WhatsappLead = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, rowsPerPage, locationFilter, statusFilter, search, isManager]);
 
   const fetchAnalytics = useCallback(async () => {
     // Skip analytics for non-admins (strict check)
@@ -321,20 +324,55 @@ const WhatsappLead = () => {
   const updateLeadStatus = async (leadId, newStatus) => {
     try {
       const token = localStorage.getItem("authToken");
-      await axios.post(
+      const response = await axios.post(
         `${API_BASE_URL}/google-sheets/leads/admin-status`,
         { leadId, status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Refresh data
-      fetchLeads();
+      if (response.data.success) {
+        // OPTIMISTIC / RESPONSE-DRIVEN UPDATE
+        // Instead of waiting for fetchLeads (which might race), update local state immediately
+        const updatedLeadData = response.data.data;
+
+        setLeadsData((prevLeads) =>
+          prevLeads.map((lead) => {
+            if (lead.id === leadId) {
+              // Determine new UI status safely
+              let uiStatus = "Pending";
+              if (updatedLeadData.status === 'done') {
+                uiStatus = "Done";
+              } else if (updatedLeadData.status === 'forwarded') {
+                uiStatus = "Sent";
+              } else if (updatedLeadData.contactStatus?.derivedStatus === 'called' || lead.isCalled) {
+                uiStatus = "Called";
+              } else if (updatedLeadData.contactStatus?.derivedStatus === 'whatsapped' || lead.isWhatsapp) {
+                uiStatus = "Whatsapped";
+              }
+
+              return {
+                ...lead,
+                ...updatedLeadData, // Merge new data
+                id: updatedLeadData._id, // Ensure ID consistency if needed
+                status: uiStatus,
+                dbStatus: updatedLeadData.status,
+                statusUpdatedBy: updatedLeadData.statusUpdatedBy,
+                managerStatus: updatedLeadData.managerStatus || lead.managerStatus
+              };
+            }
+            return lead;
+          })
+        );
+      }
+
+      // Refresh data in background just in case
+      // fetchLeads(); // Optional: might revert if race condition persists, better to trust the response for now or delay
       fetchAnalytics();
     } catch (err) {
       console.error("Error updating status:", err);
       alert("Failed to update status");
     }
-  }
+  };
 
   const updateLeadContactStatus = async (leadId, contactType) => {
     try {
@@ -459,67 +497,32 @@ const WhatsappLead = () => {
   };
 
   /* ---------------- FILTER LOGIC ---------------- */
-  const filteredData = useMemo(() => {
-    return leadsData.filter((lead) => {
-      if (
-        searchValue &&
-        !lead.customerName.toLowerCase().includes(searchValue) &&
-        !lead.customerPhone.includes(searchValue)
-      )
-        return false;
-
-      if (locationFilter !== "All" && lead.location !== locationFilter)
-        return false;
-
-      // Update filter to match new status logic
-      if (statusFilter !== "All") {
-        if (isManager) {
-          // Manager Filter Logic: Based on managerStatus array
-          const myStatus = lead.managerStatus?.some(ms => ms.managerId === userData?.id);
-          if (statusFilter === 'Done' && !myStatus) return false;
-          // Pending for manager means they haven't acted yet
-          if (statusFilter === 'Pending' && myStatus) return false;
-          if (statusFilter === 'Sent' && lead.status !== 'Sent') return false; // Sent is global?
-        } else {
-          // Admin Logic: Global Status
-          if (statusFilter === 'Done' && lead.status !== 'Done') return false;
-          if (statusFilter === 'Sent' && lead.status !== 'Sent') return false;
-          if (statusFilter === 'Pending' && (lead.status === 'Done' || lead.status === 'Sent')) return false;
-        }
-      }
-
-      return true;
-    });
-  }, [
-    leadsData,
-    searchValue,
-    locationFilter,
-    statusFilter,
-  ]);
+  // NOTE: Filtering is now handled SERVER-SIDE in fetchLeads
+  // filteredData removed as it's no longer needed
 
   /* ---------------- PAGINATION ---------------- */
+  // Use state for pagination instead of derived calculations
+  const [totalRecords, setTotalRecords] = useState(0);
+
   const totalPages = useMemo(
-    () => Math.ceil(filteredData.length / rowsPerPage),
-    [filteredData.length, rowsPerPage]
+    () => Math.ceil(totalRecords / rowsPerPage),
+    [totalRecords, rowsPerPage]
   );
+
+  // Directly use leadsData as it's now already paginated from server
+  const currentData = leadsData;
 
   const startIndex = useMemo(
     () => (currentPage - 1) * rowsPerPage,
     [currentPage, rowsPerPage]
   );
 
-  const currentData = useMemo(
-    () => filteredData.slice(startIndex, startIndex + rowsPerPage),
-    [filteredData, startIndex, rowsPerPage]
-  );
-
   /* ---------------- ACTIONS ---------------- */
   const resetPage = useCallback(() => setCurrentPage(1), []);
 
-  const copyToClipboard = useCallback((id, location, name, phone) => {
+  const copyToClipboard = useCallback((id, location, phone) => {
     const text = `
-    *${location}*
-    *${name}* , ${phone}
+    *${location}* ${phone}
     `;
 
     navigator.clipboard.writeText(text);
@@ -537,7 +540,9 @@ const WhatsappLead = () => {
 
   const handleExportCSV = useCallback(() => {
     // Determine which data to export: existing filtered data
-    const dataToExport = filteredData.length > 0 ? filteredData : [];
+    // For Server Side, we might only be able to export CURRENT PAGE or need a separate "Export All" endpoint
+    // For now, exporting current view
+    const dataToExport = currentData.length > 0 ? currentData : [];
 
     if (dataToExport.length === 0) {
       alert("No data available to export.");
@@ -568,10 +573,10 @@ const WhatsappLead = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [filteredData]);
+  }, [currentData]);
 
   const handleExportPDF = useCallback(() => {
-    const dataToExport = filteredData.length > 0 ? filteredData : [];
+    const dataToExport = currentData.length > 0 ? currentData : [];
 
     if (dataToExport.length === 0) {
       alert("No data available to export.");
@@ -588,7 +593,7 @@ const WhatsappLead = () => {
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
-    doc.text(`Total Records: ${dataToExport.length}`, 14, 35);
+    doc.text(`Total Records: ${totalRecords}`, 14, 35); // Use totalRecords
 
     // Table
     const tableColumn = ["#", "Location", "Customer", "Phone", "Status", "Date"];
@@ -596,7 +601,7 @@ const WhatsappLead = () => {
 
     dataToExport.forEach((lead, index) => {
       const leadData = [
-        index + 1,
+        index + 1, // This resets on every page, maybe (currentPage-1)*rows + index + 1?
         lead.location,
         lead.customerName,
         lead.customerPhone,
@@ -624,7 +629,7 @@ const WhatsappLead = () => {
     });
 
     doc.save(`Leads_Export_${new Date().toISOString().slice(0, 10)}.pdf`);
-  }, [filteredData]);
+  }, [currentData, totalRecords]);
 
   /* ---------------- UI ---------------- */
   return (
@@ -669,7 +674,7 @@ const WhatsappLead = () => {
               <div className="flex justify-end gap-2 mb-4 mt-1">
                 <button
                   onClick={handleExportCSV}
-                  disabled={filteredData.length === 0}
+                  disabled={currentData.length === 0}
                   className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   title="Export as CSV"
                 >
@@ -677,7 +682,7 @@ const WhatsappLead = () => {
                 </button>
                 <button
                   onClick={handleExportPDF}
-                  disabled={filteredData.length === 0}
+                  disabled={currentData.length === 0}
                   className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   title="Export as PDF"
                 >
@@ -1056,7 +1061,7 @@ const WhatsappLead = () => {
                             <td className="p-3 border">
                               <button
                                 onClick={() =>
-                                  copyToClipboard(lead.id, lead.location, lead.customerName, lead.customerPhone)
+                                  copyToClipboard(lead.id, lead.location, lead.customerPhone)
                                 }
                                 className={`p-2 rounded-full transition ${lead.dbStatus === 'done'
                                   ? "text-gray-300 "
@@ -1339,7 +1344,7 @@ const WhatsappLead = () => {
             {/* PAGINATION */}
             <div className="flex justify-between items-center mt-4 text-sm">
               <span>
-                Showing {currentData.length} of {filteredData.length}
+                Showing {currentData.length} of {totalRecords}
               </span>
 
               <div className="flex items-center gap-2">
