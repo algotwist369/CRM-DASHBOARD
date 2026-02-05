@@ -338,6 +338,7 @@ const getAllLeads = async (req, res) => {
             limit = 10,
             location,
             search,
+            status, // New Param
             sortBy = "createdAt",
             sortOrder = "desc"
         } = req.query;
@@ -345,6 +346,18 @@ const getAllLeads = async (req, res) => {
         // 1. Build Query
         const query = {};
         if (location && location !== "All") query.location = location;
+
+        // Status Filter Logic
+        if (status && status !== "All") {
+            if (status === "Done") {
+                query.status = "done";
+            } else if (status === "Sent") {
+                query.status = "forwarded";
+            } else if (status === "Pending") {
+                query.status = { $nin: ["done", "forwarded"] };
+            }
+        }
+
         if (search) {
             query.$or = [
                 { customerName: { $regex: search, $options: "i" } },
@@ -529,7 +542,8 @@ const getLeadsForManager = async (req, res) => {
             search,
             sortBy = "createdAt",
             sortOrder = "desc",
-            filterByStatus // 'called', 'whatsapped', 'pending', 'all'
+            filterByStatus, // 'called', 'whatsapped', 'pending', 'all'
+            status // 'Done', 'Sent', 'Pending', 'All'
         } = req.query;
 
         if (!managerId) {
@@ -600,6 +614,21 @@ const getLeadsForManager = async (req, res) => {
             location: { $in: locationRegexes }
         };
 
+        // Manager Specific Status Filtering
+        if (status && status !== "All") {
+            if (status === "Done") {
+                // Done by THIS manager
+                query.managerStatus = { $elemMatch: { managerId: managerId } };
+            } else if (status === "Sent") {
+                query.status = "forwarded";
+            } else if (status === "Pending") {
+                // Not done by THIS manager (and not forwarded)
+                query.managerStatus = { $not: { $elemMatch: { managerId: managerId } } };
+                query.status = { $ne: "forwarded" };
+            }
+        }
+
+
         if (search) {
             query.$or = [
                 { customerName: { $regex: search, $options: "i" } },
@@ -607,7 +636,7 @@ const getLeadsForManager = async (req, res) => {
             ];
         }
 
-        // 4. Apply status filter (called, whatsapped, pending)
+        // 4. Apply status filter (original - called, whatsapped, pending)
         if (filterByStatus && filterByStatus !== 'all') {
             if (filterByStatus === 'called') {
                 query.isCalled = true;
@@ -939,7 +968,8 @@ const getLeadsForAdmin = async (req, res) => {
             search,
             sortBy = "createdAt",
             sortOrder = "desc",
-            filterByStatus // 'called', 'whatsapped', 'pending', 'all'
+            filterByStatus, // 'called', 'whatsapped', 'pending', 'all' (Legacy/Contact Filter)
+            status // New Main Status Filter: 'Done', 'Sent', 'Pending', 'All'
         } = req.query;
 
         if (!adminId) {
@@ -965,6 +995,17 @@ const getLeadsForAdmin = async (req, res) => {
             query.location = location;
         }
 
+        // New Status Filter Logic (Global)
+        if (status && status !== "All") {
+            if (status === "Done") {
+                query.status = "done";
+            } else if (status === "Sent") {
+                query.status = "forwarded";
+            } else if (status === "Pending") {
+                query.status = { $nin: ["done", "forwarded"] };
+            }
+        }
+
         if (search) {
             query.$or = [
                 { customerName: { $regex: search, $options: "i" } },
@@ -973,7 +1014,7 @@ const getLeadsForAdmin = async (req, res) => {
             ];
         }
 
-        // 3. Apply status filter
+        // 3. Apply individual contact status filter (if used alongside)
         if (filterByStatus && filterByStatus !== 'all') {
             if (filterByStatus === 'called') {
                 query.isCalled = true;
