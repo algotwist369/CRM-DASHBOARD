@@ -56,11 +56,29 @@ class LeadAnalyticsService {
     async getSourceBreakdown(params = {}) {
         try {
             const response = await apiClient.get(endpoints.leads.analytics.sourceBreakdown, { params })
-            return { success: true, data: response.data }
+            // Backend returns {success: true, data: [...]}
+            // Axios wraps this in response.data
+            // So we need response.data.data to get the actual array
+            return response.data
         } catch (error) {
             return {
                 success: false,
                 error: error.response?.data?.message || 'Failed to fetch source breakdown'
+            }
+        }
+    }
+
+    /**
+     * Get available sources/platforms
+     */
+    async getAvailableSources() {
+        try {
+            const response = await apiClient.get(endpoints.leads.analytics.availableSources)
+            return response.data
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.message || 'Failed to fetch available sources'
             }
         }
     }

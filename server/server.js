@@ -6,6 +6,7 @@ const { initializeSocket } = require("./config/socket");
 const { startCampaignScheduler } = require("./utils/campaignScheduler");
 const whatsappWebService = require("./services/whatsappWebService");
 const { startGoogleSheetSync, stopGoogleSheetSync } = require("./services/googleSheetSyncService");
+const { scheduleCleanupJob } = require("./jobs/cleanupJob");
 const cluster = require('cluster');
 const os = require('os');
 const { redis, shutdown: redisShutdown } = require('./config/redis');
@@ -37,6 +38,10 @@ if (cluster.isPrimary) {
 
         // 3. Google Sheets Sync (Singleton)
         startGoogleSheetSync();
+
+        // 4. Cleanup Job - Delete old tracking data (runs daily at midnight)
+        scheduleCleanupJob();
+        console.log('✅ Cleanup job scheduled (runs daily at midnight)');
     }).catch(err => {
         console.error('❌ Master process failed to connect to MongoDB:', err.message);
         process.exit(1);
