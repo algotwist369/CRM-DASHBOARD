@@ -7,5 +7,15 @@ export const trackLeadClick = (businessId, leadType, pageName = null) => {
     }
 
     const page = pageName || window.location.href
-    leadService.trackClick(businessId, leadType, page)
+
+    // Get tracking data from localStorage
+    let tracking = null;
+    try {
+        const stored = localStorage.getItem('crm_traffic_source');
+        if (stored) tracking = JSON.parse(stored);
+    } catch (e) {
+        // Ignore error
+    }
+
+    leadService.trackClick(businessId, leadType, page, tracking)
 }

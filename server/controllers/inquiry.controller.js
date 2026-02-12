@@ -35,7 +35,7 @@ const sendInquiryOTP = async (req, res) => {
 // Create inquiry (Public - with OTP)
 const createInquiry = async (req, res) => {
     try {
-        const { business_id, user_name, phone, inquiry_type, otp } = req.body;
+        const { business_id, user_name, phone, inquiry_type, otp, tracking } = req.body;
 
         if (!business_id || !user_name || !phone || !otp) {
             return res.status(400).json({ success: false, message: "Missing required fields (including OTP)" });
@@ -87,7 +87,8 @@ const createInquiry = async (req, res) => {
             inquiry_type,
             group_id: groupId,
             is_source: business._id.toString() === business_id, // Mark as source if it matches the requested business_id
-            sync_count: business._id.toString() === business_id ? syncCount : 0 // Store count only on source for reference
+            sync_count: business._id.toString() === business_id ? syncCount : 0, // Store count only on source for reference
+            tracking // Add tracking data to all created inquiries
         }));
 
         const inquiries = await Inquiry.insertMany(inquiriesData);

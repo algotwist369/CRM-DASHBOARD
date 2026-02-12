@@ -153,10 +153,26 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
         <div className="text-xs text-gray-900">{serviceName}</div>
         <div className="text-[10px] text-gray-500 bg-green-200 inline p-1 rounded">{serviceDuration} mins</div>
       </td>
-      {/* <td className="px-3 py-2 whitespace-nowrap">
-        <div className="text-xs text-gray-900">{staffName}</div>
-        <div className="text-[10px] text-gray-500 capitalize">{staffRole}</div>
-      </td> */}
+      <td className="px-3 py-2 whitespace-nowrap">
+        <div
+          className="flex flex-col cursor-help items-start"
+          title={`Source: ${appointment.tracking?.source || 'Direct'}\nMedium: ${appointment.tracking?.medium || 'N/A'}\nCampaign: ${appointment.tracking?.campaign || 'N/A'}`}
+        >
+          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize border ${(appointment.tracking?.source || 'direct').toLowerCase().includes('google') ? 'bg-orange-50 text-orange-700 border-orange-100' :
+              (appointment.tracking?.source || 'direct').toLowerCase().includes('facebook') ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                (appointment.tracking?.source || 'direct').toLowerCase().includes('instagram') ? 'bg-pink-50 text-pink-700 border-pink-100' :
+                  (appointment.tracking?.source || 'direct').toLowerCase() === 'direct' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                    'bg-purple-50 text-purple-700 border-purple-100'
+            }`}>
+            {appointment.tracking?.source || 'Direct'}
+          </span>
+          {appointment.tracking?.medium && (
+            <span className="text-[9px] text-gray-400 capitalize mt-0.5 ml-0.5">
+              {appointment.tracking.medium}
+            </span>
+          )}
+        </div>
+      </td>
       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
         {appointmentDate ? appointmentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
         <div className="text-gray-500 text-[10px]">{formatTime12Hour(startTime)}</div>
@@ -685,12 +701,11 @@ const AppointmentList = () => {
                   "Business",
                   "Customer",
                   "Service",
-
-                  // "Staff", // Hidden as per request
+                  "source",
                   "Date & Time",
                   "Status",
                   "Payment",
-                  "Price & Source",
+                  "Price",
                   "Created At",
                   "Actions"
                 ].map((header, index) => (

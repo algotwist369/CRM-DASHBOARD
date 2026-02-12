@@ -48,6 +48,22 @@ class LeadAnalyticsService {
             }
         }
     }
+
+    /**
+     * Get source breakdown
+     * @param {object} params - { date, startDate, endDate, businessId }
+     */
+    async getSourceBreakdown(params = {}) {
+        try {
+            const response = await apiClient.get(endpoints.leads.analytics.sourceBreakdown, { params })
+            return { success: true, data: response.data }
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.message || 'Failed to fetch source breakdown'
+            }
+        }
+    }
 }
 
 export default new LeadAnalyticsService()

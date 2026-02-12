@@ -327,6 +327,21 @@ const AppointmentDetails = () => {
           )}
         </Section>
 
+        {/* Attribution Info */}
+        <Section title="Lead Attribution" icon={HiOutlineLocationMarker}>
+          <div className="grid grid-cols-2 gap-4">
+            <DetailItem label="Source" value={appointment.tracking?.source || 'Direct'} className="capitalize" />
+            <DetailItem label="Medium" value={appointment.tracking?.medium} className="capitalize" />
+            <DetailItem label="Campaign" value={appointment.tracking?.campaign} />
+            <DetailItem label="Term" value={appointment.tracking?.term} />
+          </div>
+          <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+            <DetailItem label="Referrer" value={appointment.tracking?.referrer} className="break-all" />
+            <DetailItem label="Landing Page" value={appointment.tracking?.landingPage} className="break-all" />
+            <DetailItem label="First Visit" value={formatDate(appointment.tracking?.firstVisitAt, true)} />
+          </div>
+        </Section>
+
       </div>
     </div>
   );

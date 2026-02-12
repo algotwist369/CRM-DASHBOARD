@@ -23,8 +23,10 @@ import appointmentService from '../../../../services/public/appointmentService'
 import { paymentService } from '../../../../services/public/paymentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import { useLeadTracking } from '../../../../hooks/useLeadTracking';
+import { useTrafficSource } from '../../../../hooks/useTrafficSource';
 
 const BookingConfirmation = () => {
+    const { getTrafficSource } = useTrafficSource();
     const navigate = useNavigate()
     const { businessLink } = useParams()
     const [business, setBusiness] = useState(null)
@@ -326,7 +328,8 @@ const BookingConfirmation = () => {
                 staffId: bookingData.staff?._id || bookingData.staff?.id || null,
                 customerNotes: bookingData.customer.notes || '',
                 paymentMethod: paymentMethod,
-                paymentStatus: 'pending' // Default to pending
+                paymentStatus: 'pending', // Default to pending
+                tracking: getTrafficSource() // Add tracking data
             }
 
             // --- ONLINE PAYMENT FLOW ---

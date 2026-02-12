@@ -78,6 +78,26 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
                 </div>
             </td>
             <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
+                <div
+                    className="flex flex-col cursor-help items-start"
+                    title={`Source: ${inquiry.tracking?.source || 'Direct'}\nMedium: ${inquiry.tracking?.medium || 'N/A'}\nCampaign: ${inquiry.tracking?.campaign || 'N/A'}`}
+                >
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize border ${(inquiry.tracking?.source || 'direct').toLowerCase().includes('google') ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                            (inquiry.tracking?.source || 'direct').toLowerCase().includes('facebook') ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                (inquiry.tracking?.source || 'direct').toLowerCase().includes('instagram') ? 'bg-pink-50 text-pink-700 border-pink-100' :
+                                    (inquiry.tracking?.source || 'direct').toLowerCase() === 'direct' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                                        'bg-purple-50 text-purple-700 border-purple-100'
+                        }`}>
+                        {inquiry.tracking?.source || 'Direct'}
+                    </span>
+                    {inquiry.tracking?.medium && (
+                        <span className="text-[9px] text-gray-400 capitalize mt-0.5 ml-0.5">
+                            {inquiry.tracking.medium}
+                        </span>
+                    )}
+                </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
                 <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider ${inquiry.inquiry_type === 'whatsapp'
                     ? 'bg-green-50 text-green-700 border-green-100'
                     : 'bg-blue-50 text-blue-700 border-blue-100'
@@ -652,6 +672,7 @@ const InquiryList = () => {
                             <tr className="bg-gray-50/50">
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Customer</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Origin Business</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Source</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Enquiry Type</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Timestamp</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Status</th>
