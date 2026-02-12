@@ -22,14 +22,6 @@ exports.trackLead = async (req, res) => {
     try {
         const { businessId, leadType, page, tracking } = req.body;
 
-        // Extract IP address (handle proxies if deployed behind Nginx/Cloudflare)
-        const getClientIp = (req) => {
-            let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
-            if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
-            if (ip === '::1' || ip === '::ffff:127.0.0.1') ip = '127.0.0.1'; // Normalize localhost
-            if (ip && ip.startsWith('::ffff:')) ip = ip.replace('::ffff:', ''); // Normalize IPv4-mapped
-            return ip;
-        };
         const ipAddress = getClientIp(req);
 
         // Validation
@@ -374,6 +366,71 @@ exports.getBusinessBreakdown = async (req, res) => {
     }
 };
 
+/**
+ * Get available platforms/sources from tracking data
+ * @route GET /api/leads/analytics/available-sources
+ * @access Admin
+ */
+exports.getAvailableSources = async (req, res) => {
+    try {
+        // 1. Security Check
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        const adminId = req.user.id;
+        const myBusinesses = await Business.find({ admin: adminId }).select('_id').lean();
+        const myBusinessIds = myBusinesses.map(b => b._id);
+
+        if (myBusinessIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                sources: []
+            });
+        }
+
+        // Get unique sources from tracking data
+        const sources = await IpPageJourney.aggregate([
+            {
+                $match: {
+                    businessId: { $in: myBusinessIds }
+                }
+            },
+            {
+                $project: {
+                    source: {
+                        $toLower: {
+                            $ifNull: ["$utm.source", { $ifNull: ["$referrer", "direct"] }]
+                        }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: "$source",
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } },
+            {
+                $project: {
+                    _id: 0,
+                    source: "$_id",
+                    count: 1
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            sources: sources.map(s => s.source)
+        });
+
+    } catch (error) {
+        console.error("Get Available Sources Error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
 
 exports.getIpJourneys = async (req, res) => {
     try {
@@ -455,7 +512,7 @@ exports.getIpJourneys = async (req, res) => {
 
 exports.getSourceAnalytics = async (req, res) => {
     try {
-        const { date, startDate, endDate, businessId } = req.query;
+        const { date, startDate, endDate, businessId, search, platform } = req.query;
 
         // 1. Security Check
         if (!req.user || req.user.role !== 'admin') {
@@ -463,7 +520,7 @@ exports.getSourceAnalytics = async (req, res) => {
         }
 
         const adminId = req.user.id;
-        const myBusinesses = await Business.find({ admin: adminId }).select('_id').lean();
+        const myBusinesses = await Business.find({ admin: adminId }).select('_id name branch').lean();
         const myBusinessIds = myBusinesses.map(b => b._id);
 
         if (myBusinessIds.length === 0) {
@@ -544,6 +601,21 @@ exports.getSourceAnalytics = async (req, res) => {
                     interactions: 1
                 }
             },
+            // Backend Search Filter
+            ...(search ? [{
+                $match: {
+                    $or: [
+                        { businessName: { $regex: search, $options: 'i' } },
+                        { branch: { $regex: search, $options: 'i' } }
+                    ]
+                }
+            }] : []),
+            // Backend Platform Filter
+            ...(platform && platform !== 'all' ? [{
+                $match: {
+                    source: { $regex: platform, $options: 'i' }
+                }
+            }] : []),
             { $sort: { visits: -1 } }
         ]);
 
@@ -557,3 +629,4 @@ exports.getSourceAnalytics = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+
