@@ -92,7 +92,8 @@ const createAppointment = async (req, res, next) => {
             specialRequests,
             bookingSource = "walk-in",
             paymentMethod = "cash",
-            advanceAmount = 0
+            advanceAmount = 0,
+            tracking // Extract tracking data
         } = req.body;
 
         // Determine business
@@ -189,7 +190,8 @@ const createAppointment = async (req, res, next) => {
             paidAmount: advanceAmount,
             paymentStatus: advanceAmount >= totalAmount ? 'paid' : advanceAmount > 0 ? 'partial' : 'pending',
             createdBy: userId,
-            createdByModel: userRole === 'admin' ? 'Admin' : 'Manager'
+            createdByModel: userRole === 'admin' ? 'Admin' : 'Manager',
+            tracking // Save tracking data
         });
 
         // Update service stats

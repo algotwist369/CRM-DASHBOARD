@@ -20,9 +20,16 @@ const getClientIp = (req) => {
 
 exports.trackLead = async (req, res) => {
     try {
-        const { businessId, leadType, page } = req.body;
+        const { businessId, leadType, page, tracking } = req.body;
 
         // Extract IP address (handle proxies if deployed behind Nginx/Cloudflare)
+        const getClientIp = (req) => {
+            let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+            if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
+            if (ip === '::1' || ip === '::ffff:127.0.0.1') ip = '127.0.0.1'; // Normalize localhost
+            if (ip && ip.startsWith('::ffff:')) ip = ip.replace('::ffff:', ''); // Normalize IPv4-mapped
+            return ip;
+        };
         const ipAddress = getClientIp(req);
 
         // Validation
@@ -59,6 +66,27 @@ exports.trackLead = async (req, res) => {
                 ipAddress: ipAddress // Refresh IP in case it changed slightly but same session
             }
         };
+
+        // If tracking data is provided, attempt to set it (First-Touch)
+        if (tracking) {
+            // We use $setOnInsert to ensuring we capture the FIRST source and don't overwrite it
+            // However, since we are using findOneAndUpdate with upsert, we can't easily condition the SET on existence 
+            // without a separate query or complex pipeline.
+            // But wait, if we want "First Touch for this IP/Business combo", we should only set if it's new.
+            // Simple approach: Use $setOnInsert for immutable first-touch fields
+            journeyUpdate.$setOnInsert = {
+                "utm.source": tracking.source,
+                "utm.medium": tracking.medium,
+                "utm.campaign": tracking.campaign,
+                "utm.term": tracking.term,
+                "utm.content": tracking.content,
+                referrer: tracking.referrer,
+                userAgent: tracking.userAgent || req.headers['user-agent']
+            };
+        }
+
+        // Only increment totalClicks for interaction events, not passive page views
+
 
         // Only increment totalClicks for interaction events, not passive page views
         if (['call', 'whatsapp', 'booking'].includes(leadType)) {
@@ -346,6 +374,7 @@ exports.getBusinessBreakdown = async (req, res) => {
     }
 };
 
+
 exports.getIpJourneys = async (req, res) => {
     try {
         const { date, startDate, endDate, businessId, page = 1, limit = 20 } = req.query;
@@ -420,6 +449,111 @@ exports.getIpJourneys = async (req, res) => {
         });
     } catch (error) {
         console.error("IP Journey Error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+exports.getSourceAnalytics = async (req, res) => {
+    try {
+        const { date, startDate, endDate, businessId } = req.query;
+
+        // 1. Security Check
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: "Access denied" });
+        }
+
+        const adminId = req.user.id;
+        const myBusinesses = await Business.find({ admin: adminId }).select('_id').lean();
+        const myBusinessIds = myBusinesses.map(b => b._id);
+
+        if (myBusinessIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                data: []
+            });
+        }
+
+        // Build match stage
+        const matchStage = {};
+
+        // Date Filter
+        let rangeStartDate, rangeEndDate;
+        if (startDate && endDate) {
+            rangeStartDate = new Date(startDate);
+            rangeStartDate.setHours(0, 0, 0, 0);
+            rangeEndDate = new Date(endDate);
+            rangeEndDate.setHours(23, 59, 59, 999);
+        } else {
+            const queryDate = date || getTodayDateString();
+            rangeStartDate = new Date(queryDate);
+            rangeStartDate.setHours(0, 0, 0, 0);
+            rangeEndDate = new Date(queryDate);
+            rangeEndDate.setHours(23, 59, 59, 999);
+        }
+        matchStage.lastVisitedAt = { $gte: rangeStartDate, $lte: rangeEndDate };
+
+        // Business Filter
+        if (businessId) {
+            const isOwner = myBusinessIds.some(id => id.toString() === businessId);
+            if (!isOwner) {
+                return res.status(403).json({ success: false, message: "Permission denied for this business" });
+            }
+            matchStage.businessId = new mongoose.Types.ObjectId(businessId);
+        } else {
+            matchStage.businessId = { $in: myBusinessIds };
+        }
+
+        const stats = await IpPageJourney.aggregate([
+            { $match: matchStage },
+            {
+                $project: {
+                    businessId: 1,
+                    totalClicks: 1,
+                    source: {
+                        $ifNull: ["$utm.source", { $ifNull: ["$referrer", "Direct/Unknown"] }]
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        businessId: "$businessId",
+                        source: "$source"
+                    },
+                    visits: { $sum: 1 },
+                    interactions: { $sum: "$totalClicks" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "businesses",
+                    localField: "_id.businessId",
+                    foreignField: "_id",
+                    as: "business",
+                    pipeline: [{ $project: { name: 1, branch: 1 } }]
+                }
+            },
+            { $unwind: "$business" },
+            {
+                $project: {
+                    _id: 0,
+                    businessName: "$business.name",
+                    branch: "$business.branch",
+                    source: "$_id.source",
+                    visits: 1,
+                    interactions: 1
+                }
+            },
+            { $sort: { visits: -1 } }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: stats
+        });
+
+    } catch (error) {
+        console.error("Source Analytics Error:", error);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };

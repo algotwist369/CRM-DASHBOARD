@@ -29,7 +29,18 @@ const ipPageJourneySchema = new mongoose.Schema(
         lastVisitedAt: {
             type: Date,
             default: Date.now
-        }
+        },
+
+        // Attribution Data
+        utm: {
+            source: { type: String },
+            medium: { type: String },
+            campaign: { type: String },
+            term: { type: String },
+            content: { type: String }
+        },
+        referrer: { type: String },
+        userAgent: { type: String }
     },
     { timestamps: true }
 );
