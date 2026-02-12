@@ -13,6 +13,7 @@ router.post('/track', leadController.trackLead);
 // Admin Protected Routes
 router.get('/analytics/summary', protect, roleMiddleware(['admin']), leadController.getAnalyticsSummary);
 router.get('/analytics/business-breakdown', protect, roleMiddleware(['admin']), leadController.getBusinessBreakdown);
+router.get('/analytics/source-breakdown', protect, roleMiddleware(['admin']), leadController.getSourceAnalytics);
 router.get('/analytics/ip-journeys', protect, roleMiddleware(['admin']), leadController.getIpJourneys);
 
 module.exports = router;

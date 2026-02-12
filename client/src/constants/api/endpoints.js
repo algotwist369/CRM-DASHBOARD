@@ -285,6 +285,7 @@ export const endpoints = {
     analytics: {
       summary: `${API_BASE_URL}/leads/analytics/summary`,
       businessBreakdown: `${API_BASE_URL}/leads/analytics/business-breakdown`,
+      sourceBreakdown: `${API_BASE_URL}/leads/analytics/source-breakdown`,
       ipJourneys: `${API_BASE_URL}/leads/analytics/ip-journeys`,
     }
   },

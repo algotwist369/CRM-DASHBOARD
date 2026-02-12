@@ -57,6 +57,20 @@ const inquirySchema = new mongoose.Schema({
         default: Date.now,
         index: true
     },
+
+    // Lead Source Attribution / tracking
+    tracking: {
+        source: { type: String },
+        medium: { type: String },
+        campaign: { type: String },
+        term: { type: String },
+        content: { type: String },
+        referrer: { type: String },
+        landingPage: { type: String },
+        ip: { type: String },
+        userAgent: { type: String },
+        firstVisitAt: { type: Date }
+    }
 });
 inquirySchema.index({ business_id: 1, createdAt: -1 });
 inquirySchema.index({ phone: 1 });

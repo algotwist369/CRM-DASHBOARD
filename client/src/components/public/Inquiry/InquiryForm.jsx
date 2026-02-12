@@ -3,8 +3,10 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaPhoneAlt, FaPaperPlane, FaLock, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import inquiryService from '../../../services/public/inquiryService';
+import { useTrafficSource } from '../../../hooks/useTrafficSource';
 
 const InquiryForm = ({ businessId, businessName, businessLink, onSuccess, onCancel }) => {
+    const { getTrafficSource } = useTrafficSource();
     const navigate = useNavigate();
     const [step, setStep] = useState('input'); // 'input', 'otp', 'success'
     const [loading, setLoading] = useState(false);
@@ -113,7 +115,8 @@ const InquiryForm = ({ businessId, businessName, businessLink, onSuccess, onCanc
                 user_name: formData.user_name,
                 phone: formData.phone,
                 inquiry_type: formData.inquiry_type,
-                otp: formData.otp
+                otp: formData.otp,
+                tracking: getTrafficSource() // Add tracking data
             };
 
             const response = await inquiryService.createInquiry(payload);

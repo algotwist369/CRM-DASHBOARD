@@ -2,8 +2,8 @@ import apiClient from './client'
 import { endpoints } from '../../constants/api/endpoints'
 
 class LeadService {
-   
-    trackClick(businessId, leadType, page) {
+
+    trackClick(businessId, leadType, page, tracking = null) {
         if (!businessId || !leadType) return
 
         // use native fetch with keepalive: true to ensure request completes even if page unloads/navigates
@@ -17,7 +17,8 @@ class LeadService {
                 body: JSON.stringify({
                     businessId,
                     leadType,
-                    page
+                    page,
+                    tracking
                 }),
                 keepalive: true
             }).catch(err => {

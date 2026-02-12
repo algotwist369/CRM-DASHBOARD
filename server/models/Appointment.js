@@ -265,6 +265,20 @@ const appointmentSchema = new mongoose.Schema(
         updatedByModel: {
             type: String,
             enum: ['Customer', 'Staff', 'Manager', 'Admin']
+        },
+
+        // Lead Source Attribution / tracking
+        tracking: {
+            source: { type: String }, // utm_source or inferred
+            medium: { type: String }, // utm_medium
+            campaign: { type: String }, // utm_campaign
+            term: { type: String }, // utm_term
+            content: { type: String }, // utm_content
+            referrer: { type: String }, // document.referrer
+            landingPage: { type: String }, // First page visited
+            ip: { type: String },
+            userAgent: { type: String },
+            firstVisitAt: { type: Date }
         }
     },
     {
