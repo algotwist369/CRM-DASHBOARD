@@ -39,6 +39,7 @@ const Map = lazy(() => import('../../../../components/common/Map/Map'))
 const BusinessInfoReviews = lazy(() => import('./BusinessInfoReviews'))
 import HeroSection from './HeroSection'
 import MediaRenderer from './MediaRenderer'
+import MediaGallery from './MediaGallery'
 import { trackLeadClick } from '../../../../utils/analytics'
 import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
 import SpecialOfferModal from '../../../../components/public/Offer/SpecialOfferModal'
@@ -69,7 +70,7 @@ const BusinessInfo = () => {
   const [modalImageIndex, setModalImageIndex] = useState(0)
   const [isInquiryOpen, setIsInquiryOpen] = useState(false)
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false)
-  
+
   // Popup queue system
   const currentModalRef = useRef(null) // Track which modal is currently open
   // Track which popups have been shown to prevent duplicates
@@ -117,8 +118,8 @@ const BusinessInfo = () => {
       }
       return undefined
     },
-    staleTime: 10 * 60 * 1000,  
-    gcTime: 30 * 60 * 1000,  
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     retry: 1
   })
 
@@ -233,18 +234,18 @@ const BusinessInfo = () => {
     // Clear current modal reference only if this is the currently open modal
     if (currentModalRef.current === modalType) {
       currentModalRef.current = null
-      
+
       // Mark as shown when closing
       if (modalType === 'inquiry') {
         hasShownInquiryRef.current = true
-        
+
         // Show Special Offer Modal after Inquiry Modal closes
         setTimeout(() => {
-            if (!hasShownOfferRef.current && business?.services?.length > 0) {
-                hasShownOfferRef.current = true
-                setIsOfferModalOpen(true)
-                currentModalRef.current = 'offer'
-            }
+          if (!hasShownOfferRef.current && business?.services?.length > 0) {
+            hasShownOfferRef.current = true
+            setIsOfferModalOpen(true)
+            currentModalRef.current = 'offer'
+          }
         }, 500)
       } else if (modalType === 'offer') {
         hasShownOfferRef.current = true
@@ -784,106 +785,39 @@ const BusinessInfo = () => {
 
   // Image Modal/Lightbox Component
   const renderImageModal = useCallback(() => {
-    if (!isImageModalOpen || allImages.length === 0) return null
+    if (!isImageModalOpen) return null
 
     return (
       <div
-        className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300"
+        className="fixed inset-0 z-[100] bg-black flex items-center justify-center transition-opacity duration-300"
         onClick={closeImageModal}
       >
         {/* Close Button */}
         <button
           onClick={closeImageModal}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
-          aria-label="Close image viewer"
+          className="absolute top-4 right-4 z-[110] bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
+          aria-label="Close media viewer"
         >
           <FaTimes className="text-xl sm:text-2xl" />
         </button>
 
-        {/* Image Container */}
         <div
-          className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
+          className="w-full h-full relative"
           onClick={(e) => e.stopPropagation()}
-          onTouchStart={onModalTouchStart}
-          onTouchMove={onModalTouchMove}
-          onTouchEnd={onModalTouchEnd}
         >
-          {/* Previous Button */}
-          {allImages.length > 1 && (
-            <button
-              onClick={prevModalImage}
-              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 sm:p-4 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
-              aria-label="Previous image"
-            >
-              <FaChevronLeft className="text-xl sm:text-2xl" />
-            </button>
-          )}
-
-          {/* Image */}
-          <div className="relative w-full h-full flex items-center justify-center">
-            <MediaRenderer
-              item={allImages[modalImageIndex]}
-              className="max-w-full max-h-[90vh] object-contain select-none rounded-lg shadow-2xl"
-              alt={`${business?.name} - Full screen`}
-            />
-          </div>
-
-          {/* Next Button */}
-          {allImages.length > 1 && (
-            <button
-              onClick={nextModalImage}
-              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 sm:p-4 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
-              aria-label="Next image"
-            >
-              <FaChevronRight className="text-xl sm:text-2xl" />
-            </button>
-          )}
-
-          {/* Image Counter & Info */}
-          {allImages.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-sm sm:text-base">
-              <span className="font-medium">{modalImageIndex + 1}</span>
-              <span className="mx-2">/</span>
-              <span>{allImages.length}</span>
-            </div>
-          )}
-
-          {/* Image Type Badge */}
-          <div className="absolute top-4 left-4 z-40 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-white text-xs sm:text-sm">
-            {allImages[modalImageIndex].type}
-          </div>
+          <MediaGallery
+            business={business}
+            allImages={allImages}
+            isModal={true}
+            modalImageIndex={modalImageIndex}
+            nextModalImage={nextModalImage}
+            prevModalImage={prevModalImage}
+            onClose={closeImageModal}
+          />
         </div>
-
-        {/* Thumbnail Strip (Mobile) */}
-        {allImages.length > 1 && (
-          <div className="absolute bottom-4 left-0 right-0 z-40 px-4 overflow-x-auto">
-            <div className="flex gap-2 justify-center max-w-4xl mx-auto">
-              {allImages.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setModalImageIndex(index)
-                  }}
-                  className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all duration-300 ${index === modalImageIndex
-                    ? 'border-white scale-110 shadow-lg'
-                    : 'border-white/30 hover:border-white/60'
-                    }`}
-                >
-                  <MediaRenderer
-                    item={image}
-                    className="w-full h-full object-cover"
-                    isActive={false}
-                    alt={`Thumbnail ${index + 1}`}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     )
-  }, [isImageModalOpen, allImages, modalImageIndex, business, closeImageModal, prevModalImage, nextModalImage])
+  }, [isImageModalOpen, business, allImages, modalImageIndex, nextModalImage, prevModalImage, closeImageModal])
 
   // SEO Configuration
   const seoConfig = useMemo(() => {
@@ -981,7 +915,7 @@ const BusinessInfo = () => {
       <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
-      
+
       {/* Inquiry Modal */}
       <InquiryModal
         isOpen={isInquiryOpen}
@@ -1374,6 +1308,13 @@ const BusinessInfo = () => {
                   <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{business.description}</p>
                 </div>
               )}
+
+              {/* Media Gallery Section */}
+              <MediaGallery
+                business={business}
+                allImages={allImages}
+                openImageModal={openImageModal}
+              />
 
               {/* Services Section */}
               {business.services && business.services.length > 0 && (

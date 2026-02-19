@@ -30,16 +30,16 @@ const PaymentMethod = ({
       ),
       description: 'Credit or debit card payment'
     },
-    digital_wallet: {
-      label: 'Digital Wallet',
-      color: 'purple',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-        </svg>
-      ),
-      description: 'Digital wallet payment (Apple Pay, Google Pay, etc.)'
-    },
+    // digital_wallet: {
+    //   label: 'Digital Wallet',
+    //   color: 'purple',
+    //   icon: (
+    //     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    //     </svg>
+    //   ),
+    //   description: 'Digital wallet payment (Apple Pay, Google Pay, etc.)'
+    // },
     bank_transfer: {
       label: 'Bank Transfer',
       color: 'indigo',
@@ -143,7 +143,7 @@ export const PaymentMethodSelector = ({
   const methods = [
     { value: 'cash', label: 'Cash', icon: '💵', description: 'Cash payment' },
     { value: 'card', label: 'Credit/Debit Card', icon: '💳', description: 'Credit or debit card payment' },
-    { value: 'digital_wallet', label: 'Digital Wallet', icon: '📱', description: 'Apple Pay, Google Pay, etc.' },
+    // { value: 'digital_wallet', label: 'Digital Wallet', icon: '📱', description: 'Apple Pay, Google Pay, etc.' },
     { value: 'bank_transfer', label: 'Bank Transfer', icon: '🏦', description: 'Direct bank transfer' },
     { value: 'check', label: 'Check', icon: '📝', description: 'Check payment' },
     { value: 'gift_card', label: 'Gift Card', icon: '🎁', description: 'Gift card payment' },
@@ -194,7 +194,7 @@ export const PaymentMethodDisplay = ({
   const methodConfig = {
     cash: { label: 'Cash', icon: '💵', description: 'Cash payment' },
     card: { label: 'Credit/Debit Card', icon: '💳', description: 'Credit or debit card payment' },
-    digital_wallet: { label: 'Digital Wallet', icon: '📱', description: 'Apple Pay, Google Pay, etc.' },
+    // digital_wallet: { label: 'Digital Wallet', icon: '📱', description: 'Apple Pay, Google Pay, etc.' },
     bank_transfer: { label: 'Bank Transfer', icon: '🏦', description: 'Direct bank transfer' },
     check: { label: 'Check', icon: '📝', description: 'Check payment' },
     gift_card: { label: 'Gift Card', icon: '🎁', description: 'Gift card payment' },

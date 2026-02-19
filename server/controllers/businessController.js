@@ -117,7 +117,7 @@ const getPublicBusinesses = async (req, res, next) => {
         const skip = useCursor ? 0 : (pageNumber - 1) * limitNumber;
 
         const businesses = await Business.find(query)
-            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags createdAt seo')
+            .select('name type branch address city state country phone email website description settings businessLink images google360ImageUrl videos socialMedia location googleMapsUrl ratings features amenities category tags createdAt seo')
             .sort({ createdAt: -1, _id: -1 })
             .skip(skip)
             .limit(limitNumber)
@@ -246,7 +246,7 @@ const getBusinessInfoByLink = async (req, res, next) => {
         const { businessLink } = req.params;
 
         const business = await Business.findOne({ businessLink, isActive: true })
-            .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods seo')
+            .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images google360ImageUrl videos socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods seo')
             .lean();
 
         if (!business) {
@@ -443,6 +443,8 @@ const getBusinessesNearby = async (req, res, next) => {
                     location: 1,
                     googleMapsUrl: 1,
                     images: 1,
+                    google360ImageUrl: 1,
+                    videos: 1,
                     socialMedia: 1,
                     ratings: 1,
                     category: 1,
@@ -941,12 +943,7 @@ const searchBusinesses = async (req, res, next) => {
         } else {
             pipeline.push({ $addFields: { exactMatchScore: 0 } });
         }
-
-        // Sorting Logic
-        // For location-only searches, prioritize rating and recency
-        // For geo searches, prioritize distance then rating
-        // For text searches, prioritize exact match score
-
+ 
         // Check for Random Distribution (Fair Lead Strategy)
         // Applied when: Default sort, No Geo-Location (distance matters less), No Near Me intent, AND No specific Text Query (relevance matters!)
         const useRandomDistribution = (!sort || sort === 'recommended') && !hasLocation && !isNearMeIntent && !searchQuery;

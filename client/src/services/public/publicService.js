@@ -389,7 +389,7 @@ class PublicService {
   // Get business categories
   async getBusinessCategories() {
     try {
-      const response = await apiClient.get('/public/business-categories')
+      const response = await apiClient.get(API_ENDPOINTS.PUBLIC.CATEGORIES)
       return { success: true, data: response.data }
     } catch (error) {
       return {

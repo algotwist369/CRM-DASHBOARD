@@ -513,15 +513,57 @@ const updateBusiness = async (req, res, next) => {
             }
         }
 
-        // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
-        const updatedBusiness = await Business.findByIdAndUpdate(
-            id,
-            { ...updates, updatedAt: new Date() },
-            { new: true, runValidators: true }
-        ).populate('managers', 'name username email phone isActive');
+        // Helper function for deep merging objects
+        const deepMerge = (target, source) => {
+            const output = { ...(target.toObject?.() || target) };
+
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    // Recursively merge nested objects
+                    if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                        output[key] = deepMerge(target[key], source[key]);
+                    } else {
+                        output[key] = source[key];
+                    }
+                } else {
+                    // Direct assignment for primitives and arrays
+                    output[key] = source[key];
+                }
+            }
+
+            return output;
+        };
+
+        // Map frontend fields to model fields if provided
+        if (updates.statistics) {
+            updates.stats = updates.statistics;
+            delete updates.statistics;
+        }
+        if (updates.notificationPreferences) {
+            updates.notifications = updates.notificationPreferences;
+            delete updates.notificationPreferences;
+        }
+
+        // Apply updates to the business object with deep merge
+        Object.keys(updates).forEach(key => {
+            if (updates[key] && typeof updates[key] === 'object' && !Array.isArray(updates[key]) && business[key]) {
+                // For nested objects (like settings, seo, images, etc.), use deep merge
+                business[key] = deepMerge(business[key], updates[key]);
+            } else {
+                // For primitive values and arrays, direct assignment
+                business[key] = updates[key];
+            }
+        });
+
+        // Save to trigger pre-save hooks (for Google Maps URL lat/lng extraction and businessLink generation)
+        const updatedBusiness = await business.save();
+
+        // Populate the managers field after save
+        await updatedBusiness.populate('managers', 'name username email phone isActive');
 
         // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
+        const { deleteCache } = require("../utils/cache");
+        await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.json({
@@ -908,8 +950,11 @@ const deleteManager = async (req, res, next) => {
             return res.status(403).json({ success: false, message: "Access denied" });
         }
 
-        // Soft delete manager
-        await Manager.findByIdAndUpdate(id, { isActive: false });
+        // Permanent delete manager
+        await Manager.findByIdAndDelete(id);
+
+        // Delete all associated staff (as they required a manager reference)
+        await Staff.deleteMany({ manager: id });
 
         // Remove manager from business managers array
         await Business.findByIdAndUpdate(manager.business._id, {

@@ -10,55 +10,7 @@ export const useFreeListing = () => {
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
 
-  /**
-   * Send OTP to phone number
-   */
-  const sendOtp = useCallback(async (phoneNumber, businessName) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const result = await freeListingService.sendOtp(phoneNumber, businessName)
-      
-      if (result.success) {
-        setData(result.data)
-        return result
-      } else {
-        setError(result.error)
-        throw new Error(result.error)
-      }
-    } catch (err) {
-      const errorMessage = err.message || 'Failed to send OTP'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
-  /**
-   * Verify OTP
-   */
-  const verifyOtp = useCallback(async (phoneNumber, otp) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const result = await freeListingService.verifyOtp(phoneNumber, otp)
-      
-      if (result.success) {
-        setData(result.data)
-        return result
-      } else {
-        setError(result.error)
-        throw new Error(result.error)
-      }
-    } catch (err) {
-      const errorMessage = err.message || 'Failed to verify OTP'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   /**
    * Create free listing
@@ -68,7 +20,7 @@ export const useFreeListing = () => {
       setLoading(true)
       setError(null)
       const result = await freeListingService.createFreeListing(formData)
-      
+
       if (result.success) {
         setData(result.data)
         return result
@@ -93,7 +45,7 @@ export const useFreeListing = () => {
       setLoading(true)
       setError(null)
       const result = await freeListingService.getAllFreeListings(params)
-      
+
       if (result.success) {
         setData(result.data)
         return result
@@ -118,7 +70,7 @@ export const useFreeListing = () => {
       setLoading(true)
       setError(null)
       const result = await freeListingService.getFreeListingById(id)
-      
+
       if (result.success) {
         setData(result.data)
         return result
@@ -143,7 +95,7 @@ export const useFreeListing = () => {
       setLoading(true)
       setError(null)
       const result = await freeListingService.updateFreeListing(id, formData)
-      
+
       if (result.success) {
         setData(result.data)
         return result
@@ -168,7 +120,7 @@ export const useFreeListing = () => {
       setLoading(true)
       setError(null)
       const result = await freeListingService.deleteFreeListing(id)
-      
+
       if (result.success) {
         setData(result.data)
         return result
@@ -206,10 +158,8 @@ export const useFreeListing = () => {
     loading,
     error,
     data,
-    
+
     // Methods
-    sendOtp,
-    verifyOtp,
     createFreeListing,
     getAllFreeListings,
     getFreeListingById,

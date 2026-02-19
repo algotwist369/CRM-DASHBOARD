@@ -8,9 +8,12 @@ export const useTrafficSource = () => {
 
     useEffect(() => {
         try {
-            // Check if we already have a source stored (First-Touch Attribution)
-            const existingSource = localStorage.getItem(STORAGE_KEY);
-            if (existingSource) return;
+            // First-Touch Attribution with specific Source Upgrading
+            const existingRaw = localStorage.getItem(STORAGE_KEY);
+            let existingSource = null;
+            try {
+                if (existingRaw) existingSource = JSON.parse(existingRaw);
+            } catch (e) { }
 
             const searchParams = new URLSearchParams(location.search);
             const utmSource = searchParams.get('utm_source');
@@ -21,28 +24,48 @@ export const useTrafficSource = () => {
 
             const referrer = document.referrer;
 
+            // If we have an existing specific source (from UTMs), don't overwrite
+            // But if we have 'direct' or 'referral', allow UTMs to "upgrade" it
+            const isGeneric = !existingSource || existingSource.source === 'direct' || existingSource.source === 'referral';
+            if (existingSource && !isGeneric && !utmSource) return;
+
             let sourceData = null;
 
             // 1. Priority: UTM Parameters
             if (utmSource) {
+                let source = utmSource;
+                const medium = utmMedium || 'unknown';
+
+                // Specific Google Business Profile (GBP) detection from UTMs
+                if (utmSource === 'google' && (medium.includes('gmb') || medium.includes('business') || medium.includes('profile'))) {
+                    source = 'google_business_profile';
+                }
+
                 sourceData = {
-                    source: utmSource,
-                    medium: utmMedium || 'unknown',
+                    source: source,
+                    medium: medium,
                     campaign: utmCampaign,
                     term: utmTerm,
                     content: utmContent,
                     referrer: referrer,
                     landingPage: window.location.href,
-                    firstVisitAt: new Date().toISOString()
+                    firstVisitAt: existingSource?.firstVisitAt || new Date().toISOString()
                 };
             }
             // 2. Fallback: Referrer (Organic/Social/Direct)
-            else if (referrer) {
+            else if (referrer && !referrer.includes(window.location.hostname)) {
                 let inferredSource = 'referral';
                 let inferredMedium = 'referral';
 
                 // Simple heuristics for common platforms
-                if (referrer.includes('google')) { inferredSource = 'google'; inferredMedium = 'organic'; }
+                if (referrer.includes('google')) {
+                    inferredSource = 'google';
+                    inferredMedium = 'organic';
+                    // Detect if coming from Google Maps/Business
+                    if (referrer.includes('google.com/maps') || referrer.includes('business.google.com')) {
+                        inferredSource = 'google_business_profile';
+                    }
+                }
                 else if (referrer.includes('facebook')) { inferredSource = 'facebook'; inferredMedium = 'social'; }
                 else if (referrer.includes('instagram')) { inferredSource = 'instagram'; inferredMedium = 'social'; }
                 else if (referrer.includes('linkedin')) { inferredSource = 'linkedin'; inferredMedium = 'social'; }
@@ -50,16 +73,13 @@ export const useTrafficSource = () => {
                 else if (referrer.includes('whatsapp')) { inferredSource = 'whatsapp'; inferredMedium = 'social'; }
                 else if (referrer.includes('youtube')) { inferredSource = 'youtube'; inferredMedium = 'social'; }
 
-                // Only track external referrers (ignore internal navigation)
-                if (!referrer.includes(window.location.hostname)) {
-                    sourceData = {
-                        source: inferredSource,
-                        medium: inferredMedium,
-                        referrer: referrer,
-                        landingPage: window.location.href,
-                        firstVisitAt: new Date().toISOString()
-                    };
-                }
+                sourceData = {
+                    source: inferredSource,
+                    medium: inferredMedium,
+                    referrer: referrer,
+                    landingPage: window.location.href,
+                    firstVisitAt: existingSource?.firstVisitAt || new Date().toISOString()
+                };
             }
             // 3. Fallback: Direct (if no referrer and no UTM)
             else {

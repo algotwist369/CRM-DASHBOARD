@@ -242,13 +242,13 @@ const API_ENDPOINTS = {
     AVAILABLE_SLOTS: '/public/available-slots',
     BOOKING: '/public/booking',
     APPOINTMENT_STATUS: '/public/appointment-status',
-    SEARCH: '/business/public/spa'
+    SEARCH: '/business/public/spa',
+    CATEGORIES: '/public/business-categories'
   },
 
   // Free Listing endpoints
   FREE_LISTING: {
-    SEND_OTP: '/free-listing/send-otp',
-    VERIFY_OTP: '/free-listing/verify-otp',
+
     CREATE: '/free-listing/create',
     LIST: '/free-listing',
     GET: (id) => `/free-listing/${id}`,

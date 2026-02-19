@@ -21,6 +21,7 @@ import managerService from '../../../services/manager/managerService';
 import authService from '../../../services/auth/authService';
 import { useSocket } from '../../../contexts/SocketContext';
 import { toast } from 'react-hot-toast';
+import { getPlatformStyle } from '../../../utils/common/sourceHelper';
 import BackButton from '../../../components/common/Button/BackButton';
 
 // --- Sub-components ---
@@ -56,56 +57,59 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
             layout
             className="hover:bg-gray-50/80 transition-colors group"
         >
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
+            <td className="pl-4 pr-1 py-2 whitespace-nowrap border-b border-gray-100">
                 <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                    <span className="text-xs font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
                         {inquiry.user_name}
                     </span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                        <HiOutlinePhone className="w-3.5 h-3.5" /> {inquiry.phone}
+                    <span className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                        <HiOutlinePhone className="w-3 h-3" /> {inquiry.phone}
                     </span>
                 </div>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
-                        <HiOutlineOfficeBuilding className="w-4.5 h-4.5" />
+            <td className="pl-1 pr-4 py-2 whitespace-nowrap border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                        <HiOutlineOfficeBuilding className="w-4 h-4" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-sm text-gray-800 font-medium">{inquiry.business_id?.name || 'N/A'}</span>
-                        <span className="text-[11px] text-gray-500 uppercase tracking-tight font-bold">{inquiry.business_id?.branch || ''}</span>
+                        <span className="text-xs text-gray-800 font-medium">{inquiry.business_id?.name || 'N/A'}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-tight font-bold">{inquiry.business_id?.branch || ''}</span>
                     </div>
                 </div>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
-                <div
-                    className="flex flex-col cursor-help items-start"
-                    title={`Source: ${inquiry.tracking?.source || 'Direct'}\nMedium: ${inquiry.tracking?.medium || 'N/A'}\nCampaign: ${inquiry.tracking?.campaign || 'N/A'}`}
-                >
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize border ${(inquiry.tracking?.source || 'direct').toLowerCase().includes('google') ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                            (inquiry.tracking?.source || 'direct').toLowerCase().includes('facebook') ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                (inquiry.tracking?.source || 'direct').toLowerCase().includes('instagram') ? 'bg-pink-50 text-pink-700 border-pink-100' :
-                                    (inquiry.tracking?.source || 'direct').toLowerCase() === 'direct' ? 'bg-gray-100 text-gray-600 border-gray-200' :
-                                        'bg-purple-50 text-purple-700 border-purple-100'
-                        }`}>
-                        {inquiry.tracking?.source || 'Direct'}
-                    </span>
-                    {inquiry.tracking?.medium && (
-                        <span className="text-[9px] text-gray-400 capitalize mt-0.5 ml-0.5">
-                            {inquiry.tracking.medium}
-                        </span>
-                    )}
-                </div>
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100">
+                {(() => {
+                    const style = getPlatformStyle(inquiry.tracking?.source || 'direct');
+                    return (
+                        <div
+                            className="flex flex-col cursor-help items-start"
+                            title={`Source: ${style.name}\nMedium: ${inquiry.tracking?.medium || 'N/A'}\nCampaign: ${inquiry.tracking?.campaign || 'N/A'}`}
+                        >
+                            <div className="flex items-center gap-1">
+                                <style.icon className={`text-[9px] ${style.text}`} />
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold capitalize border ${style.pill} ${style.text} ${style.border}`}>
+                                    {style.name}
+                                </span>
+                            </div>
+                            {inquiry.tracking?.medium && (
+                                <span className="text-[8px] text-gray-400 capitalize mt-0.5 ml-0.5">
+                                    {inquiry.tracking.medium}
+                                </span>
+                            )}
+                        </div>
+                    );
+                })()}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
-                <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider ${inquiry.inquiry_type === 'whatsapp'
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100">
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase tracking-wider ${inquiry.inquiry_type === 'whatsapp'
                     ? 'bg-green-50 text-green-700 border-green-100'
                     : 'bg-blue-50 text-blue-700 border-blue-100'
                     }`}>
                     {inquiry.inquiry_type || 'General'}
                 </span>
             </td>
-            <td className="px-6 py-4 border-b border-gray-100 text-[13px] text-gray-500 font-medium">
+            <td className="px-4 py-2 border-b border-gray-100 text-[11px] text-gray-500 font-medium">
                 <div className="flex flex-col">
                     {createdAt.split('\n').map((line, i) => (
                         <span key={i}>{line}</span>
@@ -113,19 +117,19 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
                 </div>
             </td>
 
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100">
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100">
                 {inquiry.is_recieved ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold border border-green-100 ">
-                        <HiOutlineCheck className="w-3.5 h-3.5" /> RECEIVED
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-bold border border-green-100 ">
+                        <HiOutlineCheck className="w-3 h-3" /> RECEIVED
                     </span>
                 ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-[11px] font-bold border border-amber-100 ">
-                        <HiOutlineClock className="w-3.5 h-3.5 animate-pulse" /> PENDING
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-100 ">
+                        <HiOutlineClock className="w-3 h-3 animate-pulse" /> PENDING
                     </span>
                 )}
             </td>
 
-            <td className="px-6 py-4 border-b border-gray-100">
+            <td className="px-4 py-2 border-b border-gray-100">
                 {inquiry.remark ? (
                     <div className="flex flex-col">
                         <span
@@ -149,17 +153,17 @@ const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark
                 )}
             </td>
 
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100 text-center">
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100 text-center">
                 <button
                     onClick={() => onCopy(inquiry)}
-                    className="p-2 rounded-lg text-primary-600 hover:bg-primary-50 transition-all active:scale-95"
+                    className="p-1.5 rounded-lg text-primary-600 hover:bg-primary-50 transition-all active:scale-95"
                     title="Copy WhatsApp Lead"
                 >
-                    <FaCopy className="w-4 h-4" />
+                    <FaCopy className="w-3.5 h-3.5" />
                 </button>
             </td>
 
-            <td className="px-6 py-4 whitespace-nowrap border-b border-gray-100 text-right">
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100 text-right">
                 <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!inquiry.is_recieved && (
                         <button
@@ -493,9 +497,9 @@ const InquiryList = () => {
     const totalItems = data?.pagination?.total || 0;
 
     return (
-        <div className="max-w-[1600px] mx-auto space-y-8 pb-12">
+        <div className="max-w-full mx-auto space-y-4 pb-8">
             {/* Header Section */}
-            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 bg-white p-6 md:p-8 rounded-2xl border border-gray-100  overflow-hidden relative group">
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 bg-white p-4 md:p-6 rounded-2xl border border-gray-100  overflow-hidden relative group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50 rounded-full -mr-32 -mt-32 opacity-30 group-hover:scale-110 transition-transform duration-700"></div>
                 <div className="relative z-10">
                     <BackButton />
@@ -504,8 +508,8 @@ const InquiryList = () => {
                             <FaQuestionCircle className="w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Customer Inquiries</h1>
-                            <p className="text-gray-500 font-medium text-sm mt-0.5">
+                            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Customer Inquiries</h1>
+                            <p className="text-gray-400 font-medium text-[11px] mt-0.5">
                                 {user?.role === 'admin'
                                     ? 'Global lead management across all ecosystem branches'
                                     : 'Manage customer interests and leads for your branch'}
@@ -564,20 +568,20 @@ const InquiryList = () => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                     >
-                        <div className="bg-white border border-gray-100 p-6 md:p-8 rounded-2xl  space-y-6">
+                        <div className="bg-white border border-gray-100 p-6 md:p-8 rounded-2xl space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
                                 {/* Search */}
-                                <div className="space-y-2 lg:col-span-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Search Customer</label>
+                                <div className="space-y-1.5 lg:col-span-2">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Search Customer</label>
                                     <div className="relative">
-                                        <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                        <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                                         <input
                                             type="text"
                                             name="search"
                                             placeholder="Name or Phone..."
                                             value={filters.search}
                                             onChange={handleFilterChange}
-                                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-sm transition-all"
+                                            className="w-full pl-10 pr-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all"
                                         />
                                     </div>
                                 </div>
@@ -593,7 +597,7 @@ const InquiryList = () => {
                                                 name="startDate"
                                                 value={filters.startDate}
                                                 onChange={handleFilterChange}
-                                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all"
+                                                className="w-full pl-9 pr-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-[11px] transition-all"
                                             />
                                         </div>
                                     </div>
@@ -606,7 +610,7 @@ const InquiryList = () => {
                                                 name="endDate"
                                                 value={filters.endDate}
                                                 onChange={handleFilterChange}
-                                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all"
+                                                className="w-full pl-9 pr-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-[11px] transition-all"
                                             />
                                         </div>
                                     </div>
@@ -619,7 +623,7 @@ const InquiryList = () => {
                                         name="status"
                                         value={filters.status}
                                         onChange={handleFilterChange}
-                                        className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-sm transition-all appearance-none cursor-pointer"
+                                        className="w-full px-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="">All Statuses</option>
                                         <option value="false">Pending Only</option>
@@ -634,7 +638,7 @@ const InquiryList = () => {
                                         name="type"
                                         value={filters.type}
                                         onChange={handleFilterChange}
-                                        className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-sm transition-all appearance-none cursor-pointer"
+                                        className="w-full px-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="">Any Type</option>
                                         <option value="general">General</option>
@@ -670,17 +674,17 @@ const InquiryList = () => {
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-gray-50/50">
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Customer</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Origin Business</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Source</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Enquiry Type</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Timestamp</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Status</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Remark</th>
-                                <th className="px-6 py-5 text-center text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">
-                                    Copy Lead
+                                <th className="pl-4 pr-1 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Customer</th>
+                                <th className="pl-1 pr-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Origin Business</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Source</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Enquiry Type</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Timestamp</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Status</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Remark</th>
+                                <th className="px-4 py-3 text-center text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">
+                                    Copy
                                 </th>
-                                <th className="px-6 py-5 text-right text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Actions</th>
+                                <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="relative">

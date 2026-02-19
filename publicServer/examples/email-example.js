@@ -1,8 +1,4 @@
-/**
- * EMAIL SENDING USAGE EXAMPLES
- * 
- * This file shows how to use the sendMail utility in your controllers
- */
+
 
 const { 
     sendEmail, 

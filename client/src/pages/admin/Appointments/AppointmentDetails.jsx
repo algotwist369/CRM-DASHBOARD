@@ -17,6 +17,7 @@ import {
 } from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
+import { getPlatformStyle } from '../../../utils/common/sourceHelper';
 import BackButton from '../../../components/common/Button/BackButton';
 
 const Section = ({ title, icon: Icon, children }) => (
@@ -329,17 +330,34 @@ const AppointmentDetails = () => {
 
         {/* Attribution Info */}
         <Section title="Lead Attribution" icon={HiOutlineLocationMarker}>
-          <div className="grid grid-cols-2 gap-4">
-            <DetailItem label="Source" value={appointment.tracking?.source || 'Direct'} className="capitalize" />
-            <DetailItem label="Medium" value={appointment.tracking?.medium} className="capitalize" />
-            <DetailItem label="Campaign" value={appointment.tracking?.campaign} />
-            <DetailItem label="Term" value={appointment.tracking?.term} />
-          </div>
-          <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
-            <DetailItem label="Referrer" value={appointment.tracking?.referrer} className="break-all" />
-            <DetailItem label="Landing Page" value={appointment.tracking?.landingPage} className="break-all" />
-            <DetailItem label="First Visit" value={formatDate(appointment.tracking?.firstVisitAt, true)} />
-          </div>
+          {(() => {
+            const style = getPlatformStyle(appointment.tracking?.source || 'direct');
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <DetailItem
+                    label="Source"
+                    value={
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <style.icon className={`text-[10px] ${style.text}`} />
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize border ${style.pill} ${style.text} ${style.border}`}>
+                          {style.name}
+                        </span>
+                      </div>
+                    }
+                  />
+                  <DetailItem label="Medium" value={appointment.tracking?.medium} className="capitalize" />
+                  <DetailItem label="Campaign" value={appointment.tracking?.campaign} />
+                  <DetailItem label="Term" value={appointment.tracking?.term} />
+                </div>
+                <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                  <DetailItem label="Referrer" value={appointment.tracking?.referrer} className="break-all" />
+                  <DetailItem label="Landing Page" value={appointment.tracking?.landingPage} className="break-all" />
+                  <DetailItem label="First Visit" value={formatDate(appointment.tracking?.firstVisitAt, true)} />
+                </div>
+              </>
+            );
+          })()}
         </Section>
 
       </div>
