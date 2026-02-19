@@ -1,119 +1,14 @@
 const mongoose = require("mongoose");
 const FreeListing = require("../models/FreeListing");
-const VerifiedUser = require("../models/VerifiedUser.model");
-const Otp = require("../models/Otp.model");
-const { sendOtpToUser, verifyOtpCode } = require("../utils/sendOTP");
-const { uploadMultiple, processUploadedFiles, handleUploadError } = require("../utils/uploadFiles");
+
+const { processUploadedFiles } = require("../utils/uploadFiles");
 const { sendNotificationEmail } = require("../utils/sendMail");
-
-// =============================
-// STEP 1: SEND OTP
-// =============================
-exports.sendOtp = async (req, res) => {
-    try {
-        const { phoneNumber, businessName } = req.body;
-
-        if (!phoneNumber || !businessName) {
-            return res.status(400).json({
-                success: false,
-                message: "Phone number and business name are required",
-            });
-        }
-
-        const otp = await sendOtpToUser(phoneNumber, businessName);
-
-        res.status(200).json({
-            success: true,
-            message: "OTP sent successfully",
-        });
-    } catch (error) {
-        console.error("Send OTP Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to send OTP",
-        });
-    }
-};
-
-// =============================
-// STEP 2: VERIFY OTP
-// =============================
-exports.verifyOtp = async (req, res) => {
-    try {
-        const { phoneNumber, otp } = req.body;
-
-        if (!phoneNumber || !otp) {
-            return res.status(400).json({
-                success: false,
-                message: "Phone number and OTP are required",
-            });
-        }
-
-        // Get OTP record to retrieve businessName
-        const otpRecord = await Otp.findOne({ phoneNumber, otp });
-
-        if (!otpRecord) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid or expired OTP",
-            });
-        }
-
-        // Check if OTP has expired
-        if (otpRecord.expiresAt < new Date()) {
-            await Otp.deleteOne({ _id: otpRecord._id });
-            return res.status(400).json({
-                success: false,
-                message: "OTP has expired. Please request a new one.",
-            });
-        }
-
-        // Save verified status with businessName
-        await VerifiedUser.updateOne(
-            { phoneNumber },
-            { 
-                phoneNumber, 
-                businessName: otpRecord.businessName,
-                isVerified: true 
-            },
-            { upsert: true }
-        );
-
-        // Delete used OTP
-        await Otp.deleteOne({ _id: otpRecord._id });
-
-        return res.status(200).json({
-            success: true,
-            message: "OTP Verified Successfully",
-        });
-    } catch (error) {
-        console.error("Verify OTP Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to verify OTP",
-            error: error.message,
-        });
-    }
-};
 
 // =============================
 // STEP 3: CREATE FREE LISTING (Allowed only if verified)
 // =============================
 exports.createFreeListing = async (req, res) => {
     try {
-        const { phoneNumber } = req.body;
-
-        // Check if phone number is verified
-        const verified = await VerifiedUser.findOne({ phoneNumber });
-
-        if (!verified || !verified.isVerified) {
-            return res.status(403).json({
-                success: false,
-                message: "Phone number not verified. Please verify your phone number first.",
-            });
-        }
-
-        // Process uploaded files if any
         let documentUrls = [];
         if (req.files && req.files.length > 0) {
             const uploadedFiles = processUploadedFiles(req);
@@ -121,8 +16,40 @@ exports.createFreeListing = async (req, res) => {
         }
 
         // Prepare listing data
+        const {
+            companyName,
+            phoneNumber,
+            fullName,
+            email,
+            businessType,
+            businessName,
+            branch,
+            description,
+            website,
+            address,
+            city,
+            state,
+            country,
+            zipCode,
+            category,
+        } = req.body;
+
         const listingData = {
-            ...req.body,
+            companyName,
+            phoneNumber,
+            fullName,
+            email,
+            businessType,
+            businessName,
+            branch,
+            description,
+            website,
+            address,
+            city,
+            state,
+            country,
+            zipCode,
+            category,
             documents: documentUrls.length > 0 ? documentUrls : (req.body.documents || [])
         };
 
@@ -136,7 +63,7 @@ exports.createFreeListing = async (req, res) => {
                     entry.email,
                     "Free Listing Created Successfully",
                     `Hello ${entry.fullName}, your free listing for ${entry.businessName} has been created successfully.`,
-                    `${process.env.FRONTEND_URL || "http://localhost:3000"}/listings/${entry._id}`
+                    `${process.env.FRONTEND_URL || "http://localhost:5173"}/listings/${entry._id}`
                 );
             } catch (emailError) {
                 console.error("Failed to send confirmation email:", emailError);
@@ -151,7 +78,7 @@ exports.createFreeListing = async (req, res) => {
         });
     } catch (error) {
         console.error("Create Free Listing Error:", error);
-        
+
         // Handle validation errors
         if (error.name === "ValidationError") {
             const errors = Object.values(error.errors).map(err => err.message);
@@ -178,7 +105,6 @@ exports.createFreeListing = async (req, res) => {
     }
 };
 
-
 // =============================
 // GET ALL FREE LISTINGS (with search and filters)
 // =============================
@@ -189,7 +115,7 @@ exports.getAllFreeListings = async (req, res) => {
 
         page = parseInt(page);
         limit = parseInt(limit);
-        
+
         // Validate pagination
         if (page < 1) page = 1;
         if (limit < 1 || limit > 100) limit = 10;
@@ -199,7 +125,7 @@ exports.getAllFreeListings = async (req, res) => {
 
         // Build search query
         const query = {};
-        
+
         if (search.trim()) {
             query.$or = [
                 { companyName: { $regex: search, $options: "i" } },
@@ -342,7 +268,7 @@ exports.updateFreeListing = async (req, res) => {
         });
     } catch (error) {
         console.error("Update Free Listing Error:", error);
-        
+
         // Handle validation errors
         if (error.name === "ValidationError") {
             const errors = Object.values(error.errors).map(err => err.message);

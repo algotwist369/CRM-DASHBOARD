@@ -1,1814 +1,247 @@
 import React, { useEffect, useState } from "react";
-import {
-  FaStore,
-  FaPhoneAlt,
-  FaEnvelope,
-  FaGlobe,
-  FaMapMarkerAlt,
-  FaBuilding,
-  FaChevronLeft,
-  FaChevronRight,
-  FaImage,
-  FaCreditCard,
-  FaUsers,
-  FaClock,
-  FaCog,
-  FaCheckCircle,
-} from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaCheck } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import businessService from "../../../../services/admin/businessService";
+import { Button } from "../../../../../../../ankit pathak/PM_A/client/src/components/common";
+import useBusinessForm from "../../../../hooks/business/useBusinessForm";
+
+// Step Components
+import BasicInfoStep from "./components/BasicInfoStep";
+import LocationContactStep from "./components/LocationContactStep";
+import CategoryTagsStep from "./components/CategoryTagsStep";
+import MediaSocialStep from "./components/MediaSocialStep";
+import LegalRegistrationStep from "./components/LegalRegistrationStep";
+import PaymentBankingStep from "./components/PaymentBankingStep";
+import CapacityFeaturesStep from "./components/CapacityFeaturesStep";
+import BusinessHoursStep from "./components/BusinessHoursStep";
+import AdditionalSettingsStep from "./components/AdditionalSettingsStep";
+import AppointmentSettingsStep from "./components/AppointmentSettingsStep";
+
+const INITIAL_STATE = {
+  type: "", name: "", branch: "", description: "",
+  address: "", city: "", state: "", country: "India", zipCode: "",
+  phone: "", alternatePhone: "", email: "", website: "", googleMapsUrl: "",
+  category: "", subCategory: "", tags: [], specialties: [], languages: [],
+  google360ImageUrl: [],
+  videos: [],
+  images: { logo: "", banner: "", thumbnail: "", gallery: [] },
+  socialMedia: { facebook: "", instagram: "", twitter: "", linkedin: "", youtube: "", whatsapp: "", telegram: "" },
+  registration: { gstNumber: "", panNumber: "", registrationNumber: "", licenseNumber: "", taxId: "", registrationDate: "", expiryDate: "" },
+  paymentMethods: { cash: true, card: false, upi: false, netBanking: false, wallet: false },
+  bankDetails: { accountName: "", accountNumber: "", bankName: "", ifscCode: "", branch: "", upiId: "", qrCode: "" },
+  capacity: { seatingCapacity: "", parkingSpaces: "", numberOfRooms: "", numberOfFloors: "", totalArea: "" },
+  features: [], amenities: [], daysOff: [], holidays: [],
+  settings: {
+    workingHours: { open: "09:00", close: "18:00", days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] },
+    currency: "INR",
+    timezone: "Asia/Kolkata",
+    appointmentSettings: {
+      advanceBookingDays: 10,
+      minAdvanceBookingHours: 1,
+      maxAdvanceBookingHours: 480,
+      slotDuration: 30,
+      bufferTime: 15,
+      allowOnlineBooking: true,
+      requireAdvancePayment: false,
+      advancePaymentPercentage: 0,
+      cancellationPolicy: {
+        allowCancellation: true,
+        minCancellationHours: 24,
+        refundPercentage: 100
+      },
+      reminderSettings: {
+        sendSMSReminder: false,
+        sendEmailReminder: false,
+        sendWhatsappReminder: true,
+        reminderHours: 24
+      }
+    }
+  },
+  seo: { metaTitle: "", metaDescription: "", keywords: [], ogImage: "" },
+  subscription: { plan: "free", startDate: "", endDate: "", isActive: true, features: [] },
+  notificationPreferences: { emailNotifications: true, smsNotifications: false, whatsappNotifications: false, pushNotifications: true },
+  customFields: []
+};
+
+const STEPS = [
+  { id: 1, title: "Identity", sub: "Basic business info" },
+  { id: 2, title: "Location", sub: "Where to find you" },
+  { id: 3, title: "Category", sub: "Services & Tags" },
+  { id: 4, title: "Media", sub: "Social & Images" },
+  { id: 5, title: "Legal", sub: "Tax & Compliance" },
+  { id: 6, title: "Finance", sub: "Banking & Payments" },
+  { id: 7, title: "Facility", sub: "Space & Features" },
+  { id: 8, title: "Operations", sub: "Hours & Schedule" },
+  { id: 9, title: "Appointments", sub: "Booking Rules" },
+  { id: 10, title: "Advanced", sub: "SEO & Custom" }
+];
 
 const CreateBusiness = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 9;
+  const [loading, setLoading] = useState(false);
+  const [holidayInput, setHolidayInput] = useState({ name: "", date: "" });
+  const [customFieldInput, setCustomFieldInput] = useState({ key: "", value: "" });
 
-  const [formData, setFormData] = useState({
-    // Basic Information
-    type: "",
-    name: "",
-    branch: "",
-    description: "",
-
-    // Location & Contact
-    address: "",
-    city: "",
-    state: "",
-    country: "India",
-    zipCode: "",
-    phone: "",
-    alternatePhone: "",
-    email: "",
-    website: "",
-    googleMapsUrl: "",
-
-    // Category & Tags
-    category: "",
-    subCategory: "",
-    tags: [],
-    specialties: [],
-    languages: [],
-
-    // Images
-    images: {
-      logo: "",
-      banner: "",
-      thumbnail: "",
-      gallery: [],
-    },
-
-    // Social Media
-    socialMedia: {
-      facebook: "",
-      instagram: "",
-      twitter: "",
-      linkedin: "",
-      youtube: "",
-      whatsapp: "",
-      telegram: "",
-    },
-
-    // Registration & Legal
-    registration: {
-      gstNumber: "",
-      panNumber: "",
-      registrationNumber: "",
-      licenseNumber: "",
-      taxId: "",
-      registrationDate: "",
-      expiryDate: "",
-    },
-
-    // Payment Methods
-    paymentMethods: {
-      cash: true,
-      card: false,
-      upi: false,
-      netBanking: false,
-      wallet: false,
-    },
-
-    // Bank Details
-    bankDetails: {
-      accountName: "",
-      accountNumber: "",
-      bankName: "",
-      ifscCode: "",
-      branch: "",
-      upiId: "",
-      qrCode: "",
-    },
-
-    // Capacity
-    capacity: {
-      seatingCapacity: "",
-      parkingSpaces: "",
-      numberOfRooms: "",
-      numberOfFloors: "",
-      totalArea: "",
-    },
-
-    // Features & Amenities
-    features: [],
-    amenities: [],
-
-    // Business Hours & Days Off
-    daysOff: [],
-    holidays: [],
-
-    // Settings
-    settings: {
-      workingHours: {
-        open: "09:00",
-        close: "18:00",
-        days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
-      },
-      currency: "INR",
-      timezone: "Asia/Kolkata",
-    },
-
-    // SEO
-    seo: {
-      metaTitle: "",
-      metaDescription: "",
-      keywords: [],
-      ogImage: "",
-    },
-
-    // Subscription
-    subscription: {
-      plan: "free",
-      startDate: "",
-      endDate: "",
-      isActive: true,
-      features: [],
-    },
-
-    // Notification Preferences
-    notificationPreferences: {
-      emailNotifications: true,
-      smsNotifications: false,
-      whatsappNotifications: false,
-      pushNotifications: true,
-    },
-
-    // Custom Fields
-    customFields: [],
-  });
-
-  const [errors, setErrors] = useState({});
-  const [tagInput, setTagInput] = useState("");
-  const [specialtyInput, setSpecialtyInput] = useState("");
-  const [languageInput, setLanguageInput] = useState("");
-  const [featureInput, setFeatureInput] = useState("");
-  const [amenityInput, setAmenityInput] = useState("");
-  const [keywordInput, setKeywordInput] = useState("");
-  const [galleryInput, setGalleryInput] = useState("");
-  const [daysOffInput, setDaysOffInput] = useState("");
-  const [holidayInput, setHolidayInput] = useState({ name: "", date: "", reason: "" });
-  const [customFieldInput, setCustomFieldInput] = useState({ key: "", value: "", type: "text" });
+  const {
+    formData,
+    errors,
+    setErrors,
+    handleChange,
+    handleArrayAdd,
+    handleArrayRemove,
+    setNestedValue,
+    clearForm
+  } = useBusinessForm(INITIAL_STATE);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    if (name.includes(".")) {
-      const [parent, child] = name.split(".");
-      setFormData((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: type === "checkbox" ? checked : value,
-        },
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-    validateField(name, type === "checkbox" ? checked : value);
-  };
-
-  const handleArrayAdd = (field, input, setInput) => {
-    if (input.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: [...prev[field], input.trim()],
-      }));
-      setInput("");
-    }
-  };
-
-  const handleArrayRemove = (field, index) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: prev[field].filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleAddGalleryImage = () => {
-    if (galleryInput.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        images: {
-          ...prev.images,
-          gallery: [...prev.images.gallery, galleryInput.trim()],
-        },
-      }));
-      setGalleryInput("");
-    }
-  };
-
-  const handleRemoveGalleryImage = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: {
-        ...prev.images,
-        gallery: prev.images.gallery.filter((_, i) => i !== index),
-      },
-    }));
-  };
-
-  const handleAddHoliday = () => {
-    if (holidayInput.name && holidayInput.date) {
-      setFormData((prev) => ({
-        ...prev,
-        holidays: [...prev.holidays, holidayInput],
-      }));
-      setHolidayInput({ name: "", date: "", reason: "" });
-    }
-  };
-
-  const handleRemoveHoliday = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      holidays: prev.holidays.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleAddCustomField = () => {
-    if (customFieldInput.key && customFieldInput.value) {
-      setFormData((prev) => ({
-        ...prev,
-        customFields: [...prev.customFields, customFieldInput],
-      }));
-      setCustomFieldInput({ key: "", value: "", type: "text" });
-    }
-  };
-
-  const handleRemoveCustomField = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      customFields: prev.customFields.filter((_, i) => i !== index),
-    }));
-  };
-
-  const validateField = (name, value) => {
-    let msg = "";
-    if (name === "type" && !value) msg = "Business type is required";
-    if (name === "name" && value && value.trim().length < 3)
-      msg = "Name must be at least 3 characters";
-    if (name === "phone" && value && !/^[6-9]\d{9}$/.test(value))
-      msg = "Enter a valid 10-digit phone number starting with 6-9";
-    if (name === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-      msg = "Invalid email format";
-    if (name === "website" && value && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(value))
-      msg = "Enter a valid website URL";
-    setErrors((prev) => ({ ...prev, [name]: msg }));
-  };
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
 
   const validateStep = (step) => {
-    let valid = true;
-    const stepFields = {
-      1: ["type", "name", "branch"],
-      2: ["address", "city", "state", "phone"],
-    };
-
-    if (stepFields[step]) {
-      stepFields[step].forEach((field) => {
-        validateField(field, formData[field]);
-        if (errors[field] || (field === "type" && !formData[field])) {
-          valid = false;
-        }
-      });
+    const newErrors = {};
+    if (step === 1) {
+      if (!formData.type) newErrors.type = "Required";
+      if (!formData.name) newErrors.name = "Required";
     }
-    return valid;
+    if (step === 2) {
+      if (!formData.address) newErrors.address = "Required";
+      if (!formData.phone) newErrors.phone = "Required";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
-    } else {
-      toast.error("Please fill required fields correctly");
-    }
+    if (validateStep(currentStep)) setCurrentStep(p => Math.min(STEPS.length, p + 1));
+    else toast.error("Required fields missing");
   };
 
-  const handlePrevious = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
-  };
-
-  // Helper to recursively clean empty values
-  const cleanFormData = (data) => {
-    if (typeof data !== "object" || data === null) {
-      return data;
-    }
-
-    if (Array.isArray(data)) {
-      const cleanedArray = data
-        .map(cleanFormData)
-        .filter((item) => item !== "" && item !== null && item !== undefined);
-      return cleanedArray.length > 0 ? cleanedArray : undefined;
-    }
-
-    const cleanedObj = {};
-    Object.keys(data).forEach((key) => {
-      const value = cleanFormData(data[key]);
-      if (value !== "" && value !== null && value !== undefined) {
-        if (typeof value === "object" && Object.keys(value).length === 0) {
-          // Skip empty objects
-          return;
-        }
-        cleanedObj[key] = value;
-      }
-    });
-
-    return Object.keys(cleanedObj).length > 0 ? cleanedObj : undefined;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateStep(1)) {
-      toast.error("Please fill required fields correctly");
-      return;
-    }
-
+  const handleSubmit = async () => {
+    if (!validateStep(1) || !validateStep(2)) return;
     try {
       setLoading(true);
-
-      // Deep clean the form data
-      const cleanedData = cleanFormData(formData) || {};
-
-      // Ensure required objects exist even if empty (though backend might handle it, safer to send structure if needed)
-      // Actually, cleaner is better. If backend requires "settings", we should ensure defaults are there.
-      // But formData.settings is prepopulated with defaults, so it shouldn't be empty.
-
-      const res = await businessService.createBusiness(cleanedData);
+      const res = await businessService.createBusiness(formData);
       if (res.success) {
-        toast.success(`${formData.type} created successfully`);
+        toast.success("Business Created!");
+        clearForm();
         navigate("/admin/businesses");
-      } else {
-        toast.error(res.error || "Failed to create business");
       }
-    } catch (error) {
-      toast.error("Failed to create business");
+    } catch (e) {
+      toast.error("Submission failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const stepTitles = [
-    "Basic Information",
-    "Location & Contact",
-    "Category & Tags",
-    "Images & Social Media",
-    "Registration & Legal",
-    "Payment & Banking",
-    "Capacity & Features",
-    "Business Hours & Settings",
-    "Additional Settings",
-  ];
 
-  const stepIcons = [
-    FaStore,
-    FaMapMarkerAlt,
-    FaBuilding,
-    FaImage,
-    FaCheckCircle,
-    FaCreditCard,
-    FaUsers,
-    FaClock,
-    FaCog,
-  ];
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Basic Information</h3>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">
-                Business Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                className={`w-full border ${errors.type ? "border-red-500" : "border-gray-300"
-                  }  p-2.5 focus:ring-primary-500 focus:border-primary-500`}
-              >
-                <option value="">Select Type</option>
-                <option value="salon">Salon</option>
-                <option value="spa">Spa</option>
-                <option value="hotel">Hotel</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="retail">Retail</option>
-                <option value="gym">Gym</option>
-                <option value="clinic">Clinic</option>
-                <option value="cafe">Cafe</option>
-                <option value="studio">Studio</option>
-                <option value="education">Education</option>
-                <option value="automotive">Automotive</option>
-                <option value="others">Others</option>
-              </select>
-              {errors.type && <p className="text-red-500 text-sm mt-1">{errors.type}</p>}
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">
-                Business Name <span className="text-red-500">*</span>
-              </label>
-              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-                <FaBuilding className="text-gray-400 mr-2" />
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter business name"
-                  className="w-full focus:outline-none"
-                />
-              </div>
-              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">
-                Branch <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="branch"
-                value={formData.branch}
-                onChange={handleChange}
-                placeholder="e.g., Main Branch"
-                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Write something about your business"
-                rows={4}
-                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-              ></textarea>
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Location & Contact</h3>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">
-                Address <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Enter full address"
-                rows={2}
-                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-              ></textarea>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {["city", "state", "country"].map((field) => (
-                <div key={field}>
-                  <label className="block text-gray-700 font-medium mb-1">
-                    {field.charAt(0).toUpperCase() + field.slice(1)}
-                    {field !== "country" && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="text"
-                    name={field}
-                    value={formData[field]}
-                    onChange={handleChange}
-                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Zip Code</label>
-              <input
-                type="text"
-                name="zipCode"
-                value={formData.zipCode}
-                onChange={handleChange}
-                placeholder="Enter zip code"
-                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">
-                Phone <span className="text-red-500">*</span>
-              </label>
-              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-                <FaPhoneAlt className="text-gray-400 mr-2" />
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="10-digit phone number"
-                  className="w-full focus:outline-none"
-                />
-              </div>
-              {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Alternate Phone</label>
-              <input
-                type="text"
-                name="alternatePhone"
-                value={formData.alternatePhone}
-                onChange={handleChange}
-                placeholder="Alternate phone number"
-                className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Email</label>
-              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-                <FaEnvelope className="text-gray-400 mr-2" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Business email"
-                  className="w-full focus:outline-none"
-                />
-              </div>
-              {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Website</label>
-              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-                <FaGlobe className="text-gray-400 mr-2" />
-                <input
-                  type="text"
-                  name="website"
-                  value={formData.website}
-                  onChange={handleChange}
-                  placeholder="https://example.com"
-                  className="w-full focus:outline-none"
-                />
-              </div>
-              {errors.website && <p className="text-red-500 text-sm mt-1">{errors.website}</p>}
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Google Maps URL</label>
-              <div className="flex items-center border border-gray-300  p-2 focus-within:ring-2 focus-within:ring-primary-500">
-                <FaMapMarkerAlt className="text-gray-400 mr-2" />
-                <input
-                  type="text"
-                  name="googleMapsUrl"
-                  value={formData.googleMapsUrl}
-                  onChange={handleChange}
-                  placeholder="https://maps.google.com/..."
-                  className="w-full focus:outline-none"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Coordinates will be auto-extracted</p>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Category & Tags</h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Category</label>
-                <input
-                  type="text"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  placeholder="e.g., Beauty & Wellness"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Sub Category</label>
-                <input
-                  type="text"
-                  name="subCategory"
-                  value={formData.subCategory}
-                  onChange={handleChange}
-                  placeholder="e.g., Hair Salon"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Tags</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleArrayAdd("tags", tagInput, setTagInput);
-                    }
-                  }}
-                  placeholder="Add tag and press Enter"
-                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleArrayAdd("tags", tagInput, setTagInput)}
-                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayRemove("tags", index)}
-                      className="text-primary-600 hover:text-primary-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Specialties</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={specialtyInput}
-                  onChange={(e) => setSpecialtyInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleArrayAdd("specialties", specialtyInput, setSpecialtyInput);
-                    }
-                  }}
-                  placeholder="Add specialty and press Enter"
-                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleArrayAdd("specialties", specialtyInput, setSpecialtyInput)}
-                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.specialties.map((specialty, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {specialty}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayRemove("specialties", index)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-medium mb-1">Languages Supported</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={languageInput}
-                  onChange={(e) => setLanguageInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleArrayAdd("languages", languageInput, setLanguageInput);
-                    }
-                  }}
-                  placeholder="Add language and press Enter"
-                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleArrayAdd("languages", languageInput, setLanguageInput)}
-                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.languages.map((lang, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {lang}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayRemove("languages", index)}
-                      className="text-green-600 hover:text-green-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Images & Social Media</h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Logo URL</label>
-                <input
-                  type="text"
-                  name="images.logo"
-                  value={formData.images.logo}
-                  onChange={handleChange}
-                  placeholder="https://example.com/logo.png"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Banner URL</label>
-                <input
-                  type="text"
-                  name="images.banner"
-                  value={formData.images.banner}
-                  onChange={handleChange}
-                  placeholder="https://example.com/banner.png"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Thumbnail URL</label>
-                <input
-                  type="text"
-                  name="images.thumbnail"
-                  value={formData.images.thumbnail}
-                  onChange={handleChange}
-                  placeholder="https://example.com/thumbnail.png"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <label className="block text-gray-700 font-medium mb-1">Gallery Images</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={galleryInput}
-                  onChange={(e) => setGalleryInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddGalleryImage();
-                    }
-                  }}
-                  placeholder="Add image URL and press Enter"
-                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddGalleryImage}
-                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
-                >
-                  Add
-                </button>
-              </div>
-              {formData.images.gallery && formData.images.gallery.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.images.gallery.map((img, index) => (
-                    <div
-                      key={index}
-                      className="relative w-24 h-24 border border-gray-200 rounded overflow-hidden group"
-                    >
-                      <img src={img} alt={`Gallery ${index}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveGalleryImage(index)}
-                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Social Media Links</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  "facebook",
-                  "instagram",
-                  "twitter",
-                  "linkedin",
-                  "youtube",
-                  "whatsapp",
-                  "telegram",
-                ].map((platform) => (
-                  <div key={platform}>
-                    <label className="block text-gray-700 font-medium mb-1 capitalize">
-                      {platform}
-                    </label>
-                    <input
-                      type="text"
-                      name={`socialMedia.${platform}`}
-                      value={formData.socialMedia[platform]}
-                      onChange={handleChange}
-                      placeholder={`${platform} URL`}
-                      className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Registration & Legal</h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">GST Number</label>
-                <input
-                  type="text"
-                  name="registration.gstNumber"
-                  value={formData.registration.gstNumber}
-                  onChange={handleChange}
-                  placeholder="GST Number"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">PAN Number</label>
-                <input
-                  type="text"
-                  name="registration.panNumber"
-                  value={formData.registration.panNumber}
-                  onChange={handleChange}
-                  placeholder="PAN Number"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Registration Number</label>
-                <input
-                  type="text"
-                  name="registration.registrationNumber"
-                  value={formData.registration.registrationNumber}
-                  onChange={handleChange}
-                  placeholder="Registration Number"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">License Number</label>
-                <input
-                  type="text"
-                  name="registration.licenseNumber"
-                  value={formData.registration.licenseNumber}
-                  onChange={handleChange}
-                  placeholder="License Number"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Tax ID</label>
-                <input
-                  type="text"
-                  name="registration.taxId"
-                  value={formData.registration.taxId}
-                  onChange={handleChange}
-                  placeholder="Tax ID"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Registration Date</label>
-                <input
-                  type="date"
-                  name="registration.registrationDate"
-                  value={formData.registration.registrationDate}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Expiry Date</label>
-                <input
-                  type="date"
-                  name="registration.expiryDate"
-                  value={formData.registration.expiryDate}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Payment & Banking</h3>
-
-            <div className="border-b pb-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Payment Methods Accepted</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {["cash", "card", "upi", "netBanking", "wallet"].map((method) => (
-                  <label key={method} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name={`paymentMethods.${method}`}
-                      checked={formData.paymentMethods[method]}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                    />
-                    <span className="text-gray-700 capitalize">{method}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Bank Details</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Account Name</label>
-                  <input
-                    type="text"
-                    name="bankDetails.accountName"
-                    value={formData.bankDetails.accountName}
-                    onChange={handleChange}
-                    placeholder="Account Holder Name"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Account Number</label>
-                  <input
-                    type="text"
-                    name="bankDetails.accountNumber"
-                    value={formData.bankDetails.accountNumber}
-                    onChange={handleChange}
-                    placeholder="Account Number"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Bank Name</label>
-                  <input
-                    type="text"
-                    name="bankDetails.bankName"
-                    value={formData.bankDetails.bankName}
-                    onChange={handleChange}
-                    placeholder="Bank Name"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">IFSC Code</label>
-                  <input
-                    type="text"
-                    name="bankDetails.ifscCode"
-                    value={formData.bankDetails.ifscCode}
-                    onChange={handleChange}
-                    placeholder="IFSC Code"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Branch</label>
-                  <input
-                    type="text"
-                    name="bankDetails.branch"
-                    value={formData.bankDetails.branch}
-                    onChange={handleChange}
-                    placeholder="Branch Name"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">UPI ID</label>
-                  <input
-                    type="text"
-                    name="bankDetails.upiId"
-                    value={formData.bankDetails.upiId}
-                    onChange={handleChange}
-                    placeholder="example@upi"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">QR Code URL</label>
-                  <input
-                    type="text"
-                    name="bankDetails.qrCode"
-                    value={formData.bankDetails.qrCode}
-                    onChange={handleChange}
-                    placeholder="QR Code Image URL"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 7:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Capacity & Features</h3>
-
-            <div className="border-b pb-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Business Capacity</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Seating Capacity</label>
-                  <input
-                    type="number"
-                    name="capacity.seatingCapacity"
-                    value={formData.capacity.seatingCapacity}
-                    onChange={handleChange}
-                    placeholder="Number of seats"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Parking Spaces</label>
-                  <input
-                    type="number"
-                    name="capacity.parkingSpaces"
-                    value={formData.capacity.parkingSpaces}
-                    onChange={handleChange}
-                    placeholder="Number of parking spaces"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Number of Rooms</label>
-                  <input
-                    type="number"
-                    name="capacity.numberOfRooms"
-                    value={formData.capacity.numberOfRooms}
-                    onChange={handleChange}
-                    placeholder="Number of rooms"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Number of Floors</label>
-                  <input
-                    type="number"
-                    name="capacity.numberOfFloors"
-                    value={formData.capacity.numberOfFloors}
-                    onChange={handleChange}
-                    placeholder="Number of floors"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-gray-700 font-medium mb-1">Total Area</label>
-                  <input
-                    type="text"
-                    name="capacity.totalArea"
-                    value={formData.capacity.totalArea}
-                    onChange={handleChange}
-                    placeholder="e.g., 1000 sq ft"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Features</h4>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={featureInput}
-                  onChange={(e) => setFeatureInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleArrayAdd("features", featureInput, setFeatureInput);
-                    }
-                  }}
-                  placeholder="Add feature and press Enter"
-                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleArrayAdd("features", featureInput, setFeatureInput)}
-                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.features.map((feature, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {feature}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayRemove("features", index)}
-                      className="text-purple-600 hover:text-purple-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Amenities</h4>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={amenityInput}
-                  onChange={(e) => setAmenityInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleArrayAdd("amenities", amenityInput, setAmenityInput);
-                    }
-                  }}
-                  placeholder="Add amenity and press Enter"
-                  className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleArrayAdd("amenities", amenityInput, setAmenityInput)}
-                  className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.amenities.map((amenity, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {amenity}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayRemove("amenities", index)}
-                      className="text-orange-600 hover:text-orange-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 8:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Business Hours & Settings</h3>
-
-            <div className="border-b pb-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Working Hours</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Opening Time</label>
-                  <input
-                    type="time"
-                    name="settings.workingHours.open"
-                    value={formData.settings.workingHours.open}
-                    onChange={(e) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          workingHours: {
-                            ...prev.settings.workingHours,
-                            open: e.target.value,
-                          },
-                        },
-                      }));
-                    }}
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Closing Time</label>
-                  <input
-                    type="time"
-                    name="settings.workingHours.close"
-                    value={formData.settings.workingHours.close}
-                    onChange={(e) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          workingHours: {
-                            ...prev.settings.workingHours,
-                            close: e.target.value,
-                          },
-                        },
-                      }));
-                    }}
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-gray-700 font-medium mb-1">Working Days</label>
-                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                    {[
-                      "monday",
-                      "tuesday",
-                      "wednesday",
-                      "thursday",
-                      "friday",
-                      "saturday",
-                      "sunday",
-                    ].map((day) => (
-                      <label key={day} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.settings.workingHours.days.includes(day)}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                workingHours: {
-                                  ...prev.settings.workingHours,
-                                  days: e.target.checked
-                                    ? [...prev.settings.workingHours.days, day]
-                                    : prev.settings.workingHours.days.filter((d) => d !== day),
-                                },
-                              },
-                            }));
-                          }}
-                          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                        />
-                        <span className="text-gray-700 text-sm capitalize">{day.slice(0, 3)}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-b pb-4 pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Days Off & Holidays</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Days Off (Closed Dates)</label>
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      type="date"
-                      value={daysOffInput}
-                      onChange={(e) => setDaysOffInput(e.target.value)}
-                      className="flex-1 border border-gray-300 p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleArrayAdd("daysOff", daysOffInput, setDaysOffInput)}
-                      className="px-4 py-2 bg-primary-600 text-white hover:bg-primary-700"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.daysOff.map((date, index) => (
-                      <span key={index} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm flex items-center gap-2">
-                        {date}
-                        <button
-                          type="button"
-                          onClick={() => handleArrayRemove("daysOff", index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Holidays</label>
-                  <div className="space-y-2 mb-2 border border-gray-200 p-3 rounded bg-gray-50">
-                    <input
-                      type="text"
-                      placeholder="Holiday Name"
-                      value={holidayInput.name}
-                      onChange={(e) => setHolidayInput(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full border border-gray-300 p-2 text-sm mb-2"
-                    />
-                    <input
-                      type="date"
-                      value={holidayInput.date}
-                      onChange={(e) => setHolidayInput(prev => ({ ...prev, date: e.target.value }))}
-                      className="w-full border border-gray-300 p-2 text-sm mb-2"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Reason (Optional)"
-                      value={holidayInput.reason}
-                      onChange={(e) => setHolidayInput(prev => ({ ...prev, reason: e.target.value }))}
-                      className="w-full border border-gray-300 p-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddHoliday}
-                      className="w-full py-2 bg-primary-600 text-white text-sm mt-1 hover:bg-primary-700"
-                    >
-                      Add Holiday
-                    </button>
-                  </div>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {formData.holidays.map((h, index) => (
-                      <div key={index} className="flex justify-between items-center bg-gray-100 p-2 rounded text-sm">
-                        <div>
-                          <p className="font-semibold">{h.name}</p>
-                          <p className="text-gray-500 text-xs">{h.date} {h.reason && `- ${h.reason}`}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveHoliday(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t pt-4">
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Currency</label>
-                <select
-                  name="settings.currency"
-                  value={formData.settings.currency}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      settings: {
-                        ...prev.settings,
-                        currency: e.target.value,
-                      },
-                    }));
-                  }}
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="INR">INR - Indian Rupee</option>
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-1">Timezone</label>
-                <input
-                  type="text"
-                  name="settings.timezone"
-                  value={formData.settings.timezone}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      settings: {
-                        ...prev.settings,
-                        timezone: e.target.value,
-                      },
-                    }));
-                  }}
-                  placeholder="Asia/Kolkata"
-                  className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 9:
-        return (
-          <div className="space-y-5">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Additional Settings</h3>
-
-            <div className="border-b pb-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">SEO Settings</h4>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Meta Title</label>
-                  <input
-                    type="text"
-                    name="seo.metaTitle"
-                    value={formData.seo.metaTitle}
-                    onChange={handleChange}
-                    placeholder="SEO Meta Title"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Meta Description</label>
-                  <textarea
-                    name="seo.metaDescription"
-                    value={formData.seo.metaDescription}
-                    onChange={handleChange}
-                    placeholder="SEO Meta Description"
-                    rows={3}
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  ></textarea>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Keywords</label>
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={keywordInput}
-                      onChange={(e) => setKeywordInput(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (keywordInput.trim()) {
-                            setFormData((prev) => ({
-                              ...prev,
-                              seo: {
-                                ...prev.seo,
-                                keywords: [...(prev.seo?.keywords || []), keywordInput.trim()],
-                              },
-                            }));
-                            setKeywordInput("");
-                          }
-                        }
-                      }}
-                      placeholder="Add keyword and press Enter"
-                      className="flex-1 border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (keywordInput.trim()) {
-                          setFormData((prev) => ({
-                            ...prev,
-                            seo: {
-                              ...prev.seo,
-                              keywords: [...(prev.seo?.keywords || []), keywordInput.trim()],
-                            },
-                          }));
-                          setKeywordInput("");
-                        }
-                      }}
-                      className="px-4 py-2 bg-primary-600 text-white  hover:bg-primary-700"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(formData.seo?.keywords || []).map((keyword, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
-                      >
-                        {keyword}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              seo: {
-                                ...prev.seo,
-                                keywords: (prev.seo?.keywords || []).filter((_, i) => i !== index),
-                              },
-                            }));
-                          }}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">OG Image URL</label>
-                  <input
-                    type="text"
-                    name="seo.ogImage"
-                    value={formData.seo.ogImage}
-                    onChange={handleChange}
-                    placeholder="Open Graph Image URL"
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Notification Preferences</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  "emailNotifications",
-                  "smsNotifications",
-                  "whatsappNotifications",
-                  "pushNotifications",
-                ].map((pref) => (
-                  <label key={pref} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name={`notificationPreferences.${pref}`}
-                      checked={formData.notificationPreferences[pref]}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                    />
-                    <span className="text-gray-700">
-                      {pref.replace(/([A-Z])/g, " $1").trim()}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Custom Fields</h4>
-              <div className="space-y-3">
-                 <div className="flex flex-col sm:flex-row gap-2 items-end border border-gray-200 p-3 rounded bg-gray-50">
-                    <div className="w-full sm:w-1/3">
-                        <label className="text-xs text-gray-500">Key (Label)</label>
-                        <input
-                            type="text"
-                            value={customFieldInput.key}
-                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, key: e.target.value }))}
-                            placeholder="e.g. GST Enabled"
-                            className="w-full border border-gray-300 p-2 text-sm"
-                        />
-                    </div>
-                    <div className="w-full sm:w-1/3">
-                        <label className="text-xs text-gray-500">Value</label>
-                        <input
-                            type="text"
-                            value={customFieldInput.value}
-                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, value: e.target.value }))}
-                            placeholder="e.g. Yes"
-                            className="w-full border border-gray-300 p-2 text-sm"
-                        />
-                    </div>
-                    <div className="w-full sm:w-1/4">
-                        <label className="text-xs text-gray-500">Type</label>
-                        <select
-                            value={customFieldInput.type}
-                            onChange={(e) => setCustomFieldInput(prev => ({ ...prev, type: e.target.value }))}
-                            className="w-full border border-gray-300 p-2 text-sm"
-                        >
-                            <option value="text">Text</option>
-                            <option value="number">Number</option>
-                            <option value="boolean">Boolean</option>
-                            <option value="date">Date</option>
-                        </select>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={handleAddCustomField}
-                        className="px-4 py-2 bg-primary-600 text-white text-sm hover:bg-primary-700 w-full sm:w-auto h-[38px]"
-                    >
-                        Add
-                    </button>
-                 </div>
-
-                 <div className="space-y-2">
-                    {formData.customFields.map((field, index) => (
-                        <div key={index} className="flex justify-between items-center bg-gray-100 p-2 px-3 rounded text-sm border border-gray-200">
-                             <div className="flex gap-4">
-                                 <span className="font-semibold text-gray-700">{field.key}:</span>
-                                 <span>{field.value.toString()}</span>
-                                 <span className="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-500 self-center">{field.type}</span>
-                             </div>
-                             <button
-                                type="button"
-                                onClick={() => handleRemoveCustomField(index)}
-                                className="text-red-500 hover:text-red-700"
-                             >
-                                ×
-                             </button>
-                        </div>
-                    ))}
-                 </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">Subscription</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Plan</label>
-                  <select
-                    name="subscription.plan"
-                    value={formData.subscription.plan}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="free">Free</option>
-                    <option value="basic">Basic</option>
-                    <option value="premium">Premium</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    name="subscription.startDate"
-                    value={formData.subscription.startDate}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-1">End Date</label>
-                  <input
-                    type="date"
-                    name="subscription.endDate"
-                    value={formData.subscription.endDate}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300  p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
+  const stepProps = { formData, errors, handleChange, handleArrayAdd, handleArrayRemove, setNestedValue };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="bg-white  shadow-lg border border-gray-200 overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-6">
-            <h2 className="text-2xl font-semibold flex items-center gap-2">
-              <FaStore /> Add New Business
-            </h2>
-            <p className="text-primary-100 mt-1">Fill in the details step by step</p>
-          </div>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Top Header */}
+      <div className="sticky top-0 z-30 bg-white border-b border-secondary-200 px-6 py-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-secondary-900">Create Business</h1>
+        <div className="flex gap-3">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>Cancel</Button>
+          {currentStep === STEPS.length ? (
+            <Button size="sm" loading={loading} onClick={handleSubmit}>Publish</Button>
+          ) : (
+            <Button size="sm" onClick={handleNext}>Continue</Button>
+          )}
+        </div>
+      </div>
 
-          {/* Progress Bar */}
-          <div className="px-6 pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">
-                Step {currentStep} of {totalSteps}
-              </span>
-              <span className="text-sm text-gray-500">
-                {Math.round((currentStep / totalSteps) * 100)}% Complete
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Step Indicators */}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between overflow-x-auto">
-              {stepTitles.map((title, index) => {
-                const Icon = stepIcons[index];
-                const stepNum = index + 1;
-                const isActive = stepNum === currentStep;
-                const isCompleted = stepNum < currentStep;
-
-                return (
-                  <div
-                    key={stepNum}
-                    className={`flex flex-col items-center min-w-[80px] ${isActive ? "text-primary-600" : isCompleted ? "text-green-600" : "text-gray-400"
-                      }`}
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isActive
-                        ? "border-primary-600 bg-primary-50"
-                        : isCompleted
-                          ? "border-green-600 bg-green-50"
-                          : "border-gray-300 bg-gray-50"
-                        }`}
-                    >
-                      {isCompleted ? (
-                        <FaCheckCircle className="text-green-600" />
-                      ) : (
-                        <Icon />
-                      )}
-                    </div>
-                    <span className="text-xs mt-2 text-center hidden sm:block">{title}</span>
+      <div className="flex max-w-[1400px] mx-auto min-h-[calc(100vh-72px)]">
+        {/* Simple Sidebar Navigation */}
+        <aside className="w-80 bg-white border-r border-secondary-200 p-8 hidden lg:block">
+          <div className="space-y-1">
+            {STEPS.map((step) => {
+              const active = currentStep === step.id;
+              const done = currentStep > step.id;
+              return (
+                <div
+                  key={step.id}
+                  onClick={() => done && setCurrentStep(step.id)}
+                  className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all ${active ? 'bg-primary-50 text-primary-700' : 'text-secondary-500 hover:bg-secondary-50'}`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${active ? 'border-primary-500 bg-white' : done ? 'border-primary-500 bg-primary-500 text-white' : 'border-secondary-200'}`}>
+                    {done ? <FaCheck size={12} /> : step.id}
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <p className={`text-sm font-bold ${active ? 'text-primary-900' : 'text-secondary-600'}`}>{step.title}</p>
+                    <p className="text-[11px] uppercase tracking-wider font-semibold opacity-60">{step.sub}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </aside>
 
-          {/* Form Content */}
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="min-h-[400px]">{renderStepContent()}</div>
+        {/* Main Content Area */}
+        <main className="flex-1 p-6 md:p-12 overflow-y-auto">
+          <div className="max-w-3xl mx-auto">
+            {currentStep === 1 && <BasicInfoStep {...stepProps} />}
+            {currentStep === 2 && <LocationContactStep {...stepProps} />}
+            {currentStep === 3 && <CategoryTagsStep {...stepProps} />}
+            {currentStep === 4 && <MediaSocialStep {...stepProps} />}
+            {currentStep === 5 && <LegalRegistrationStep {...stepProps} />}
+            {currentStep === 6 && <PaymentBankingStep {...stepProps} />}
+            {currentStep === 7 && <CapacityFeaturesStep {...stepProps} />}
+            {currentStep === 8 && (
+              <BusinessHoursStep
+                {...stepProps}
+                holidayInput={holidayInput}
+                setHolidayInput={setHolidayInput}
+                handleAddHoliday={() => {
+                  if (holidayInput.name && holidayInput.date) {
+                    handleArrayAdd("holidays", holidayInput);
+                    setHolidayInput({ name: "", date: "" });
+                  }
+                }}
+                handleRemoveHoliday={(i) => handleArrayRemove("holidays", i)}
+              />
+            )}
+            {currentStep === 9 && <AppointmentSettingsStep {...stepProps} />}
+            {currentStep === 10 && (
+              <AdditionalSettingsStep
+                {...stepProps}
+                customFieldInput={customFieldInput}
+                setCustomFieldInput={setCustomFieldInput}
+                handleAddCustomField={() => {
+                  if (customFieldInput.key && customFieldInput.value) {
+                    handleArrayAdd("customFields", customFieldInput);
+                    setCustomFieldInput({ key: "", value: "" });
+                  }
+                }}
+                handleRemoveCustomField={(i) => handleArrayRemove("customFields", i)}
+              />
+            )}
 
-            {/* Navigation Buttons */}
-            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+            {/* Simple Dynamic Navigation Controls */}
+            <div className="mt-12 flex items-center justify-between pt-8 border-t border-secondary-200">
               <button
-                type="button"
-                onClick={handlePrevious}
+                onClick={() => setCurrentStep(p => p - 1)}
                 disabled={currentStep === 1}
-                className={`flex items-center gap-2 px-6 py-2.5  font-medium transition-all ${currentStep === 1
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
+                className="flex items-center gap-2 text-secondary-600 font-bold hover:text-primary-600 disabled:opacity-0 transition-all"
               >
-                <FaChevronLeft /> Previous
+                <FaChevronLeft /> Back
               </button>
 
-              {currentStep < totalSteps ? (
+              {currentStep < STEPS.length ? (
                 <button
-                  type="button"
                   onClick={handleNext}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white  font-medium transition-all"
+                  className="bg-primary-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-600 transition-all"
                 >
-                  Next <FaChevronRight />
+                  Continue
                 </button>
               ) : (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white  font-medium transition-all disabled:opacity-60"
-                >
-                  {loading ? "Creating..." : "Create Business"}
-                </button>
+                <Button loading={loading} onClick={handleSubmit} className="px-10">Launch Business</Button>
               )}
             </div>
-          </form>
-        </div>
+          </div>
+        </main>
       </div>
     </div>
   );

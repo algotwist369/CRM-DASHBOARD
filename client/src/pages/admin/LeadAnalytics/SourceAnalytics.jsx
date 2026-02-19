@@ -3,6 +3,7 @@ import { HiOutlineRefresh, HiOutlineGlobe, HiOutlineSearch } from 'react-icons/h
 import leadAnalyticsService from '../../../services/admin/leadAnalyticsService';
 import DatePicker from '../../../components/common/DatePicker/DatePicker';
 import { toast } from 'react-hot-toast';
+import { getPlatformStyle } from '../../../utils/common/sourceHelper';
 
 const SourceAnalytics = () => {
     const [loading, setLoading] = useState(true);
@@ -93,15 +94,7 @@ const SourceAnalytics = () => {
         fetchAnalytics();
     }, [fetchAnalytics]);
 
-    // Helper function to get platform style
-    const getPlatformStyle = (platform) => {
-        const p = platform.toLowerCase();
-        if (p.includes('google')) return { emoji: '🟠', bg: 'bg-orange-600', text: 'text-orange-800', hover: 'hover:bg-orange-50', border: 'border-orange-200', pill: 'bg-red-100' };
-        if (p.includes('facebook')) return { emoji: '🔵', bg: 'bg-blue-600', text: 'text-blue-800', hover: 'hover:bg-blue-50', border: 'border-blue-200', pill: 'bg-blue-100' };
-        if (p.includes('instagram')) return { emoji: '🎀', bg: 'bg-pink-600', text: 'text-pink-800', hover: 'hover:bg-pink-50', border: 'border-pink-200', pill: 'bg-pink-100' };
-        if (p.includes('direct')) return { emoji: '⚪', bg: 'bg-gray-600', text: 'text-gray-800', hover: 'hover:bg-gray-50', border: 'border-gray-200', pill: 'bg-gray-100' };
-        return { emoji: '🟢', bg: 'bg-green-600', text: 'text-green-800', hover: 'hover:bg-green-50', border: 'border-green-200', pill: 'bg-green-100' };
-    };
+
 
     return (
         <div className="space-y-6">
@@ -162,12 +155,13 @@ const SourceAnalytics = () => {
                                     <button
                                         key={platform}
                                         onClick={() => setPlatformFilter(platform)}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${isActive
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap flex items-center gap-2 ${isActive
                                             ? `${style.bg} text-white shadow-md`
                                             : `bg-white text-gray-700 border ${style.border} ${style.hover}`
                                             }`}
                                     >
-                                        {style.emoji} {platform}
+                                        <style.icon className={isActive ? 'text-white' : style.text} />
+                                        <span>{style.name}</span>
                                     </button>
                                 );
                             })}
@@ -295,9 +289,12 @@ const SourceAnalytics = () => {
                                                     <div className="text-xs text-gray-500">{item.branch}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full capitalize ${style.pill} ${style.text}`}>
-                                                        {item.source}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <style.icon className={`text-lg ${style.text}`} />
+                                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full capitalize ${style.pill} ${style.text}`}>
+                                                            {style.name}
+                                                        </span>
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-900">
                                                     {item.visits}

@@ -20,6 +20,7 @@ import {
 } from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
+import { getPlatformStyle } from '../../../utils/common/sourceHelper';
 import BackButton from '../../../components/common/Button/BackButton';
 
 const StatsCard = memo(({ title, value, icon, color, subValue }) => (
@@ -153,25 +154,31 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
         <div className="text-xs text-gray-900">{serviceName}</div>
         <div className="text-[10px] text-gray-500 bg-green-200 inline p-1 rounded">{serviceDuration} mins</div>
       </td>
+      {/* Row Start */}
+      {/* Customer Column */}
+      {/* Source Column */}
       <td className="px-3 py-2 whitespace-nowrap">
-        <div
-          className="flex flex-col cursor-help items-start"
-          title={`Source: ${appointment.tracking?.source || 'Direct'}\nMedium: ${appointment.tracking?.medium || 'N/A'}\nCampaign: ${appointment.tracking?.campaign || 'N/A'}`}
-        >
-          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize border ${(appointment.tracking?.source || 'direct').toLowerCase().includes('google') ? 'bg-orange-50 text-orange-700 border-orange-100' :
-              (appointment.tracking?.source || 'direct').toLowerCase().includes('facebook') ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                (appointment.tracking?.source || 'direct').toLowerCase().includes('instagram') ? 'bg-pink-50 text-pink-700 border-pink-100' :
-                  (appointment.tracking?.source || 'direct').toLowerCase() === 'direct' ? 'bg-gray-100 text-gray-600 border-gray-200' :
-                    'bg-purple-50 text-purple-700 border-purple-100'
-            }`}>
-            {appointment.tracking?.source || 'Direct'}
-          </span>
-          {appointment.tracking?.medium && (
-            <span className="text-[9px] text-gray-400 capitalize mt-0.5 ml-0.5">
-              {appointment.tracking.medium}
-            </span>
-          )}
-        </div>
+        {(() => {
+          const style = getPlatformStyle(appointment.tracking?.source || 'direct');
+          return (
+            <div
+              className="flex flex-col cursor-help items-start"
+              title={`Source: ${style.name}\nMedium: ${appointment.tracking?.medium || 'N/A'}\nCampaign: ${appointment.tracking?.campaign || 'N/A'}`}
+            >
+              <div className="flex items-center gap-1">
+                <style.icon className={`text-[10px] ${style.text}`} />
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize border ${style.pill} ${style.text} ${style.border}`}>
+                  {style.name}
+                </span>
+              </div>
+              {appointment.tracking?.medium && (
+                <span className="text-[9px] text-gray-400 capitalize mt-0.5 ml-0.5">
+                  {appointment.tracking.medium}
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
         {appointmentDate ? appointmentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}

@@ -8,7 +8,7 @@ const FreeListingSchema = new mongoose.Schema(
             trim: true,
         },
         phoneNumber: {
-            type: String,  
+            type: String,
             required: true,
             trim: true,
             match: [/^\d{7,15}$/, "Invalid phone number"],
@@ -42,8 +42,7 @@ const FreeListingSchema = new mongoose.Schema(
         },
         description: {
             type: String,
-            required: true,
-            trim: true,
+            maxlength: 1000,
         },
         website: {
             type: String,
@@ -83,16 +82,6 @@ const FreeListingSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-        },
-        tags: {
-            type: [String],
-            required: true,
-            default: [],
-        },
-        services: {
-            type: [String],
-            required: true,
-            default: [],
         },
         documents: {
             type: [String],

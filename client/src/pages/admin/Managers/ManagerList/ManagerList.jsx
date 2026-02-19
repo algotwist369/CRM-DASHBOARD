@@ -151,7 +151,7 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, onStatusChange, is
           <FiEdit />
         </button>
         <button
-          onClick={() => onDelete(manager.id)}
+          onClick={() => onDelete(manager)}
           disabled={isDeleting}
           className="p-2 bg-red-100 text-red-600  hover:bg-red-200 disabled:opacity-50 transition-colors"
           title="Delete Manager"
@@ -210,7 +210,7 @@ const ManagerCard = memo(({ manager, onView, onEdit, onDelete, onStatusChange, i
           <FiEdit className="text-sm" />
         </button>
         <button
-          onClick={() => onDelete(manager.id)}
+          onClick={() => onDelete(manager)}
           disabled={isDeleting}
           className="p-2 bg-red-100 text-red-600  hover:bg-red-200 disabled:opacity-50 transition-colors"
           title="Delete"
@@ -328,8 +328,11 @@ const ManagerList = () => {
   const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
 
   // Modal states
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [managerToDelete, setManagerToDelete] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingManager, setEditingManager] = useState(null);
@@ -380,6 +383,9 @@ const ManagerList = () => {
         setManagers(data);
         setTotalPages(res.pagination?.pages || 1);
         setTotal(res.pagination?.total || 0);
+        // Calculate active managers count
+        const active = data.filter(m => m.isActive).length;
+        setActiveCount(active);
       } else {
         setError(res.error || "Failed to load managers");
       }
@@ -410,14 +416,17 @@ const ManagerList = () => {
     }));
   }, [businesses]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this manager?")) {
-      return;
-    }
+  const handleDeleteClick = (manager) => {
+    setManagerToDelete(manager);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!managerToDelete) return;
 
     try {
-      setDeleting(id);
-      const res = await adminService.deleteManager(id);
+      setDeleting(managerToDelete.id);
+      const res = await adminService.deleteManager(managerToDelete.id);
       if (res.success) {
         toast.success("Manager deleted successfully");
         fetchManagers();
@@ -428,6 +437,8 @@ const ManagerList = () => {
       toast.error("Failed to delete manager");
     } finally {
       setDeleting(null);
+      setIsDeleteModalOpen(false);
+      setManagerToDelete(null);
     }
   };
 
@@ -659,7 +670,7 @@ const ManagerList = () => {
         </div>
         <div className="bg-white border   p-4">
           <p className="text-sm text-gray-600 mb-1">Active</p>
-          <p className="text-2xl font-bold text-green-600">{total}</p>
+          <p className="text-2xl font-bold text-green-600">{activeCount}</p>
         </div>
         <div className="bg-white border   p-4">
           <p className="text-sm text-gray-600 mb-1">Per Page</p>
@@ -713,7 +724,7 @@ const ManagerList = () => {
                     manager={manager}
                     onView={handleView}
                     onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    onDelete={handleDeleteClick}
                     onStatusChange={handleStatusChange}
                     isDeleting={deleting === manager.id}
                     isEditing={submitting}
@@ -742,7 +753,7 @@ const ManagerList = () => {
               manager={manager}
               onView={handleView}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onDelete={handleDeleteClick}
               onStatusChange={handleStatusChange}
               isDeleting={deleting === manager.id}
               isEditing={submitting}
@@ -1048,6 +1059,52 @@ const ManagerList = () => {
             {submitting ? "Updating..." : "Update Manager"}
           </button>
         </form>
+      </Modal>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setManagerToDelete(null);
+        }}
+        title="Confirm Deletion"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-red-600">
+            <FiTrash2 className="text-2xl" />
+            <h3 className="text-lg font-semibold">Delete Manager?</h3>
+          </div>
+          <p className="text-gray-600">
+            Are you sure you want to delete <span className="font-semibold text-gray-800">{managerToDelete?.name} (@{managerToDelete?.username})</span>?
+            This action cannot be undone and will remove their access to <span className="font-semibold text-gray-800">{managerToDelete?.business}</span>.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setManagerToDelete(null);
+              }}
+              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200  font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={deleting === managerToDelete?.id}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white  font-medium transition-all disabled:opacity-60"
+            >
+              {deleting === managerToDelete?.id ? (
+                <>
+                  <FaSpinner className="animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Yes, Delete Manager"
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
