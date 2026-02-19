@@ -32,6 +32,11 @@ const businessSchema = new mongoose.Schema(
             thumbnail: { type: String } // URL to thumbnail
         },
 
+        // google 360 image ulr
+        google360ImageUrl: [{
+            type: String
+        }],
+
         // Social Media Links
         socialMedia: {
             facebook: { type: String },
@@ -42,6 +47,11 @@ const businessSchema = new mongoose.Schema(
             whatsapp: { type: String },
             telegram: { type: String }
         },
+
+        // Business Videos
+        videos: [{
+            type: String
+        }],
 
         // Business Registration & Legal
         registration: {
