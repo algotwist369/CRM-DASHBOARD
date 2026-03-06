@@ -11,8 +11,6 @@ import {
   HiOutlineCurrencyRupee,
   HiOutlineTag,
   HiOutlineInformationCircle,
-  HiOutlineMail,
-  HiOutlinePhone,
   HiOutlineLocationMarker
 } from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
@@ -136,7 +134,7 @@ const AppointmentDetails = () => {
 
   const canConfirm = appointment.status === 'pending';
   const canStart = appointment.status === 'confirmed';
-  const canComplete = appointment.status === 'in-progress';
+  const canComplete = ['pending', 'confirmed', 'in-progress'].includes(appointment.status);
   const canCancel = ['pending', 'confirmed'].includes(appointment.status);
   const canMarkNoShow = ['pending', 'confirmed'].includes(appointment.status);
 

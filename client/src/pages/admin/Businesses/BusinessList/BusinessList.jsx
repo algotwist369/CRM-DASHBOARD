@@ -298,6 +298,7 @@ const BusinessList = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [filterStatus, setFilterStatus] = useState("active");
   const [dashboardStats, setDashboardStats] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -325,6 +326,7 @@ const BusinessList = () => {
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (filterType) params.type = filterType;
+      if (filterStatus) params.status = filterStatus;
 
       const res = await businessService.getBusinesses(params);
       if (res.success) {
@@ -564,6 +566,7 @@ const BusinessList = () => {
     };
     if (debouncedSearch) params.search = debouncedSearch;
     if (filterType) params.type = filterType;
+    if (filterStatus) params.status = filterStatus;
     const listRes = await businessService.getBusinesses(params);
     if (listRes.success) {
       const list = listRes.data?.data || listRes.data?.businesses || [];
@@ -791,12 +794,28 @@ const BusinessList = () => {
                 <option value="hotel">Hotel</option>
               </select>
             </div>
-            {(search || filterType) && (
+            <div className="sm:w-48">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setPagination(prev => ({ ...prev, currentPage: 1 }));
+                }}
+                className="w-full border border-gray-300  px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            {(search || filterType || filterStatus !== 'active') && (
               <div className="flex items-end">
                 <button
                   onClick={() => {
                     setSearch('');
                     setFilterType('');
+                    setFilterStatus('active');
                     setPagination(prev => ({ ...prev, currentPage: 1 }));
                   }}
                   className="px-3 py-2 text-sm bg-gray-100 text-gray-700  hover:bg-gray-200 transition-colors whitespace-nowrap"
@@ -806,7 +825,7 @@ const BusinessList = () => {
               </div>
             )}
           </div>
-          {(search || filterType) && (
+          {(search || filterType || filterStatus !== 'active') && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="text-xs text-gray-500">Active filters:</span>
               {search && (
@@ -826,6 +845,17 @@ const BusinessList = () => {
                   <button
                     onClick={() => setFilterType('')}
                     className="hover:bg-green-200 rounded-full p-0.5"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {filterStatus !== 'active' && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700  text-xs capitalize">
+                  Status: {filterStatus}
+                  <button
+                    onClick={() => setFilterStatus('active')}
+                    className="hover:bg-yellow-200 rounded-full p-0.5"
                   >
                     ×
                   </button>

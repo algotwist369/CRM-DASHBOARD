@@ -744,7 +744,8 @@ const completeAppointment = async (req, res, next) => {
         const { loyaltyPoints = 0 } = req.body;
 
         const appointment = await Appointment.findById(id)
-            .populate('customer');
+            .populate('customer')
+            .populate('service');
 
         if (!appointment) {
             return res.status(404).json({
@@ -777,12 +778,14 @@ const completeAppointment = async (req, res, next) => {
                     customer: appointment.customer ? appointment.customer._id : undefined,
                     staff: appointment.staff,
 
-                    customerName: appointment.customer ? appointment.customer.name : (appointment.customerName || 'Walk-in'),
+                    customerName: appointment.customer 
+                        ? `${appointment.customer.firstName} ${appointment.customer.lastName || ''}`.trim() 
+                        : (appointment.customerName || 'Walk-in'),
                     customerPhone: appointment.customer ? appointment.customer.phone : (appointment.customerPhone || ''),
                     customerEmail: appointment.customer ? appointment.customer.email : '',
 
-                    serviceName: appointment.serviceName || 'Service',
-                    serviceType: appointment.serviceType || 'other',
+                    serviceName: appointment.service?.name || appointment.serviceName || 'Service',
+                    serviceType: appointment.service?.type || appointment.serviceType || 'other',
                     serviceCategory: 'Appointment',
 
                     basePrice: appointment.totalAmount || 0,
