@@ -355,8 +355,8 @@ const createBusiness = async (req, res, next) => {
         // Create notification
         await notifyNewBusinessCreated(adminId, business);
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
+        // Invalidate cache with wildcard
+        await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.status(201).json({
@@ -381,8 +381,8 @@ const createBusiness = async (req, res, next) => {
 const getBusinesses = async (req, res, next) => {
     try {
         const adminId = req.user.id;
-        const { page = 1, limit = 10, type, search } = req.query;
-        const cacheKey = `admin:${adminId}:businesses:${type}:${search}:${page}:${limit}`;
+        const { page = 1, limit = 10, type, search, status = 'active' } = req.query;
+        const cacheKey = `admin:${adminId}:businesses:${type}:${search}:${status}:${page}:${limit}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -391,6 +391,14 @@ const getBusinesses = async (req, res, next) => {
         }
 
         let query = { admin: adminId };
+
+        // Handle status filtering
+        if (status === 'active') {
+            query.isActive = true;
+        } else if (status === 'inactive') {
+            query.isActive = false;
+        }
+        // if status === 'all', we don't add isActive filter
 
         // Filter by type
         if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
@@ -593,7 +601,7 @@ const updateBusinessStatus = async (req, res, next) => {
         if (isActive !== undefined) updateData.isActive = isActive;
         const updatedBusiness = await Business.findByIdAndUpdate(id, updateData, { new: true });
 
-        // Invalidate cache
+        // Invalidate cache with wildcard
         await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
@@ -623,15 +631,15 @@ const deleteBusiness = async (req, res, next) => {
             return res.status(404).json({ success: false, message: "Business not found" });
         }
 
-        // Soft delete - set isActive to false
-        await Business.findByIdAndUpdate(id, { isActive: false });
+        // Invalidate cache immediately
+        await deleteCache(`admin:${adminId}:businesses:*`);
+        await deleteCache(`admin:${adminId}:dashboard`);
+
+        // Hard delete
+        await Business.findByIdAndDelete(id);
 
         // Create notification
         await notifyBusinessDeleted(adminId, business.name);
-
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
-        await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.json({ success: true, message: "Business deleted successfully" });
     } catch (err) {
@@ -690,8 +698,8 @@ const createManager = async (req, res, next) => {
         // Create notification
         await notifyNewManagerCreated(adminId, manager, business);
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
+        // Invalidate cache with wildcard
+        await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.status(201).json({
