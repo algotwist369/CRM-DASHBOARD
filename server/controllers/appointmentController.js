@@ -13,7 +13,6 @@ const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { emitToUser } = require("../config/socket");
 const Otp = require("../models/OTP");
 const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
-const { sendTemplateSMS, sendTemplateWhatsApp } = require("../utils/sendSMS");
 const { encryptResponse } = require("../utils/encryptionUtils");
 const { sendTemplateMail } = require("../utils/sendMail");
 const { validateAppointmentBooking } = require("../utils/appointmentUtils");
@@ -1260,7 +1259,6 @@ const getAppointmentStats = async (req, res, next) => {
                     inProgress: {
                         $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
                     },
-                    // Paid Revenue: Only from completed appointments with paid status
                     paidRevenue: {
                         $sum: {
                             $cond: [
@@ -1270,7 +1268,6 @@ const getAppointmentStats = async (req, res, next) => {
                             ]
                         }
                     },
-                    // Pending Revenue: All other statuses
                     pendingRevenue: {
                         $sum: {
                             $cond: [
@@ -1312,7 +1309,6 @@ const getAppointmentStats = async (req, res, next) => {
                     todayCancelled: {
                         $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
                     },
-                    // Today's Paid Revenue
                     todayPaidRevenue: {
                         $sum: {
                             $cond: [
@@ -1322,7 +1318,6 @@ const getAppointmentStats = async (req, res, next) => {
                             ]
                         }
                     },
-                    // Today's Pending Revenue
                     todayPendingRevenue: {
                         $sum: {
                             $cond: [
@@ -1361,7 +1356,6 @@ const getAppointmentStats = async (req, res, next) => {
                     thisMonthCancelled: {
                         $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
                     },
-                    // This Month's Paid Revenue
                     thisMonthPaidRevenue: {
                         $sum: {
                             $cond: [
@@ -1371,7 +1365,6 @@ const getAppointmentStats = async (req, res, next) => {
                             ]
                         }
                     },
-                    // This Month's Pending Revenue
                     thisMonthPendingRevenue: {
                         $sum: {
                             $cond: [
@@ -2767,9 +2760,21 @@ const updateAppointmentStatus = async (req, res, next) => {
         appointment.status = status;
 
         // Handle specific status logic if needed (e.g., setting completedAt)
-        if (status === 'completed' && !appointment.completedAt) {
-            appointment.completedAt = new Date();
-            appointment.paymentStatus = 'paid'; // Assume paid if completed via quick update
+        if (status === 'completed') {
+            if (!appointment.completedAt) {
+                appointment.completedAt = new Date();
+            }
+
+            if (appointment.paymentStatus === 'pending') {
+                appointment.paymentStatus = 'paid';
+                appointment.paidAmount = Number(appointment.totalAmount || 0);
+            } else if (appointment.paymentStatus === 'partial') {
+                const total = Number(appointment.totalAmount || 0);
+                const paid = Number(appointment.paidAmount || 0);
+                if (paid >= total) {
+                    appointment.paymentStatus = 'paid';
+                }
+            }
         } else if (status === 'cancelled' && !appointment.cancelledAt) {
             appointment.cancelledAt = new Date();
             appointment.cancelledBy = userId;
