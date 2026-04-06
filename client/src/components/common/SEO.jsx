@@ -9,12 +9,16 @@ const SEO = ({
     image,
     type = 'website'
 }) => {
-    const siteTitle = 'SpaAdvisor';
-    const fullTitle = title ? `${title} | ${siteTitle}` : siteTitle;
+    const siteTitle = 'Spa Advisor';
     const metaDescription = description || "Discover and book the best spas, salons, and wellness centers near you. Read reviews, check prices, and book appointments online.";
     const metaImage = image || "https://spaadvisor.in/og-image.jpg"; // Fallback image
     const siteUrl = "https://spaadvisor.in";
-    const canonicalUrl = canonical ? `${siteUrl}${canonical}` : siteUrl + window.location.pathname;
+    const canonicalUrl = canonical ? (canonical.startsWith('http') ? canonical : `${siteUrl}${canonical}`) : siteUrl + window.location.pathname;
+
+    // Handle title: if a full title is provided (contains | or -), use it; otherwise append site name.
+    const fullTitle = title 
+        ? (title.includes('|') || title.includes('-') ? title : `${title} | ${siteTitle}`) 
+        : siteTitle;
 
     return (
         <Helmet>
@@ -23,6 +27,7 @@ const SEO = ({
             <meta name="description" content={metaDescription} />
             <meta name="keywords" content={keywords || "spa, salon, massage, wellness, booking, reviews, spa advisor"} />
             <link rel="canonical" href={canonicalUrl} />
+            <meta name="robots" content="index, follow" />
 
             {/* Open Graph / Facebook */}
             <meta property="og:type" content={type} />

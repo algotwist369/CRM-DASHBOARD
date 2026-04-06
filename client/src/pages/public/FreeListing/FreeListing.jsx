@@ -73,7 +73,7 @@ const FreeListing = () => {
     zipCode: '',
     country: 'India',
     // Step 3: Business Details
-    category: ''
+    category: 'Other'
   })
   const [formErrors, setFormErrors] = useState({})
 
@@ -139,9 +139,9 @@ const FreeListing = () => {
       if (!listingFormData.zipCode) errors.zipCode = 'Zip code is required'
     }
 
-    if (step === 3) {
-      if (!listingFormData.category) errors.category = 'Category is required'
-    }
+    // if (step === 3) {
+    //   if (!listingFormData.category) errors.category = 'Category is required'
+    // }
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -620,10 +620,9 @@ const FreeListing = () => {
                       </label>
                       <select
                         name="category"
-                        value={listingFormData.category}
+                        value={listingFormData.category || 'Otther'}
                         onChange={handleFormChange}
                         className={`w-full px-4 py-2 border focus:outline-none focus:border-primary-500 ${formErrors.category ? 'border-red-500' : ''}`}
-                        required
                       >
                         <option value="">Select category</option>
                         {categories.map(cat => (

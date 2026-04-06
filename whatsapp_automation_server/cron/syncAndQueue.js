@@ -28,68 +28,85 @@ const syncAndQueueLeads = async () => {
         const rows = await fetchGoogleSheetLeads();
         logger.info(`📥 Fetched ${rows.length} rows from Google Sheet`);
 
-        for (const row of rows) {
-            try {
-                const customer_name = row.customer_name || "";
-                const location = row.location?.toLowerCase().trim();
-                const customer_phone = row.customer_phone?.trim();
+        if (rows.length === 0) {
+            return { queued: 0, total_fetched: 0 };
+        }
 
-                // Validate required fields
-                if (!location || !customer_phone) {
-                    skipped++;
-                    continue;
-                }
+        // 1. Filter and Sanitize Rows
+        const validRows = rows.map(row => {
+            const customer_name = row.customer_name || "";
+            const location = row.location?.toLowerCase().trim();
+            const customer_phone = row.customer_phone?.trim();
 
-                // Validate and sanitize phone number
-                const sanitizedPhone = validateAndSanitizePhone(customer_phone);
-                if (!sanitizedPhone) {
-                    logger.warn(`Invalid phone number format: ${customer_phone}`);
-                    skipped++;
-                    continue;
-                }
+            if (!location || !customer_phone) return null;
 
-                // CRITICAL: Check if lead already exists in DB
-                // If it exists, we strictly skip it to prevent duplicates/spam
-                const exists = await Lead.exists({
-                    location: location,
-                    customer_phone: sanitizedPhone
-                });
+            const sanitizedPhone = validateAndSanitizePhone(customer_phone);
+            if (!sanitizedPhone) return null;
 
-                if (exists) {
-                    continue; // Silent skip as this is expected for most rows
-                }
+            return { customer_name, location, customer_phone: sanitizedPhone };
+        }).filter(Boolean);
 
-                // Generate unique job ID WITHOUT timestamp
-                const jobId = `${location}_${sanitizedPhone}`;
+        skipped += (rows.length - validRows.length);
 
-                // Add lead to queue for processing
-                // USING DEFAULT (UNNAMED) JOB to ensure worker picks it up
-                const job = await leadQueue.add(
-                    {
-                        customer_name,
-                        location,
-                        customer_phone: sanitizedPhone,
+        // 2. Batch Processing to reduce DB/Redis roundtrips
+        const batchSize = 50;
+        for (let i = 0; i < validRows.length; i += batchSize) {
+            const batch = validRows.slice(i, i + batchSize);
+            
+            // Organize batch by location for targeted DB queries
+            const locationToPhones = {};
+            batch.forEach(item => {
+                if (!locationToPhones[item.location]) locationToPhones[item.location] = [];
+                locationToPhones[item.location].push(item.customer_phone);
+            });
+
+            // Parallel DB checks for all locations in the batch
+            const existingLeadSets = await Promise.all(
+                Object.keys(locationToPhones).map(async (loc) => {
+                    const existing = await Lead.find({
+                        location: loc,
+                        customer_phone: { $in: locationToPhones[loc] }
+                    }).select('location customer_phone -_id');
+                    
+                    const set = new Set(existing.map(l => `${l.location}_${l.customer_phone}`));
+                    return set;
+                })
+            );
+
+            // Merge sets
+            const allExistingLeads = new Set();
+            existingLeadSets.forEach(set => set.forEach(val => allExistingLeads.add(val)));
+
+            // 3. Prepare jobs for bulk addition
+            const jobsToQueue = batch
+                .filter(item => !allExistingLeads.has(`${item.location}_${item.customer_phone}`))
+                .map(item => ({
+                    name: "__default__", // Default unnamed job
+                    data: {
+                        customer_name: item.customer_name,
+                        location: item.location,
+                        customer_phone: item.customer_phone
                     },
-                    {
-                        // Job options
-                        priority: 1, // Default priority
-                        jobId: jobId, // Unique ID
-                        removeOnComplete: true,
+                    opts: {
+                        priority: 1,
+                        jobId: `${item.location}_${item.customer_phone}`,
+                        removeOnComplete: true
                     }
-                );
+                }));
 
-                queued++;
-                logger.info(`Queued NEW lead: ${customer_name} - ${location}`);
-            } catch (error) {
-                // Check if it's a duplicate job error
-                if (error.message?.includes("already exists") || error.message?.includes("JobId")) {
-                    // Job already in queue - expected behavior
-                    skipped++;
-                } else {
-                    errors++;
-                    logger.error(`Error queueing lead: ${error.message}`);
+            if (jobsToQueue.length > 0) {
+                try {
+                    await leadQueue.addBulk(jobsToQueue);
+                    queued += jobsToQueue.length;
+                    logger.info(`✅ Batched ${jobsToQueue.length} NEW leads into queue`);
+                } catch (bulkError) {
+                    // Handle partial failure or bulk errors
+                    logger.error(`Error in bulk queue addition: ${bulkError.message}`);
+                    errors += jobsToQueue.length;
                 }
             }
+
+            skipped += (batch.length - jobsToQueue.length);
         }
 
         const result = {
@@ -99,7 +116,7 @@ const syncAndQueueLeads = async () => {
             total_fetched: rows.length,
         };
 
-        logger.info(`✅ Sync completed: ${queued} new leads queued`);
+        logger.info(`✅ Sync completed: ${queued} new leads queued in batches`);
         return result;
     } catch (error) {
         logger.error("Sync job failed:", error.message, error);

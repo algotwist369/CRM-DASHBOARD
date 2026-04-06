@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const { sendMail } = require('./sendMail');
-const { sendSMS, sendWhatsApp } = require('./sendSMS');
 const { sendWhatsAppOTPDoubleTick } = require('./sendWhatsAppDoubleTick');
 
 
@@ -71,9 +70,9 @@ const createAndSendOTP = async ({ mode, to, template }) => {
     } else if (mode === 'whatsapp') {
         let otpDelivered = false;
 
-        // Tier 1: Try DoubleTick.io first
+        // Single Tier: Use DoubleTick.io exclusively
         try {
-            console.log(`[OTP] 🚀 Attempting WhatsApp delivery via DoubleTick.io to ${to}...`);
+            console.log(`[OTP] 🚀 Sending WhatsApp OTP via DoubleTick.io to ${to}...`);
             const result = await sendWhatsAppOTPDoubleTick({
                 to,
                 otp
@@ -83,50 +82,15 @@ const createAndSendOTP = async ({ mode, to, template }) => {
                 console.log(`[OTP] ✅ DoubleTick.io delivery successful: ${result.messageId}`);
                 otpDelivered = true;
             } else {
-                const errorMsg = result?.message || 'DoubleTick.io not configured or failed';
+                const errorMsg = result?.message || result?.error || 'DoubleTick.io delivery failed';
                 throw new Error(errorMsg);
             }
-        } catch (doubleTickError) {
-            console.warn(`[OTP] ⚠️  DoubleTick.io delivery failed: ${doubleTickError.message}`);
-            console.log(`[OTP] 🔄 Falling back to Twilio WhatsApp...`);
-
-            // Tier 2: Try Twilio WhatsApp as fallback
-            try {
-                console.log(`[OTP] Attempting Twilio WhatsApp delivery to ${to} using template HX9bd6...`);
-                const twilioWhatsAppResult = await sendWhatsApp({
-                    to,
-                    contentSid: 'HX9bd6542a11a4b04ab43f99275a8d41ea',
-                    contentVariables: { 1: otp }
-                });
-
-                if (twilioWhatsAppResult && twilioWhatsAppResult.success !== false) {
-                    console.log(`[OTP] ✅ Twilio WhatsApp delivery successful: ${twilioWhatsAppResult.messageId}`);
-                    otpDelivered = true;
-                } else {
-                    const errorMsg = twilioWhatsAppResult?.message || twilioWhatsAppResult?.error || 'Twilio WhatsApp delivery error';
-                    throw new Error(errorMsg);
-                }
-            } catch (twilioWhatsAppError) {
-                console.warn(`[OTP] ⚠️  Twilio WhatsApp delivery failed: ${twilioWhatsAppError.message}`);
-                console.log(`[OTP] 🔄 Falling back to Twilio SMS...`);
-
-                // Tier 3: Try Twilio SMS as final fallback
-                try {
-                    await sendSMS({ to, message });
-                    console.log(`[OTP] ✅ SMS Fallback delivered successfully.`);
-                    otpDelivered = true;
-                } catch (smsError) {
-                    // If SMS also fails due to auth, log OTP for development
-                    if (smsError.message.includes('Authenticate') || smsError.message.includes('not fully configured')) {
-                        console.log(`[OTP] ⚠️  All delivery methods failed - Twilio not configured.`);
-                        console.log(`[OTP] 📱 OTP would be sent to ${to}:`);
-                        console.log(`[OTP] 🔐 OTP CODE: ${otp}`);
-                        console.log(`[OTP] ⏰ Expires: ${new Date(expiresAt).toLocaleString()}`);
-                        otpDelivered = true; // Don't throw - allow OTP to be used in dev mode
-                    } else {
-                        throw smsError; // Re-throw unexpected errors
-                    }
-                }
+        } catch (error) {
+            console.error(`[OTP] ❌ DoubleTick.io delivery failed: ${error.message}`);
+            // In development, you might still want to see the OTP in logs if configured
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[OTP] 📱 DEV MODE OTP for ${to}: ${otp}`);
+                otpDelivered = true;
             }
         }
 

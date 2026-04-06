@@ -93,7 +93,7 @@ const HeroSection = ({
                                     item={image}
                                     className="w-full h-full object-cover"
                                     isActive={index === currentImageIndex}
-                                    alt={`${business?.name} - ${image.type}`}
+                                    alt={`${business?.category || 'Spa'} ${business?.name} - ${image.type} in ${business?.city || ''}`}
                                 />
                             </div>
                         ))}
@@ -213,7 +213,7 @@ const HeroSection = ({
                     <MediaRenderer
                         item={mainImage}
                         className="w-full h-full object-cover"
-                        alt={`${business?.name} - Main`}
+                        alt={`${business?.category || 'Spa'} ${business?.name} - Main Photo in ${business?.city || ''}`}
                     />
 
                     <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10 pointer-events-none" />
@@ -265,7 +265,7 @@ const HeroSection = ({
                                     item={img}
                                     className="w-full h-full object-cover transition-transform duration-300 group-hover/side:scale-110"
                                     isActive={false}
-                                    alt={`${business?.name} - Side ${idx}`}
+                                    alt={`${business?.category || 'Spa'} ${business?.name} - Gallery Photo ${idx + 1} in ${business?.city || ''}`}
                                 />
 
                                 {isLast && remainingCount > 0 && (
@@ -294,7 +294,7 @@ const HeroSection = ({
                     <MediaRenderer
                         item={allImages[0]}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover/scale-105"
-                        alt={`${business?.name} - Main`}
+                        alt={`${business?.category || 'Spa'} ${business?.name} - Featured Photo in ${business?.city || ''}`}
                     />
 
                     <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10 pointer-events-none" />

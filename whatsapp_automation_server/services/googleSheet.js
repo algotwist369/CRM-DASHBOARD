@@ -4,6 +4,7 @@ const logger = require("../utils/logger");
 // Note: dotenv is loaded in server.js, no need to load here
 
 const SHEET_TIMEOUT = parseInt(process.env.SHEET_TIMEOUT_MS) || 15000;
+const MAX_ROWS = parseInt(process.env.MAX_SHEET_ROWS) || 5000; // Prevent memory exhaustion
 
 /**
  * Fetch leads from PUBLIC Google Sheet (CSV)
@@ -21,9 +22,16 @@ const fetchGoogleSheetLeads = async () => {
         const response = await axios.get(SHEET_URL, {
             timeout: SHEET_TIMEOUT,
             validateStatus: (status) => status === 200,
+            // Optimization: Use responseType: 'stream' for very large files if needed
+            // responseType: 'stream' 
         });
 
         const rows = await csv().fromString(response.data);
+
+        if (rows.length > MAX_ROWS) {
+            logger.warn(`⚠️ Google Sheet has ${rows.length} rows, which exceeds MAX_ROWS (${MAX_ROWS}). Indexing first ${MAX_ROWS} only.`);
+            rows.length = MAX_ROWS; // Truncate to save memory and CPU
+        }
 
         return rows.map((row) => ({
             customer_name: row["Customer Name"]?.trim() || "",
