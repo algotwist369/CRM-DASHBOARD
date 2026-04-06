@@ -21,8 +21,6 @@ import {
   FaYoutube,
   FaTelegram,
   FaTag,
-  FaChevronLeft,
-  FaChevronRight,
   FaChevronDown,
   FaChevronUp,
   FaTimes
@@ -38,7 +36,6 @@ import LazySection from '../../../../components/common/LazySection/LazySection'
 const Map = lazy(() => import('../../../../components/common/Map/Map'))
 const BusinessInfoReviews = lazy(() => import('./BusinessInfoReviews'))
 import HeroSection from './HeroSection'
-import MediaRenderer from './MediaRenderer'
 import MediaGallery from './MediaGallery'
 import { trackLeadClick } from '../../../../utils/analytics'
 import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
@@ -132,11 +129,9 @@ const BusinessInfo = () => {
     }
   }, [error])
 
-  // Update page title based on business name
-  const pageTitle = useMemo(() => {
-    return business ? `${business.name}${business.branch ? ` - ${business.branch}` : ''} - Spa Advisor` : null
-  }, [business])
-  usePageTitle(pageTitle)
+  // Update page title is now handled by the SEO component below
+  // to avoid conflicts between direct document.title updates and react-helmet-async
+  // usePageTitle(pageTitle)
 
   // Track page view
   useLeadTracking(business?._id, !!business);
@@ -348,9 +343,6 @@ const BusinessInfo = () => {
   // Function to determine if we should render hero
   const shouldRenderHero = allImages.length > 0
 
-  // Clean nextImage/prevImage as they are now internal to HeroSection or Modal specific
-  // The logic for Modal navigation remains here as BusinessInfo controls the modal state
-  // ... (keeping modal logic if needed or relying on simple state updates)dinates and zoom
   const mapCoordinates = useMemo(() => {
     if (business?.location?.coordinates) {
       return business.location.coordinates // [lng, lat] format
@@ -823,11 +815,16 @@ const BusinessInfo = () => {
   const seoConfig = useMemo(() => {
     if (!business) return null;
 
+    const { seo, name, category, city, description, images, branch } = business;
+
+    // If backend provides a title, use it. Otherwise, build one.
+    const metaTitle = seo?.metaTitle || `${name}${branch ? ` - ${branch}` : ''} | ${category || 'Spa'} in ${city}`;
+
     return {
-      title: business.seo?.metaTitle || `${business.name} | ${business.category || 'Business'} in ${business.city}`,
-      description: business.seo?.metaDescription || business.description?.substring(0, 160) || `Book appointments at ${business.name} in ${business.city}. Check reviews, services, and working hours.`,
-      keywords: business.seo?.keywords?.join(', ') || [business.name, business.category, business.city, business.services?.map(s => s.name)].flat().filter(Boolean).join(', '),
-      ogImage: business.seo?.ogImage || business.images?.banner || business.images?.logo,
+      title: metaTitle,
+      description: seo?.metaDescription || description?.substring(0, 160) || `Book appointments at ${name} in ${city}. Check reviews, services, and working hours.`,
+      keywords: Array.isArray(seo?.keywords) ? seo.keywords.join(', ') : seo?.keywords || [name, category, city, business.services?.map(s => s.name)].flat().filter(Boolean).join(', '),
+      image: seo?.ogImage || images?.banner || images?.logo || "https://spaadvisor.in",
       ogUrl: window.location.href,
       canonical: window.location.href
     };
@@ -837,33 +834,43 @@ const BusinessInfo = () => {
   const structuredData = useMemo(() => {
     if (!business) return null;
 
+    const { name, images, phone, email, address, city, state, country, location, workingHours, ratings, category } = business;
+
     const schema = {
       "@context": "https://schema.org",
       "@type": "LocalBusiness",
-      "name": business.name,
-      "image": business.images?.banner || business.images?.logo,
-      "telephone": business.phone,
-      "email": business.email,
+      "name": name,
+      "image": images?.banner || images?.logo || images?.thumbnail,
+      "telephone": phone,
+      "email": email,
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": business.address,
-        "addressLocality": business.city,
-        "addressRegion": business.state,
-        "addressCountry": business.country
+        "streetAddress": address,
+        "addressLocality": city,
+        "addressRegion": state,
+        "addressCountry": country || "IN"
       },
-      "geo": business.location?.coordinates ? {
+      "geo": location?.coordinates ? {
         "@type": "GeoCoordinates",
-        "latitude": business.location.coordinates[1],
-        "longitude": business.location.coordinates[0]
+        "latitude": location.coordinates[1],
+        "longitude": location.coordinates[0]
       } : undefined,
       "url": window.location.href,
-      "priceRange": "$$", // Dynamic if available
-      "openingHoursSpecification": business.workingHours?.days?.map((day, index) => ({
+      "priceRange": "₹₹",
+      "category": category,
+      "openingHoursSpecification": workingHours?.days?.map((day) => ({
         "@type": "OpeningHoursSpecification",
         "dayOfWeek": day.charAt(0).toUpperCase() + day.slice(1),
-        "opens": business.workingHours.open,
-        "closes": business.workingHours.close
-      }))
+        "opens": workingHours.open || "10:00",
+        "closes": workingHours.close || "23:00"
+      })),
+      "aggregateRating": ratings ? {
+        "@type": "AggregateRating",
+        "ratingValue": ratings.average || 0,
+        "reviewCount": ratings.totalReviews || 0,
+        "bestRating": "5",
+        "worstRating": "1"
+      } : undefined
     };
 
     return JSON.stringify(schema);
@@ -901,7 +908,7 @@ const BusinessInfo = () => {
           title={seoConfig.title}
           description={seoConfig.description}
           keywords={seoConfig.keywords}
-          ogImage={seoConfig.ogImage}
+          image={seoConfig.image}
           ogUrl={seoConfig.ogUrl}
           canonical={seoConfig.canonical}
         />

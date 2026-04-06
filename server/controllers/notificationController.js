@@ -8,6 +8,7 @@ const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { getTargetCustomers, getCustomerAnalytics } = require("../utils/customerAnalytics");
 const { sendMail } = require("../utils/sendMail");
 const { sendSMS } = require("../utils/sendSMS");
+const { mapWithConcurrency } = require("../utils/performanceHelper");
 
 // ================== Create Notification ==================
 const createNotification = async (req, res, next) => {
@@ -115,9 +116,11 @@ const sendNotification = async (req, res, next) => {
             _id: { $in: notification.targetAudience.individualCustomers }
         });
 
-        // Send notifications
-        const results = await Promise.allSettled(
-            customers.map(customer => sendNotificationToCustomer(notification, customer))
+        // Send notifications with concurrency control
+        const results = await mapWithConcurrency(
+            customers,
+            customer => sendNotificationToCustomer(notification, customer),
+            20 // Process 20 customers at a time
         );
 
         // Prepare delivery records without saving yet

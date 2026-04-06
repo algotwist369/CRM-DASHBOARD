@@ -140,6 +140,7 @@ const MediaGallery = ({
                                 <MediaRenderer
                                     item={allImages[modalImageIndex]}
                                     className="max-w-full max-h-[80vh] object-contain select-none"
+                                    alt={`${business?.category || 'Spa'} ${business?.name} - Gallery Photo ${modalImageIndex + 1} in ${business?.city || ''}`}
                                 />
                             </div>
 
@@ -158,7 +159,7 @@ const MediaGallery = ({
                                 >
                                     <img
                                         src={src}
-                                        alt={`Gallery ${idx}`}
+                                        alt={`${business?.category || 'Spa'} ${business?.name} - Gallery Photo ${idx + 1} in ${business?.city || ''}`}
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                         loading="lazy"
                                     />
