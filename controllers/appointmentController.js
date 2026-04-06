@@ -1578,7 +1578,7 @@ const getBusinessInfoForBooking = async (req, res, next) => {
         const { businessLink } = req.params;
 
         const business = await Business.findOne({ businessLink, isActive: true })
-            .select('name type branch address city state country phone email website description settings businessLink images google360ImageUrl videos socialMedia location googleMapsUrl ratings features amenities category tags _id paymentMethods')
+            .select('name type branch address city state country phone email website description settings businessLink images google360ImageUrl videos socialMedia location googleMapsUrl ratings features amenities category tags _id paymentMethods seo')
             .lean();
 
         if (!business) {
@@ -1618,6 +1618,7 @@ const getBusinessInfoForBooking = async (req, res, next) => {
             workingHours: business.settings?.workingHours,
             appointmentSettings: business.settings?.appointmentSettings,
             onlineDiscount
+            
         };
 
         return res.json({
