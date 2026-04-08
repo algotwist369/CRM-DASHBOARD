@@ -40,17 +40,17 @@ const YelpPlaybook = () => {
   ]
 
   const checklist = [
-    'Enable Booking App’s Yelp connector and confirm multi-location access',
+    'Enable Spa Advisor’s Yelp connector and confirm multi-location access',
     'Tag review requests by staff and service to monitor performance',
     'Schedule weekly review huddles to celebrate wins and coach responses',
-    'Escalate policy violations with evidence using Booking App disputes workspace',
+    'Escalate policy violations with evidence using Spa Advisor disputes workspace',
     'Measure rating trends and conversion impact inside the Reviews dashboard',
     'Promote 5-star reviews on your website and social feeds with social proof widgets'
   ]
 
   const resources = [
     {
-      title: 'See Booking App in Action',
+      title: 'See Spa Advisor in Action',
       description: 'Watch a walkthrough of real-time review monitoring, response routing, and analytics.',
       href: '/book-demo',
       icon: FaChartLine
@@ -81,7 +81,7 @@ const YelpPlaybook = () => {
           </h1>
           <p className="text-lg sm:text-xl text-primary-100 mb-8">
             A practical guide to capturing more 5-star feedback, responding with confidence, and turning Yelp browsers into loyal
-            customers using Booking App’s review automation suite.
+            customers using Spa Advisor’s review automation suite.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
@@ -154,7 +154,7 @@ const YelpPlaybook = () => {
           <div className="max-w-3xl mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">What Success Looks Like</h2>
             <p className="text-lg text-gray-600">
-              Booking App customers who implement this playbook see significant gains across rating, review volume, and conversion.
+              Spa Advisor customers who implement this playbook see significant gains across rating, review volume, and conversion.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -207,7 +207,7 @@ const YelpPlaybook = () => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to launch your Yelp playbook?</h2>
           <p className="text-lg sm:text-xl text-primary-100 mb-8">
-            Join thousands of service businesses using Booking App to protect their reputation and convert more customers from Yelp.
+            Join thousands of service businesses using Spa Advisor to protect their reputation and convert more customers from Yelp.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link

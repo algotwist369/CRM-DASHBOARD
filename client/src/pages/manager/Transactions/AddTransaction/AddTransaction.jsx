@@ -449,9 +449,16 @@ const AddTransaction = () => {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
                   >
                     <option value="walk-in">Walk-in</option>
-                    <option value="online">Online</option>
-                    <option value="phone">Phone</option>
+                    <option value="phone">Phone Call</option>
+                    <option value="social-media">Social Media</option>
+                    <option value="website">Website</option>
+                    <option value="spaadvisor">SpaAdvisor</option>
+                    <option value="justdial">Justdial</option>
+                    <option value="reference">Reference</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="repeat-customer">Repeat Customer</option>
                     <option value="other">Other</option>
+
                   </select>
                 </div>
               </div>

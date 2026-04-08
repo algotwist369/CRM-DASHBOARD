@@ -1,15 +1,9 @@
-import apiClient from '../api/client'
+import apiClient from './client'
 import { endpoints } from '../../constants/api/endpoints'
 
 class LeadService {
-    /**
-     * Track a lead click (Call, WhatsApp, Booking)
-     * Fire-and-forget: we don't return the promise to avoid blocking UI
-     * @param {string} businessId
-     * @param {string} leadType - 'call' | 'whatsapp' | 'booking'
-     * @param {string} page - Current page path
-     */
-    trackClick(businessId, leadType, page) {
+
+    trackClick(businessId, leadType, page, tracking = null) {
         if (!businessId || !leadType) return
 
         // use native fetch with keepalive: true to ensure request completes even if page unloads/navigates
@@ -23,7 +17,8 @@ class LeadService {
                 body: JSON.stringify({
                     businessId,
                     leadType,
-                    page
+                    page,
+                    tracking
                 }),
                 keepalive: true
             }).catch(err => {

@@ -1,0 +1,867 @@
+import React, { useState, memo, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    HiOutlineSearch,
+    HiOutlineRefresh,
+    HiOutlineCheck,
+    HiOutlineTrash,
+    HiOutlinePhone,
+    HiOutlineClock,
+    HiOutlineOfficeBuilding,
+    HiOutlineFilter,
+    HiOutlineChevronLeft,
+    HiOutlineChevronRight,
+    HiOutlineCalendar,
+    HiOutlinePencil
+} from 'react-icons/hi';
+import { FaCopy, FaQuestionCircle, FaRegEnvelopeOpen, FaFileCsv, FaFilePdf, FaSpinner } from 'react-icons/fa';
+import adminService from '../../../services/admin/adminService';
+import managerService from '../../../services/manager/managerService';
+import authService from '../../../services/auth/authService';
+import { useSocket } from '../../../contexts/SocketContext';
+import { toast } from 'react-hot-toast';
+import { getPlatformStyle } from '../../../utils/common/sourceHelper';
+import BackButton from '../../../components/common/Button/BackButton';
+
+// --- Sub-components ---
+
+const TableSkeleton = memo(() => (
+    <div className="animate-pulse">
+        {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex border-b border-gray-100 py-4 px-4 gap-4">
+                <div className="h-10 w-1/4 bg-gray-200 rounded"></div>
+                <div className="h-10 w-1/4 bg-gray-200 rounded"></div>
+                <div className="h-10 w-1/6 bg-gray-200 rounded"></div>
+                <div className="h-10 w-1/6 bg-gray-200 rounded"></div>
+                <div className="h-10 w-1/12 bg-gray-200 rounded ml-auto"></div>
+            </div>
+        ))}
+    </div>
+));
+
+const InquiryRow = memo(({ inquiry, onMarkAsReceived, onDelete, onCopy, onRemark, currentUser }) => {
+    const createdAt = useMemo(() => {
+        if (!inquiry.createdAt) return 'N/A';
+        const date = new Date(inquiry.createdAt);
+        const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        return `${dateStr}, ${timeStr}`;
+    }, [inquiry.createdAt]);
+
+    return (
+        <motion.tr
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            layout
+            className="hover:bg-gray-50/80 transition-colors group"
+        >
+            <td className="pl-4 pr-1 py-2 whitespace-nowrap border-b border-gray-100">
+                <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                        {inquiry.user_name}
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                        <HiOutlinePhone className="w-3 h-3" /> {inquiry.phone}
+                    </span>
+                </div>
+            </td>
+            <td className="pl-1 pr-4 py-2 whitespace-nowrap border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                        <HiOutlineOfficeBuilding className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-800 font-medium">{inquiry.business_id?.name || 'N/A'}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-tight font-bold">{inquiry.business_id?.branch || ''}</span>
+                    </div>
+                </div>
+            </td>
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100">
+                {(() => {
+                    const style = getPlatformStyle(inquiry.tracking?.source || 'direct');
+                    return (
+                        <div
+                            className="flex flex-col cursor-help items-start"
+                            title={`Source: ${style.name}\nMedium: ${inquiry.tracking?.medium || 'N/A'}\nCampaign: ${inquiry.tracking?.campaign || 'N/A'}`}
+                        >
+                            <div className="flex items-center gap-1">
+                                <style.icon className={`text-[9px] ${style.text}`} />
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold capitalize border ${style.pill} ${style.text} ${style.border}`}>
+                                    {style.name}
+                                </span>
+                            </div>
+                            {inquiry.tracking?.medium && (
+                                <span className="text-[8px] text-gray-400 capitalize mt-0.5 ml-0.5">
+                                    {inquiry.tracking.medium}
+                                </span>
+                            )}
+                        </div>
+                    );
+                })()}
+            </td>
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100">
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase tracking-wider ${inquiry.inquiry_type === 'whatsapp'
+                    ? 'bg-green-50 text-green-700 border-green-100'
+                    : 'bg-blue-50 text-blue-700 border-blue-100'
+                    }`}>
+                    {inquiry.inquiry_type || 'General'}
+                </span>
+            </td>
+            <td className="px-4 py-2 border-b border-gray-100 text-[11px] text-gray-500 font-medium">
+                <div className="flex flex-col">
+                    {createdAt.split('\n').map((line, i) => (
+                        <span key={i}>{line}</span>
+                    ))}
+                </div>
+            </td>
+
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100">
+                {inquiry.is_recieved ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-bold border border-green-100 ">
+                        <HiOutlineCheck className="w-3 h-3" /> RECEIVED
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-100 ">
+                        <HiOutlineClock className="w-3 h-3 animate-pulse" /> PENDING
+                    </span>
+                )}
+            </td>
+
+            <td className="px-4 py-2 border-b border-gray-100">
+                {inquiry.remark ? (
+                    <div className="flex flex-col">
+                        <span
+                            className={`text-sm font-medium break-words px-3 py-2 rounded-lg inline-block
+                                    ${inquiry.remark_color === 'red'
+                                    ? 'bg-red-100 text-red-800'
+                                    : inquiry.remark_color === 'yellow'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-600 text-white'
+                                }
+`}
+                        >
+                            {inquiry.remark}
+                        </span>
+                        <span className="text-[11px] text-gray-400 mt-0.5">
+                            By {inquiry.remarked_by_name || '—'}{inquiry.remarked_at ? ` • ${new Date(inquiry.remarked_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                )}
+            </td>
+
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100 text-center">
+                <button
+                    onClick={() => onCopy(inquiry)}
+                    className="p-1.5 rounded-lg text-primary-600 hover:bg-primary-50 transition-all active:scale-95"
+                    title="Copy WhatsApp Lead"
+                >
+                    <FaCopy className="w-3.5 h-3.5" />
+                </button>
+            </td>
+
+            <td className="px-4 py-2 whitespace-nowrap border-b border-gray-100 text-right">
+                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!inquiry.is_recieved && (
+                        <button
+                            onClick={() => onMarkAsReceived(inquiry._id)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all active:scale-95"
+                            title="Mark as Received"
+                        >
+                            <HiOutlineCheck className="w-5 h-5" />
+                        </button>
+                    )}
+                    {/* Remark Edit Button - Admins can edit any remark, others can only edit their own */}
+                    {(() => {
+                        // Check for admin role in various possible property names
+                        const userRole = currentUser?.role || currentUser?.userRole || currentUser?.account_type || '';
+                        const isAdmin = userRole.toLowerCase().includes('admin');
+
+                        // ALWAYS log for debugging (remove after fix)
+                        console.log('🔍 Remark Check:', {
+                            user: currentUser,
+                            userRole,
+                            isAdmin,
+                            remarkedBy: inquiry.remarked_by,
+                        });
+
+                        // ADMINS CAN ALWAYS EDIT - Early return
+                        if (isAdmin) {
+                            return (
+                                <button
+                                    onClick={() => onRemark(inquiry._id, inquiry.remark, inquiry.remark_color)}
+                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
+                                    title="Edit Remark (Admin)"
+                                >
+                                    <HiOutlinePencil className="w-5 h-5" />
+                                </button>
+                            );
+                        }
+
+                        // Non-admins: can only edit their own remarks or add new ones
+                        const canEdit = !inquiry.remarked_by || inquiry.remarked_by === currentUser?.id;
+
+                        return canEdit ? (
+                            <button
+                                onClick={() => onRemark(inquiry._id, inquiry.remark)}
+                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
+                                title={inquiry.remarked_by ? "Edit Your Remark" : "Add Remark"}
+                            >
+                                <HiOutlinePencil className="w-5 h-5" />
+                            </button>
+                        ) : (
+                            <div
+                                className="p-2 text-gray-400"
+                                title={`Remark by ${inquiry.remarked_by_name} (view only)`}
+                            >
+                                <HiOutlinePencil className="w-5 h-5 opacity-40" />
+                            </div>
+                        );
+                    })()}
+                    <button
+                        onClick={() => onDelete(inquiry._id)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all active:scale-95"
+                        title="Delete Inquiry"
+                    >
+                        <HiOutlineTrash className="w-5 h-5" />
+                    </button>
+                </div>
+            </td>
+        </motion.tr>
+    );
+}, (prev, next) => {
+    // Debug: Log currentUser to verify structure (remove after debugging)
+    if (next.currentUser && Math.random() < 0.1) { // Log 10% of the time to avoid console spam
+        console.log('InquiryRow - currentUser:', next.currentUser);
+        console.log('InquiryRow - currentUser.role:', next.currentUser.role);
+    }
+
+    return prev.inquiry._id === next.inquiry._id &&
+        prev.inquiry.is_recieved === next.inquiry.is_recieved &&
+        prev.inquiry.remarked_by_role === next.inquiry.remarked_by_role &&
+        prev.inquiry.remarked_by_name === next.inquiry.remarked_by_name &&
+        prev.onRemark === next.onRemark &&
+        prev.onMarkAsReceived === next.onMarkAsReceived &&
+        prev.onDelete === next.onDelete &&
+        prev.currentUser?.role === next.currentUser?.role;
+});
+
+// --- Main Component ---
+
+const InquiryList = () => {
+    const queryClient = useQueryClient();
+    const { socket } = useSocket() || {};
+
+    // Auth & Service Context
+    const user = useMemo(() => {
+        let currentUser = authService.getCurrentUser();
+
+        // Fallback: if authService returns null, try to get from localStorage directly
+        if (!currentUser) {
+            try {
+                const storedUser = localStorage.getItem('user');
+                const userRole = localStorage.getItem('userRole');
+
+                if (storedUser) {
+                    currentUser = JSON.parse(storedUser);
+                } else if (userRole) {
+                    // Minimal user object with role
+                    currentUser = { role: userRole };
+                }
+
+                console.log('📌 User from fallback:', currentUser);
+            } catch (e) {
+                console.error('Error reading user from localStorage:', e);
+            }
+        }
+
+        return currentUser;
+    }, []);
+    const service = useMemo(() => user?.role === 'admin' ? adminService : managerService, [user]);
+
+    // UI States
+    const [filters, setFilters] = useState({
+        search: '',
+        status: '',
+        type: '',
+        startDate: '',
+        endDate: ''
+    });
+    const [debouncedFilters, setDebouncedFilters] = useState(filters);
+    const [page, setPage] = useState(1);
+    const [showFilters, setShowFilters] = useState(false);
+    const [exporting, setExporting] = useState(null);
+    const [remarkModal, setRemarkModal] = useState({ isOpen: false, inquiryId: null, text: '', color: 'gray' });
+
+    // Consolidated Debouncing
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedFilters(filters);
+            setPage(1);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [filters]);
+
+    // Socket Integration for real-time updates
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNewNotification = (data) => {
+            if (data?.type === 'business' || data?.actionUrl?.includes('inquiries')) {
+                toast.info('New inquiry received!', { icon: '📢', duration: 4000 });
+                queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+            }
+        };
+
+        const handleInquiryUpdated = (data) => {
+            if (data?.id) {
+                queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+            }
+        };
+
+        socket.on('new_notification', handleNewNotification);
+        socket.on('inquiry_updated', handleInquiryUpdated);
+        return () => {
+            socket.off('new_notification', handleNewNotification);
+            socket.off('inquiry_updated', handleInquiryUpdated);
+        };
+    }, [socket, queryClient]);
+
+    // Fetch Data
+    const { data, isLoading, isFetching, refetch } = useQuery({
+        queryKey: ['inquiries', page, debouncedFilters],
+        queryFn: () => service.getInquiries({
+            page,
+            limit: 12,
+            ...debouncedFilters
+        }),
+        placeholderData: keepPreviousData,
+        staleTime: 30000, // 30 seconds
+        gcTime: 300000, // 5 minutes (renamed from cacheTime in v5)
+        refetchOnWindowFocus: false,
+    });
+
+    // Mutations
+    const markReceivedMutation = useMutation({
+        mutationFn: (id) => service.markInquiryAsReceived(id),
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: ['inquiries'] });
+            const previousData = queryClient.getQueryData(['inquiries', page, debouncedFilters]);
+
+            // Optimistic Update
+            if (previousData) {
+                queryClient.setQueryData(['inquiries', page, debouncedFilters], {
+                    ...previousData,
+                    data: previousData.data.map(inq =>
+                        inq._id === id ? { ...inq, is_recieved: true } : inq
+                    )
+                });
+            }
+            return { previousData };
+        },
+        onSuccess: () => {
+            toast.success('Status updated', { position: 'bottom-right' });
+        },
+        onError: (err, id, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(['inquiries', page, debouncedFilters], context.previousData);
+            }
+            toast.error('Failed to update status');
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id) => service.deleteInquiry(id),
+        onSuccess: () => {
+            toast.success('Inquiry removed');
+            queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+        }
+    });
+
+    const remarkMutation = useMutation({
+        mutationFn: ({ id, remark, color }) =>
+            service.remarkInquiry(id, { remark, remark_color: color }),
+        onSuccess: () => {
+            toast.success('Remark saved');
+            queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+        },
+        onError: () => {
+            toast.error('Failed to save remark');
+        }
+    });
+
+    // Handlers
+    const handleMarkAsReceived = useCallback((id) => {
+        markReceivedMutation.mutate(id);
+    }, [markReceivedMutation]);
+
+    const handleDelete = useCallback((id) => {
+        if (window.confirm('Delete this inquiry?')) {
+            deleteMutation.mutate(id);
+        }
+    }, [deleteMutation]);
+
+    const handleRemark = useCallback((id, currentRemark, currentColor) => {
+        setRemarkModal({
+            isOpen: true,
+            inquiryId: id,
+            text: currentRemark || '',
+            color: currentColor || 'gray'
+        });
+    }, []);
+
+    const submitRemark = useCallback(() => {
+        if (!remarkModal.text.trim()) {
+            toast.error('Remark cannot be empty');
+            return;
+        }
+        remarkMutation.mutate({
+            id: remarkModal.inquiryId,
+            remark: remarkModal.text,
+            color: remarkModal.color
+        });
+        setRemarkModal({ isOpen: false, inquiryId: null, text: '' });
+    }, [remarkModal, remarkMutation]);
+
+    const handleFilterChange = useCallback((e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    }, []);
+
+    const resetFilters = useCallback(() => {
+        setFilters({
+            search: '',
+            status: '',
+            type: '',
+            startDate: '',
+            endDate: ''
+        });
+    }, []);
+
+    const handleExport = useCallback(async (format) => {
+        try {
+            setExporting(format);
+            const res = await service.exportInquiries({
+                format,
+                ...debouncedFilters
+            });
+
+            if (res.success) {
+                const blob = new Blob([res.data], {
+                    type: format === 'csv' ? 'text/csv' : 'application/pdf'
+                });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `inquiries-${new Date().toISOString().split('T')[0]}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                toast.success(`Exported as ${format.toUpperCase()}`);
+            } else {
+                toast.error(res.error || 'Export failed');
+            }
+        } catch (e) {
+            toast.error('Export failed');
+        } finally {
+            setExporting(null);
+        }
+    }, [service, debouncedFilters]);
+
+
+    const handleCopyLead = useCallback((inquiry) => {
+        const message = `
+        New Customer Enquiry – High Priority
+
+        Enquiry Type: ${inquiry.inquiry_type || 'General'}
+        Customer Name: ${inquiry.user_name || 'N/A'}
+        Phone: ${inquiry.phone || 'N/A'}
+        Spa: ${inquiry.business_id?.name || 'N/A'}, ${inquiry.business_id?.branch || ''}
+
+        Note: As instructed by the Head Office, please follow up immediately. Timely response is required.
+        `;
+
+        navigator.clipboard.writeText(message);
+        toast.success('Lead copied for WhatsApp', { duration: 2000 });
+    }, []);
+
+    const inquiries = data?.data || [];
+    const totalPages = data?.pagination?.pages || 1;
+    const totalItems = data?.pagination?.total || 0;
+
+    return (
+        <div className="max-w-full mx-auto space-y-4 pb-8">
+            {/* Header Section */}
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 bg-white p-4 md:p-6 rounded-2xl border border-gray-100  overflow-hidden relative group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50 rounded-full -mr-32 -mt-32 opacity-30 group-hover:scale-110 transition-transform duration-700"></div>
+                <div className="relative z-10">
+                    <BackButton />
+                    <div className="flex items-center gap-3 mt-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary-600 flex items-center justify-center text-white  shadow-primary-100">
+                            <FaQuestionCircle className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Customer Inquiries</h1>
+                            <p className="text-gray-400 font-medium text-[11px] mt-0.5">
+                                {user?.role === 'admin'
+                                    ? 'Global lead management across all ecosystem branches'
+                                    : 'Manage customer interests and leads for your branch'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 relative z-10">
+                    <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-100 mr-2">
+                        <button
+                            onClick={() => handleExport('csv')}
+                            disabled={exporting === 'csv' || inquiries.length === 0}
+                            className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-bold text-xs hover:bg-gray-50 transition-all disabled:opacity-50"
+                            title="Download CSV"
+                        >
+                            {exporting === 'csv' ? <FaSpinner className="animate-spin" /> : <FaFileCsv className="text-green-600 w-4 h-4" />}
+                            <span className="hidden sm:inline">CSV</span>
+                        </button>
+                        <button
+                            onClick={() => handleExport('pdf')}
+                            disabled={exporting === 'pdf' || inquiries.length === 0}
+                            className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-bold text-xs hover:bg-gray-50 transition-all disabled:opacity-50"
+                            title="Download PDF"
+                        >
+                            {exporting === 'pdf' ? <FaSpinner className="animate-spin" /> : <FaFilePdf className="text-red-600 w-4 h-4" />}
+                            <span className="hidden sm:inline">PDF</span>
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border font-bold text-sm transition-all active:scale-95 ${showFilters ? 'bg-primary-50 border-primary-100 text-primary-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <HiOutlineFilter className="w-5 h-5" />
+                        {showFilters ? 'Hide Filters' : 'Show Filters'}
+                    </button>
+                    <button
+                        onClick={() => refetch()}
+                        disabled={isFetching}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <HiOutlineRefresh className={`w-5 h-5 ${isFetching ? 'animate-spin' : ''}`} />
+                        {isFetching ? 'Syncing...' : 'Sync Data'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Advanced Filters */}
+            <AnimatePresence>
+                {showFilters && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="bg-white border border-gray-100 p-6 md:p-8 rounded-2xl space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                                {/* Search */}
+                                <div className="space-y-1.5 lg:col-span-2">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Search Customer</label>
+                                    <div className="relative">
+                                        <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                        <input
+                                            type="text"
+                                            name="search"
+                                            placeholder="Name or Phone..."
+                                            value={filters.search}
+                                            onChange={handleFilterChange}
+                                            className="w-full pl-10 pr-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Date Range */}
+                                <div className="space-y-2 lg:col-span-2 flex gap-4">
+                                    <div className="flex-1 space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">From Date</label>
+                                        <div className="relative">
+                                            <HiOutlineCalendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                                            <input
+                                                type="date"
+                                                name="startDate"
+                                                value={filters.startDate}
+                                                onChange={handleFilterChange}
+                                                className="w-full pl-9 pr-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-[11px] transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">To Date</label>
+                                        <div className="relative">
+                                            <HiOutlineCalendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                                            <input
+                                                type="date"
+                                                name="endDate"
+                                                value={filters.endDate}
+                                                onChange={handleFilterChange}
+                                                className="w-full pl-9 pr-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-[11px] transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Status Filter */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Handle Status</label>
+                                    <select
+                                        name="status"
+                                        value={filters.status}
+                                        onChange={handleFilterChange}
+                                        className="w-full px-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="">All Statuses</option>
+                                        <option value="false">Pending Only</option>
+                                        <option value="true">Received Only</option>
+                                    </select>
+                                </div>
+
+                                {/* Type Filter */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Inquiry Type</label>
+                                    <select
+                                        name="type"
+                                        value={filters.type}
+                                        onChange={handleFilterChange}
+                                        className="w-full px-3 py-2 bg-gray-50 border-transparent focus:bg-white border focus:border-primary-500 rounded-xl outline-none text-xs transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="">Any Type</option>
+                                        <option value="general">General</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                        <option value="booking">Booking</option>
+                                    </select>
+                                </div>
+
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={resetFilters}
+                                        className="text-xs font-bold text-primary-600 hover:text-primary-700 underline underline-offset-4"
+                                    >
+                                        Reset All Filters
+                                    </button>
+                                </div>
+                                <div className="bg-gray-50 px-4 py-2 rounded-lg border border-gray-100 flex items-center gap-2">
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Total filtered:</span>
+                                    <span className="text-sm font-black text-gray-900">{totalItems}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Table Section */}
+            <div className="bg-white rounded-3xl border border-gray-100  shadow-gray-200/50 overflow-hidden min-h-[500px]">
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50/50">
+                                <th className="pl-4 pr-1 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Customer</th>
+                                <th className="pl-1 pr-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Origin Business</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Source</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Enquiry Type</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Timestamp</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Status</th>
+                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Remark</th>
+                                <th className="px-4 py-3 text-center text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">
+                                    Copy
+                                </th>
+                                <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] border-b border-gray-100">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="relative">
+                            <AnimatePresence mode="popLayout" initial={false}>
+                                {isLoading && !inquiries.length ? (
+                                    <motion.tr key="skeleton">
+                                        <td colSpan="8" className="p-0">
+                                            <TableSkeleton />
+                                        </td>
+                                    </motion.tr>
+                                ) : inquiries.length === 0 ? (
+                                    <motion.tr
+                                        key="empty"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="bg-white"
+                                    >
+                                        <td colSpan="8" className="px-6 py-32 text-center">
+                                            <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                                                <div className="w-20 h-20 bg-primary-50 rounded-3xl flex items-center justify-center text-primary-200">
+                                                    <FaRegEnvelopeOpen className="w-10 h-10" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-gray-900">Quiet Inbox</h3>
+                                                    <p className="text-gray-500 text-sm mt-1">No inquiries match your current filters. Try broadening your search.</p>
+                                                </div>
+                                                <button
+                                                    onClick={resetFilters}
+                                                    className="px-6 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-200 transition-all border border-gray-200"
+                                                >
+                                                    Clear All Filters
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </motion.tr>
+                                ) : (
+                                    inquiries.map((inquiry) => (
+                                        <InquiryRow
+                                            key={inquiry._id}
+                                            inquiry={inquiry}
+                                            onMarkAsReceived={handleMarkAsReceived}
+                                            onDelete={handleDelete}
+                                            onCopy={handleCopyLead}
+                                            onRemark={handleRemark}
+                                            currentUser={user}
+                                        />
+                                    ))
+                                )}
+                            </AnimatePresence>
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl  border border-gray-200">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="p-2 bg-white text-gray-500 hover:text-primary-600 disabled:opacity-30 disabled:hover:text-gray-500 rounded-lg transition-all active:scale-90"
+                            >
+                                <HiOutlineChevronLeft className="w-6 h-6" />
+                            </button>
+
+                            {[...Array(totalPages)].map((_, i) => {
+                                const pNum = i + 1;
+                                // Basic sliding window for many pages
+                                if (totalPages > 5 && Math.abs(pNum - page) > 1 && pNum !== 1 && pNum !== totalPages) {
+                                    if (pNum === 2 || pNum === totalPages - 1) return <span key={pNum} className="px-2 text-gray-300">...</span>;
+                                    return null;
+                                }
+                                return (
+                                    <button
+                                        key={pNum}
+                                        onClick={() => setPage(pNum)}
+                                        className={`w-10 h-10 rounded-lg text-sm font-bold transition-all active:scale-90 ${page === pNum
+                                            ? 'bg-primary-600 text-white  shadow-primary-200'
+                                            : 'text-gray-500 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        {pNum}
+                                    </button>
+                                );
+                            })}
+
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="p-2 bg-white text-gray-500 hover:text-primary-600 disabled:opacity-30 disabled:hover:text-gray-500 rounded-lg transition-all active:scale-90"
+                            >
+                                <HiOutlineChevronRight className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <p className="text-[13px] font-bold text-gray-400 uppercase tracking-widest">
+                            Showing page {page} of {totalPages} <span className="text-gray-200 mx-2">|</span> {totalItems} total leads
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            {/* Remark Modal */}
+            <AnimatePresence>
+                {remarkModal.isOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setRemarkModal({ isOpen: false, inquiryId: null, text: '' })}
+                            className="fixed inset-0 bg-black/30 z-40"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 z-50"
+                        >
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Add / Edit Remark</h3>
+                            <p className="text-gray-500 text-sm mb-6">Enter your note for this inquiry</p>
+
+                            <textarea
+                                value={remarkModal.text}
+                                onChange={(e) => setRemarkModal(prev => ({ ...prev, text: e.target.value }))}
+                                placeholder="Type your remark here..."
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 resize-none"
+                                rows={5}
+                            />
+
+                            <div className="mt-4">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                                    Remark Color
+                                </p>
+
+                                <div className="flex gap-3">
+                                    {[
+                                        { key: 'red', label: 'Red', class: 'bg-red-100 border-red-300 text-red-800' },
+                                        { key: 'yellow', label: 'Green', class: 'bg-green-100 border-green-300 text-green-800 outeline-none' },
+                                        { key: 'gray', label: 'Gray', class: 'bg-gray-900 border-gray-900 text-white' }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.key}
+                                            onClick={() =>
+                                                setRemarkModal(prev => ({ ...prev, color: opt.key }))
+                                            }
+                                            className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all
+                                                ${opt.class}
+                                                ${remarkModal.color === opt.key ? 'ring-2 ring-offset-2 ring-primary-500' : ''}
+                                                `}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setRemarkModal({ isOpen: false, inquiryId: null, text: '' })}
+                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={submitRemark}
+                                    className="flex-1 px-4 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-all active:scale-95"
+                                >
+                                    Save Remark
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export default InquiryList;

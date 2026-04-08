@@ -6,7 +6,6 @@ import {
   HiOutlineOfficeBuilding,
   HiOutlineUserGroup,
   HiOutlineUsers,
-  HiOutlineChartBar,
   HiOutlineCog,
   HiOutlineBell,
   HiOutlineChevronRight,
@@ -14,12 +13,12 @@ import {
   HiOutlineChevronDown,
   HiOutlineCube,
   HiOutlineCalendar,
-  HiOutlineDocumentText,
-  HiOutlineClipboardList,
   HiOutlineCursorClick,
+  HiOutlineStar,
+  HiOutlineChartBar,
 } from 'react-icons/hi'
 import { GrAnnounce } from "react-icons/gr";
-import { FaUserCircle, FaLock } from 'react-icons/fa';
+import { FaUserCircle, FaLock, FaQuestionCircle, FaWhatsapp } from 'react-icons/fa';
 import { RiLogoutBoxRLine } from "react-icons/ri";
 
 
@@ -32,6 +31,7 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
   const [pendingSubmenu, setPendingSubmenu] = useState(null)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
+  const [pendingLeadsCount, setPendingLeadsCount] = useState(0)
   const { socket, connected } = useSocket()
 
 
@@ -67,6 +67,19 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
 
     // Fetch unread notification count only once (Socket.IO will handle real-time updates)
     fetchUnreadCount();
+
+    // Fetch pending leads count
+    const fetchPendingLeadsCount = async () => {
+      try {
+        const result = await adminService.getPendingLeadsCount();
+        if (result.success) {
+          setPendingLeadsCount(result.count || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending leads count:', error);
+      }
+    };
+    fetchPendingLeadsCount();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // REAL-TIME: Listen for new notifications via Socket.IO
@@ -130,6 +143,24 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
     };
   }, [socket, connected]);
 
+  // Listen for pending leads count updates
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    const handlePendingLeadsUpdate = (data) => {
+      console.log('📊 [Sidebar] Pending leads count updated:', data);
+      if (data.count !== undefined) {
+        setPendingLeadsCount(data.count);
+      }
+    };
+
+    socket.on('admin:leads:pending:updated', handlePendingLeadsUpdate);
+
+    return () => {
+      socket.off('admin:leads:pending:updated', handlePendingLeadsUpdate);
+    };
+  }, [socket, connected]);
+
   // When sidebar expands and there's a pending submenu, open it
   useEffect(() => {
     if (!isCollapsed && pendingSubmenu) {
@@ -178,10 +209,22 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       icon: <HiOutlineCalendar className="w-5 h-5" />,
     },
     {
-      name: 'Invoices',
-      href: '/admin/invoices',
-      icon: <HiOutlineDocumentText className="w-5 h-5" />,
+      name: 'Inquiries',
+      href: '/admin/inquiries',
+      icon: <FaQuestionCircle className="w-5 h-5" />,
     },
+    {
+      name: 'WhatsApp Leads',
+      // icon: <FaLock className="w-5 h-5 text-gray-500" />,
+      // disabled: true,
+      href: '/admin/watsapp-leads',
+      icon: <FaWhatsapp className="w-5 h-5" />,
+    },
+    // {
+    //   name: 'Invoices',
+    //   href: '/admin/invoices',
+    //   icon: <HiOutlineDocumentText className="w-5 h-5" />,
+    // },
     // {
     //   name: 'Reviews',
     //   href: '/admin/reviews',
@@ -219,15 +262,20 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
       icon: <HiOutlineCursorClick className="w-5 h-5" />,
     },
     {
+      name: 'Source Analytics',
+      href: '/admin/source-analytics',
+      icon: <HiOutlineChartBar className="w-5 h-5" />,
+    },
+    {
       name: 'Notifications',
       href: '/admin/notifications',
       icon: <HiOutlineBell className="w-5 h-5" />,
     },
-    {
-      name: 'Reports',
-      href: '/admin/reports',
-      icon: <HiOutlineClipboardList className="w-5 h-5" />,
-    },
+    // {
+    //   name: 'Reports',
+    //   href: '/admin/reports',
+    //   icon: <HiOutlineClipboardList className="w-5 h-5" />,
+    // },
     {
       name: 'Settings',
       href: '/admin/settings',
@@ -327,6 +375,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
                       {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                     </span>
                   )}
+                  {item.name === 'WhatsApp Leads' && pendingLeadsCount > 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full flex-shrink-0">
+                      {pendingLeadsCount > 99 ? '99+' : pendingLeadsCount}
+                    </span>
+                  )}
                   {item.submenu && (
                     <HiOutlineChevronDown
                       className={`ml-2 w-4 h-4 transition-transform duration-200 ${activeSubmenu === item.name ? 'rotate-180' : ''
@@ -338,6 +391,11 @@ const AdminSidebar = ({ isCollapsed, onToggle }) => {
               {isCollapsed && item.name === 'Notifications' && unreadNotificationCount > 0 && (
                 <span className="absolute top-0 right-0 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-pulse shadow-lg border-2 border-gray-900">
                   {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </span>
+              )}
+              {isCollapsed && item.name === 'WhatsApp Leads' && pendingLeadsCount > 0 && (
+                <span className="absolute top-0 right-0 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-pulse shadow-lg border-2 border-gray-900">
+                  {pendingLeadsCount > 9 ? '9+' : pendingLeadsCount}
                 </span>
               )}
             </NavLink>

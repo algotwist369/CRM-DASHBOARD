@@ -1,11 +1,5 @@
 import leadService from '../services/public/leadService'
 
-/**
- * Helper to track lead clicks safely.
- * @param {string} businessId 
- * @param {string} leadType - 'call' | 'whatsapp' | 'booking'
- * @param {string} pageName - Optional override, defaults to window.location.pathname
- */
 export const trackLeadClick = (businessId, leadType, pageName = null) => {
     if (!businessId) {
         console.warn('trackLeadClick: Missing businessId')
@@ -13,5 +7,15 @@ export const trackLeadClick = (businessId, leadType, pageName = null) => {
     }
 
     const page = pageName || window.location.href
-    leadService.trackClick(businessId, leadType, page)
+
+    // Get tracking data from localStorage
+    let tracking = null;
+    try {
+        const stored = localStorage.getItem('crm_traffic_source');
+        if (stored) tracking = JSON.parse(stored);
+    } catch (e) {
+        // Ignore error
+    }
+
+    leadService.trackClick(businessId, leadType, page, tracking)
 }

@@ -83,18 +83,18 @@ const FilterSection = memo(({
           />
         </div>
 
-        {/* Tier Filter */}
+        {/* Customer Type Filter */}
         <select
           value={filterTier}
           onChange={(e) => setFilterTier(e.target.value)}
           className="px-4 py-2 border border-gray-300 outline-none focus:border-primary-500 transition-colors bg-white"
         >
-          <option value="">All Tiers</option>
-          <option value="platinum">Platinum</option>
-          <option value="gold">Gold</option>
-          <option value="silver">Silver</option>
-          <option value="bronze">Bronze</option>
-          <option value="none">No Tier</option>
+          <option value="">All Customers</option>
+          <option value="new">New Customers</option>
+          <option value="regular">Regular Customers</option>
+          <option value="vip">VIP Customers</option>
+          <option value="walkin">Walk-in Customers</option>
+          <option value="inactive">Inactive Customers</option>
         </select>
 
         {/* Business Selector */}
@@ -139,7 +139,7 @@ const CustomerTable = memo(({ customers, loading, onView, onEdit, onDelete, show
     "Points",
     "Visits",
     "Total Spent",
-    "Actions"
+    // "Actions"
   ];
 
   const getTierBadge = (tier) => {
@@ -216,7 +216,7 @@ const CustomerTable = memo(({ customers, loading, onView, onEdit, onDelete, show
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.loyaltyPoints || 0} pts</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.totalVisits || 0}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{customer.totalSpent?.toLocaleString() || 0}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                {/* <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end gap-3">
                     <button onClick={() => onView(customer.id || customer._id)} className="text-blue-600 hover:text-blue-900" title="View">
                       <HiOutlineEye className="w-5 h-5" />
@@ -228,7 +228,7 @@ const CustomerTable = memo(({ customers, loading, onView, onEdit, onDelete, show
                       <HiOutlineTrash className="w-5 h-5" />
                     </button>
                   </div>
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>
@@ -455,13 +455,13 @@ const CustomerList = () => {
           </h1>
           <p className="text-gray-600 mt-1">Manage your customer database</p>
         </div>
-        <button
+        {/* <button
           onClick={() => navigate('/admin/customers/create')}
           className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 transition-colors"
         >
           <HiOutlineUserAdd className="w-5 h-5" />
           Add Customer
-        </button>
+        </button> */}
       </div>
 
       <StatsGrid stats={stats} />

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import {
   FaCalendarAlt,
@@ -16,7 +16,11 @@ import {
 } from 'react-icons/fa'
 
 const Features = () => {
-  usePageTitle('Features - Booking App')
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  })
+  usePageTitle('Features - Spa Advisor')
 
   const features = [
     {
@@ -84,13 +88,13 @@ const Features = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-16 sm:py-20 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-primary-600 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
+            <h1 className="text-2xl font-bold mb-2">
               Powerful Features
             </h1>
-            <p className="text-xl sm:text-2xl text-primary-100 max-w-3xl mx-auto">
+            <p className="text-sm text-primary-100">
               Everything you need to manage and grow your business
             </p>
           </div>
@@ -98,20 +102,20 @@ const Features = () => {
       </div>
 
       {/* Features Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (
               <div
                 key={index}
-                className="bg-white   border border-gray-200 p-6 sm:p-8 hover:shadow-lg transition-shadow"
+                className="bg-white border p-4"
               >
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-100  flex items-center justify-center mb-4">
-                  <Icon className="text-primary-600 text-xl sm:text-2xl" />
+                <div className="w-10 h-10 bg-primary-100 flex items-center justify-center mb-3">
+                  <Icon className="text-primary-600" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                <h3 className="text-base font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600 text-xs">
                   {feature.description}
                 </p>
               </div>
@@ -121,15 +125,15 @@ const Features = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-primary-600 text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
+      <div className="bg-primary-600 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <h2 className="text-lg font-semibold mb-2">Ready to Get Started?</h2>
+          <p className="text-sm text-primary-100 mb-4">
             Join thousands of businesses already using our platform
           </p>
           <a
-            href="/register"
-            className="inline-block px-8 py-3 bg-white text-primary-600  font-semibold hover:bg-gray-100 transition-colors"
+            href="/free-listing"
+            className="inline-block px-6 py-2 bg-white text-primary-600 hover:bg-gray-100"
           >
             Start Free Trial
           </a>

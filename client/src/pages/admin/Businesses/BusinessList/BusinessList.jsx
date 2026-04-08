@@ -13,6 +13,7 @@ import {
   FaGlobe,
   FaLink,
   FaFilter,
+  FaFileExport,
 } from "react-icons/fa";
 import { FiRefreshCw, FiArrowLeft } from "react-icons/fi";
 import { toast } from "react-hot-toast";
@@ -297,8 +298,10 @@ const BusinessList = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [filterStatus, setFilterStatus] = useState("active");
   const [dashboardStats, setDashboardStats] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, limit: 20 });
 
@@ -323,6 +326,7 @@ const BusinessList = () => {
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (filterType) params.type = filterType;
+      if (filterStatus) params.status = filterStatus;
 
       const res = await businessService.getBusinesses(params);
       if (res.success) {
@@ -487,6 +491,43 @@ const BusinessList = () => {
     }
   }, []);
 
+  const handleExport = useCallback(async () => {
+    try {
+      setExporting(true);
+      const res = await businessService.getBusinesses({ limit: 10000 });
+      if (res.success) {
+        const allBusinesses = res.data?.data || res.data?.businesses || [];
+        const activeLinks = allBusinesses
+          .filter(b => b.isActive && b.businessLink)
+          .map(b => `${window.location.origin}/${b.businessLink}`);
+
+        if (activeLinks.length === 0) {
+          toast.error("No active business links found to export");
+          return;
+        }
+
+        const content = activeLinks.join('\n');
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `active-businesses-sitemap-${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success(`Exported ${activeLinks.length} active business links`);
+      } else {
+        toast.error("Failed to fetch businesses for export");
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export business links");
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -525,6 +566,7 @@ const BusinessList = () => {
     };
     if (debouncedSearch) params.search = debouncedSearch;
     if (filterType) params.type = filterType;
+    if (filterStatus) params.status = filterStatus;
     const listRes = await businessService.getBusinesses(params);
     if (listRes.success) {
       const list = listRes.data?.data || listRes.data?.businesses || [];
@@ -752,12 +794,28 @@ const BusinessList = () => {
                 <option value="hotel">Hotel</option>
               </select>
             </div>
-            {(search || filterType) && (
+            <div className="sm:w-48">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setPagination(prev => ({ ...prev, currentPage: 1 }));
+                }}
+                className="w-full border border-gray-300  px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            {(search || filterType || filterStatus !== 'active') && (
               <div className="flex items-end">
                 <button
                   onClick={() => {
                     setSearch('');
                     setFilterType('');
+                    setFilterStatus('active');
                     setPagination(prev => ({ ...prev, currentPage: 1 }));
                   }}
                   className="px-3 py-2 text-sm bg-gray-100 text-gray-700  hover:bg-gray-200 transition-colors whitespace-nowrap"
@@ -767,7 +825,7 @@ const BusinessList = () => {
               </div>
             )}
           </div>
-          {(search || filterType) && (
+          {(search || filterType || filterStatus !== 'active') && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="text-xs text-gray-500">Active filters:</span>
               {search && (
@@ -787,6 +845,17 @@ const BusinessList = () => {
                   <button
                     onClick={() => setFilterType('')}
                     className="hover:bg-green-200 rounded-full p-0.5"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {filterStatus !== 'active' && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700  text-xs capitalize">
+                  Status: {filterStatus}
+                  <button
+                    onClick={() => setFilterStatus('active')}
+                    className="hover:bg-yellow-200 rounded-full p-0.5"
                   >
                     ×
                   </button>
@@ -815,12 +884,23 @@ const BusinessList = () => {
           <h2 className="text-base sm:text-lg font-semibold text-gray-700">
             Business List
           </h2>
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base"
-          >
-            <FaPlus /> Add Business
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base disabled:opacity-70"
+              title="Export Active Business Links for Sitemap"
+            >
+              <FaFileExport className={exporting ? "animate-pulse" : ""} />
+              {exporting ? "Exporting..." : "Export Links"}
+            </button>
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base"
+            >
+              <FaPlus /> Add Business
+            </button>
+          </div>
         </div>
 
         {/* Desktop Table View */}

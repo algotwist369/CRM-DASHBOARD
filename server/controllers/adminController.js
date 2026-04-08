@@ -355,8 +355,8 @@ const createBusiness = async (req, res, next) => {
         // Create notification
         await notifyNewBusinessCreated(adminId, business);
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
+        // Invalidate cache with wildcard
+        await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.status(201).json({
@@ -368,7 +368,7 @@ const createBusiness = async (req, res, next) => {
                 type: business.type,
                 branch: business.branch,
                 businessLink: business.businessLink,
-                location: business.location, 
+                location: business.location,
                 googleMapsUrl: business.googleMapsUrl
             }
         });
@@ -381,8 +381,8 @@ const createBusiness = async (req, res, next) => {
 const getBusinesses = async (req, res, next) => {
     try {
         const adminId = req.user.id;
-        const { page = 1, limit = 10, type, search } = req.query;
-        const cacheKey = `admin:${adminId}:businesses:${type}:${search}:${page}:${limit}`;
+        const { page = 1, limit = 10, type, search, status = 'active' } = req.query;
+        const cacheKey = `admin:${adminId}:businesses:${type}:${search}:${status}:${page}:${limit}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -391,6 +391,14 @@ const getBusinesses = async (req, res, next) => {
         }
 
         let query = { admin: adminId };
+
+        // Handle status filtering
+        if (status === 'active') {
+            query.isActive = true;
+        } else if (status === 'inactive') {
+            query.isActive = false;
+        }
+        // if status === 'all', we don't add isActive filter
 
         // Filter by type
         if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
@@ -513,15 +521,57 @@ const updateBusiness = async (req, res, next) => {
             }
         }
 
-        // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
-        const updatedBusiness = await Business.findByIdAndUpdate(
-            id,
-            { ...updates, updatedAt: new Date() },
-            { new: true, runValidators: true }
-        ).populate('managers', 'name username email phone isActive');
+        // Helper function for deep merging objects
+        const deepMerge = (target, source) => {
+            const output = { ...(target.toObject?.() || target) };
+
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    // Recursively merge nested objects
+                    if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                        output[key] = deepMerge(target[key], source[key]);
+                    } else {
+                        output[key] = source[key];
+                    }
+                } else {
+                    // Direct assignment for primitives and arrays
+                    output[key] = source[key];
+                }
+            }
+
+            return output;
+        };
+
+        // Map frontend fields to model fields if provided
+        if (updates.statistics) {
+            updates.stats = updates.statistics;
+            delete updates.statistics;
+        }
+        if (updates.notificationPreferences) {
+            updates.notifications = updates.notificationPreferences;
+            delete updates.notificationPreferences;
+        }
+
+        // Apply updates to the business object with deep merge
+        Object.keys(updates).forEach(key => {
+            if (updates[key] && typeof updates[key] === 'object' && !Array.isArray(updates[key]) && business[key]) {
+                // For nested objects (like settings, seo, images, etc.), use deep merge
+                business[key] = deepMerge(business[key], updates[key]);
+            } else {
+                // For primitive values and arrays, direct assignment
+                business[key] = updates[key];
+            }
+        });
+
+        // Save to trigger pre-save hooks (for Google Maps URL lat/lng extraction and businessLink generation)
+        const updatedBusiness = await business.save();
+
+        // Populate the managers field after save
+        await updatedBusiness.populate('managers', 'name username email phone isActive');
 
         // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
+        const { deleteCache } = require("../utils/cache");
+        await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.json({
@@ -551,7 +601,7 @@ const updateBusinessStatus = async (req, res, next) => {
         if (isActive !== undefined) updateData.isActive = isActive;
         const updatedBusiness = await Business.findByIdAndUpdate(id, updateData, { new: true });
 
-        // Invalidate cache
+        // Invalidate cache with wildcard
         await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
@@ -581,15 +631,15 @@ const deleteBusiness = async (req, res, next) => {
             return res.status(404).json({ success: false, message: "Business not found" });
         }
 
-        // Soft delete - set isActive to false
-        await Business.findByIdAndUpdate(id, { isActive: false });
+        // Invalidate cache immediately
+        await deleteCache(`admin:${adminId}:businesses:*`);
+        await deleteCache(`admin:${adminId}:dashboard`);
+
+        // Hard delete
+        await Business.findByIdAndDelete(id);
 
         // Create notification
         await notifyBusinessDeleted(adminId, business.name);
-
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
-        await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.json({ success: true, message: "Business deleted successfully" });
     } catch (err) {
@@ -648,8 +698,8 @@ const createManager = async (req, res, next) => {
         // Create notification
         await notifyNewManagerCreated(adminId, manager, business);
 
-        // Invalidate cache
-        await deleteCache(`admin:${adminId}:businesses`);
+        // Invalidate cache with wildcard
+        await deleteCache(`admin:${adminId}:businesses:*`);
         await deleteCache(`admin:${adminId}:dashboard`);
 
         return res.status(201).json({
@@ -908,8 +958,11 @@ const deleteManager = async (req, res, next) => {
             return res.status(403).json({ success: false, message: "Access denied" });
         }
 
-        // Soft delete manager
-        await Manager.findByIdAndUpdate(id, { isActive: false });
+        // Permanent delete manager
+        await Manager.findByIdAndDelete(id);
+
+        // Delete all associated staff (as they required a manager reference)
+        await Staff.deleteMany({ manager: id });
 
         // Remove manager from business managers array
         await Business.findByIdAndUpdate(manager.business._id, {
@@ -1086,17 +1139,51 @@ const updateAdminPassword = async (req, res, next) => {
 const getAdminStats = async (req, res, next) => {
     try {
         const adminId = req.user.id;
-        const cacheKey = `admin:${adminId}:stats`;
+        // Cache removed for real-time updates as per requirement
+        // const cacheKey = `admin:${adminId}:stats`;
 
-        // Try cache first
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
+        const { businessId: filterBusinessId, startDate, endDate } = req.query;
+
+        // Base Business Filter
+        // Always get ALL businesses for global customer count
+        const allBusinesses = await Business.find({ admin: adminId }).select('_id');
+        const allBusinessIds = allBusinesses.map(b => b._id);
+
+        // Filtered business IDs (may be subset or all)
+        let businessIds = allBusinessIds;
+        if (filterBusinessId) {
+            const business = await Business.findOne({ _id: filterBusinessId, admin: adminId });
+            if (!business) {
+                return res.json({ success: false, message: "Business not found or access denied" });
+            }
+            businessIds = [filterBusinessId];
         }
 
-        // Get all businesses for this admin
-        const businesses = await Business.find({ admin: adminId }).select('_id');
-        const businessIds = businesses.map(b => b._id);
+        // Date Filter for Transactions/Revenue
+        const dateQuery = {};
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            dateQuery.$gte = start;
+            dateQuery.$lte = end;
+        }
+
+        // Prepare Queries with Date Filter
+        const baseQuery = { business: { $in: businessIds } };
+        const customerQuery = { business: { $in: businessIds } }; // Use filtered businessIds
+        const appointmentQuery = { ...baseQuery };
+        const transactionCountQuery = { ...baseQuery };
+        const invoiceQuery = { ...baseQuery };
+
+        if (Object.keys(dateQuery).length > 0) {
+            // Filter Appointments by appointment date
+            appointmentQuery.appointmentDate = dateQuery;
+            // Filter Transactions by transaction date
+            transactionCountQuery.transactionDate = dateQuery;
+            // Filter Invoices by invoice date
+            invoiceQuery.invoiceDate = dateQuery;
+        }
 
         // Count all entities in parallel for better performance
         const [
@@ -1125,26 +1212,127 @@ const getAdminStats = async (req, res, next) => {
             Manager.countDocuments({ business: { $in: businessIds }, isActive: true }),
             Staff.countDocuments({ business: { $in: businessIds } }),
             Staff.countDocuments({ business: { $in: businessIds }, isActive: true }),
-            Customer.countDocuments({ business: { $in: businessIds } }),
-            Customer.countDocuments({ business: { $in: businessIds }, isActive: true }),
+            Customer.countDocuments(customerQuery),
+            Customer.countDocuments({ ...customerQuery, isActive: true }),
             Service.countDocuments({ business: { $in: businessIds } }),
             Service.countDocuments({ business: { $in: businessIds }, isActive: true }),
-            Appointment.countDocuments({ business: { $in: businessIds } }),
-            Appointment.countDocuments({ business: { $in: businessIds }, status: 'completed' }),
-            Appointment.countDocuments({ business: { $in: businessIds }, status: 'pending' }),
-            Appointment.countDocuments({ business: { $in: businessIds }, status: 'cancelled' }),
-            Transaction.countDocuments({ business: { $in: businessIds } }),
-            Invoice.countDocuments({ business: { $in: businessIds } }),
-            Invoice.countDocuments({ business: { $in: businessIds }, paymentStatus: 'paid' }),
+            Appointment.countDocuments(appointmentQuery),
+            Appointment.countDocuments({ ...appointmentQuery, status: 'completed' }),
+            Appointment.countDocuments({ ...appointmentQuery, status: 'pending' }),
+            Appointment.countDocuments({ ...appointmentQuery, status: 'cancelled' }),
+            Transaction.countDocuments(transactionCountQuery),
+            Invoice.countDocuments(invoiceQuery),
+            Invoice.countDocuments({ ...invoiceQuery, paymentStatus: 'paid' }),
             Campaign.countDocuments({ business: { $in: businessIds } })
         ]);
 
-        // Calculate total revenue
-        const transactions = await Transaction.find({ business: { $in: businessIds } })
-            .select('finalPrice')
-            .lean();
-        const totalRevenue = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
+        // Calculate Customer Breakdown (Appointment-based vs Walk-in)
+        // Online customers: Unique customers who have booked appointments
+        const appointmentCustomerIds = await Appointment.distinct('customer', {
+            business: { $in: businessIds },
+            customer: { $ne: null }
+        });
+        const onlineCustomers = appointmentCustomerIds.length;
 
+        // Walk-in customers: Unique phone numbers from transactions with no customer profile
+        const walkInCustomerPhones = await Transaction.distinct('customerPhone', {
+            business: { $in: businessIds },
+            customer: null
+        });
+        const walkInCustomers = walkInCustomerPhones.length;
+
+        const totalCustomersActual = onlineCustomers + walkInCustomers;
+        const inactiveCustomers = totalCustomers - activeCustomers; // From registered customers
+
+
+
+        // =================================================================================
+        // HYBRID REVENUE CALCULATION (Transactions + Untracked Completed Appointments)
+        // =================================================================================
+
+        // 0. Pending Revenue (Snapshot - Always current, ignores date filter)
+        // Includes: pending, confirmed, in_progress, rescheduled (all potential future revenue)
+        const pendingAppointmentsList = await Appointment.find({
+            business: { $in: businessIds },
+            status: { $in: ['pending', 'confirmed', 'in_progress', 'rescheduled'] }
+        }).select('totalAmount');
+        const pendingRevenue = pendingAppointmentsList.reduce((sum, a) => sum + (a.totalAmount || 0), 0);
+
+        // 1. Get real transactions
+        const transactionQuery = { business: { $in: businessIds } };
+        if (Object.keys(dateQuery).length > 0) {
+            transactionQuery.transactionDate = dateQuery;
+        }
+
+        const transactions = await Transaction.find(transactionQuery)
+            .populate('business', 'name')
+            .populate('appointment', 'status')
+            .populate('customer', 'firstName lastName')
+            .sort({ transactionDate: -1 })
+            .lean();
+
+        // 2. Calculate values from Transactions
+        const transactionRevenue = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
+        const transactionAppointmentIds = transactions
+            .filter(t => t.appointment)
+            .map(t => t.appointment._id.toString());
+
+        // 3. Find Completed Appointments that DO NOT have a Transaction
+        const untrackedQuery = {
+            business: { $in: businessIds },
+            status: 'completed',
+            _id: { $nin: transactionAppointmentIds }
+        };
+        // Apply date filter to appointment completion date if exists
+        if (Object.keys(dateQuery).length > 0) {
+            untrackedQuery.completedAt = dateQuery;
+        }
+
+        const untrackedAppointments = await Appointment.find(untrackedQuery)
+            .populate('business', 'name')
+            .populate('customer', 'firstName lastName')
+            .sort({ completedAt: -1 })
+            .lean();
+
+        // 4. Calculate revenue from these appointments
+        const appointmentRevenue = untrackedAppointments.reduce((sum, a) => sum + (a.totalAmount || 0), 0);
+
+        // 5. Merge for Total Revenue
+        const totalRevenue = transactionRevenue + appointmentRevenue;
+
+        // 6. Map untracked appointments to "Transaction" format for display
+        const impliedTransactions = untrackedAppointments.map(appt => ({
+            _id: appt._id, // use appointment ID as fallback
+            businessName: appt.business?.name,
+            customerName: appt.customer ? `${appt.customer.firstName} ${appt.customer.lastName}` : 'Unknown',
+            finalPrice: appt.totalAmount,
+            paymentMethod: appt.paymentMethod || 'cash',
+            paymentStatus: appt.paymentStatus || 'paid', // assumed if completed
+            transactionDate: appt.completedAt || appt.updatedAt,
+            appointmentStatus: appt.status,
+            isImplied: true // flag to identify source
+        }));
+
+        // 7. Format Real Transactions
+        const formattedRealTransactions = transactions.map(t => ({
+            _id: t._id,
+            businessName: t.business?.name,
+            customerName: t.customerName || (t.customer ? `${t.customer.firstName} ${t.customer.lastName}` : 'Unknown'),
+            finalPrice: t.finalPrice,
+            paymentMethod: t.paymentMethod,
+            paymentStatus: t.paymentStatus,
+            transactionDate: t.transactionDate,
+            appointmentStatus: t.appointment?.status
+        }));
+
+        // 8. Combine and Sort Lists (Completed/Paid only for display list)
+        // Note: Real transactions might be 'pending', we count them separately
+        const allCompletedTransactions = [
+            ...formattedRealTransactions.filter(t => t.paymentStatus !== 'pending'),
+            ...impliedTransactions
+        ].sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate));
+
+        const pendingTransactionsCount = transactions.filter(t => t.paymentStatus === 'pending').length;
         const stats = {
             businesses: {
                 total: totalBusinesses,
@@ -1162,9 +1350,11 @@ const getAdminStats = async (req, res, next) => {
                 inactive: totalStaff - activeStaff
             },
             customers: {
-                total: totalCustomers,
+                total: totalCustomersActual,
+                online: onlineCustomers,
+                walkIn: walkInCustomers,
                 active: activeCustomers,
-                inactive: totalCustomers - activeCustomers
+                inactive: inactiveCustomers
             },
             services: {
                 total: totalServices,
@@ -1178,9 +1368,13 @@ const getAdminStats = async (req, res, next) => {
                 cancelled: cancelledAppointments
             },
             transactions: {
-                total: totalTransactions,
+                total: totalTransactions + untrackedAppointments.length, // Include implied transactions in count
                 totalRevenue: formatCurrency(totalRevenue),
-                totalRevenueRaw: totalRevenue
+                totalRevenueRaw: totalRevenue,
+                pendingRevenue: formatCurrency(pendingRevenue),
+                pendingRevenueRaw: pendingRevenue,
+                pending: pendingTransactionsCount,
+                completed: allCompletedTransactions
             },
             invoices: {
                 total: totalInvoices,
@@ -1205,8 +1399,8 @@ const getAdminStats = async (req, res, next) => {
             data: stats
         };
 
-        // Cache for 5 minutes
-        await setCache(cacheKey, response, 300);
+        // Cache removed for real-time updates
+        // await setCache(cacheKey, response, 300);
 
         return res.json(response);
     } catch (error) {

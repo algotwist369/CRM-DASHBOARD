@@ -50,11 +50,13 @@ apiClient.interceptors.request.use(
 
     // Log request in development
     if (import.meta.env.MODE === 'development') {
-      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
-        data: config.data,
+      const logData = {
         params: config.params,
         headers: config.headers
-      })
+      }
+      if (config.data) logData.data = config.data
+
+      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, logData)
     }
 
     return config

@@ -7,6 +7,8 @@ const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
+const seoRedirectMiddleware = require("./middleware/seoRedirectMiddleware");
+
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
@@ -29,6 +31,8 @@ const analyticsRoutes = require("./routes/analyticsRoutes");
 const businessSettingsRoutes = require("./routes/businessSettingsRoutes");
 const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const leadRoutes = require("./routes/leadRoutes");
+const inquiryRoutes = require("./routes/inquiryRoutes");
+const googleSheetRoutes = require("./routes/googleSheetRoutes");
 
 const app = express();
 
@@ -119,7 +123,28 @@ app.use(express.urlencoded({
 
 app.use(cookieParser());
 
+// ================== SEO Redirects ==================
+// IMPORTANT: This must come BEFORE static files and routes
+// to ensure legacy URLs are caught and redirected properly
+app.use(seoRedirectMiddleware);
+
+
 // ================== Static Files (Uploads) ==================
+// Serve SEO files (sitemap, robots)
+app.use('/seo', express.static(path.join(__dirname, '../client/public/seo'), {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.xml')) {
+            res.setHeader('Content-Type', 'application/xml');
+        }
+        if (filePath.endsWith('.txt')) {
+            res.setHeader('Content-Type', 'text/plain');
+        }
+        if (filePath.endsWith('.json')) {
+            res.setHeader('Content-Type', 'application/json');
+        }
+    }
+}));
+
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     maxAge: '7d', // Cache static files for 7 days
@@ -160,10 +185,22 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/settings", businessSettingsRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
 app.use("/api/leads", leadRoutes);
+app.use("/api/inquiries", inquiryRoutes);
+app.use("/api/payments", require("./routes/paymentRoutes"));
 
 // === PHASE 2 ENHANCEMENT: New Routes ===
 app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/inventory", require("./routes/inventoryRoutes"));
+
+// === WhatsApp Web.js Integration ===
+app.use('/api/admin/whatsapp', require("./routes/whatsappQR"));
+
+// === Google Sheets Integration ===
+app.use("/api/google-sheets", googleSheetRoutes);
+
+// === SEO Routes (served at root level for crawlers) ===
+const sitemapRoutes = require("./routes/sitemap");
+app.use("/", sitemapRoutes);
 
 
 // ================== Health Check ==================

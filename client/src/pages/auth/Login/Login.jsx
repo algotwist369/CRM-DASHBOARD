@@ -202,7 +202,7 @@ const Login = () => {
           <p className='text-center text-gray-600 text-sm'>
             Don't have an account?{' '}
             <Link
-              to='/auth/register'
+              to='/auth/business-registration'
               className='font-medium text-gray-800 hover:underline'
             >
               Create one

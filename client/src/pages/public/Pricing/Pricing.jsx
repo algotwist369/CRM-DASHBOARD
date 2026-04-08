@@ -4,7 +4,7 @@ import { FaCheck, FaRocket } from 'react-icons/fa'
 import { Link } from 'react-router-dom'
 
 const Pricing = () => {
-  usePageTitle('Pricing - Booking App')
+  usePageTitle('Pricing - Spa Advisor')
 
   const plans = [
     {
@@ -117,7 +117,7 @@ const Pricing = () => {
               </ul>
 
               <Link
-                to={plan.name === 'Enterprise' ? '/contact' : '/register'}
+                to={plan.name === 'Enterprise' ? '/contact' : '/login'}
                 className={`block w-full text-center px-6 py-3  font-semibold transition-colors ${
                   plan.popular
                     ? 'bg-primary-600 text-white hover:bg-primary-700'

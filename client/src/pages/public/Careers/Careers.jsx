@@ -4,38 +4,39 @@ import { FaBriefcase, FaMapMarkerAlt, FaClock, FaEnvelope } from 'react-icons/fa
 import { Link } from 'react-router-dom'
 
 const Careers = () => {
-  usePageTitle('We are Hiring - Booking App')
+  usePageTitle('We are Hiring - Spa Advisor')
 
-  const positions = [
-    {
-      title: 'Senior Frontend Developer',
-      department: 'Engineering',
-      location: 'Remote / New York',
-      type: 'Full-time',
-      description: 'We are looking for an experienced frontend developer to join our team.'
-    },
-    {
-      title: 'Product Designer',
-      department: 'Design',
-      location: 'San Francisco',
-      type: 'Full-time',
-      description: 'Help us create beautiful and intuitive user experiences.'
-    },
-    {
-      title: 'Customer Success Manager',
-      department: 'Support',
-      location: 'Remote',
-      type: 'Full-time',
-      description: 'Help our customers succeed and grow their businesses.'
-    },
-    {
-      title: 'Marketing Specialist',
-      department: 'Marketing',
-      location: 'Remote',
-      type: 'Full-time',
-      description: 'Drive growth and engagement through creative marketing campaigns.'
-    }
-  ]
+const positions = [
+  {
+    title: 'Senior Frontend Developer',
+    department: 'Engineering',
+    location: 'Remote / Mumbai, India',
+    type: 'Full-time',
+    description: 'We are looking for an experienced frontend developer to join our team.'
+  },
+  {
+    title: 'Product Designer',
+    department: 'Design',
+    location: 'Mumbai, India',
+    type: 'Full-time',
+    description: 'Help us create beautiful and intuitive user experiences.'
+  },
+  {
+    title: 'Customer Success Manager',
+    department: 'Support',
+    location: 'Remote / India',
+    type: 'Full-time',
+    description: 'Help our customers succeed and grow their businesses.'
+  },
+  {
+    title: 'Marketing Specialist',
+    department: 'Marketing',
+    location: 'Remote / India',
+    type: 'Full-time',
+    description: 'Drive growth and engagement through creative marketing campaigns.'
+  }
+];
+
 
   const benefits = [
     'Competitive salary and equity',

@@ -1,8 +1,10 @@
-// appointmentController.js - Appointment/Booking management
 const Appointment = require("../models/Appointment");
 const Customer = require("../models/Customer");
 const Service = require("../models/Service");
 const Business = require("../models/Business");
+const crypto = require("crypto");
+const Razorpay = require("razorpay");
+const PDFDocument = require("pdfkit");
 const Manager = require("../models/Manager");
 const Transaction = require("../models/Transaction");
 const AdminNotification = require("../models/AdminNotification");
@@ -11,7 +13,12 @@ const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { emitToUser } = require("../config/socket");
 const Otp = require("../models/OTP");
 const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
-const { sendTemplateSMS, sendTemplateWhatsApp } = require("../utils/sendSMS");
+const { encryptResponse } = require("../utils/encryptionUtils");
+const { sendTemplateMail } = require("../utils/sendMail");
+const { validateAppointmentBooking } = require("../utils/appointmentUtils");
+// Calculate pricing (handle both old format and new pricingOptions)
+const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
+require("dotenv").config();
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
@@ -84,7 +91,8 @@ const createAppointment = async (req, res, next) => {
             specialRequests,
             bookingSource = "walk-in",
             paymentMethod = "cash",
-            advanceAmount = 0
+            advanceAmount = 0,
+            tracking // Extract tracking data
         } = req.body;
 
         // Determine business
@@ -154,8 +162,6 @@ const createAppointment = async (req, res, next) => {
             }
         }
 
-        // Calculate pricing (handle both old format and new pricingOptions)
-        const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
         const { price: servicePrice, duration: serviceDuration } = getServicePriceAndDuration(service);
         const discount = 0; // Can be calculated based on loyalty, membership, etc.
         const tax = servicePrice * 0.18; // 18% GST (can be configurable)
@@ -183,7 +189,8 @@ const createAppointment = async (req, res, next) => {
             paidAmount: advanceAmount,
             paymentStatus: advanceAmount >= totalAmount ? 'paid' : advanceAmount > 0 ? 'partial' : 'pending',
             createdBy: userId,
-            createdByModel: userRole === 'admin' ? 'Admin' : 'Manager'
+            createdByModel: userRole === 'admin' ? 'Admin' : 'Manager',
+            tracking // Save tracking data
         });
 
         // Update service stats
@@ -236,6 +243,91 @@ const createAppointment = async (req, res, next) => {
                 }
             );
         }
+
+        // ================== SEND EMAIL NOTIFICATIONS ==================
+        // Execute asynchronously to not block response
+        (async () => {
+            try {
+                // Fetch full business details for emails (Admin & Managers)
+                const businessDetails = await Business.findById(business._id)
+                    .populate('admin', 'email name')
+                    .populate('managers', 'email name isActive');
+
+                // Prepare common data
+                const dateObj = new Date(appointmentDate);
+                const formattedDate = dateObj.toLocaleDateString('en-US', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+
+                const commonData = {
+                    businessName: business.name,
+                    customerName: `${customer.firstName} ${customer.lastName}`,
+                    customerEmail: customer.email,
+                    customerPhone: customer.phone,
+                    appointmentDate: formattedDate,
+                    startTime: startTime,
+                    endTime: endTime,
+                    services: service.name,
+                    confirmationCode: appointment.bookingNumber,
+                    staffInfo: staffId ? `<p><strong>Assigned Staff:</strong> Staff ID ${staffId}</p>` : '',
+                    customerNotesInfo: customerNotes ? `<p><strong>Customer Notes:</strong> ${customerNotes}</p>` : '',
+                    actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
+                };
+
+                // Track sent emails to prevent duplicates
+                const sentEmails = new Set();
+
+                // 1. Notify Admin
+                const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
+                    await sendTemplateMail({
+                        to: adminEmail,
+                        template: 'new_booking_admin',
+                        data: {
+                            ...commonData,
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/admin/appointments/${appointment._id}`
+                        }
+                    });
+                    sentEmails.add(adminEmail.toLowerCase());
+                }
+
+                // 2. Notify Managers
+                if (businessDetails?.managers?.length > 0) {
+                    for (const manager of businessDetails.managers) {
+                        if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
+                            await sendTemplateMail({
+                                to: manager.email,
+                                template: 'new_booking_manager',
+                                data: {
+                                    ...commonData,
+                                    actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/manager/appointments/${appointment._id}`
+                                }
+                            });
+                            sentEmails.add(manager.email.toLowerCase());
+                        }
+                    }
+                }
+
+                // 3. Notify Customer
+                if (customer.email && !sentEmails.has(customer.email.toLowerCase())) {
+                    await sendTemplateMail({
+                        to: customer.email,
+                        template: 'appointment_confirmation',
+                        data: {
+                            ...commonData,
+                            customerName: customer.firstName, // Use first name for friendlier greeting
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${appointment.confirmationCode}` // Customer view link
+                        }
+                    });
+                    sentEmails.add(customer.email.toLowerCase());
+                }
+
+            } catch (emailError) {
+                console.error('EMAIL: Failed to send appointment creation emails:', emailError);
+                // Do not throw, finding is non-critical to flow
+            }
+        })();
+        // ==============================================================
 
         return res.status(201).json({
             success: true,
@@ -305,7 +397,7 @@ const getAppointments = async (req, res, next) => {
 
         // Cache key needs to handle multiple businesses or specific business
         const businessKey = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
-        const cacheKey = `${businessKey}:appointments:${page}:${limit}:${status}:${startDate}:${endDate}:${customerId}:${staffId}:${serviceId}:${search}`;
+        const cacheKey = `${businessKey}:appointments:v2:${page}:${limit}:${status}:${startDate}:${endDate}:${customerId}:${staffId}:${serviceId}:${search}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
@@ -564,6 +656,38 @@ const confirmAppointment = async (req, res, next) => {
             data: appointment
         });
 
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt?.customer?.email) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    await sendTemplateMail({
+                        to: fullAppt.customer.email,
+                        template: 'appointment_confirmation',
+                        data: {
+                            businessName: fullAppt.business.name,
+                            customerName: fullAppt.customer.firstName,
+                            appointmentDate: formattedDate,
+                            startTime: fullAppt.startTime,
+                            endTime: fullAppt.endTime,
+                            services: fullAppt.service?.name || 'Service',
+                            confirmationCode: fullAppt.bookingNumber,
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
+                        }
+                    });
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
+
         return res.json({
             success: true,
             message: "Appointment confirmed successfully"
@@ -619,7 +743,8 @@ const completeAppointment = async (req, res, next) => {
         const { loyaltyPoints = 0 } = req.body;
 
         const appointment = await Appointment.findById(id)
-            .populate('customer');
+            .populate('customer')
+            .populate('service');
 
         if (!appointment) {
             return res.status(404).json({
@@ -652,12 +777,14 @@ const completeAppointment = async (req, res, next) => {
                     customer: appointment.customer ? appointment.customer._id : undefined,
                     staff: appointment.staff,
 
-                    customerName: appointment.customer ? appointment.customer.name : (appointment.customerName || 'Walk-in'),
+                    customerName: appointment.customer 
+                        ? `${appointment.customer.firstName} ${appointment.customer.lastName || ''}`.trim() 
+                        : (appointment.customerName || 'Walk-in'),
                     customerPhone: appointment.customer ? appointment.customer.phone : (appointment.customerPhone || ''),
                     customerEmail: appointment.customer ? appointment.customer.email : '',
 
-                    serviceName: appointment.serviceName || 'Service',
-                    serviceType: appointment.serviceType || 'other',
+                    serviceName: appointment.service?.name || appointment.serviceName || 'Service',
+                    serviceType: appointment.service?.type || appointment.serviceType || 'other',
                     serviceCategory: 'Appointment',
 
                     basePrice: appointment.totalAmount || 0,
@@ -753,6 +880,89 @@ const cancelAppointment = async (req, res, next) => {
             data: appointment
         });
 
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    // Fetch admin/managers for notifications
+                    const businessDetails = await Business.findById(fullAppt.business._id)
+                        .populate('admin', 'email name')
+                        .populate('managers', 'email name isActive');
+
+                    const commonData = {
+                        businessName: fullAppt.business.name,
+                        customerName: `${fullAppt.customer.firstName} ${fullAppt.customer.lastName}`,
+                        appointmentDate: formattedDate,
+                        startTime: fullAppt.startTime,
+                        endTime: fullAppt.endTime,
+                        services: fullAppt.service?.name || 'Service',
+                        reason: reason || 'Requested by user',
+                        actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/admin/appointments/${fullAppt._id}`
+                    };
+
+                    // Track sent emails to prevent duplicates
+                    const sentEmails = new Set();
+
+                    // 1. Notify Customer
+                    if (fullAppt.customer?.email && !sentEmails.has(fullAppt.customer.email.toLowerCase())) {
+                        await sendTemplateMail({
+                            to: fullAppt.customer.email,
+                            template: 'appointment_cancelled',
+                            data: {
+                                ...commonData,
+                                customerName: fullAppt.customer.firstName,
+                                actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/book/${fullAppt.business.businessLink}` // Rebook link
+                            }
+                        });
+                        sentEmails.add(fullAppt.customer.email.toLowerCase());
+                    }
+
+                    // 2. Notify Admin
+                    const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                    if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
+                        await sendTemplateMail({
+                            to: adminEmail,
+                            template: 'appointment_cancelled',
+                            data: {
+                                ...commonData,
+                                customerName: "Admin", // Generic greeting for admin context
+                                reason: `Cancelled by ${userRole}: ${reason || 'No reason provided'}`
+                            }
+                        });
+                        sentEmails.add(adminEmail.toLowerCase());
+                    }
+
+                    // 3. Notify Managers
+                    if (businessDetails?.managers?.length > 0) {
+                        for (const manager of businessDetails.managers) {
+                            if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
+                                await sendTemplateMail({
+                                    to: manager.email,
+                                    template: 'appointment_cancelled',
+                                    data: {
+                                        ...commonData,
+                                        customerName: "Manager",
+                                        reason: `Cancelled by ${userRole}: ${reason || 'No reason provided'}`
+                                    }
+                                });
+                                sentEmails.add(manager.email.toLowerCase());
+                            }
+                        }
+                    }
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
+
         return res.json({
             success: true,
             message: "Appointment cancelled successfully"
@@ -825,6 +1035,37 @@ const rescheduleAppointment = async (req, res, next) => {
             message: `Appointment rescheduled`,
             data: appointment
         });
+
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt?.customer?.email) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    await sendTemplateMail({
+                        to: fullAppt.customer.email,
+                        template: 'appointment_rescheduled',
+                        data: {
+                            businessName: fullAppt.business.name,
+                            customerName: fullAppt.customer.firstName,
+                            appointmentDate: formattedDate,
+                            startTime: fullAppt.startTime,
+                            endTime: fullAppt.endTime,
+                            services: fullAppt.service?.name || 'Service',
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
+                        }
+                    });
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
 
         return res.json({
             success: true,
@@ -931,7 +1172,7 @@ const getAppointmentStats = async (req, res, next) => {
         let { businessId, startDate, endDate } = req.query;
 
         // Determine business scope
-        let dateFilter = {};
+        let baseFilter = {};
 
         if (userRole === 'admin') {
             if (businessId) {
@@ -942,12 +1183,12 @@ const getAppointmentStats = async (req, res, next) => {
                         message: "Business not found or access denied"
                     });
                 }
-                dateFilter.business = business._id;
+                baseFilter.business = business._id;
             } else {
                 // If no businessId provided, fetch for all businesses owned by admin
                 const businesses = await Business.find({ admin: userId }).select('_id');
                 const businessIds = businesses.map(b => b._id);
-                dateFilter.business = { $in: businessIds };
+                baseFilter.business = { $in: businessIds };
             }
         } else if (userRole === 'manager') {
             const manager = await Manager.findById(userId);
@@ -957,20 +1198,35 @@ const getAppointmentStats = async (req, res, next) => {
                     message: "Manager not found"
                 });
             }
-            dateFilter.business = manager.business;
+            baseFilter.business = manager.business;
             // Explicitly set businessId for cache key
             businessId = manager.business.toString();
         }
 
         const businessKey = businessId ? `business:${businessId}` : `admin:${userId}:all_businesses`;
-        const cacheKey = `${businessKey}:appointment:stats:${startDate}:${endDate}`;
+        const cacheKey = `${businessKey}:appointment:stats:v3:${startDate}:${endDate}`;
 
         // Try cache first
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
-            return res.json({ success: true, source: "cache", data: cachedData });
+            return res.json({
+                success: true,
+                source: "cache",
+                cacheAge: cachedData.cacheTimestamp ? Math.floor((Date.now() - cachedData.cacheTimestamp) / 1000) : null,
+                lastUpdated: cachedData.cacheTimestamp,
+                data: cachedData
+            });
         }
 
+        // Calculate date ranges for today and this month
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        // Build date filter for custom range
+        let dateFilter = { ...baseFilter };
         if (startDate && endDate) {
             dateFilter.appointmentDate = {
                 $gte: new Date(startDate),
@@ -978,8 +1234,8 @@ const getAppointmentStats = async (req, res, next) => {
             };
         }
 
-        // Aggregate statistics
-        const stats = await Appointment.aggregate([
+        // 1. Overall stats (with custom date range if provided)
+        const overallStats = await Appointment.aggregate([
             { $match: dateFilter },
             {
                 $group: {
@@ -1000,23 +1256,246 @@ const getAppointmentStats = async (req, res, next) => {
                     noShows: {
                         $sum: { $cond: [{ $eq: ['$status', 'no_show'] }, 1, 0] }
                     },
+                    inProgress: {
+                        $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
+                    },
+                    paidRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$paymentStatus', 'paid'] },
+                                '$totalAmount',
+                                0
+                            ]
+                        }
+                    },
+                    pendingRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $ne: ['$paymentStatus', 'paid'] },
+                                { $subtract: ['$totalAmount', '$paidAmount'] },
+                                0
+                            ]
+                        }
+                    },
                     totalRevenue: { $sum: '$totalAmount' },
+                    totalPaid: { $sum: '$paidAmount' },
                     averageRevenue: { $avg: '$totalAmount' },
-                    totalPaid: { $sum: '$paidAmount' }
+                    averageAppointmentValue: { $avg: '$totalAmount' }
                 }
             }
         ]);
 
-        const result = stats[0] || {
-            totalAppointments: 0,
-            pending: 0,
-            confirmed: 0,
-            completed: 0,
-            cancelled: 0,
-            noShows: 0,
-            totalRevenue: 0,
-            averageRevenue: 0,
-            totalPaid: 0
+        // 2. Today's stats
+        const todayStats = await Appointment.aggregate([
+            {
+                $match: {
+                    ...baseFilter,
+                    appointmentDate: { $gte: todayStart, $lte: todayEnd }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    todayAppointments: { $sum: 1 },
+                    todayCompleted: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    },
+                    todayPending: {
+                        $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+                    },
+                    todayConfirmed: {
+                        $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] }
+                    },
+                    todayCancelled: {
+                        $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
+                    },
+                    todayPaidRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$paymentStatus', 'paid'] },
+                                '$totalAmount',
+                                0
+                            ]
+                        }
+                    },
+                    todayPendingRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $ne: ['$paymentStatus', 'paid'] },
+                                { $subtract: ['$totalAmount', '$paidAmount'] },
+                                0
+                            ]
+                        }
+                    },
+                    todayRevenue: { $sum: '$totalAmount' }
+                }
+            }
+        ]);
+
+        // 3. This month's stats
+        const monthStats = await Appointment.aggregate([
+            {
+                $match: {
+                    ...baseFilter,
+                    appointmentDate: { $gte: monthStart, $lte: monthEnd }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    thisMonthAppointments: { $sum: 1 },
+                    thisMonthCompleted: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    },
+                    thisMonthPending: {
+                        $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+                    },
+                    thisMonthConfirmed: {
+                        $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] }
+                    },
+                    thisMonthCancelled: {
+                        $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
+                    },
+                    thisMonthPaidRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$paymentStatus', 'paid'] },
+                                '$totalAmount',
+                                0
+                            ]
+                        }
+                    },
+                    thisMonthPendingRevenue: {
+                        $sum: {
+                            $cond: [
+                                { $ne: ['$paymentStatus', 'paid'] },
+                                { $subtract: ['$totalAmount', '$paidAmount'] },
+                                0
+                            ]
+                        }
+                    },
+                    thisMonthRevenue: { $sum: '$totalAmount' }
+                }
+            }
+        ]);
+
+        // 4. Upcoming appointments (future appointments that are not cancelled/no_show)
+        const upcomingCount = await Appointment.countDocuments({
+            ...baseFilter,
+            appointmentDate: { $gte: now },
+            status: { $nin: ['cancelled', 'no_show', 'completed'] }
+        });
+
+        // 5. Overdue appointments (past appointments still pending/confirmed)
+        const overdueCount = await Appointment.countDocuments({
+            ...baseFilter,
+            appointmentDate: { $lt: todayStart },
+            status: { $in: ['pending', 'confirmed'] }
+        });
+
+        // 6. Payment breakdown
+        const paymentStats = await Appointment.aggregate([
+            { $match: dateFilter },
+            {
+                $group: {
+                    _id: '$paymentStatus',
+                    count: { $sum: 1 },
+                    amount: { $sum: '$totalAmount' }
+                }
+            }
+        ]);
+
+        // Build payment breakdown object
+        const paymentBreakdown = {
+            paid: { count: 0, amount: 0 },
+            partial: { count: 0, amount: 0 },
+            pending: { count: 0, amount: 0 },
+            failed: { count: 0, amount: 0 },
+            refunded: { count: 0, amount: 0 }
+        };
+
+        paymentStats.forEach(stat => {
+            if (stat._id && paymentBreakdown[stat._id] !== undefined) {
+                paymentBreakdown[stat._id] = {
+                    count: stat.count,
+                    amount: stat.amount || 0
+                };
+            }
+        });
+
+        // Compile final result
+        const overall = overallStats[0] || {};
+        const today = todayStats[0] || {};
+        const month = monthStats[0] || {};
+
+        const result = {
+            // Overall Metrics
+            totalAppointments: overall.totalAppointments || 0,
+            pending: overall.pending || 0,
+            confirmed: overall.confirmed || 0,
+            completed: overall.completed || 0,
+            cancelled: overall.cancelled || 0,
+            noShows: overall.noShows || 0,
+            inProgress: overall.inProgress || 0,
+
+            // Today's Metrics
+            todayAppointments: today.todayAppointments || 0,
+            todayCompleted: today.todayCompleted || 0,
+            todayPending: today.todayPending || 0,
+            todayConfirmed: today.todayConfirmed || 0,
+            todayCancelled: today.todayCancelled || 0,
+
+            // This Month's Metrics
+            thisMonthAppointments: month.thisMonthAppointments || 0,
+            thisMonthCompleted: month.thisMonthCompleted || 0,
+            thisMonthPending: month.thisMonthPending || 0,
+            thisMonthConfirmed: month.thisMonthConfirmed || 0,
+            thisMonthCancelled: month.thisMonthCancelled || 0,
+
+            // Revenue Metrics (Paid vs Pending)
+            paidRevenue: overall.paidRevenue || 0, // Only paid appointments
+            pendingRevenue: overall.pendingRevenue || 0, // All unpaid/partially paid
+            totalRevenue: overall.totalRevenue || 0, // Total (paid + pending)
+            totalPaid: overall.totalPaid || 0, // Amount actually received
+            averageRevenue: overall.averageRevenue || 0,
+            averageAppointmentValue: overall.averageAppointmentValue || 0,
+
+            // Today's Revenue
+            todayPaidRevenue: today.todayPaidRevenue || 0,
+            todayPendingRevenue: today.todayPendingRevenue || 0,
+            todayRevenue: today.todayRevenue || 0,
+
+            // This Month's Revenue
+            thisMonthPaidRevenue: month.thisMonthPaidRevenue || 0,
+            thisMonthPendingRevenue: month.thisMonthPendingRevenue || 0,
+            thisMonthRevenue: month.thisMonthRevenue || 0,
+
+            // Additional Analytics
+            upcomingAppointments: upcomingCount,
+            overdueAppointments: overdueCount,
+
+            // Payment Status Breakdown
+            paymentBreakdown,
+
+            // Conversion Rates
+            completionRate: overall.totalAppointments > 0
+                ? ((overall.completed || 0) / overall.totalAppointments * 100).toFixed(2)
+                : 0,
+            cancellationRate: overall.totalAppointments > 0
+                ? ((overall.cancelled || 0) / overall.totalAppointments * 100).toFixed(2)
+                : 0,
+            noShowRate: overall.totalAppointments > 0
+                ? ((overall.noShows || 0) / overall.totalAppointments * 100).toFixed(2)
+                : 0,
+
+            // Payment Collection Rate
+            paymentCollectionRate: overall.totalRevenue > 0
+                ? ((overall.totalPaid || 0) / overall.totalRevenue * 100).toFixed(2)
+                : 0,
+
+            // Cache metadata
+            cacheTimestamp: Date.now(),
+            lastUpdated: new Date().toISOString()
         };
 
         // Cache for 5 minutes
@@ -1024,6 +1503,7 @@ const getAppointmentStats = async (req, res, next) => {
 
         return res.json({
             success: true,
+            source: "live",
             data: result
         });
     } catch (err) {
@@ -1033,13 +1513,72 @@ const getAppointmentStats = async (req, res, next) => {
 
 // ================== PUBLIC APPOINTMENT ROUTES (No Authentication) ==================
 
+// Get available slots (authenticated or public with businessId)
+const getAvailableSlots = async (req, res, next) => {
+    try {
+        const { date, businessId, staffId, serviceId } = req.query;
+
+        if (!date || !businessId) {
+            return res.status(400).json({
+                success: false,
+                message: "Date and businessId are required"
+            });
+        }
+
+        const business = await Business.findById(businessId).lean();
+
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+
+        const appointmentDate = new Date(date);
+        const startOfDay = new Date(appointmentDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(appointmentDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Get existing appointments
+        const query = {
+            business: business._id,
+            appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+            status: { $nin: ['cancelled', 'no_show'] }
+        };
+
+        if (staffId) query.staff = staffId;
+
+        const existingAppointments = await Appointment.find(query)
+            .select('startTime endTime staff')
+            .lean();
+
+        // Generate slots
+        const { generateAvailableSlots } = require("../utils/appointmentUtils");
+        const slots = generateAvailableSlots(
+            business,
+            appointmentDate,
+            existingAppointments,
+            staffId
+        );
+
+        return res.json({
+            success: true,
+            data: slots
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
 // Get business info for booking (by businessLink)
 const getBusinessInfoForBooking = async (req, res, next) => {
     try {
         const { businessLink } = req.params;
 
         const business = await Business.findOne({ businessLink, isActive: true })
-            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags _id paymentMethods')
+            .select('name type branch address city state country phone email website description settings businessLink images google360ImageUrl videos socialMedia location googleMapsUrl ratings features amenities category tags _id paymentMethods seo')
             .lean();
 
         if (!business) {
@@ -1067,14 +1606,25 @@ const getBusinessInfoForBooking = async (req, res, next) => {
             .sort({ displayOrder: 1, name: 1 })
             .lean();
 
+        // Simple obfuscation/encryption function
+        // Uses shared utility
+
+
+        const onlineDiscount = process.env.ONLINE_DISCOUNT ? parseInt(process.env.ONLINE_DISCOUNT) : 0;
+
+        const responseData = {
+            ...business,
+            services: services || [],
+            workingHours: business.settings?.workingHours,
+            appointmentSettings: business.settings?.appointmentSettings,
+            onlineDiscount
+            
+        };
+
         return res.json({
             success: true,
-            data: {
-                ...business,
-                services: services || [],
-                workingHours: business.settings?.workingHours,
-                appointmentSettings: business.settings?.appointmentSettings
-            }
+            message: "Fetched successfully",
+            payload: encryptResponse(responseData)
         });
     } catch (err) {
         next(err);
@@ -1135,19 +1685,88 @@ const getAvailableSlotsForBooking = async (req, res, next) => {
 
         // Generate available slots
         const { generateAvailableSlots } = require("../utils/appointmentUtils");
-        const slots = generateAvailableSlots(
+        const allSlots = generateAvailableSlots(
             business,
             appointmentDate,
             existingAppointments,
             staffId || null
         );
 
+        // Filter slots based on advance booking hours and current time
+        const settings = business.settings.appointmentSettings;
+        const minAdvanceBookingHours = settings.minAdvanceBookingHours || 0;
+        const now = new Date();
+
+        // Helper function to convert time string to minutes
+        const timeToMinutes = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+
+        // Helper function to parse time string to 24-hour format
+        const parseTimeTo24Hour = (timeStr) => {
+            if (!timeStr) return { hours: 0, minutes: 0 };
+            let time = timeStr.trim();
+            let isPM = false;
+
+            if (time.includes('PM') || time.includes('pm')) {
+                isPM = true;
+                time = time.replace(/PM|pm/gi, '').trim();
+            } else if (time.includes('AM') || time.includes('am')) {
+                time = time.replace(/AM|am/gi, '').trim();
+            }
+
+            const parts = time.split(':');
+            if (parts.length < 2) return { hours: 0, minutes: 0 };
+
+            let hours = parseInt(parts[0], 10) || 0;
+            const minutes = parseInt(parts[1], 10) || 0;
+
+            if (isPM && hours !== 12) {
+                hours += 12;
+            } else if (!isPM && hours === 12) {
+                hours = 0;
+            }
+
+            return { hours, minutes };
+        };
+
+        // Filter slots to only include truly available ones
+        const availableSlots = allSlots.filter(slot => {
+            // Check if slot is in the past
+            const slotDate = new Date(appointmentDate);
+            const timeParts = parseTimeTo24Hour(slot.startTime);
+            const slotDateTime = new Date(
+                slotDate.getFullYear(),
+                slotDate.getMonth(),
+                slotDate.getDate(),
+                timeParts.hours,
+                timeParts.minutes,
+                0,
+                0
+            );
+
+            // Check if slot is in the past
+            if (slotDateTime <= now) {
+                return false;
+            }
+
+            // Check advance booking hours requirement
+            const hoursUntilSlot = (slotDateTime - now) / (1000 * 60 * 60);
+            if (hoursUntilSlot < minAdvanceBookingHours) {
+                return false;
+            }
+
+            // Slot is available
+            return true;
+        });
+
         return res.json({
             success: true,
             data: {
                 date: date,
-                availableSlots: slots.map(slot => slot.startTime),
-                slots: slots
+                availableSlots: availableSlots.map(slot => slot.startTime),
+                slots: availableSlots // Only return available slots
             }
         });
     } catch (err) {
@@ -1170,8 +1789,8 @@ const executeBooking = async (bookingData, businessLink) => {
     } = bookingData;
 
     // Validate required fields
-    if (!customerInfo || !customerInfo.name || !customerInfo.email || !customerInfo.phone) {
-        return { success: false, status: 400, message: "Customer information (name, email, phone) is required" };
+    if (!customerInfo || !customerInfo.name || !customerInfo.phone) {
+        return { success: false, status: 400, message: "Customer information (name, phone) is required" };
     }
 
     if (!appointmentDate || !startTime || !endTime) {
@@ -1200,13 +1819,18 @@ const executeBooking = async (bookingData, businessLink) => {
     }
 
     // Find or create customer
-    let customer = await Customer.findOne({
+    const customerQuery = {
         business: business._id,
         $or: [
-            { email: customerInfo.email },
             { phone: customerInfo.phone }
         ]
-    });
+    };
+
+    if (customerInfo.email) {
+        customerQuery.$or.push({ email: customerInfo.email });
+    }
+
+    let customer = await Customer.findOne(customerQuery);
 
     // Helper function to parse address string into object
     const parseAddress = (addressString) => {
@@ -1359,6 +1983,72 @@ const executeBooking = async (bookingData, businessLink) => {
         return { success: false, status: 400, message: validation.errors.join(', ') };
     }
 
+    // Store services data for later retrieval (store in internalNotes as JSON)
+    const servicesData = services.map(s => ({
+        serviceId: s.serviceId || s._id || s.id,
+        serviceName: s.serviceName || s.name,
+        price: s.price,
+        duration: s.duration,
+        category: s.serviceCategory || s.category,
+        serviceType: s.serviceType,
+        pricingOptionId: s.pricingOptionId,
+        optionLabel: s.optionLabel || s.pricingOptionLabel,
+        currency: s.currency
+    }));
+
+    // Verify Payment Signature logic
+    let verifiedPaymentStatus = bookingData.paymentStatus || 'pending';
+    if (verifiedPaymentStatus === 'paid' && bookingData.paymentDetails) {
+        try {
+            const { orderId, paymentId, signature } = bookingData.paymentDetails;
+            if (orderId && paymentId && signature) {
+                // 1. Verify Signature
+                const generated_signature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+                    .update(orderId + "|" + paymentId)
+                    .digest('hex');
+
+                console.log(`[PaymentDebug] Order: ${orderId}, Payment: ${paymentId}`);
+                console.log(`[PaymentDebug] Frontend Signature: ${signature}`);
+                console.log(`[PaymentDebug] Backend Generated:  ${generated_signature}`);
+
+                if (generated_signature !== signature) {
+                    console.error("⚠️ Payment Signature Verification FAILED for booking");
+                    verifiedPaymentStatus = 'pending';
+                } else {
+                    // 2. Fetch Payment Status from Razorpay (Double Check)
+                    const instance = new Razorpay({
+                        key_id: process.env.RAZORPAY_KEY_ID,
+                        key_secret: process.env.RAZORPAY_KEY_SECRET,
+                    });
+
+                    const payment = await instance.payments.fetch(paymentId);
+                    console.log(`[PaymentDebug] Razorpay API Status: ${payment.status}`);
+
+                    if (payment.status === 'captured' || payment.status === 'authorized') {
+                        verifiedPaymentStatus = 'paid';
+                    } else {
+                        console.error(`⚠️ Payment status mismatch. Razorpay status: ${payment.status}`);
+                        verifiedPaymentStatus = 'pending';
+                    }
+                }
+            } else {
+                verifiedPaymentStatus = 'pending';
+            }
+        } catch (err) {
+        }
+    }
+
+    // Use the paidAmount from bookingData if available (for online payments)
+    const paidAmount = bookingData.paidAmount ? Number(bookingData.paidAmount) : (verifiedPaymentStatus === 'paid' ? totalPrice : 0);
+    const discount = bookingData.discount ? Number(bookingData.discount) : 0;
+
+    // If discount was applied, the totalAmount stored should be the discounted price?
+    // Or we keep totalAmount as Original and Paid as Discounted?
+    // Usually Total = Service + Charges - Discount.
+    // So let's calculate Total based on that.
+
+    const finalTotalAmount = totalPrice - discount;
+
     const appointment = await Appointment.create({
         business: business._id,
         customer: customer._id,
@@ -1368,16 +2058,24 @@ const executeBooking = async (bookingData, businessLink) => {
         startTime: startTime,
         endTime: endTime,
         duration: totalDuration,
-        servicePrice: totalPrice,
-        totalAmount: totalPrice,
-        customerNotes: customerNotes || '',
-        specialRequests: specialRequests || '',
+        servicePrice: totalPrice, // Original Price
+        additionalCharges: 0,
+        discount: discount,       // Discount Amount
+        tax: 0,
+        totalAmount: finalTotalAmount, // Discounted Total
+        paidAmount: verifiedPaymentStatus === 'paid' ? paidAmount : 0, // Paid Amount
+        paymentStatus: verifiedPaymentStatus,
+        paymentMethod: bookingData.paymentMethod || 'cash',
         bookingSource: 'online',
-        paymentStatus: 'pending',
-        paymentMethod: paymentMethod || 'cash',
+        bookingType: 'regular',
+        customerNotes: bookingData.customerNotes,
+        internalNotes: JSON.stringify({ services: bookingData.services }),
+        paymentDetails: verifiedPaymentStatus === 'paid' ? bookingData.paymentDetails : undefined,
         status: 'pending',
         createdBy: customer._id,
-        createdByModel: 'Customer'
+        createdByModel: 'Customer',
+        // Store services array in internalNotes as JSON string for retrieval
+        // internalNotes: JSON.stringify({ services: servicesData }) // This line is now redundant as internalNotes is set above
     });
 
     const confirmationCode = appointment.bookingNumber || `CONF${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -1426,17 +2124,78 @@ const executeBooking = async (bookingData, businessLink) => {
     }
 
     await appointment.populate('business', 'name branch address phone');
-    await appointment.populate('service', 'name price duration');
+    await appointment.populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice');
     if (appointment.staff) {
         await appointment.populate('staff', 'name role');
     }
     await appointment.populate('customer', 'firstName lastName email phone');
 
+    // Fetch all services from internalNotes for response
+    let allServices = [];
+    try {
+        if (appointment.internalNotes) {
+            const parsedNotes = JSON.parse(appointment.internalNotes);
+            if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                const serviceIds = parsedNotes.services
+                    .map(s => s.serviceId)
+                    .filter(Boolean);
+
+                if (serviceIds.length > 0) {
+                    const fetchedServices = await Service.find({
+                        _id: { $in: serviceIds },
+                        business: business._id
+                    })
+                        .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                        .lean();
+
+                    // Map fetched services with booking data
+                    allServices = parsedNotes.services.map(bookingService => {
+                        const fetchedService = fetchedServices.find(
+                            fs => fs._id.toString() === bookingService.serviceId?.toString()
+                        );
+
+                        if (fetchedService) {
+                            return {
+                                ...fetchedService,
+                                price: bookingService.price !== undefined ? bookingService.price : fetchedService.price,
+                                duration: bookingService.duration !== undefined ? bookingService.duration : fetchedService.duration,
+                                optionLabel: bookingService.optionLabel,
+                                pricingOptionId: bookingService.pricingOptionId,
+                                currency: bookingService.currency || fetchedService.currency
+                            };
+                        } else {
+                            // Fallback: use booking data if service not found
+                            return {
+                                name: bookingService.serviceName || 'Service',
+                                price: bookingService.price || 0,
+                                duration: bookingService.duration || 0,
+                                category: bookingService.category || 'General',
+                                serviceType: bookingService.serviceType || 'service',
+                                currency: bookingService.currency || 'INR'
+                            };
+                        }
+                    });
+                }
+            }
+        }
+    } catch (parseError) {
+        console.error('[Booking] Error parsing services from internalNotes:', parseError);
+    }
+
+    // If no services array found, use single service
+    if (allServices.length === 0 && appointment.service) {
+        allServices = [appointment.service];
+    }
+
+    // Convert appointment to plain object and add services array
+    const appointmentObj = appointment.toObject ? appointment.toObject() : appointment;
+    appointmentObj.services = allServices;
+
     return {
         success: true,
         message: "Appointment booked successfully",
         data: {
-            appointment: appointment,
+            appointment: appointmentObj,
             confirmationCode: confirmationCode
         }
     };
@@ -1449,7 +2208,7 @@ const bookAppointmentPublic = async (req, res, next) => {
         const bookingData = req.body;
         const { customerInfo, appointmentDate, startTime, endTime, services } = bookingData;
 
-        if (!customerInfo || !customerInfo.name || !customerInfo.email || !customerInfo.phone) {
+        if (!customerInfo || !customerInfo.name || !customerInfo.phone) {
             return res.status(400).json({ success: false, message: "Customer information required" });
         }
         if (!appointmentDate || !startTime || !endTime) {
@@ -1462,10 +2221,83 @@ const bookAppointmentPublic = async (req, res, next) => {
         const business = await Business.findOne({ businessLink, isActive: true });
         if (!business) return res.status(404).json({ success: false, message: "Business not found" });
 
+        // Validate booking slot availability before sending OTP
+        const appointmentDateObj = new Date(appointmentDate);
+        const startOfDay = new Date(appointmentDateObj);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(appointmentDateObj);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Get existing appointments for the date
+        const query = {
+            business: business._id,
+            appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+            status: { $nin: ['cancelled', 'no_show'] }
+        };
+
+        if (bookingData.staffId) {
+            query.staff = bookingData.staffId;
+        }
+
+        const existingAppointments = await Appointment.find(query)
+            .select('startTime endTime staff')
+            .lean();
+
+        // Validate appointment booking
+        const validation = validateAppointmentBooking({
+            appointmentDate,
+            startTime,
+            endTime,
+            staff: bookingData.staffId
+        }, business, existingAppointments);
+
+        if (!validation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: validation.errors.join(', ')
+            });
+        }
+
+        // Check for Online Payment (Skip OTP)
+        if (bookingData.paymentStatus === 'paid' && bookingData.paymentDetails) {
+            const { orderId, paymentId, signature } = bookingData.paymentDetails;
+            if (orderId && paymentId && signature) {
+                // Verify Signature
+                const generated_signature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+                    .update(orderId + "|" + paymentId)
+                    .digest('hex');
+
+                if (generated_signature === signature) {
+                    console.log(`[Booking] Online payment verified for ${businessLink}. Skipping OTP.`);
+
+                    const result = await executeBooking(bookingData, businessLink);
+
+                    if (result.success) {
+                        // Send notifications (using helper)
+                        const appointmentId = result.data.appointment._id || result.data.appointment.id;
+                        // Fire and forget notifications
+                        sendConfirmationNotifications(appointmentId, bookingData);
+
+                        return res.json({
+                            success: true,
+                            message: "Booking confirmed successfully!",
+                            requiresOTP: false,
+                            data: result.data
+                        });
+                    } else {
+                        return res.status(result.status || 400).json(result);
+                    }
+                } else {
+                    console.error('[Booking] Payment signature verification failed');
+                    return res.status(400).json({ success: false, message: "Payment verification failed" });
+                }
+            }
+        }
+
         const phone = customerInfo.phone;
         let response;
         try {
-            response = await createAndSendOTP({ mode: 'sms', to: phone });
+            response = await createAndSendOTP({ mode: 'whatsapp', to: phone });
         } catch (err) {
             console.error("OTP Send Failed:", err);
             // Return proper error for client handling
@@ -1533,44 +2365,159 @@ const verifyBookingOTP = async (req, res, next) => {
         await Otp.findByIdAndDelete(otpRecord._id);
 
         // Send confirmation notifications (Async)
-        try {
+        // Use helper function to prevent duplication
+        const appointmentId = result.data.appointment._id || result.data.appointment.id;
+        sendConfirmationNotifications(appointmentId, bookingData);
+
+        // Ensure services array is included in the response
+        if (result.data && result.data.appointment) {
             const appointment = result.data.appointment;
-            if (appointment) {
-                const notificationData = {
-                    customerName: appointment.customer.firstName,
+            // Parse services from internalNotes if not already included
+            if (!result.data.appointment.services || result.data.appointment.services.length === 0) {
+                try {
+                    if (appointment.internalNotes) {
+                        const parsedNotes = JSON.parse(appointment.internalNotes);
+                        if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                            const Service = require('../models/Service');
+                            const serviceIds = parsedNotes.services
+                                .map(s => s.serviceId)
+                                .filter(Boolean);
+
+                            if (serviceIds.length > 0) {
+                                const businessId = appointment.business?._id || appointment.business;
+                                const fetchedServices = await Service.find({
+                                    _id: { $in: serviceIds },
+                                    business: businessId
+                                })
+                                    .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                                    .lean();
+
+                                // Map fetched services with booking data
+                                const allServices = parsedNotes.services.map(bookingService => {
+                                    const fetchedService = fetchedServices.find(
+                                        fs => fs._id.toString() === bookingService.serviceId?.toString()
+                                    );
+
+                                    if (fetchedService) {
+                                        return {
+                                            ...fetchedService,
+                                            price: bookingService.price !== undefined ? bookingService.price : fetchedService.price,
+                                            duration: bookingService.duration !== undefined ? bookingService.duration : fetchedService.duration,
+                                            optionLabel: bookingService.optionLabel,
+                                            pricingOptionId: bookingService.pricingOptionId,
+                                            currency: bookingService.currency || fetchedService.currency
+                                        };
+                                    } else {
+                                        return {
+                                            name: bookingService.serviceName || 'Service',
+                                            price: bookingService.price || 0,
+                                            duration: bookingService.duration || 0,
+                                            category: bookingService.category || 'General',
+                                            serviceType: bookingService.serviceType || 'service',
+                                            currency: bookingService.currency || 'INR'
+                                        };
+                                    }
+                                });
+
+                                result.data.appointment.services = allServices;
+                            }
+                        }
+                    }
+                } catch (parseError) {
+                    console.error('[Response] Error parsing services from internalNotes:', parseError);
+                }
+            }
+        }
+
+
+        // ================== SEND EMAIL NOTIFICATIONS ==================
+        (async () => {
+            try {
+                const appointmentRaw = result.data.appointment;
+                if (!appointmentRaw) return;
+
+                const appointmentId = appointmentRaw._id || appointmentRaw.id;
+
+                // Repopulate for full details
+                const appointment = await Appointment.findById(appointmentId)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (!appointment || !appointment.business || !appointment.customer) return;
+
+                // Fetch proper business admin/managers
+                const businessDetails = await Business.findById(appointment.business._id)
+                    .populate('admin', 'email name')
+                    .populate('managers', 'email name isActive');
+
+                // Prepare data
+                const dateObj = new Date(appointment.appointmentDate);
+                const formattedDate = dateObj.toLocaleDateString('en-US', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+
+                const commonData = {
                     businessName: appointment.business.name,
-                    appointmentDate: new Date(appointment.appointmentDate).toLocaleDateString('en-IN'),
+                    customerName: `${appointment.customer.firstName} ${appointment.customer.lastName}`,
+                    customerEmail: appointment.customer.email,
+                    customerPhone: appointment.customer.phone,
+                    appointmentDate: formattedDate,
                     startTime: appointment.startTime,
                     endTime: appointment.endTime,
-                    services: appointment.service.name,
-                    confirmationCode: appointment.bookingNumber
+                    services: appointment.service?.name || 'Service',
+                    confirmationCode: appointment.bookingNumber,
+                    staffInfo: appointment.staff ? `<p><strong>Assigned Staff:</strong> ${appointment.staff}</p>` : '', // Staff might be ID or populated
+                    customerNotesInfo: '<p><strong>Booking Source:</strong> Online</p>',
+                    actionUrl: `${process.env.FRONTEND_URL}/admin/appointments/${appointment._id}`
                 };
 
-                const phone = appointment.customer.phone;
+                // 1. Notify Admin
+                const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                if (adminEmail) {
+                    await sendTemplateMail({
+                        to: adminEmail,
+                        template: 'new_booking_admin',
+                        data: {
+                            ...commonData,
+                            actionUrl: `${process.env.FRONTEND_URL || ''}/admin/appointments/${appointment._id}`
+                        }
+                    });
+                }
 
-                // Send WhatsApp
-                console.log(`[Notification] Sending WhatsApp to ${phone}...`);
-                sendTemplateWhatsApp({
-                    to: phone,
-                    template: 'appointment_confirmation',
-                    data: notificationData
-                })
-                    .then(res => console.log(`[Notification] WhatsApp sent details:`, JSON.stringify(res)))
-                    .catch(err => console.error('[Notification] WhatsApp confirmation failed:', err.message));
+                // 2. Notify Managers
+                if (businessDetails?.managers?.length > 0) {
+                    for (const manager of businessDetails.managers) {
+                        if (manager.isActive && manager.email) {
+                            await sendTemplateMail({
+                                to: manager.email,
+                                template: 'new_booking_manager',
+                                data: {
+                                    ...commonData,
+                                    actionUrl: `${process.env.FRONTEND_URL || ''}/manager/appointments/${appointment._id}`
+                                }
+                            });
+                        }
+                    }
+                }
 
-                // Send SMS
-                console.log(`[Notification] Sending SMS to ${phone}...`);
-                sendTemplateSMS({
-                    to: phone,
-                    template: 'appointment_confirmation',
-                    data: notificationData
-                })
-                    .then(res => console.log(`[Notification] SMS sent details:`, JSON.stringify(res)))
-                    .catch(err => console.error('[Notification] SMS confirmation failed:', err.message));
+                // 3. Notify Customer
+                if (appointment.customer.email) {
+                    await sendTemplateMail({
+                        to: appointment.customer.email,
+                        template: 'appointment_confirmation',
+                        data: {
+                            ...commonData,
+                            customerName: appointment.customer.firstName,
+                            actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${appointment.bookingNumber}`
+                        }
+                    });
+                }
+            } catch (emailError) {
+                console.error('❌ EMAIL: Failed to send public booking emails:', emailError);
             }
-        } catch (notifyErr) {
-            console.error('Notification error:', notifyErr);
-        }
+        })();
+        // ==============================================================
 
         return res.status(201).json(result);
 
@@ -1586,7 +2533,7 @@ const getAppointmentByConfirmationCode = async (req, res, next) => {
 
         const appointment = await Appointment.findOne({ bookingNumber: confirmationCode })
             .populate('business', 'name branch address city state country phone email website')
-            .populate('service', 'name price duration category serviceType description')
+            .populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice')
             .populate('staff', 'name role specialization phone email')
             .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
             .lean();
@@ -1598,10 +2545,104 @@ const getAppointmentByConfirmationCode = async (req, res, next) => {
             });
         }
 
+        // Parse services from internalNotes if available (for multiple services)
+        let servicesArray = [];
+        let serviceData = appointment.service;
+
+        try {
+            if (appointment.internalNotes) {
+                const parsedNotes = JSON.parse(appointment.internalNotes);
+                if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                    // Fetch all services from the stored service IDs
+                    const serviceIds = parsedNotes.services
+                        .map(s => s.serviceId)
+                        .filter(Boolean);
+
+                    if (serviceIds.length > 0) {
+                        const Service = require('../models/Service');
+                        // Handle business ID (could be ObjectId or populated object)
+                        const businessId = appointment.business?._id || appointment.business;
+
+                        const fetchedServices = await Service.find({
+                            _id: { $in: serviceIds },
+                            business: businessId
+                        })
+                            .select('name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+                            .lean();
+
+                        // Map fetched services with booking data (price, duration from booking)
+                        servicesArray = parsedNotes.services.map(bookingService => {
+                            const fetchedService = fetchedServices.find(
+                                fs => fs._id.toString() === bookingService.serviceId?.toString()
+                            );
+
+                            if (fetchedService) {
+                                return {
+                                    ...fetchedService,
+                                    // Use booking price/duration if available (might be different due to pricing options)
+                                    price: bookingService.price !== undefined ? bookingService.price : fetchedService.price,
+                                    duration: bookingService.duration !== undefined ? bookingService.duration : fetchedService.duration,
+                                    optionLabel: bookingService.optionLabel,
+                                    pricingOptionId: bookingService.pricingOptionId,
+                                    currency: bookingService.currency || fetchedService.currency
+                                };
+                            } else {
+                                // Fallback: use booking data if service not found
+                                return {
+                                    name: bookingService.serviceName || 'Service',
+                                    price: bookingService.price || 0,
+                                    duration: bookingService.duration || 0,
+                                    category: bookingService.category || 'General',
+                                    serviceType: bookingService.serviceType || 'service',
+                                    currency: bookingService.currency || 'INR',
+                                    optionLabel: bookingService.optionLabel,
+                                    pricingOptionId: bookingService.pricingOptionId
+                                };
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (parseError) {
+            console.error('Error parsing services from internalNotes:', parseError);
+        }
+
+        // If no services array found, use single service
+        if (servicesArray.length === 0) {
+            if (serviceData) {
+                // If service is populated but missing key fields, ensure defaults
+                if (!serviceData.name && appointment.serviceName) {
+                    serviceData.name = appointment.serviceName;
+                }
+                // Ensure price is available (use servicePrice from appointment if service price is missing)
+                if (!serviceData.price && appointment.servicePrice) {
+                    serviceData.price = appointment.servicePrice;
+                }
+                // Ensure duration is available
+                if (!serviceData.duration && appointment.duration) {
+                    serviceData.duration = appointment.duration;
+                }
+                servicesArray = [serviceData];
+            } else if (appointment.serviceName) {
+                // Fallback: create service object from appointment data if service not populated
+                servicesArray = [{
+                    name: appointment.serviceName,
+                    price: appointment.servicePrice || 0,
+                    duration: appointment.duration || 0,
+                    category: appointment.serviceCategory || 'General',
+                    serviceType: appointment.serviceType || 'service'
+                }];
+            } else {
+                servicesArray = [];
+            }
+        }
+
         return res.json({
             success: true,
             data: {
                 ...appointment,
+                service: servicesArray.length > 0 ? servicesArray[0] : null, // Keep single service for backward compatibility
+                services: servicesArray, // Add services array for multiple services
                 confirmationCode: appointment.bookingNumber
             }
         });
@@ -1720,9 +2761,21 @@ const updateAppointmentStatus = async (req, res, next) => {
         appointment.status = status;
 
         // Handle specific status logic if needed (e.g., setting completedAt)
-        if (status === 'completed' && !appointment.completedAt) {
-            appointment.completedAt = new Date();
-            appointment.paymentStatus = 'paid'; // Assume paid if completed via quick update
+        if (status === 'completed') {
+            if (!appointment.completedAt) {
+                appointment.completedAt = new Date();
+            }
+
+            if (appointment.paymentStatus === 'pending') {
+                appointment.paymentStatus = 'paid';
+                appointment.paidAmount = Number(appointment.totalAmount || 0);
+            } else if (appointment.paymentStatus === 'partial') {
+                const total = Number(appointment.totalAmount || 0);
+                const paid = Number(appointment.paidAmount || 0);
+                if (paid >= total) {
+                    appointment.paymentStatus = 'paid';
+                }
+            }
         } else if (status === 'cancelled' && !appointment.cancelledAt) {
             appointment.cancelledAt = new Date();
             appointment.cancelledBy = userId;
@@ -1755,6 +2808,108 @@ const updateAppointmentStatus = async (req, res, next) => {
             data: appointment
         });
 
+        // ================== SEND EMAIL ==================
+        (async () => {
+            try {
+                const fullAppt = await Appointment.findById(appointment._id)
+                    .populate('business')
+                    .populate('customer')
+                    .populate('service');
+
+                if (fullAppt) {
+                    const formattedDate = new Date(fullAppt.appointmentDate).toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    const commonData = {
+                        businessName: fullAppt.business.name,
+                        customerName: `${fullAppt.customer.firstName} ${fullAppt.customer.lastName}`,
+                        appointmentDate: formattedDate,
+                        startTime: fullAppt.startTime,
+                        endTime: fullAppt.endTime,
+                        services: fullAppt.service?.name || 'Service',
+                        status: status,
+                        year: new Date().getFullYear(),
+                        businessLink: `${process.env.FRONTEND_URL || ''}/book/${fullAppt.business.businessLink}/reviews`
+                    };
+
+                    let templateName = 'appointment_status_update';
+                    let emailData = {
+                        ...commonData,
+                        actionUrl: `${process.env.FRONTEND_URL || 'https://spaadvisor.in'}/appointment/${fullAppt.bookingNumber}`
+                    };
+
+                    // ---- 1. Determine Template & Data ----
+                    if (status === 'completed') {
+                        templateName = 'appointment_completed';
+                        emailData.actionUrl = commonData.businessLink; // Main action is review
+                    } else if (status === 'cancelled') {
+                        templateName = 'appointment_cancelled';
+                        emailData.reason = notes || 'Update by staff';
+                        emailData.actionUrl = `${process.env.FRONTEND_URL || ''}/book/${fullAppt.business.businessLink}`; // Re-book
+                    } else if (status === 'confirmed') {
+                        templateName = 'appointment_confirmation';
+                        emailData.confirmationCode = fullAppt.bookingNumber;
+                    }
+
+                    // Track sent emails to prevent duplicates
+                    const sentEmails = new Set();
+
+                    // ---- 2. Send to Customer ----
+                    if (fullAppt.customer?.email && !sentEmails.has(fullAppt.customer.email.toLowerCase())) {
+                        await sendTemplateMail({
+                            to: fullAppt.customer.email,
+                            template: templateName,
+                            data: {
+                                ...emailData,
+                                customerName: fullAppt.customer.firstName
+                            }
+                        });
+                        sentEmails.add(fullAppt.customer.email.toLowerCase());
+                    }
+
+                    // ---- 3. Send to Admin/Managers (ONLY IF CANCELLED) ----
+                    if (status === 'cancelled') {
+                        const businessDetails = await Business.findById(fullAppt.business._id)
+                            .populate('admin', 'email name')
+                            .populate('managers', 'email name isActive');
+
+                        const adminEmail = businessDetails?.admin?.email || businessDetails?.email;
+                        if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
+                            await sendTemplateMail({
+                                to: adminEmail,
+                                template: 'appointment_cancelled',
+                                data: {
+                                    ...commonData,
+                                    customerName: "Admin",
+                                    reason: `Cancelled via Status Update: ${notes || 'No reason provided'}`
+                                }
+                            });
+                            sentEmails.add(adminEmail.toLowerCase());
+                        }
+
+                        if (businessDetails?.managers?.length > 0) {
+                            for (const manager of businessDetails.managers) {
+                                if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
+                                    await sendTemplateMail({
+                                        to: manager.email,
+                                        template: 'appointment_cancelled',
+                                        data: {
+                                            ...commonData,
+                                            customerName: "Manager",
+                                            reason: `Cancelled via Status Update: ${notes || 'No reason provided'}`
+                                        }
+                                    });
+                                    sentEmails.add(manager.email.toLowerCase());
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e) { console.error('Email error:', e); }
+        })();
+        // ================================================
+
         return res.json({
             success: true,
             message: "Appointment status updated successfully",
@@ -1765,10 +2920,359 @@ const updateAppointmentStatus = async (req, res, next) => {
     }
 };
 
+// Helper: Download Invoice PDF
+const downloadInvoice = async (req, res) => {
+    try {
+        const appointmentId = req.params.id;
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('business')
+            .populate('customer')
+            .populate('service')
+            .populate('staff');
+
+        if (!appointment) {
+            return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        // Extract Razorpay ID safely
+        let razorpayPaymentId = '';
+        if (appointment.paymentDetails) {
+            // If it's a Mongoose Map
+            if (typeof appointment.paymentDetails.get === 'function') {
+                razorpayPaymentId = appointment.paymentDetails.get('razorpay_payment_id');
+            } else {
+                razorpayPaymentId = appointment.paymentDetails.razorpay_payment_id;
+            }
+        }
+
+        // Create a document
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=invoice-${appointment.bookingNumber}.pdf`);
+
+        doc.pipe(res);
+
+        // --- PDF CONTENT GENERATION ---
+
+        // 1. Header
+        doc.fontSize(20).text('INVOICE', { align: 'right' });
+        doc.fontSize(10).text(`Booking Ref: ${appointment.bookingNumber}`, { align: 'right' });
+        if (appointment.confirmationCode) {
+            doc.text(`Confirmation Code: ${appointment.confirmationCode}`, { align: 'right' });
+        }
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, { align: 'right' });
+
+        doc.moveDown();
+
+        // Business Details (Top Left)
+        doc.fontSize(14).font('Helvetica-Bold').text(appointment.business.name);
+        doc.fontSize(10).font('Helvetica').text(appointment.business.address || '');
+        doc.text(`Phone: ${appointment.business.phone || ''}`);
+        doc.text(`Email: ${appointment.business.email || ''}`);
+
+        doc.moveDown();
+        doc.text('---------------------------------------------------------', { align: 'center' });
+        doc.moveDown();
+
+        // Customer Details
+        doc.fontSize(12).font('Helvetica-Bold').text('Bill To:');
+        doc.fontSize(10).font('Helvetica').text(`${appointment.customer.firstName} ${appointment.customer.lastName}`);
+        doc.text(appointment.customer.phone || '');
+        doc.text(appointment.customer.email || '');
+
+        doc.moveDown();
+
+        // Service Table Header
+        const tableTop = doc.y;
+        const col1 = 50;
+        const col2 = 250;
+        const col3 = 350;
+        const col4 = 450;
+
+        doc.font('Helvetica-Bold');
+        doc.text('Service', col1, tableTop);
+        doc.text('Date', col2, tableTop);
+        doc.text('Duration', col3, tableTop);
+        doc.text('Amount', col4, tableTop);
+
+        doc.moveTo(col1, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+
+        // Service Rows
+        let yPosition = tableTop + 25;
+        doc.font('Helvetica');
+
+        // Parse internal services if available, else use single service
+        let services = [];
+        try {
+            if (appointment.internalNotes) {
+                const notes = JSON.parse(appointment.internalNotes);
+                if (notes.services) services = notes.services;
+            }
+        } catch (e) { }
+
+        if (services.length === 0 && appointment.service) {
+            services.push({
+                serviceName: appointment.service.name,
+                price: appointment.servicePrice || 0,
+                duration: appointment.duration || 0
+            });
+        }
+
+        services.forEach(svc => {
+            doc.text(svc.serviceName || svc.name || 'Service', col1, yPosition);
+            doc.text(new Date(appointment.appointmentDate).toLocaleDateString(), col2, yPosition);
+            doc.text(`${svc.duration || 0} min`, col3, yPosition);
+            doc.text(`Rs. ${svc.price}`, col4, yPosition);
+            yPosition += 20;
+        });
+
+        doc.moveTo(col1, yPosition).lineTo(550, yPosition).stroke();
+        yPosition += 10;
+
+        // Totals
+        const total = appointment.totalAmount || 0;
+        const paid = appointment.paidAmount || 0;
+        const due = total - paid;
+
+        doc.font('Helvetica-Bold');
+        doc.text(`Total Amount: Rs. ${total}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+        yPosition += 15;
+
+        if (appointment.paymentStatus === 'paid') {
+            doc.fillColor('green').text(`PAID: Rs. ${paid}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+            doc.fillColor('black');
+
+            if (razorpayPaymentId) {
+                yPosition += 15;
+                doc.fontSize(9).text(`Razorpay ID: ${razorpayPaymentId}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+                doc.fontSize(10); // Reset
+            }
+        } else {
+            doc.text(`Paid Amount: Rs. ${paid}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+            yPosition += 15;
+            doc.fillColor('red').text(`Balance Due: Rs. ${due}`, col4 - 50, yPosition, { align: 'right', width: 150 });
+            doc.fillColor('black');
+        }
+
+        // Footer
+        doc.moveDown(4);
+        doc.fontSize(10).text('Thank you for your business!', { align: 'center' });
+        doc.fontSize(8).text('This is a computer generated invoice.', { align: 'center' });
+
+        doc.end();
+
+    } catch (error) {
+        console.error("Invoice generation error:", error);
+        res.status(500).json({ success: false, message: "Could not generate invoice" });
+    }
+};
+
+// Helper: Send Confirmation Notifications (Email, SMS, WhatsApp)
+const sendConfirmationNotifications = async (appointmentId, bookingData) => {
+    try {
+        let appointment = await Appointment.findById(appointmentId)
+            .populate('business', 'name branch address city state country phone email website')
+            .populate('service', 'name price duration category serviceType description pricingType pricingOptions currency originalPrice')
+            .populate('staff', 'name role specialization phone email')
+            .populate('customer', 'firstName lastName email phone address dateOfBirth gender')
+            .lean();
+
+        if (!appointment) {
+            console.error('[Email] Appointment not found after repopulation');
+            return;
+        }
+
+        // Get business ID (handle both ObjectId and populated object)
+        const businessId = appointment.business?._id || appointment.business;
+
+        // Repopulate business with admin and managers for email
+        const business = await Business.findById(businessId)
+            .populate('admin', 'email name')
+            .populate('managers', 'email name isActive');
+
+        if (!business) {
+            console.error('[Email] Business not found for email notifications');
+        } else {
+            // Update appointment business reference
+            appointment.business = business;
+        }
+
+        // Prepare email data with conditional fields
+        const staffInfo = appointment.staff?.name
+            ? `<p><strong>Assigned Staff:</strong> ${appointment.staff.name}</p>`
+            : '';
+        const customerNotesInfo = bookingData.customerNotes
+            ? `<p><strong>Customer Notes:</strong> ${bookingData.customerNotes}</p>`
+            : '';
+
+        // Get business name (fallback if business not populated)
+        const businessName = business?.name || appointment.business?.name || 'Business';
+
+        // Extract and format services (handle multiple services)
+        let servicesText = '';
+        let servicesArray = [];
+
+        try {
+            // Try to parse services from internalNotes (for multiple services)
+            if (appointment.internalNotes) {
+                const parsedNotes = JSON.parse(appointment.internalNotes);
+                if (parsedNotes.services && Array.isArray(parsedNotes.services) && parsedNotes.services.length > 0) {
+                    servicesArray = parsedNotes.services;
+                }
+            }
+        } catch (parseError) {
+            console.error('[Email] Error parsing services from internalNotes:', parseError);
+        }
+
+        // If no services array found, use single service
+        if (servicesArray.length === 0) {
+            if (appointment.service) {
+                // Handle populated service object
+                const serviceName = appointment.service.name || appointment.service.serviceName || 'Service';
+                const servicePrice = appointment.service.price || appointment.servicePrice || 0;
+                const serviceDuration = appointment.service.duration || appointment.duration || 0;
+                servicesArray = [{
+                    serviceName: serviceName,
+                    price: servicePrice,
+                    duration: serviceDuration,
+                    optionLabel: appointment.service.optionLabel || ''
+                }];
+            } else if (bookingData.services && Array.isArray(bookingData.services)) {
+                // Fallback to bookingData services
+                servicesArray = bookingData.services.map(s => ({
+                    serviceName: s.serviceName || s.name || 'Service',
+                    price: s.price || 0,
+                    duration: s.duration || 0,
+                    optionLabel: s.optionLabel || s.pricingOptionLabel || ''
+                }));
+            } else {
+                servicesArray = [{
+                    serviceName: appointment.serviceName || 'Service',
+                    price: appointment.servicePrice || 0,
+                    duration: appointment.duration || 0
+                }];
+            }
+        }
+
+        // Format services text for email
+        if (servicesArray.length === 1) {
+            const service = servicesArray[0];
+            servicesText = service.optionLabel
+                ? `${service.serviceName} (${service.optionLabel})`
+                : service.serviceName;
+        } else {
+            // Multiple services - format with details
+            servicesText = servicesArray.map((service, index) => {
+                const name = service.serviceName || service.name || `Service ${index + 1}`;
+                const option = service.optionLabel || service.pricingOptionLabel || '';
+                const duration = service.duration || 0;
+                const price = service.price || 0;
+
+                let serviceText = `${index + 1}. ${name}`;
+                if (option) serviceText += ` (${option})`;
+                if (duration) serviceText += ` - ${duration} min`;
+                if (price) serviceText += ` - ${price.toFixed(2)}`;
+
+                return serviceText;
+            }).join('<br>');
+        }
+
+        const notificationData = {
+            customerName: appointment.customer?.firstName || bookingData.customerInfo?.name || 'Customer',
+            businessName: businessName,
+            appointmentDate: new Date(appointment.appointmentDate).toLocaleDateString('en-IN'),
+            startTime: appointment.startTime,
+            endTime: appointment.endTime,
+            services: servicesText,
+            confirmationCode: appointment.bookingNumber,
+            customerEmail: appointment.customer?.email || bookingData.customerInfo?.email || '',
+            customerPhone: appointment.customer?.phone || bookingData.customerInfo?.phone || '',
+            staffInfo: staffInfo,
+            customerNotesInfo: customerNotesInfo
+        };
+
+        const phone = appointment.customer?.phone || bookingData.customerInfo?.phone;
+
+        // Send Booking Confirmation (DoubleTick.io → Twilio WhatsApp → SMS Fallback)
+        if (phone) {
+            const { sendAppointmentConfirmation } = require('../utils/whatsappSender');
+            (async () => {
+                try {
+                    console.log(`[Notification] Sending appointment confirmation to ${phone}...`);
+                    const result = await sendAppointmentConfirmation({
+                        phone: phone,
+                        confirmationCode: appointment.bookingNumber
+                    });
+
+                    if (result.success) {
+                        console.log(`[Notification] ✅ Confirmation sent via ${result.provider}: ${result.messageId}`);
+                    } else {
+                        console.error('[Notification] ❌ All delivery methods failed:', result.error);
+                    }
+                } catch (err) {
+                    console.error('[Notification] Critical error sending confirmation:', err.message);
+                }
+            })();
+        }
+
+        // Track sent emails to prevent duplicates
+        const sentEmails = new Set();
+
+        // Send Email to Customer
+        if (notificationData.customerEmail && !sentEmails.has(notificationData.customerEmail.toLowerCase())) {
+            console.log(`[Email] Sending confirmation email to customer: ${notificationData.customerEmail}...`);
+            sendTemplateMail({
+                to: notificationData.customerEmail,
+                template: 'appointment_confirmation',
+                data: notificationData
+            })
+                .then(res => console.log(`[Email] Customer email sent:`, res.messageId))
+                .catch(err => console.error('[Email] Customer email failed:', err.message));
+            sentEmails.add(notificationData.customerEmail.toLowerCase());
+        }
+
+        // Send Email to Admin
+        const adminEmail = business?.admin?.email;
+        if (adminEmail && !sentEmails.has(adminEmail.toLowerCase())) {
+            console.log(`[Email] Sending confirmation email to admin: ${adminEmail}...`);
+            sendTemplateMail({
+                to: adminEmail,
+                template: 'appointment_notification', // You might want a different template for admin
+                data: { ...notificationData, role: 'Admin' }
+            })
+                .then(res => console.log(`[Email] Admin email sent:`, res.messageId))
+                .catch(err => console.error('[Email] Admin email failed:', err.message));
+            sentEmails.add(adminEmail.toLowerCase());
+        }
+
+        // Send Email to Managers
+        const managers = business?.managers || [];
+        for (const manager of managers) {
+            if (manager.isActive && manager.email && !sentEmails.has(manager.email.toLowerCase())) {
+                console.log(`[Email] Sending confirmation email to manager: ${manager.email}...`);
+                sendTemplateMail({
+                    to: manager.email,
+                    template: 'appointment_notification',
+                    data: { ...notificationData, role: 'Manager' }
+                })
+                    .then(res => console.log(`[Email] Manager email sent:`, res.messageId))
+                    .catch(err => console.error('[Email] Manager email failed:', err.message));
+                sentEmails.add(manager.email.toLowerCase());
+            }
+        }
+
+    } catch (error) {
+        console.error("Error sending confirmation notifications:", error);
+    }
+};
+
 module.exports = {
     // Public routes
     getBusinessInfoForBooking,
     getAvailableSlotsForBooking,
+    getAvailableSlots,
     bookAppointmentPublic,
     verifyBookingOTP,
     getAppointmentByConfirmationCode,
@@ -1786,5 +3290,6 @@ module.exports = {
     markNoShow,
     addReview,
     getAppointmentStats,
-    updateAppointmentStatus
+    updateAppointmentStatus,
+    downloadInvoice
 };

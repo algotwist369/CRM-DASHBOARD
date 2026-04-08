@@ -32,14 +32,14 @@ const ServiceForm = ({ mode = 'create' }) => {
   const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState('basic');
   const [businessesLoaded, setBusinessesLoaded] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     // Basic Information
     name: '',
     description: '',
     category: '',
     serviceType: 'service',
-    
+
     // Pricing
     pricingType: 'variable',
     price: '',
@@ -47,21 +47,21 @@ const ServiceForm = ({ mode = 'create' }) => {
     bufferTime: 0,
     currency: 'INR',
     pricingOptions: [{ name: '', price: '', originalPrice: '', duration: '', isActive: true }],
-    
+
     // Availability
     isActive: true,
     isAvailableOnline: true,
     availableDays: [],
-    
+
     // Staff
     requiresStaff: true,
     minStaffRequired: 1,
     staffCommission: { type: 'percentage', value: 0 },
-    
+
     // Media
     thumbnail: '',
     images: [],
-    
+
     // Booking
     allowOnlineBooking: true,
     advanceBookingDays: 30,
@@ -70,13 +70,15 @@ const ServiceForm = ({ mode = 'create' }) => {
       hoursBeforeService: 24,
       cancellationFee: 0
     },
-    
+
     // Display
     isFeatured: false
   });
-  
+
   const [formErrors, setFormErrors] = useState({});
   const [imageInput, setImageInput] = useState('');
+  const [businessSearch, setBusinessSearch] = useState('');
+  const [isBusinessDropdownOpen, setIsBusinessDropdownOpen] = useState(false);
 
   const tabs = [
     { id: 'basic', label: 'Basic Info' },
@@ -92,7 +94,7 @@ const ServiceForm = ({ mode = 'create' }) => {
   useEffect(() => {
     const fetchBusinesses = async () => {
       try {
-        const response = await adminService.getBusinesses();
+        const response = await adminService.getBusinesses({ limit: 1000000 });
         if (response.success) {
           const fetchedBusinesses = (response.data || [])
             .map((business) => ({
@@ -153,7 +155,7 @@ const ServiceForm = ({ mode = 'create' }) => {
             const service = response.data;
             const hasPricingOptions = service.pricingOptions && service.pricingOptions.length > 0;
             const pricingType = hasPricingOptions ? 'variable' : (service.pricingType || 'fixed');
-            
+
             setFormData({
               name: service.name || '',
               description: service.description || '',
@@ -164,14 +166,14 @@ const ServiceForm = ({ mode = 'create' }) => {
               duration: service.duration || '',
               bufferTime: service.bufferTime || 0,
               currency: service.currency || 'INR',
-              pricingOptions: hasPricingOptions 
+              pricingOptions: hasPricingOptions
                 ? service.pricingOptions.map(opt => ({
-                    name: opt.name || '',
-                    price: opt.price?.toString() || '',
-                    originalPrice: opt.originalPrice?.toString() || '',
-                    duration: opt.duration?.toString() || '',
-                    isActive: opt.isActive !== false
-                  }))
+                  name: opt.name || '',
+                  price: opt.price?.toString() || '',
+                  originalPrice: opt.originalPrice?.toString() || '',
+                  duration: opt.duration?.toString() || '',
+                  isActive: opt.isActive !== false
+                }))
                 : [{ name: '', price: '', originalPrice: '', duration: '', isActive: true }],
               isActive: service.isActive !== false,
               isAvailableOnline: service.isAvailableOnline !== false,
@@ -190,7 +192,7 @@ const ServiceForm = ({ mode = 'create' }) => {
               },
               isFeatured: service.isFeatured || false
             });
-            
+
             // Handle business field - could be ObjectId or populated object
             const businessId = service.business?._id || service.business || service.businessId;
             if (businessId) {
@@ -236,7 +238,7 @@ const ServiceForm = ({ mode = 'create' }) => {
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     const name = e.target.name;
-    
+
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData({
@@ -249,7 +251,7 @@ const ServiceForm = ({ mode = 'create' }) => {
     } else {
       setFormData({ ...formData, [name]: value });
     }
-    
+
     // Clear errors for this field
     if (formErrors[name]) {
       setFormErrors({ ...formErrors, [name]: '' });
@@ -269,7 +271,7 @@ const ServiceForm = ({ mode = 'create' }) => {
     setFormData({
       ...formData,
       pricingType: newPricingType,
-      pricingOptions: newPricingType === 'fixed' 
+      pricingOptions: newPricingType === 'fixed'
         ? [{ name: '', price: '', originalPrice: '', duration: '', isActive: true }]
         : formData.pricingOptions
     });
@@ -333,7 +335,7 @@ const ServiceForm = ({ mode = 'create' }) => {
     const errors = {};
     if (!formData.name.trim()) errors.name = 'Service name is required';
     if (!formData.category.trim()) errors.category = 'Category is required';
-    
+
     if (formData.pricingType === 'fixed') {
       if (!formData.price || Number(formData.price) <= 0) errors.price = 'Valid price is required';
       if (!formData.duration || Number(formData.duration) <= 0) errors.duration = 'Valid duration is required';
@@ -351,14 +353,14 @@ const ServiceForm = ({ mode = 'create' }) => {
         });
       }
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast.error('Please fix the form errors');
       return;
@@ -370,7 +372,7 @@ const ServiceForm = ({ mode = 'create' }) => {
     }
 
     setLoading(true);
-    
+
     try {
       let payload = {
         businessId: selectedBusinessId,
@@ -416,7 +418,7 @@ const ServiceForm = ({ mode = 'create' }) => {
 
             return optionPayload;
           });
-        
+
         if (validOptions.length > 0) {
           payload.pricingOptions = validOptions;
         }
@@ -424,13 +426,13 @@ const ServiceForm = ({ mode = 'create' }) => {
 
       // Clean undefined values and empty arrays
       Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined || 
-            (Array.isArray(payload[key]) && payload[key].length === 0) ||
-            (typeof payload[key] === 'string' && payload[key].trim() === '')) {
+        if (payload[key] === undefined ||
+          (Array.isArray(payload[key]) && payload[key].length === 0) ||
+          (typeof payload[key] === 'string' && payload[key].trim() === '')) {
           delete payload[key];
         }
       });
-      
+
       // Ensure staffCommission and cancellationPolicy are properly formatted
       if (payload.staffCommission && typeof payload.staffCommission === 'object') {
         payload.staffCommission = {
@@ -438,7 +440,7 @@ const ServiceForm = ({ mode = 'create' }) => {
           value: Number(payload.staffCommission.value) || 0
         };
       }
-      
+
       if (payload.cancellationPolicy && typeof payload.cancellationPolicy === 'object') {
         payload.cancellationPolicy = {
           allowed: payload.cancellationPolicy.allowed !== false,
@@ -497,11 +499,10 @@ const ServiceForm = ({ mode = 'create' }) => {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors focus:outline-none ${
-                  activeTab === tab.id
-                    ? 'border-gray-900 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`px-6 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors focus:outline-none ${activeTab === tab.id
+                  ? 'border-gray-900 text-gray-900'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -512,32 +513,63 @@ const ServiceForm = ({ mode = 'create' }) => {
         <div className="p-6">
           {/* Business Selector */}
           {businessesLoaded && (
-            <div className="mb-6 p-4 bg-white border border-gray-200 ">
+            <div className="mb-6 p-4 bg-white border border-gray-200">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Business <span className="text-red-500">*</span>
               </label>
               {businesses.filter((business) => business && business._id).length === 0 ? (
                 <p className="text-sm text-gray-500">No valid businesses found.</p>
               ) : (
-                <select
-                  value={selectedBusinessId}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedBusinessId(value);
-                    localStorage.setItem('selectedBusinessId', value);
-                  }}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300  focus:ring-2 focus:ring-gray-900 bg-white"
-                >
-                  <option value="">Select a business</option>
-                  {businesses
-                    .filter((business) => business && business._id)
-                    .map((business) => (
-                      <option key={business._id} value={business._id}>
-                        {business.name}
-                      </option>
-                    ))}
-                </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search and select a business..."
+                    value={businessSearch || businesses.find(b => b._id === selectedBusinessId)?.name || ''}
+                    onChange={(e) => {
+                      setBusinessSearch(e.target.value);
+                      setIsBusinessDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsBusinessDropdownOpen(true)}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-gray-900 bg-white cursor-pointer"
+                  />
+                  {isBusinessDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => {
+                          setIsBusinessDropdownOpen(false);
+                          setBusinessSearch('');
+                        }}
+                      />
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {businesses
+                          .filter((business) => business && business._id)
+                          .filter((business) =>
+                            businessSearch === '' ||
+                            business.name.toLowerCase().includes(businessSearch.toLowerCase())
+                          )
+                          .map((business) => (
+                            <div
+                              key={business._id}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedBusinessId(business._id);
+                                localStorage.setItem('selectedBusinessId', business._id);
+                                setBusinessSearch('');
+                                setIsBusinessDropdownOpen(false);
+                              }}
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${selectedBusinessId === business._id ? 'bg-gray-50 font-medium' : ''
+                                }`}
+                            >
+                              {business.name}
+                            </div>
+                          ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -556,9 +588,8 @@ const ServiceForm = ({ mode = 'create' }) => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
-                      formErrors.name ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${formErrors.name ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="Enter service name"
                   />
                   {formErrors.name && <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>}
@@ -589,9 +620,8 @@ const ServiceForm = ({ mode = 'create' }) => {
                       value={formData.category}
                       onChange={handleChange}
                       required
-                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
-                        formErrors.category ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${formErrors.category ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     >
                       <option value="">Select category</option>
                       {categories.map((cat) => (
@@ -607,9 +637,8 @@ const ServiceForm = ({ mode = 'create' }) => {
                       value={formData.category}
                       onChange={handleChange}
                       required
-                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
-                        formErrors.category ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${formErrors.category ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       placeholder="e.g., Hair, Skin, Nails"
                     />
                   )}
@@ -711,9 +740,8 @@ const ServiceForm = ({ mode = 'create' }) => {
                       required
                       min="0"
                       step="0.01"
-                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
-                        formErrors.price ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${formErrors.price ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       placeholder="0.00"
                     />
                     {formErrors.price && <p className="mt-1 text-sm text-red-600">{formErrors.price}</p>}
@@ -729,9 +757,8 @@ const ServiceForm = ({ mode = 'create' }) => {
                       onChange={handleChange}
                       required
                       min="1"
-                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${
-                        formErrors.duration ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border  focus:ring-2 focus:ring-gray-900 ${formErrors.duration ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       placeholder="30"
                     />
                     {formErrors.duration && <p className="mt-1 text-sm text-red-600">{formErrors.duration}</p>}
@@ -779,9 +806,8 @@ const ServiceForm = ({ mode = 'create' }) => {
                             onChange={(e) => handlePricingOptionChange(index, 'duration', e.target.value)}
                             required
                             min="1"
-                            className={`w-full px-3 py-2 text-sm border  focus:ring-2 focus:ring-gray-900 ${
-                              formErrors[`pricingOptions.${index}.duration`] ? 'border-red-500' : 'border-gray-300'
-                            }`}
+                            className={`w-full px-3 py-2 text-sm border  focus:ring-2 focus:ring-gray-900 ${formErrors[`pricingOptions.${index}.duration`] ? 'border-red-500' : 'border-gray-300'
+                              }`}
                             placeholder="30"
                           />
                           {formErrors[`pricingOptions.${index}.duration`] && (
@@ -799,9 +825,8 @@ const ServiceForm = ({ mode = 'create' }) => {
                             required
                             min="0"
                             step="0.01"
-                            className={`w-full px-3 py-2 text-sm border  focus:ring-2 focus:ring-gray-900 ${
-                              formErrors[`pricingOptions.${index}.price`] ? 'border-red-500' : 'border-gray-300'
-                            }`}
+                            className={`w-full px-3 py-2 text-sm border  focus:ring-2 focus:ring-gray-900 ${formErrors[`pricingOptions.${index}.price`] ? 'border-red-500' : 'border-gray-300'
+                              }`}
                             placeholder="500.00"
                           />
                           {formErrors[`pricingOptions.${index}.price`] && (

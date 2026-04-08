@@ -265,6 +265,20 @@ const appointmentSchema = new mongoose.Schema(
         updatedByModel: {
             type: String,
             enum: ['Customer', 'Staff', 'Manager', 'Admin']
+        },
+
+        // Lead Source Attribution / tracking
+        tracking: {
+            source: { type: String }, // utm_source or inferred
+            medium: { type: String }, // utm_medium
+            campaign: { type: String }, // utm_campaign
+            term: { type: String }, // utm_term
+            content: { type: String }, // utm_content
+            referrer: { type: String }, // document.referrer
+            landingPage: { type: String }, // First page visited
+            ip: { type: String },
+            userAgent: { type: String },
+            firstVisitAt: { type: Date }
         }
     },
     {
@@ -314,6 +328,24 @@ appointmentSchema.pre('save', async function (next) {
         const random = Math.floor(1000 + Math.random() * 9000);
         this.bookingNumber = `${dateStr}${random}`;
     }
+
+    if (this.isModified('status') && this.status === 'completed') {
+        if (this.paymentStatus === 'pending') {
+            this.paymentStatus = 'paid';
+            const total = Number(this.totalAmount || 0);
+            const paid = Number(this.paidAmount || 0);
+            if (paid < total) {
+                this.paidAmount = total;
+            }
+        } else if (this.paymentStatus === 'partial') {
+            const total = Number(this.totalAmount || 0);
+            const paid = Number(this.paidAmount || 0);
+            if (paid >= total) {
+                this.paymentStatus = 'paid';
+            }
+        }
+    }
+
     next();
 });
 
@@ -341,6 +373,21 @@ appointmentSchema.methods.complete = async function () {
     if (this.checkInTime) {
         const duration = (this.checkOutTime - this.checkInTime) / (1000 * 60);
         this.actualDuration = Math.round(duration);
+    }
+
+    if (this.paymentStatus === 'pending') {
+        this.paymentStatus = 'paid';
+        const total = Number(this.totalAmount || 0);
+        const paid = Number(this.paidAmount || 0);
+        if (paid < total) {
+            this.paidAmount = total;
+        }
+    } else if (this.paymentStatus === 'partial') {
+        const total = Number(this.totalAmount || 0);
+        const paid = Number(this.paidAmount || 0);
+        if (paid >= total) {
+            this.paymentStatus = 'paid';
+        }
     }
 
     await this.save();

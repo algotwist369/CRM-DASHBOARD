@@ -32,6 +32,11 @@ const businessSchema = new mongoose.Schema(
             thumbnail: { type: String } // URL to thumbnail
         },
 
+        // google 360 image ulr
+        google360ImageUrl: [{
+            type: String
+        }],
+
         // Social Media Links
         socialMedia: {
             facebook: { type: String },
@@ -42,6 +47,11 @@ const businessSchema = new mongoose.Schema(
             whatsapp: { type: String },
             telegram: { type: String }
         },
+
+        // Business Videos
+        videos: [{
+            type: String
+        }],
 
         // Business Registration & Legal
         registration: {
@@ -63,9 +73,9 @@ const businessSchema = new mongoose.Schema(
         // Payment Methods
         paymentMethods: {
             cash: { type: Boolean, default: true },
-            card: { type: Boolean, default: false },
-            upi: { type: Boolean, default: false },
-            netBanking: { type: Boolean, default: false },
+            card: { type: Boolean, default: true },
+            upi: { type: Boolean, default: true },
+            netBanking: { type: Boolean, default: true },
             wallet: { type: Boolean, default: false }
         },
 
@@ -136,7 +146,7 @@ const businessSchema = new mongoose.Schema(
         // Notification Preferences
         notifications: {
             emailNotifications: { type: Boolean, default: true },
-            smsNotifications: { type: Boolean, default: false },
+            smsNotifications: { type: Boolean, default: true },
             whatsappNotifications: { type: Boolean, default: false },
             pushNotifications: { type: Boolean, default: true }
         },
@@ -180,8 +190,8 @@ const businessSchema = new mongoose.Schema(
             // Appointment settings
             appointmentSettings: {
                 advanceBookingDays: { type: Number, default: 20 }, // How many days in advance can book
-                minAdvanceBookingHours: { type: Number, default: 10 }, // Minimum hours before appointment
-                maxAdvanceBookingHours: { type: Number, default: 24 * 20 }, // Maximum hours in advance
+                minAdvanceBookingHours: { type: Number, default: 1 }, // Minimum hours before appointment
+                maxAdvanceBookingHours: { type: Number, default: 48 * 20 }, // Maximum hours in advance
                 slotDuration: { type: Number, default: 20 }, // Default slot duration in minutes
                 bufferTime: { type: Number, default: 15 }, // Buffer time between appointments
                 allowOnlineBooking: { type: Boolean, default: true },
@@ -315,7 +325,7 @@ function isValidLatLng(lat, lng) {
 businessSchema.pre('save', async function (next) {
     try {
         // Generate business link if not exists
-        if (!this.businessLink) {
+        if (!this.businessLink && this.name) {
             const cleanBusinessName = this.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             const shortId = this._id.toString().slice(-3);
             this.businessLink = `${cleanBusinessName}_${shortId}`;

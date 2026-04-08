@@ -8,6 +8,7 @@ const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { getTargetCustomers, getCustomerAnalytics } = require("../utils/customerAnalytics");
 const { sendMail } = require("../utils/sendMail");
 const { sendSMS } = require("../utils/sendSMS");
+const { mapWithConcurrency } = require("../utils/performanceHelper");
 
 // ================== Create Notification ==================
 const createNotification = async (req, res, next) => {
@@ -62,9 +63,9 @@ const createNotification = async (req, res, next) => {
             }
         });
 
-        // Invalidate cache
-        await deleteCache(`manager:${managerId}:notifications`);
-        await deleteCache(`business:${manager.business._id}:notifications`);
+        // Cache Invalidation Removed
+        // await deleteCache(`manager:${managerId}:notifications`);
+        // await deleteCache(`business:${manager.business._id}:notifications`);
 
         return res.status(201).json({
             success: true,
@@ -115,9 +116,11 @@ const sendNotification = async (req, res, next) => {
             _id: { $in: notification.targetAudience.individualCustomers }
         });
 
-        // Send notifications
-        const results = await Promise.allSettled(
-            customers.map(customer => sendNotificationToCustomer(notification, customer))
+        // Send notifications with concurrency control
+        const results = await mapWithConcurrency(
+            customers,
+            customer => sendNotificationToCustomer(notification, customer),
+            20 // Process 20 customers at a time
         );
 
         // Prepare delivery records without saving yet
@@ -160,9 +163,9 @@ const sendNotification = async (req, res, next) => {
         notification.sentAt = new Date();
         await notification.save();
 
-        // Invalidate cache
-        await deleteCache(`manager:${managerId}:notifications`);
-        await deleteCache(`business:${notification.business._id}:notifications`);
+        // Cache Invalidation Removed
+        // await deleteCache(`manager:${managerId}:notifications`);
+        // await deleteCache(`business:${notification.business._id}:notifications`);
 
         return res.json({
             success: true,
@@ -215,12 +218,6 @@ const getNotifications = async (req, res, next) => {
 
             query.business = { $in: businessIds };
 
-            // Admin: Use cache for better performance
-            const cacheKey = `user:${userId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
-            const cachedData = await getCache(cacheKey);
-            if (cachedData) {
-                return res.json({ success: true, source: "cache", ...cachedData });
-            }
         } else if (userRole === 'manager') {
             // Manager sees notifications only from their business
             const manager = await Manager.findById(userId).populate('business');
@@ -271,10 +268,10 @@ const getNotifications = async (req, res, next) => {
         };
 
         // Only cache for admin role
-        if (userRole === 'admin') {
-            const cacheKey = `user:${userId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
-            await setCache(cacheKey, response, 120);
-        }
+        // if (userRole === 'admin') {
+        //     const cacheKey = `user:${userId}:notifications:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
+        //     await setCache(cacheKey, response, 120);
+        // }
 
         return res.json(response);
     } catch (err) {
@@ -408,9 +405,9 @@ const createCampaign = async (req, res, next) => {
             }
         });
 
-        // Invalidate cache
-        await deleteCache(`manager:${managerId}:campaigns`);
-        await deleteCache(`business:${manager.business._id}:campaigns`);
+        // Cache Invalidation Removed
+        // await deleteCache(`manager:${managerId}:campaigns`);
+        // await deleteCache(`business:${manager.business._id}:campaigns`);
 
         return res.status(201).json({
             success: true,
@@ -448,11 +445,12 @@ const getCampaigns = async (req, res, next) => {
             });
         }
 
-        const cacheKey = `manager:${managerId}:campaigns:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
-        }
+        // Cache Removed (User Request)
+        // const cacheKey = `manager:${managerId}:campaigns:${status}:${type}:${startDate}:${endDate}:${page}:${limit}`;
+        // const cachedData = await getCache(cacheKey);
+        // if (cachedData) {
+        //     return res.json({ success: true, source: "cache", ...cachedData });
+        // }
 
         let query = { business: manager.business._id };
 
@@ -484,7 +482,8 @@ const getCampaigns = async (req, res, next) => {
             }
         };
 
-        await setCache(cacheKey, response, 120);
+        // Cache Removed (User Request)
+        // await setCache(cacheKey, response, 120);
         return res.json(response);
     } catch (err) {
         next(err);
@@ -506,11 +505,12 @@ const getCustomerAnalyticsForNotifications = async (req, res, next) => {
             });
         }
 
-        const cacheKey = `manager:${managerId}:customer-analytics:${startDate}:${endDate}:${groupBy}`;
-        const cachedData = await getCache(cacheKey);
-        if (cachedData) {
-            return res.json({ success: true, source: "cache", ...cachedData });
-        }
+        // Cache Removed (User Request)
+        // const cacheKey = `manager:${managerId}:customer-analytics:${startDate}:${endDate}:${groupBy}`;
+        // const cachedData = await getCache(cacheKey);
+        // if (cachedData) {
+        //     return res.json({ success: true, source: "cache", ...cachedData });
+        // }
 
         const analytics = await getCustomerAnalytics(manager.business._id, {
             startDate,
@@ -518,7 +518,8 @@ const getCustomerAnalyticsForNotifications = async (req, res, next) => {
             groupBy
         });
 
-        await setCache(cacheKey, analytics, 300);
+        // Cache Removed (User Request)
+        // await setCache(cacheKey, analytics, 300);
         return res.json({
             success: true,
             data: analytics

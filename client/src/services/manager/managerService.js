@@ -130,6 +130,32 @@ class ManagerService {
     }
   }
 
+  // Get single transaction
+  async getTransaction(id) {
+    try {
+      const response = await apiClient.get(endpoints.manager.getTransaction(id))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch transaction'
+      }
+    }
+  }
+
+  // Update transaction
+  async updateTransaction(transactionId, transactionData) {
+    try {
+      const response = await apiClient.put(endpoints.manager.updateTransaction(transactionId), transactionData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update transaction'
+      }
+    }
+  }
+
   // Get daily business records
   async getDailyBusinessRecords(params = {}) {
     try {
@@ -399,6 +425,19 @@ class ManagerService {
     }
   }
 
+  // Update customer tier
+  async updateCustomerTier(customerId, tier) {
+    try {
+      const response = await apiClient.put(endpoints.customers.updateTier(customerId), { tier })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update customer tier'
+      }
+    }
+  }
+
   // Add customer note
   async addCustomerNote(customerId, noteData) {
     try {
@@ -507,6 +546,126 @@ class ManagerService {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to update appointment status'
+      }
+    }
+  }
+
+  // ================== Inquiry Methods ==================
+  async getInquiries(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.inquiries.list, { params })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch inquiries'
+      }
+    }
+  }
+
+  async markInquiryAsReceived(id) {
+    try {
+      const response = await apiClient.patch(endpoints.inquiries.receive(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update inquiry status'
+      }
+    }
+  }
+
+  async deleteInquiry(id) {
+    try {
+      const response = await apiClient.delete(endpoints.inquiries.delete(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete inquiry'
+      }
+    }
+  }
+
+  async remarkInquiry(id, remarkData) {
+    try {
+      const response = await apiClient.patch(endpoints.inquiries.remark(id), remarkData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to remark inquiry'
+      }
+    }
+  }
+
+  async exportInquiries(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.inquiries.export, {
+        params,
+        responseType: params.format === 'csv' ? 'blob' : 'arraybuffer'
+      })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to export inquiries'
+      }
+    }
+  }
+
+  // ================== Google Sheet Lead Methods ==================
+
+  // Get leads for manager
+  async getManagerLeads(params = {}) {
+    try {
+      const response = await apiClient.get('/google-sheets/leads/manager', { params })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch manager leads'
+      }
+    }
+  }
+
+  // Update lead status (call/whatsapp)
+  async updateLeadStatus(data) {
+    try {
+      const response = await apiClient.post('/google-sheets/leads/update-status', data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update lead status'
+      }
+    }
+  }
+
+  // Add lead remark
+  async addLeadRemark(data) {
+    try {
+      const response = await apiClient.post('/google-sheets/leads/remark', data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to add remark'
+      }
+    }
+  }
+
+  // Get pending leads count for manager sidebar badge
+  async getPendingLeadsCount() {
+    try {
+      const response = await apiClient.get('/google-sheets/pending-count/manager')
+      return { success: true, count: response.data.count || 0 }
+    } catch (error) {
+      console.error('Failed to fetch pending leads count:', error)
+      return {
+        success: false,
+        count: 0,
+        error: error.response?.data?.message || 'Failed to fetch pending leads count'
       }
     }
   }

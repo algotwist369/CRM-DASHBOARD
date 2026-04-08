@@ -14,9 +14,10 @@ import {
   FaArrowLeft,
   FaCalendarAlt,
   FaSpinner,
-  FaCheckCircle,
   FaClock,
-  FaTimesCircle
+  FaTimesCircle,
+  FaEdit,
+  FaCheckCircle
 } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import managerService from '../../../../services/manager/managerService'
@@ -138,14 +139,21 @@ const TransactionDetails = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${transaction.paymentStatus === 'completed'
-                ? 'bg-green-100 text-green-700'
-                : transaction.paymentStatus === 'pending'
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
+              ? 'bg-green-100 text-green-700'
+              : transaction.paymentStatus === 'pending'
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-700'
               }`}>
               {getPaymentStatusIcon(transaction.paymentStatus)}
               {transaction.paymentStatus || 'completed'}
             </span>
+            <button
+              onClick={() => navigate(`/manager/transactions/${id}/edit`)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm ml-2"
+            >
+              <FaEdit />
+              <span>Edit</span>
+            </button>
           </div>
         </div>
       </div>

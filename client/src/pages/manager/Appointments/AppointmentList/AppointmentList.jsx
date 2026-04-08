@@ -37,9 +37,14 @@ const formatDateTime = (dateString, timeString) => {
     const hour = parseInt(hours)
     const ampm = hour >= 12 ? 'PM' : 'AM'
     const hour12 = hour % 12 || 12
-    return `${date.toLocaleDateString()} at ${hour12}:${minutes} ${ampm}`
+    return (
+      <div className="flex flex-col">
+        <span>{date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+        <span className="text-xs text-gray-500">{hour12}:{minutes} {ampm}</span>
+      </div>
+    )
   }
-  return date.toLocaleDateString()
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 const formatCurrency = (amount) => {
@@ -114,22 +119,35 @@ const AppointmentRow = memo(({ appointment, updatingStatus, onQuickUpdate, onVie
           <div className="font-medium text-gray-900">
             {appointment.service?.name || 'N/A'}
           </div>
-          {appointment.service?.duration && (
-            <div className="text-xs text-green-500 font-semibold">{appointment.service.duration} min</div>
+          {(appointment.duration || appointment.service?.duration) && (
+            <div className="text-xs text-green-500 font-semibold">{appointment.duration || appointment.service.duration} min</div>
           )}
         </div>
       </td>
-      <td className="px-6 py-4">
+      {/* <td className="px-6 py-4">
         <div className="text-sm text-gray-900">
           {appointment.staff?.name || 'TBD'}
         </div>
         {appointment.staff?.role && (
           <div className="text-xs text-gray-500">{appointment.staff.role}</div>
         )}
-      </td>
+      </td> */}
       <td className="px-6 py-4">
         <div className="text-sm font-semibold text-gray-900">
           {formatCurrency(appointment.totalAmount || 0)}
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="text-sm text-gray-500">
+          {appointment.createdAt ? (() => {
+            const date = new Date(appointment.createdAt);
+            return (
+              <div className="flex flex-col">
+                <span className="text-gray-900">{date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                <span className="text-xs text-gray-500">{date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+              </div>
+            );
+          })() : 'N/A'}
         </div>
       </td>
       <td className="px-6 py-4">
@@ -509,8 +527,9 @@ const AppointmentList = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Services</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff</th>
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff</th> */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>

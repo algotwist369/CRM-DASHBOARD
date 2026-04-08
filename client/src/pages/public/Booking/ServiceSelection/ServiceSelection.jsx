@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { useQuery } from '@tanstack/react-query'
@@ -7,12 +7,17 @@ import {
   FaArrowLeft,
   FaArrowRight,
   FaCheckCircle,
-  FaChevronDown
+  FaChevronDown,
+  FaFilter,
+  FaSearch,
+  FaSortAmountDown,
+  FaSortAmountUp
 } from 'react-icons/fa'
-import { FiCheck } from 'react-icons/fi'
+import { FiCheck, FiX } from 'react-icons/fi'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 import appointmentService from '../../../../services/public/appointmentService'
+import './ServiceSelection.module.css'
 
 const currencySymbols = {
   INR: '₹',
@@ -126,9 +131,18 @@ const ServiceSelection = () => {
     enabled: !!businessLink,
     initialData: () => {
       const stored = sessionStorage.getItem('bookingBusiness')
-      return stored ? JSON.parse(stored) : undefined
+      if (!stored) return undefined
+      try {
+        const parsed = JSON.parse(stored)
+        // Validate match
+        if (parsed.businessLink === businessLink || parsed.slug === businessLink) {
+          return parsed
+        }
+      } catch (e) { console.error(e) }
+      return undefined
     },
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    staleTime: 10 * 60 * 1000, // 10 minutes - increased for better caching
+    gcTime: 15 * 60 * 1000 // 15 minutes cache time
   })
 
   // Local State
@@ -139,11 +153,43 @@ const ServiceSelection = () => {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [selectedStaffSummary, setSelectedStaffSummary] = useState(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortOrder, setSortOrder] = useState('default') // default, asc, desc
 
   // Derived error
   const error = queryError?.message || null
 
   const services = useMemo(() => business?.services || [], [business])
+
+  const filteredServices = useMemo(() => {
+    let result = [...services]
+
+    // 1. Search Filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(service => {
+        const name = getRawServiceName(service).toLowerCase()
+        return name.includes(query)
+      })
+    }
+
+    // 2. Sort
+    if (sortOrder !== 'default') {
+      result.sort((a, b) => {
+        const getPrice = (s) => {
+          const options = getServiceOptions(s)
+          const priceValues = options.map(option => Number(option.price) || 0)
+          return priceValues.length ? Math.min(...priceValues) : 0
+        }
+        const priceA = getPrice(a)
+        const priceB = getPrice(b)
+        return sortOrder === 'asc' ? priceA - priceB : priceB - priceA
+      })
+    }
+
+    return result
+  }, [services, searchQuery, sortOrder])
 
   // Update page title
   usePageTitle();
@@ -151,10 +197,11 @@ const ServiceSelection = () => {
   // Track page view
   useLeadTracking(business?._id, !!business);
 
+  // Combine initialization effects for better performance
   useEffect(() => {
-    window.scrollTo(0, 0)
+    window.scrollTo({ top: 0, behavior: 'instant' })
 
-    // Restore other booking state
+    // Restore all booking state in one go
     const storedCustomer = sessionStorage.getItem('customerInfo')
     const storedDate = sessionStorage.getItem('selectedDate')
     const storedTime = sessionStorage.getItem('selectedTime')
@@ -185,28 +232,33 @@ const ServiceSelection = () => {
     }
   }, [])
 
+  // Show error toasts
   useEffect(() => {
     if (error) toast.error(error)
   }, [error])
 
+  // Initialize default options for services - optimized
   useEffect(() => {
+    if (!business?.services?.length) return
 
-    if (!business?.services) return
     setSelectedOptions(prev => {
       const next = { ...prev }
+      let hasChanges = false
+
       business.services.forEach(service => {
         const serviceId = getServiceId(service)
-        if (!serviceId) return
-        if (!next[serviceId]) {
-          const options = getServiceOptions(service)
-          if (options.length > 0) {
-            next[serviceId] = options[0].id
-          }
+        if (!serviceId || next[serviceId]) return
+
+        const options = getServiceOptions(service)
+        if (options.length > 0) {
+          next[serviceId] = options[0].id
+          hasChanges = true
         }
       })
-      return next
+
+      return hasChanges ? next : prev
     })
-  }, [business])
+  }, [business?.services])
 
   const loadSelectedServices = useCallback(() => {
     const saved = sessionStorage.getItem('selectedServices')
@@ -262,7 +314,7 @@ const ServiceSelection = () => {
     }
   }, [business, loadSelectedServices])
 
-  const toggleService = (service) => {
+  const toggleService = useCallback((service) => {
     const serviceId = getServiceId(service)
     const options = getServiceOptions(service)
     if (!serviceId || !options.length) {
@@ -288,9 +340,9 @@ const ServiceSelection = () => {
       sessionStorage.setItem('selectedServices', JSON.stringify(updated))
       return updated
     })
-  }
+  }, [selectedOptions])
 
-  const handleOptionChange = (service, optionId, autoSelect = false) => {
+  const handleOptionChange = useCallback((service, optionId, autoSelect = false) => {
     const serviceId = getServiceId(service)
     setSelectedOptions(prev => ({ ...prev, [serviceId]: optionId }))
 
@@ -313,12 +365,12 @@ const ServiceSelection = () => {
       sessionStorage.setItem('selectedServices', JSON.stringify(updated))
       return updated
     })
-  }
+  }, [])
 
-  const isServiceSelected = (service) => {
+  const isServiceSelected = useCallback((service) => {
     const serviceId = getServiceId(service)
     return selectedServices.some(item => item.serviceId === serviceId)
-  }
+  }, [selectedServices])
 
   const getServiceName = (service) => {
     if (!service) return 'Service'
@@ -365,7 +417,7 @@ const ServiceSelection = () => {
 
   const serviceCount = services.length
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     if (selectedServices.length === 0) {
       toast.error('Please select at least one service')
       return
@@ -375,11 +427,11 @@ const ServiceSelection = () => {
     // Automatically select "any available staff" and skip staff selection page
     sessionStorage.setItem('selectedStaff', JSON.stringify(null))
     navigate(`/book/${businessLink}/time`) // Go directly to time selection page
-  }
+  }, [selectedServices, businessLink, navigate])
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     navigate(`/${businessLink}`) // Go back to business info page
-  }
+  }, [businessLink, navigate])
 
   if (loading) {
     return (
@@ -409,40 +461,116 @@ const ServiceSelection = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6">
+    <div className="min-h-screen bg-gray-50 py-3 sm:py-6 px-3 sm:px-6 pb-20 lg:pb-6">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-3 sm:mb-6 flex items-center justify-between">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-gray-600"
+            className="flex items-center gap-1.5 sm:gap-2 text-gray-600 text-sm sm:text-base"
           >
-            <FaArrowLeft />
+            <FaArrowLeft className="text-sm sm:text-base" />
             <span>Back</span>
           </button>
           <div className="text-right">
-            <h1 className="text-xl font-bold text-gray-900">Select Services</h1>
-            <p className="text-sm text-gray-500">{business.name}</p>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900">Select Services</h1>
+            <p className="text-xs sm:text-sm text-gray-500">{business.name}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
           {/* Services List */}
-          <div className="lg:col-span-2 space-y-2">
+          <div className="lg:col-span-2 space-y-1.5 sm:space-y-2">
+
+            {/* Filter Toggle & Controls */}
+            <div className="bg-white rounded-lg border border-gray-200 p-3 mb-2">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'text-primary-600' : 'text-gray-600 hover:text-gray-900'}`}
+                >
+                  <FaFilter className={showFilters ? 'text-primary-600' : 'text-gray-400'} />
+                  <span>Filter & Sort</span>
+                </button>
+                {(searchQuery || sortOrder !== 'default') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSortOrder('default')
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
+                  >
+                    <FiX /> Clear
+                  </button>
+                )}
+              </div>
+
+              {showFilters && (
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3 animate-slideDown">
+                  {/* Search */}
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                    <input
+                      type="text"
+                      placeholder="Search services..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Sort Controls */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    <span className="text-xs text-gray-500 whitespace-nowrap font-medium">Sort by Price:</span>
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                      <button
+                        onClick={() => setSortOrder('default')}
+                        className={`px-3 py-1 text-xs rounded-md transition-all whitespace-nowrap ${sortOrder === 'default' ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        Default
+                      </button>
+                      <button
+                        onClick={() => setSortOrder('asc')}
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-md transition-all whitespace-nowrap ${sortOrder === 'asc' ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        Low to High
+                      </button>
+                      <button
+                        onClick={() => setSortOrder('desc')}
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-md transition-all whitespace-nowrap ${sortOrder === 'desc' ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        High to Low
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {servicesLoading && (
-              <div className="bg-white rounded-lg p-3 border border-gray-200 flex items-center gap-2 text-sm text-gray-500">
+              <div className="bg-white rounded-lg p-2 border border-gray-200 flex items-center gap-2 text-xs text-gray-500">
                 <FaSpinner className="animate-spin" />
                 <span>Loading services...</span>
               </div>
             )}
 
-            {services.length === 0 ? (
+            {filteredServices.length === 0 ? (
               <div className="bg-white rounded-lg p-12 text-center border border-gray-200">
-                <p className="text-gray-500">This business has not published any bookable services yet.</p>
+                <p className="text-gray-500">
+                  {searchQuery ? 'No services found matching your search.' : 'This business has not published any bookable services yet.'}
+                </p>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="mt-2 text-primary-600 text-sm font-medium hover:underline"
+                  >
+                    Clear search
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
-                {services.map((service, index) => {
+                {filteredServices.map((service, index) => {
                   const serviceId = getServiceId(service) || `service-${index}`
                   const options = getServiceOptions(service)
                   const hasOptions = options.length > 0
@@ -467,7 +595,7 @@ const ServiceSelection = () => {
                       {/* Service Card Header - Clickable */}
                       <div
                         onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
-                        className="w-full p-4 flex items-center justify-between cursor-pointer"
+                        className="w-full p-2 sm:p-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-gray-50"
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -476,7 +604,7 @@ const ServiceSelection = () => {
                           }
                         }}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -484,39 +612,39 @@ const ServiceSelection = () => {
                               toggleService(service)
                             }}
                             disabled={!hasOptions}
-                            className={`w-6 h-6 rounded border flex items-center justify-center flex-shrink-0 ${isSelected
-                              ? 'border-gray-500 bg-gray-900 text-white'
-                              : 'border-gray-300'
+                            className={`w-4 h-4 sm:w-5 sm:h-5 rounded border flex items-center justify-center flex-shrink-0 transition-all duration-150 ${isSelected
+                              ? 'border-gray-500 bg-gray-900 text-white scale-110'
+                              : 'border-gray-300 hover:border-gray-400'
                               } ${!hasOptions ? 'opacity-40 cursor-not-allowed' : ''}`}
                           >
                             {isSelected && <FiCheck className="text-xs" />}
                           </button>
-                          <span className="text-base font-medium text-gray-900 text-left">
+                          <span className="text-xs sm:text-sm font-medium text-gray-900 text-left">
                             {getRawServiceName(service)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
                           <div className="text-right">
-                            <p className="text-xs text-green-500 font-medium mb-1">Starting at</p>
-                            <div className="flex items-center gap-2 justify-end mb-1">
-                              <span className="text-sm text-gray-500 line-through">
+                            <p className="text-[10px] sm:text-xs text-green-500 font-medium mb-0.5">Starting at</p>
+                            <div className="flex items-center gap-1 sm:gap-2 justify-end mb-0.5">
+                              <span className="text-xs sm:text-sm text-gray-500 line-through">
                                 {actualStartingPrice}
                               </span>
-                              <span className="text-base font-semibold text-gray-900">
+                              <span className="text-xs sm:text-sm font-semibold text-gray-900">
                                 {startingPrice}
                               </span>
                             </div>
-                            <p className="text-xs text-red-500 font-medium">40% OFF</p>
+                            <p className="text-[10px] sm:text-xs text-red-500 font-medium">40% OFF</p>
                           </div>
                           <FaChevronDown
-                            className={`text-gray-400 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                            className={`text-gray-400 flex-shrink-0 text-xs sm:text-base transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                           />
                         </div>
                       </div>
 
                       {/* Dropdown Options */}
                       {isExpanded && hasOptions && (
-                        <div className="border-t border-gray-100 p-4 space-y-2">
+                        <div className="border-t border-gray-100 p-2 sm:p-3 space-y-1 sm:space-y-1.5 animate-slideDown">
                           {options.map(option => {
                             const optionSelected = selectedOptionId === option.id && isSelected
                             return (
@@ -524,9 +652,9 @@ const ServiceSelection = () => {
                                 key={option.id}
                                 type="button"
                                 onClick={() => handleOptionChange(service, option.id, true)}
-                                className={`w-full p-3 rounded border text-left ${optionSelected
-                                  ? 'border-gray-900 bg-gray-50'
-                                  : 'border-gray-200 bg-white'
+                                className={`w-full p-2 rounded border text-left transition-all duration-150 ${optionSelected
+                                  ? 'border-gray-900 bg-gray-50 shadow-sm'
+                                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                                   }`}
                               >
                                 <div className="flex items-center justify-between">
@@ -565,28 +693,28 @@ const ServiceSelection = () => {
           </div>
 
           {/* Summary Sidebar */}
-          <div className="space-y-6">
-            <div className="bg-white   border border-gray-200 p-6 lg:sticky lg:top-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h2>
+          <div className="space-y-3 sm:space-y-6">
+            <div className="bg-white border border-gray-200 p-3 sm:p-6 lg:sticky lg:top-6">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">Booking Summary</h2>
 
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center justify-between text-sm">
+              <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Business</span>
                   <span className="text-gray-900 font-medium">{business.name}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Services Selected</span>
                   <span className="text-gray-900 font-medium">{selectedServices.length}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Estimated Duration</span>
                   <span className="text-gray-900 font-medium">
                     {totalDuration ? `${totalDuration} min` : '--'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Estimated Price</span>
-                  <span className="text-gray-900 font-semibold text-lg">
+                  <span className="text-gray-900 font-semibold text-base sm:text-lg">
                     {formatPrice(
                       totalPrice,
                       business?.currency || selectedServices[0]?.currency || 'INR'
@@ -662,7 +790,7 @@ const ServiceSelection = () => {
               <button
                 onClick={handleContinue}
                 disabled={selectedServices.length === 0}
-                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                className="hidden md:block w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white  hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Continue
                 <FaArrowRight />
@@ -670,6 +798,18 @@ const ServiceSelection = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Fixed Bottom Button for Mobile */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2.5 shadow-lg z-50 gpu-accelerated">
+        <button
+          onClick={handleContinue}
+          disabled={selectedServices.length === 0}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm"
+        >
+          Continue
+          <FaArrowRight />
+        </button>
       </div>
     </div>
   )

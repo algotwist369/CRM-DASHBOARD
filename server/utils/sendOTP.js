@@ -1,10 +1,7 @@
-// Stateless OTP generation + simple verification helper.
-// We produce an OTP and a server-side hash you can persist in DB (OTP collection).
-// Hashing prevents storing OTP in plain text in DB.
-
 const crypto = require('crypto');
 const { sendMail } = require('./sendMail');
-const { sendSMS } = require('./sendSMS');
+const { sendWhatsAppOTPDoubleTick } = require('./sendWhatsAppDoubleTick');
+
 
 const OTP_LENGTH = parseInt(process.env.OTP_LENGTH, 10) || 4;
 const OTP_TTL_MIN = parseInt(process.env.OTP_TTL_MIN, 10) || 5; // minutes
@@ -57,7 +54,50 @@ const createAndSendOTP = async ({ mode, to, template }) => {
     const message = template ? `${template} ${otp}` : `Your verification OTP is ${otp}. It expires in ${OTP_TTL_MIN} minutes.`;
 
     if (mode === 'sms') {
-        await sendSMS({ to, message }); // may throw
+        try {
+            await sendSMS({ to, message });
+        } catch (error) {
+            // If Twilio fails (auth error, etc), log for development
+            if (error.message.includes('Authenticate') || error.message.includes('not fully configured')) {
+                console.log(`[OTP] ⚠️  Twilio not configured. OTP would be sent to ${to}:`);
+                console.log(`[OTP] 📱 OTP CODE: ${otp}`);
+                console.log(`[OTP] ⏰ Expires: ${new Date(expiresAt).toLocaleString()}`);
+                // Don't throw - allow OTP to be used
+            } else {
+                throw error; // Re-throw unexpected errors
+            }
+        }
+    } else if (mode === 'whatsapp') {
+        let otpDelivered = false;
+
+        // Single Tier: Use DoubleTick.io exclusively
+        try {
+            console.log(`[OTP] 🚀 Sending WhatsApp OTP via DoubleTick.io to ${to}...`);
+            const result = await sendWhatsAppOTPDoubleTick({
+                to,
+                otp
+            });
+
+            if (result && result.success === true) {
+                console.log(`[OTP] ✅ DoubleTick.io delivery successful: ${result.messageId}`);
+                otpDelivered = true;
+            } else {
+                const errorMsg = result?.message || result?.error || 'DoubleTick.io delivery failed';
+                throw new Error(errorMsg);
+            }
+        } catch (error) {
+            console.error(`[OTP] ❌ DoubleTick.io delivery failed: ${error.message}`);
+            // In development, you might still want to see the OTP in logs if configured
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[OTP] 📱 DEV MODE OTP for ${to}: ${otp}`);
+                otpDelivered = true;
+            }
+        }
+
+        if (!otpDelivered) {
+            throw new Error('Failed to deliver OTP through any available channel');
+        }
+
     } else if (mode === 'email') {
         await sendMail({ to, subject: 'Your OTP', text: message });
     } else {

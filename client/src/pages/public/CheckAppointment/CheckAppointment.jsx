@@ -15,7 +15,7 @@ const CheckAppointment = () => {
   const [confirmationCode, setConfirmationCode] = useState('')
   const [loading, setLoading] = useState(false)
 
-  usePageTitle('Check Appointment Status - Booking App')
+  usePageTitle('Check Appointment Status - Spa Advisor')
 
   const handleSubmit = (e) => {
     e.preventDefault()

@@ -2,11 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { trackLeadClick } from '../utils/analytics';
 
-/**
- * Hook to automatically track page views for a journey.
- * @param {string} businessId - The ID of the business being viewed
- * @param {boolean} enabled - Whether tracking is enabled (e.g. businessId is loaded)
- */
+ 
 export const useLeadTracking = (businessId, enabled = true) => {
     const location = useLocation();
     const lastTrackedPath = useRef(null);

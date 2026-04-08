@@ -93,7 +93,7 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, onStatusChange, is
     <td className="px-4 py-3">
       <div className="flex items-center gap-1">
         <span className="text-gray-600">{manager.username}</span>
-        <CopyButton text={manager.username} label="Username" />
+        {/* <CopyButton text={manager.username} label="Username" /> */}
       </div>
     </td>
     <td className="px-4 py-3">
@@ -101,7 +101,12 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, onStatusChange, is
         <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded border border-gray-300 text-gray-700">
           {manager.pin || '••••'}
         </span>
-        {manager.pin && <CopyButton text={manager.pin} label="PIN" />}
+        {manager.pin && <CopyButton text={`
+          LOGIN CREADENTIALS FOR - ${manager.business}
+          Username: ${manager.username}
+          Pin: ${manager.pin} 
+          Login here: https://spaadvisor.in/auth/manager-login
+          `} label="Username & Pin" />}
       </div>
     </td>
     <td className="px-4 py-3 text-gray-600">{manager.email || '—'}</td>
@@ -146,7 +151,7 @@ const ManagerRow = memo(({ manager, onView, onEdit, onDelete, onStatusChange, is
           <FiEdit />
         </button>
         <button
-          onClick={() => onDelete(manager.id)}
+          onClick={() => onDelete(manager)}
           disabled={isDeleting}
           className="p-2 bg-red-100 text-red-600  hover:bg-red-200 disabled:opacity-50 transition-colors"
           title="Delete Manager"
@@ -205,7 +210,7 @@ const ManagerCard = memo(({ manager, onView, onEdit, onDelete, onStatusChange, i
           <FiEdit className="text-sm" />
         </button>
         <button
-          onClick={() => onDelete(manager.id)}
+          onClick={() => onDelete(manager)}
           disabled={isDeleting}
           className="p-2 bg-red-100 text-red-600  hover:bg-red-200 disabled:opacity-50 transition-colors"
           title="Delete"
@@ -323,8 +328,11 @@ const ManagerList = () => {
   const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
 
   // Modal states
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [managerToDelete, setManagerToDelete] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingManager, setEditingManager] = useState(null);
@@ -336,6 +344,7 @@ const ManagerList = () => {
   const [businesses, setBusinesses] = useState([]);
   const [showPinSection, setShowPinSection] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [businessSearch, setBusinessSearch] = useState("");
 
   // Lazy load businesses only when needed (for dropdown)
   const fetchBusinesses = useCallback(async () => {
@@ -343,9 +352,16 @@ const ManagerList = () => {
     if (businesses.length > 0) return;
 
     try {
-      const res = await businessService.getBusinesses({ page: 1, limit: 100 });
+      const res = await businessService.getBusinesses({
+        page: 1,
+        limit: 10000,
+        _t: Date.now()
+      });
       if (res.success) {
-        setBusinesses(res.data?.data || []);
+        let allBusinesses = res.data?.data || [];
+        // Sort alphabetically by name
+        allBusinesses.sort((a, b) => a.name.localeCompare(b.name));
+        setBusinesses(allBusinesses);
       }
     } catch (e) {
       console.error("Failed to fetch businesses:", e);
@@ -367,6 +383,9 @@ const ManagerList = () => {
         setManagers(data);
         setTotalPages(res.pagination?.pages || 1);
         setTotal(res.pagination?.total || 0);
+        // Calculate active managers count
+        const active = data.filter(m => m.isActive).length;
+        setActiveCount(active);
       } else {
         setError(res.error || "Failed to load managers");
       }
@@ -397,14 +416,17 @@ const ManagerList = () => {
     }));
   }, [businesses]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this manager?")) {
-      return;
-    }
+  const handleDeleteClick = (manager) => {
+    setManagerToDelete(manager);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!managerToDelete) return;
 
     try {
-      setDeleting(id);
-      const res = await adminService.deleteManager(id);
+      setDeleting(managerToDelete.id);
+      const res = await adminService.deleteManager(managerToDelete.id);
       if (res.success) {
         toast.success("Manager deleted successfully");
         fetchManagers();
@@ -415,6 +437,8 @@ const ManagerList = () => {
       toast.error("Failed to delete manager");
     } finally {
       setDeleting(null);
+      setIsDeleteModalOpen(false);
+      setManagerToDelete(null);
     }
   };
 
@@ -625,6 +649,14 @@ const ManagerList = () => {
             <AiOutlineUserAdd className="text-base sm:text-lg" />
             <span className="hidden sm:inline">Add Manager</span>
           </button>
+
+          {/* <button
+            onClick={() => navigate('/admin/managers/create')}
+            className="flex items-center gap-2 bg-primary-600 text-white px-3 sm:px-4 py-2  hover:bg-primary-700 transition-colors text-sm font-medium"
+          >
+            <AiOutlineUserAdd className="text-base sm:text-lg" />
+            <span className="hidden sm:inline">Add Manager</span>
+          </button> */}
         </div>
       </div>
 
@@ -638,7 +670,7 @@ const ManagerList = () => {
         </div>
         <div className="bg-white border   p-4">
           <p className="text-sm text-gray-600 mb-1">Active</p>
-          <p className="text-2xl font-bold text-green-600">{total}</p>
+          <p className="text-2xl font-bold text-green-600">{activeCount}</p>
         </div>
         <div className="bg-white border   p-4">
           <p className="text-sm text-gray-600 mb-1">Per Page</p>
@@ -692,7 +724,7 @@ const ManagerList = () => {
                     manager={manager}
                     onView={handleView}
                     onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    onDelete={handleDeleteClick}
                     onStatusChange={handleStatusChange}
                     isDeleting={deleting === manager.id}
                     isEditing={submitting}
@@ -721,7 +753,7 @@ const ManagerList = () => {
               manager={manager}
               onView={handleView}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onDelete={handleDeleteClick}
               onStatusChange={handleStatusChange}
               isDeleting={deleting === manager.id}
               isEditing={submitting}
@@ -820,16 +852,32 @@ const ManagerList = () => {
             required
           />
 
-          <SelectField
-            label="Business"
-            name="businessId"
-            value={formData.businessId}
-            onChange={handleChange}
-            error={formErrors.businessId}
-            options={businessOptions}
-            icon={FiBriefcase}
-            required
-          />
+          {/* Business Search & Select */}
+          <div>
+            <div className="mb-2">
+              <IconInputField
+                label="Search Business"
+                name="businessSearch"
+                value={businessSearch}
+                onChange={(e) => setBusinessSearch(e.target.value)}
+                placeholder="Type to filter businesses..."
+                icon={FiSearch}
+              />
+            </div>
+
+            <SelectField
+              label="Select Business"
+              name="businessId"
+              value={formData.businessId}
+              onChange={handleChange}
+              error={formErrors.businessId}
+              options={businessOptions.filter(opt =>
+                opt.label.toLowerCase().includes(businessSearch.toLowerCase())
+              )}
+              icon={FiBriefcase}
+              required
+            />
+          </div>
 
           <IconInputField
             label="Email (optional)"
@@ -1011,6 +1059,52 @@ const ManagerList = () => {
             {submitting ? "Updating..." : "Update Manager"}
           </button>
         </form>
+      </Modal>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setManagerToDelete(null);
+        }}
+        title="Confirm Deletion"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-red-600">
+            <FiTrash2 className="text-2xl" />
+            <h3 className="text-lg font-semibold">Delete Manager?</h3>
+          </div>
+          <p className="text-gray-600">
+            Are you sure you want to delete <span className="font-semibold text-gray-800">{managerToDelete?.name} (@{managerToDelete?.username})</span>?
+            This action cannot be undone and will remove their access to <span className="font-semibold text-gray-800">{managerToDelete?.business}</span>.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setManagerToDelete(null);
+              }}
+              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200  font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={deleting === managerToDelete?.id}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white  font-medium transition-all disabled:opacity-60"
+            >
+              {deleting === managerToDelete?.id ? (
+                <>
+                  <FaSpinner className="animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Yes, Delete Manager"
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

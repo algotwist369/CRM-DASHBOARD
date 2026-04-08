@@ -48,6 +48,7 @@ async function authMiddleware(req, res, next) {
                 id: String(admin._id),
                 role: 'admin',
                 companyId: String(admin._id), // admin is company owner
+                name: admin.name,
                 email: admin.email,
                 phone: admin.phone,
             };

@@ -1,12 +1,155 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams, useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { Helmet } from 'react-helmet-async';
 import publicService from '../../../services/public/publicService';
-import { Button } from '../../../components/common'; // Assuming common components
-import { FiMapPin, FiSearch, FiPhone, FiX, FiAlertCircle, FiFilter } from 'react-icons/fi';
-import { FaWhatsapp, FaStar } from 'react-icons/fa';
+import leadService from '../../../services/public/leadService';
+import googlePlacesService from '../../../services/public/googlePlacesService';
+import SEO from '../../../components/common/SEO';
+import SkeletonSearch from './SkeletonSearch';
+import LazySection from '../../../components/common/LazySection/LazySection';
+import { FiMapPin, FiSearch, FiX, FiAlertCircle, FiFilter, FiMaximize2 } from 'react-icons/fi';
+import { BiSolidNavigation } from "react-icons/bi";
+import { FaWhatsapp, FaPhoneAlt, FaStar, FaEnvelope } from 'react-icons/fa';
+import InquiryModal from '../../../components/public/Inquiry/InquiryModal';
+import MapLocationPicker from '../../../components/common/MapLocationPicker';
+import { sanitizePhoneNumber } from '../../../utils/format/phoneUtils';
+import SearchAutocomplete from '../../../components/public/SearchAutocomplete';
+import { toast } from 'react-hot-toast';
+
+import { trackLeadClick } from '../../../utils/analytics'
+
+// Static Constants - Outside component to prevent recreation
+// Spa-specific service categories aligned with backend API
+const FILTER_CATEGORIES = ['Spa', 'Salon',];
+const RATING_OPTIONS = [4, 3, 2];
+const SORT_OPTIONS = [
+    { value: 'recommended', label: 'Recommended' },
+    { value: 'distance', label: 'Distance' },
+    { value: 'rating', label: 'Rating' },
+    { value: 'price', label: 'Price (Low to High)' }
+];
+
+// Helper to parse natural language queries
+const parseSearchQuery = (input) => {
+    if (!input) return { q: '', location: '', params: {} };
+
+    let q = input.trim();
+    let location = '';
+    const params = {};
+
+    // 1. "Near Me" / "Nearby" - Strip these as they imply default geo-search
+    // Use regex to remove them from query so strict text match doesn't fail
+    const nearMeRegex = /\b(?:near\s*me|nearby|close\s*to\s*me|around\s*me|closest|nearest)\b/gi;
+    if (nearMeRegex.test(q)) {
+        q = q.replace(nearMeRegex, '').trim();
+        // No specific params needed, just relying on geo lat/lng or default sort
+    }
+
+    // 2. Extract Location ("in [Location]", "at [Location]", "near [Location]")
+    // Matches "Spa in Vashi", "Best gym near Andheri"
+    // We prioritize "in/at" for explicit location. "Near" logic might overlap with near me, but "near Vashi" is valid.
+    const locationMatch = q.match(/\s+(?:in|at|near)\s+([a-zA-Z0-9\s,]+?)(?:\s+(?:with|for|under|above|$)|$)/i);
+    if (locationMatch) {
+        // Verify captured group isn't just a keyword like "me"
+        const captured = locationMatch[1].trim();
+        if (!/^(me|us|here)$/i.test(captured)) {
+            location = captured;
+            q = q.replace(locationMatch[0], '').trim();
+        }
+    }
+
+    // 3. Price Intelligence
+    // "under 500", "below 1000"
+    const priceMatch = q.match(/\s+(?:under|below|less than)\s+(\d+)/i);
+    if (priceMatch) {
+        params.maxPrice = priceMatch[1];
+        q = q.replace(priceMatch[0], '').trim();
+    }
+
+    // "cheap", "affordable", "budget" -> Sort by price, maybe set explicit max cap?
+    const cheapMatch = q.match(/\b(?:cheap|affordable|budget|low cost|economical)\b/i);
+    if (cheapMatch) {
+        params.sort = 'price';
+        if (!params.maxPrice) params.maxPrice = '2500'; // Default budget cap?
+        q = q.replace(cheapMatch[0], '').trim();
+    }
+
+    // 4. Rating / Quality / Luxury
+    // "luxury", "5 star", "premium" -> High rating, maybe High price?
+    const luxuryMatch = q.match(/\b(?:luxury|premium|5\s*star|high\s*end)\b/i);
+    if (luxuryMatch) {
+        params.minRating = 4.5;
+        params.sort = 'rating';
+        // params.minPrice = '2000'; // Optional: valid for luxury?
+        q = q.replace(luxuryMatch[0], '').trim();
+    }
+
+    // "best", "top rated"
+    const ratingMatch = q.match(/\b(?:best|top\s*rated|top|good|famous|trusted)\b/i);
+    if (ratingMatch) {
+        params.minRating = 4;
+        params.sort = 'rating';
+        q = q.replace(ratingMatch[0], '').trim();
+    }
+
+    // 5. Offers
+    const offerMatch = q.match(/\b(?:offer|offers|deal|deals|discount|sale)\b/i);
+    if (offerMatch) {
+        params.offers = true;
+        q = q.replace(offerMatch[0], '').trim();
+    }
+
+    // 6. Explicit Sorting Keywords
+    if (/\b(?:cheapest|lowest\s*price)\b/i.test(q)) {
+        params.sort = 'price';
+        q = q.replace(/\b(?:cheapest|lowest\s*price)\b/i, '').trim();
+    }
+
+    // 7. Time/Availability (Strip for now as backend doesn't fully support "open now" filtering yet)
+    // "open now", "open today", "24 hour"
+    // Keeping "24 hour" might be useful if it's in the name/tags?
+    const timeMatch = q.match(/\b(?:open\s*now|open\s*today)\b/i);
+    if (timeMatch) {
+        // params.isOpen = true; // TODO: Implement backend support
+        q = q.replace(timeMatch[0], '').trim();
+    }
+
+    // 8. Cleanup connectors (with, for) if they are dangling or at start
+    // "Spa for men" -> "Spa men" (preserving "men" is good, "for" is noise)
+    // But be careful: "Spa for" -> ""
+    q = q.replace(/\s+\b(?:for|with)\b\s+/gi, ' ').trim(); // Replace inline "for" with space
+    q = q.replace(/\s+\b(?:for|with)\b$/gi, '').trim();    // Remove trailing "for"
+    q = q.replace(/^\b(?:for|with)\b\s+/gi, '').trim();    // Remove leading "for"
+
+    // 9. Gender/Type/Service preservation
+    // We strictly KEEP words like: men, women, couple, male, female, unisex, steam, sauna, ayurvedic, thai
+    // The query 'q' sent to backend will be "Spa men" or "Couple Massage"
+
+    // Final check: if q became empty but had params (e.g. "Best near me" -> q=""), 
+    // we might want to default q to "Spa" or "Salon" or just empty (shows all)?
+    // "Best near me" -> q="", sort=rating. Result: All high-rated businesses. Correct.
+
+    return { q, location, params };
+};
+
+const WiggleStyles = React.memo(() => (
+    <style>
+        {`
+            @keyframes wiggle {
+                0%, 20% { transform: rotate(0deg) scale(1); }
+                5%, 15% { transform: rotate(15deg) scale(1.4); color: #fb2424ff; }
+                10% { transform: rotate(-15deg) scale(1.4); color: #fb2424ff; }
+                100% { transform: rotate(0deg) scale(1); }
+            }
+        `}
+    </style>
+));
+
+const wiggleAnimation = { animation: 'wiggle 2s linear infinite' };
 
 // Image Slider Component
-const ImageSlider = ({ images, name, distanceText }) => {
+const ImageSlider = React.memo(({ images, name, distanceText }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const timeoutRef = useRef(null);
 
@@ -33,8 +176,6 @@ const ImageSlider = ({ images, name, distanceText }) => {
         }
     }, [currentIndex, hasMultiple, images.length]);
 
-    // Handle manual navigation if needed (optional, keeping it simple/auto for now as per "auto slider")
-
     return (
         <div className="w-28 h-28 md:w-56 md:h-auto md:min-h-[12rem] bg-gray-100 overflow-hidden flex-shrink-0 relative group">
             <div
@@ -48,19 +189,21 @@ const ImageSlider = ({ images, name, distanceText }) => {
                         alt={`${name} - View ${idx + 1}`}
                         className="w-full h-full object-cover flex-shrink-0"
                         loading="lazy"
+                        decoding="async"
                     />
                 ))}
             </div>
 
             {distanceText && (
-                <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded z-10">
-                    {distanceText} from center
+                <div className="absolute top-2 left-2 bg-black bg-opacity-70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md z-10 flex items-center gap-1 shadow-sm">
+                    <BiSolidNavigation className="w-4 h-4 text-primary-400" />
+                    <span className="font-medium">{distanceText}</span>
                 </div>
             )}
 
             {/* Slider Indicators */}
             {hasMultiple && (
-                <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10">
+                <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10 transition-opacity duration-300 opacity-0 group-hover:opacity-100">
                     {images.map((_, idx) => (
                         <div
                             key={idx}
@@ -72,86 +215,93 @@ const ImageSlider = ({ images, name, distanceText }) => {
             )}
         </div>
     );
-};
+}, (prevProps, nextProps) => {
+    // Only re-render if images array reference or distanceText changes
+    return prevProps.images === nextProps.images &&
+        prevProps.distanceText === nextProps.distanceText;
+});
 
-const SearchBusinessCard = React.memo(({ business }) => {
+const SearchBusinessCard = React.memo(({ business, onInquiry }) => {
     const navigate = useNavigate();
 
-    // Collect all valid images: Main image + Gallery
-    const allImages = [business.image, ...(business.gallery || [])].filter(Boolean);
+    // Collect all valid images: Main image + Gallery (excluding 360 embeds and iframes)
+    const allImages = React.useMemo(() => {
+        const gallery = (business.gallery || []).filter(img => {
+            // Skip if not a string
+            if (typeof img !== 'string') return false;
+
+            // Skip embedded content (iframes, 360 viewers)
+            if (img.includes('<iframe') || img.includes('iframe.') || img.includes('embed/')) {
+                return false;
+            }
+
+            // Keep all other images (regular URLs, relative paths, etc.)
+            return true;
+        });
+        return [business.image, ...gallery].filter(Boolean);
+    }, [business.image, business.gallery]);
+
     const displayImages = allImages.length > 0 ? allImages : ["/placeholder-business.jpg"];
 
-    // Keyframes for the wiggle animation (shake for 20% of time, wait for 80%)
-    const wiggleStyle = {
-        animation: 'wiggle 2s linear infinite'
-    };
-
-    const actions = [
+    const actions = React.useMemo(() => [
         {
             condition: !!business.phone,
             href: `tel:${business.phone}`,
-            onClick: (e) => e.stopPropagation(),
-            icon: (
-                <>
-                    <style>
-                        {`
-                            @keyframes wiggle {
-                                0%, 20% { transform: rotate(0deg); }
-                                5%, 15% { transform: rotate(15deg); }
-                                10% { transform: rotate(-15deg); }
-                                100% { transform: rotate(0deg); }
-                            }
-                        `}
-                    </style>
-                    <FiPhone className="w-5 h-5" style={wiggleStyle} />
-                </>
-            ),
+            onClick: () => {
+                trackLeadClick(business._id, 'call');
+            },
+            icon: <FaPhoneAlt className="w-5 h-5" style={wiggleAnimation} />,
             text: <><span className="md:hidden">Call</span><span className="hidden md:inline">Call Now</span></>,
             title: "Call Now",
             className: "bg-primary-500 text-white hover:bg-primary-600 shadow-md border-transparent flex-1 justify-center"
         },
         {
             condition: !!business.socialMedia?.whatsapp,
-            href: `https://wa.me/${business.socialMedia?.whatsapp}`,
+            href: `https://wa.me/${sanitizePhoneNumber(business.socialMedia?.whatsapp)}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`,
             target: "_blank",
             rel: "noopener noreferrer",
-            onClick: (e) => e.stopPropagation(),
+            onClick: () => {
+                trackLeadClick(business._id, 'whatsapp');
+            },
             icon: <FaWhatsapp className="w-5 h-5" />,
             text: <><span className="md:hidden">WA</span><span className="hidden md:inline">WhatsApp</span></>,
             title: "Chat on WhatsApp",
             className: "bg-green-500 text-white hover:bg-green-600 shadow-md border-transparent flex-1 justify-center"
+        },
+        {
+            condition: true,
+            onClick: (e) => {
+                e.stopPropagation();
+                onInquiry(business);
+            },
+            icon: <FaEnvelope className="w-5 h-5" />,
+            text: <><span className="md:hidden">Inq</span><span className="hidden md:inline">Enquiry</span></>,
+            title: "Send Enquiry",
+            className: "bg-white text-primary-600 border-primary-600 hover:bg-primary-50 flex-1 justify-center"
         }
-    ];
+    ], [business, onInquiry]);
 
     return (
         <div
             onClick={() => {
-                console.log("Card clicked!", business.businessLink);
                 if (business.businessLink) {
                     navigate(`/${business.businessLink}`);
                 } else {
                     console.warn("No businessLink found for:", business.name);
                 }
             }}
-            className="bg-white cursor-pointer border border-gray-200 mb-3 hover:shadow-md transition-shadow relative overflow-hidden"
+            className="bg-white cursor-pointer border border-gray-200 mb-3 hover:shadow-md transition-shadow relative overflow-hidden max-w-7xl mx-auto"
         >
             {/* Top Section: Image + Content */}
             <div className="flex flex-row gap-3 p-3">
-                <style>
-                    {`
-                        @keyframes wiggle {
-                            0%, 20% { transform: rotate(0deg); }
-                            5%, 15% { transform: rotate(15deg); }
-                            10% { transform: rotate(-15deg); }
-                            100% { transform: rotate(0deg); }
-                        }
-                    `}
-                </style>
                 {/* Image Slider Section */}
                 <ImageSlider
                     images={displayImages}
                     name={business.name}
-                    distanceText={business.distanceText}
+                    distanceText={
+                        business.distanceText ||
+                        (business.distance ? `${(business.distance / 1000).toFixed(1)} km` : null)
+                    }
                 />
 
                 {/* Content Section */}
@@ -159,8 +309,8 @@ const SearchBusinessCard = React.memo(({ business }) => {
                     <div>
                         <div className="flex justify-between items-start">
                             <div className="min-w-0 flex-1 mr-2">
-                                <h3 className="text-sm md:w-full w-[195px] md:text-lg font-bold text-gray-900 mb-1 truncate">{business.name}</h3>
-                                <p className="hidden md:block text-sm text-primary-600 mb-1.5 font-medium truncate">{business.address}</p>
+                                <h3 className="text-sm md:w-full w-[160px] md:text-lg font-bold text-gray-900 mb-1 truncate">{business.name}</h3>
+                                <p className="hidden md:block text-sm text-primary-600 mb-1.5 font-medium max-w-[900px] truncate overflow-hidden">{business.address}</p>
                                 <p className="md:hidden text-xs text-primary-600 mb-1.5 font-medium truncate">{business.branch || business.address}</p>
                             </div>
                             <div className="flex flex-col items-end flex-shrink-0">
@@ -170,6 +320,7 @@ const SearchBusinessCard = React.memo(({ business }) => {
                                 </div>
                                 <span className="text-[8px] md:text-[10px] text-gray-500 mt-0.5 text-right">{business.ratings?.totalReviews || 0} Ratings</span>
                             </div>
+
                         </div>
 
                         {/* Services */}
@@ -200,14 +351,18 @@ const SearchBusinessCard = React.memo(({ business }) => {
                             ))}
                         </div>
 
-                        <p className="text-xs text-gray-600 line-clamp-2 mb-1.5">
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-1.5 max-w-[220px] md:max-w-full">
                             {business.snippet || business.description}
                         </p>
 
+                        {/* Offers/Features - Updated to use offers from controller */}
                         <div className="hidden md:flex flex-wrap gap-2 text-[10px] text-green-600">
-                            {business.features?.slice(0, 4).map((feature, i) => (
+                            {business.offers?.slice(0, 4).map((offer, i) => (
                                 <span key={i} className="flex items-center whitespace-nowrap max-w-full">
-                                    <span className="mr-1">✓</span> <span className="truncate">{feature}</span>
+                                    <span className="mr-1">✓</span>
+                                    <span className="truncate">
+                                        {typeof offer === 'string' ? offer : offer.name || offer.title || "Special Offer"}
+                                    </span>
                                 </span>
                             ))}
                         </div>
@@ -215,36 +370,35 @@ const SearchBusinessCard = React.memo(({ business }) => {
 
                     <div className="hidden md:flex items-center justify-between mt-2 pt-2 border-t border-gray-100 gap-2">
                         <div className="flex gap-2 flex-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 scrollbar-hide">
-                            {actions.map((action, index) => (
-                                action.condition && (
+                            {actions.map((action, index) => {
+                                if (!action.condition && !action.onClick) return null;
+
+                                return action.href ? (
                                     <a
                                         key={index}
                                         href={action.href}
                                         target={action.target}
                                         rel={action.rel}
                                         onClick={action.onClick}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${action.className}`}
                                         title={action.title}
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${action.className}`}
                                     >
                                         {action.icon}
                                         <span>{action.text}</span>
                                     </a>
-                                )
-                            ))}
+                                ) : (
+                                    <button
+                                        key={index}
+                                        onClick={action.onClick}
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium transition-colors whitespace-nowrap ${action.className}`}
+                                        title={action.title}
+                                    >
+                                        {action.icon}
+                                        <span>{action.text}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
-
-                        {business.businessLink && (
-                            <Button
-                                variant="primary"
-                                className="hidden md:block bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/${business.businessLink}`);
-                                }}
-                            >
-                                View Details
-                            </Button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -254,28 +408,48 @@ const SearchBusinessCard = React.memo(({ business }) => {
                 {!!business.phone && (
                     <a
                         href={`tel:${business.phone}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white font-semibold text-sm hover:bg-primary-600 transition-colors rounded-lg py-1.5 shadow-sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            leadService.trackClick(business._id, 'call', 'search_results');
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white font-semibold text-sm hover:bg-primary-600 transition-colors rounded-lg py-2.5 shadow-sm"
                     >
-                        <FiPhone className="w-4 h-4" style={wiggleStyle} />
+                        <FaPhoneAlt className="w-4 h-4" style={wiggleAnimation} />
                         <span>Call</span>
                     </a>
                 )}
                 {!!business.socialMedia?.whatsapp && (
                     <a
-                        href={`https://wa.me/${business.socialMedia?.whatsapp}`}
+                        href={`https://wa.me/${business.socialMedia?.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors rounded-lg py-1.5 shadow-sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            leadService.trackClick(business._id, 'whatsapp', 'search_results');
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors rounded-lg py-2.5 shadow-sm"
                     >
                         <FaWhatsapp className="w-5 h-5" />
                         <span>WA</span>
                     </a>
                 )}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onInquiry(business);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white text-primary-600 border border-primary-600 font-semibold text-sm hover:bg-primary-50 transition-colors rounded-lg py-2.5 shadow-sm"
+                >
+                    <FaEnvelope className="w-4 h-4" />
+                    <span>Enquiry</span>
+                </button>
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    // Only re-render if business ID or distanceText changes
+    return prevProps.business.id === nextProps.business.id &&
+        prevProps.business.distanceText === nextProps.business.distanceText;
 });
 
 const FilterSection = ({ title, children }) => (
@@ -285,303 +459,875 @@ const FilterSection = ({ title, children }) => (
     </div>
 );
 
+// Slug Helpers for SEO Friendly URLs
+const toSlug = (text) => {
+    if (!text) return '';
+    return text.toString().toLowerCase()
+        .replace(/\s+/g, '-')           // Replace spaces with -
+        .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+        .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+        .replace(/^-+/, '')             // Trim - from start of text
+        .replace(/-+$/, '');            // Trim - from end of text
+};
+
+const fromSlug = (slug) => {
+    if (!slug) return '';
+    // Replace hyphens with spaces
+    return slug.replace(/-/g, ' ');
+};
+
+const COMMON_KEYWORDS = ['spa', 'salon', 'massage', 'facial', 'hair', 'cut', 'waxing', 'treatment', 'therapy', 'gym', 'yoga', 'zumba', 'fitness', 'workout', 'pilates', 'meditation', 'sauna', 'steam', 'hammam', 'ayurveda', 'physiotherapy', 'clinic', 'dermatology', 'skin', 'body', 'makeup', 'nail', 'manicure', 'pedicure'];
+
+const resolveRouteParams = (routeLoc, routeQ, locationState) => {
+    let q = '';
+    let loc = '';
+
+    const decodedLoc = routeLoc ? fromSlug(routeLoc) : '';
+    const decodedQ = routeQ ? fromSlug(routeQ) : '';
+
+    if (decodedLoc && decodedQ) {
+        // Two params: /spa/location/query
+        loc = decodedLoc;
+        q = decodedQ;
+    } else if (decodedLoc) {
+        // One param: /spa/something
+        // Check state first (from navigation)
+        if (locationState?.type === 'keyword') {
+            q = decodedLoc;
+        } else if (locationState?.type === 'location') {
+            loc = decodedLoc;
+        } else {
+            // Heuristic
+            // If it matches a common keyword, treat as query
+            // Exception: "Near Me" is a location concept
+            if (decodedLoc.toLowerCase() === 'near me' || decodedLoc.toLowerCase() === 'near-me') {
+                loc = 'Near Me';
+            } else if (COMMON_KEYWORDS.some(k => decodedLoc.toLowerCase().includes(k))) {
+                q = decodedLoc;
+            } else {
+                loc = decodedLoc;
+            }
+        }
+    }
+
+    return { q, loc };
+};
+
 const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate(); // Added for safety if needed, though useSearchParams handles updates
+    const { location: routeLocation, query: routeQuery } = useParams();
+    const locationObj = useLocation();
+    const navigate = useNavigate();
+
+    // Resolve initial params
+    const { q: resolvedQ, loc: resolvedLoc } = useMemo(() =>
+        resolveRouteParams(routeLocation, routeQuery, locationObj.state),
+        [routeLocation, routeQuery, locationObj.state]
+    );
+
+    // Derived state for UI inputs from URL - Move Up for initialization
+    const currentLocation = searchParams.get('location') || resolvedLoc;
+    const currentLat = searchParams.get('lat');
 
     // Local UI State
-    const [localQuery, setLocalQuery] = useState(searchParams.get('q') || '');
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [totalResults, setTotalResults] = useState(0);
+    const [localQuery, setLocalQuery] = useState(searchParams.get('q') || resolvedQ || '');
+
+    const [localLocation, setLocalLocation] = useState(currentLocation || '');
+    const [inquiryBusiness, setInquiryBusiness] = useState(null);
+
+    // Sync local location with URL param changes
+    useEffect(() => {
+        if (currentLocation !== localLocation) {
+            // Only update if not currently focused? For simplicity, sync if URL changes externally
+            // But if user is typing, we shouldn't overwrite. 
+            // Ideally valid location from URL overrides only on mount or navigation.
+            setLocalLocation(currentLocation || '');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentLocation]);
+
+
+    // Removed local results/loading state - handled by Query
     const [isLocationInitialized, setIsLocationInitialized] = useState(false);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
-    // Pagination State
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const observer = useRef();
+    // Ref to prevent duplicate geolocation calls in React Strict Mode
+    const geolocationTriggered = useRef(false);
 
-    // Reset pagination when search params change
+    // Sync URL params with local state
     useEffect(() => {
-        setPage(1);
-        setHasMore(true);
-    }, [searchParams]);
+        // If route params exist, they take precedence over searchParams 'q'/'location'
+        if (resolvedLoc || resolvedQ) {
+            setLocalLocation(resolvedLoc);
+            setLocalQuery(resolvedQ);
+        } else {
+            // Fallback to query params
+            const q = searchParams.get('q');
+            const loc = searchParams.get('location');
+            if (q) setLocalQuery(q);
+            if (loc) setLocalLocation(loc);
+        }
 
-    const lastBusinessElementRef = useCallback(node => {
-        if (loading) return;
-        if (observer.current) observer.current.disconnect();
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) {
-                setPage(prevPage => prevPage + 1);
-            }
-        });
-        if (node) observer.current.observe(node);
-    }, [loading, hasMore]);
+        // Only update search params if they differ from route
+        // This prevents infinite loops
+    }, [resolvedLoc, resolvedQ, searchParams]);
 
-    // Helper to update URL params smoothly
-    const updateParams = useCallback((newParams) => {
-        const current = Object.fromEntries(searchParams.entries());
-        setSearchParams({ ...current, ...newParams });
-    }, [searchParams, setSearchParams]);
-
-    // 1. Initial Geolocation Logic
+    // Initial Geolocation Logic - Simplified to just setup
     useEffect(() => {
         window.scrollTo(0, 0);
-        // If we've already done the check, skip
-        if (isLocationInitialized) return;
+
+        // Prevent duplicate calls in React Strict Mode
+        if (isLocationInitialized || geolocationTriggered.current) return;
 
         const hasLat = searchParams.get('lat');
         const hasLng = searchParams.get('lng');
         const hasQuery = searchParams.get('q');
         const hasCategory = searchParams.get('category');
+        const hasLocation = searchParams.get('location');
 
-        // Case A: URL already has location -> We are good.
-        if (hasLat && hasLng) {
+        // If we have explicit coords, or a query/category/location (that isn't Near Me), skip auto-geo
+        const isNearMe = resolvedLoc === 'Near Me';
+
+        if ((hasLat && hasLng) || ((hasQuery || hasCategory || hasLocation || resolvedLoc) && !isNearMe)) {
             setIsLocationInitialized(true);
             return;
         }
 
-        // Case B: URL has other explicit search intents (query/category) but no location.
-        // We assume user wants global/specific search, but we could optionally still try to add 'near me'.
-        // For optimization, if user shared a link "?q=pizza", we probably shouldn't override with their location immediately without asking,
-        // OR we can just default to global search since no location specified.
-        if (hasQuery || hasCategory) {
-            setIsLocationInitialized(true);
-            return;
-        }
+        // Mark as triggered to prevent duplicate calls
+        geolocationTriggered.current = true;
 
-        // Case C: Fresh Load (Homepage -> Search). Try to get location.
+        // Trigger Geo
+        triggerGeolocation();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLocationInitialized]);
+
+
+    const triggerGeolocation = () => {
         if ("geolocation" in navigator) {
-            // Don't set loading=true here to avoid visual flash, just fetch in background or wait.
-            // Actually, showing a skeleton is better than showing "0 results" then "results".
-            setLoading(true);
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    // Success: Update URL. This will trigger the main fetch effect.
-                    updateParams({
-                        lat: position.coords.latitude.toString(),
-                        lng: position.coords.longitude.toString()
-                    });
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    const current = Object.fromEntries(searchParams.entries());
+                    const updates = {
+                        ...current,
+                        lat: lat.toString(),
+                        lng: lng.toString()
+                    };
+
+                    // Reverse Geocoding to get name
+                    try {
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                        const data = await response.json();
+                        const address = data.address || {};
+
+                        // Construct a more descriptive name: "Locality, City"
+                        const locality = address.suburb || address.neighbourhood || address.city_district || address.village || address.area;
+                        const city = address.city || address.town || address.municipality;
+                        const state = address.state;
+
+                        let locationName = "Current Location";
+                        if (locality && city) {
+                            locationName = `${locality}, ${city}`;
+                        } else if (locality) {
+                            locationName = `${locality}${state ? `, ${state}` : ''}`;
+                        } else if (city) {
+                            locationName = `${city}${state ? `, ${state}` : ''}`;
+                        }
+
+                        updates.location = locationName;
+                        setLocalLocation(locationName);
+                    } catch (error) {
+                        console.error("Reverse geocoding failed:", error);
+                        setLocalLocation("Near Me");
+                    }
+
+                    setSearchParams(updates);
                     setIsLocationInitialized(true);
-                    setLoading(false);
                 },
                 (error) => {
-                    console.log("Location auto-detection failed/denied:", error);
-                    // Failed: Just mark initialized, so main effect runs with empty location (Global)
+                    console.warn('Geolocation permission denied or failed:', error);
+                    // Don't add lat/lng to URL when permission is denied
                     setIsLocationInitialized(true);
-                    setLoading(false);
+
+                    // Show user-friendly message based on error type
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        toast.error('Location access denied.', {
+                            duration: 4000,
+                        });
+                    } else if (error.code === 2) { // POSITION_UNAVAILABLE
+                        toast.error('Unable to determine your location. Please try again or enter manually.', {
+                            duration: 4000
+                        });
+                    } else if (error.code === 3) { // TIMEOUT
+                        toast.error('Location request timed out. Please try again.', {
+                            duration: 4000
+                        });
+                    }
                 },
                 { timeout: 8000 }
             );
         } else {
             setIsLocationInitialized(true);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLocationInitialized]); // Only run once on mount until initialized
+    };
 
-    // 2. Main Fetch Effect - Driven by URL Params
-    useEffect(() => {
-        if (!isLocationInitialized) return;
+    // Helper now needed again for handlers
+    const updateParams = useCallback((newParams) => {
+        const current = Object.fromEntries(searchParams.entries());
+        const updated = { ...current, ...newParams };
 
-        let isMounted = true;
-
-        const fetchResults = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const params = {
-                    q: searchParams.get('q') || '',
-                    lat: searchParams.get('lat') || '',
-                    lng: searchParams.get('lng') || '',
-                    category: searchParams.get('category') || '',
-                    minRating: searchParams.get('rating') || 0,
-                    sort: searchParams.get('sort') || 'recommended',
-                    page: page,
-                    limit: 10
-                };
-
-                const response = await publicService.searchBusinesses(params);
-
-                if (!isMounted) return;
-
-                if (response.success) {
-                    setResults(prev => {
-                        return page === 1 ? response.data.results : [...prev, ...response.data.results];
-                    });
-                    setTotalResults(response.data.totalResults);
-                    setHasMore(response.data.results.length > 0 && response.data.results.length === 10); // Assuming limit is 10
-                } else {
-                    setError(response.error || "Failed to fetch results");
-                    if (page === 1) setResults([]);
-                }
-            } catch (err) {
-                if (!isMounted) return;
-                console.error(err);
-                if (page === 1) {
-                    setError("Something went wrong while fetching results. Please try again.");
-                    setResults([]);
-                }
-            } finally {
-                if (isMounted) setLoading(false);
-            }
+        // Clean up URL: Remove defaults and empty values
+        const defaults = {
+            rating: '0',
+            minRating: '0',
+            page: '1',
+            limit: '100',
+            radius: '20000',
+            sort: 'recommended',
+            offers: 'false',
+            lat: '',
+            lng: '',
+            q: '',
+            location: ''
         };
 
-        fetchResults();
+        Object.keys(updated).forEach(key => {
+            const value = String(updated[key]);
+            if (
+                updated[key] === undefined ||
+                updated[key] === null ||
+                value === '' ||
+                value === defaults[key]
+            ) {
+                delete updated[key];
+            }
+        });
 
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, isLocationInitialized, page]);
+        setSearchParams(updated);
+    }, [searchParams, setSearchParams]);
+
+    // Pagination State
+    // 2. React Query for Infinite Search
+    // Memoize search params to prevent unnecessary re-renders and duplicate API calls
+    const getSearchParamsObj = useMemo(() => ({
+        q: searchParams.get('q') || resolvedQ || '',
+        lat: searchParams.get('lat') || '',
+        lng: searchParams.get('lng') || '',
+        location: searchParams.get('location') || resolvedLoc || '',
+        category: searchParams.get('category') || '',
+        rating: searchParams.get('rating') || 0,
+        sort: searchParams.get('sort') || 'recommended',
+        radius: searchParams.get('radius') || 20000,
+        // Add other filters
+        offers: searchParams.get('offers'),
+        service: searchParams.get('service'),
+        minRating: searchParams.get('minRating'),
+    }), [searchParams, resolvedQ, resolvedLoc]);
+
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        isError,
+        error
+    } = useInfiniteQuery({
+        queryKey: ['searchResults', getSearchParamsObj],
+        queryFn: async ({ pageParam = 1 }) => {
+            const params = {
+                ...getSearchParamsObj,
+                minRating: searchParams.get('rating') || 0,
+                page: pageParam,
+                limit: 5000 // Reverted to 10 for efficient scrolling
+            };
+            // Only fetch from database - no Google Places
+            const response = await publicService.searchBusinesses(params);
+            if (!response.success) {
+                throw new Error(response.error || "Failed to fetch results");
+            }
+            return response.data;
+        },
+        getNextPageParam: (lastPage, allPages) => {
+            if (lastPage.results.length < 10) return undefined;
+            if (lastPage.totalResults && allPages.flatMap(p => p.results).length < lastPage.totalResults) {
+                return allPages.length + 1;
+            }
+            return undefined;
+        },
+        enabled: isLocationInitialized,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        keepPreviousData: true
+    });
+
+    // Removed duplicate map query - using list results for map if needed
+    // If you need separate map data in the future, consider using the same query with different presentation
+
+
+    // Flatten results from all pages
+    const results = useMemo(() => {
+        return data?.pages.flatMap(page => page.results) || [];
+    }, [data]);
+
+    const totalResults = data?.pages[0]?.totalResults || 0;
+
+    // Structure Data for SEO
+    const structuredData = useMemo(() => {
+        if (!results.length) return null;
+
+        return {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "itemListElement": results.map((business, index) => ({
+                "@type": "ListItem",
+                "position": index + 1,
+                "item": {
+                    "@type": "LocalBusiness",
+                    "name": business.name,
+                    "image": business.image,
+                    "telephone": business.phone,
+                    "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": business.address
+                    },
+                    "aggregateRating": business.ratings?.average ? {
+                        "@type": "AggregateRating",
+                        "ratingValue": business.ratings.average,
+                        "reviewCount": business.ratings.totalReviews
+                    } : undefined,
+                    "url": `${window.location.origin}/${business.businessLink}`
+                }
+            }))
+        };
+    }, [results]);
+
+
+
+    // Infinite Scroll Observer
+    const observer = useRef();
+    const lastBusinessElementRef = useCallback(node => {
+        if (isLoading || isFetchingNextPage) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasNextPage) {
+                fetchNextPage();
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage]);
 
     // Handlers
-    const handleSearchSubmit = () => {
-        updateParams({ q: localQuery });
+    // Helper to get coordinates for a location string
+    const getCoordinatesForLocation = useCallback(async (locationStr) => {
+        try {
+            if (!locationStr) return null;
+
+            // 1. Try exact string first
+            let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationStr)}`);
+            let data = await response.json();
+            if (data && data.length > 0) {
+                return { lat: data[0].lat, lng: data[0].lon };
+            }
+
+            // 2. Retry with simpler parts (Nominatim often fails on long/complex strings)
+            const parts = locationStr.split(',').map(s => s.trim()).filter(Boolean);
+            if (parts.length > 1) {
+                // Try removing the first part (e.g. "Bhanunagar, Kalyan West" -> "Kalyan West")
+                // Or just try the last 2 parts (Locality, City)
+                const fallbackStr = parts.slice(Math.max(parts.length - 2, 1)).join(', ');
+                if (fallbackStr !== locationStr) {
+                    response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackStr)}`);
+                    data = await response.json();
+                    if (data && data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
+                }
+
+                // 3. Last Resort: Try just the city/last part
+                const cityStr = parts[parts.length - 1];
+                if (cityStr !== fallbackStr && cityStr !== locationStr) {
+                    response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityStr)}`);
+                    data = await response.json();
+                    if (data && data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
+                }
+            }
+        } catch (error) {
+            console.error("Forward geocoding failed:", error);
+        }
+        return null;
+    }, []);
+
+    // Handlers
+    const handleLocationSubmit = async (overrideLocation) => {
+        const loc = (overrideLocation !== undefined ? overrideLocation : localLocation).trim();
+
+        if (!loc) {
+            updateParams({ lat: '', lng: '', location: '' });
+            if (routeLocation && routeLocation !== 'all') navigate('/spa');
+            return;
+        }
+
+        // Navigate to new location path
+        const q = localQuery || '';
+
+        // SEO Friendly URL Construction
+        const locSlug = toSlug(loc);
+        const qSlug = q ? toSlug(q) : '';
+
+        let nextPath = '/spa';
+        if (locSlug && qSlug) {
+            nextPath = `/spa/${locSlug}/${qSlug}`;
+        } else if (locSlug) {
+            nextPath = `/spa/${locSlug}`;
+        } else if (qSlug) {
+            // Keyword only - mapped to first param
+            nextPath = `/spa/${qSlug}`;
+        }
+
+        // Clear existing coords first
+        const currentParams = new URLSearchParams(searchParams);
+        currentParams.delete('lat');
+        currentParams.delete('lng');
+        currentParams.delete('location');
+        if (q) currentParams.delete('q');
+
+        // Geocode the new location to get coords for distance
+        const coords = await getCoordinatesForLocation(loc);
+        if (coords) {
+            currentParams.set('lat', coords.lat);
+            currentParams.set('lng', coords.lng);
+        }
+
+        navigate(`${nextPath}?${currentParams.toString()}`);
+    };
+
+    const handleSearchSubmit = async (overrideQuery, overrideLocation) => {
+        // Use override if provided, otherwise fallback to state
+        const queryToParse = overrideQuery !== undefined ? overrideQuery : localQuery;
+        const locationToUse = overrideLocation !== undefined ? overrideLocation : localLocation;
+
+        const { q, location, params } = parseSearchQuery(queryToParse || '');
+
+        // If location found in query (e.g. "in Vashi"), use that
+        // OR use the locationToUse (which might be override or state)
+        const targetLocation = location || (locationToUse !== "Near Me" && locationToUse !== "Current Location" ? locationToUse : '');
+
+        // SEO Friendly URL Construction
+        const locSlug = targetLocation ? toSlug(targetLocation) : '';
+        const qSlug = q ? toSlug(q) : '';
+
+        let nextPath = '/spa';
+        if (locSlug && qSlug) {
+            nextPath = `/spa/${locSlug}/${qSlug}`;
+        } else if (locSlug) {
+            nextPath = `/spa/${locSlug}`;
+        } else if (qSlug) {
+            // Keyword only - mapped to first param
+            nextPath = `/spa/${qSlug}`;
+        }
+
+        // Preserve existing filters + add extracted ones
+        const currentParams = new URLSearchParams(searchParams);
+
+        // Add extracted params (offers, price, etc.)
+        Object.entries(params).forEach(([key, value]) => {
+            if (value) currentParams.set(key, value);
+        });
+
+        // Remove q/location params as they are in path
+        currentParams.delete('q');
+        currentParams.delete('location');
+
+        if (targetLocation) {
+            // Geocode target location if changed or new
+            const coords = await getCoordinatesForLocation(targetLocation);
+            if (coords) {
+                currentParams.set('lat', coords.lat);
+                currentParams.set('lng', coords.lng);
+            } else {
+                // If geocoding fails, we delete coords but rely on the now-flexible backend text search
+                currentParams.delete('lat');
+                currentParams.delete('lng');
+            }
+        } else {
+            // No location - clear lat/lng unless it's a Near Me intent handled elsewhere?
+            // If query is "near me", we might want to keep current location if we have it?
+            // But usually this function is for explicit search. 
+            // If user searches "Massage" and had a location set, should we keep it?
+            // If they didn't put it in the location box, we assume global search?
+            // Current UX: Location box is separate. If they leave it empty, it's global.
+            if (locationToUse !== "Near Me" && locationToUse !== "Current Location") {
+                currentParams.delete('lat');
+                currentParams.delete('lng');
+            }
+        }
+
+        navigate(`${nextPath}?${currentParams.toString()}`);
     };
 
     const handleClearAll = () => {
         setLocalQuery('');
+        setLocalLocation('');
         setSearchParams({}); // Clears all params
-        // Note: clearing params triggers main effect -> fetches global 'all'
+        navigate('/spa'); // Reset to base route
     };
 
     // Derived state for UI inputs from URL
     const currentCategory = searchParams.get('category') || '';
     const currentRating = parseInt(searchParams.get('rating') || '0');
     const currentSort = searchParams.get('sort') || 'recommended';
-    const currentLat = searchParams.get('lat');
+
+    // SEO Dynamic Meta Tags
+    const seoMeta = useMemo(() => {
+        const query = searchParams.get('q') || '';
+        const loc = searchParams.get('location') || '';
+        const cat = searchParams.get('category') || '';
+        // Helpers for keywords
+        const locName = (loc && loc !== "Near Me" && loc !== "Current Location") ? loc : "Near You";
+        const term = query || cat || "Spa & Wellness";
+
+        let title = 'Search Spas, Salons & Wellness Centers';
+        let description = 'Find the best spas, salons, and wellness centers near you. Compare prices, read reviews, and book appointments online.';
+
+        if (query || loc || cat) {
+            const parts = [];
+            if (query) parts.push(query);
+            if (cat) parts.push(cat);
+            const what = parts.length > 0 ? parts.join(' ') : 'Best Spas & Salons';
+            const where = loc ? `in ${loc}` : 'Near Me';
+
+            title = `${totalResults > 0 ? `${totalResults} ` : ''}${what} ${where}`; // Suffix handled by SEO component
+            description = `Found ${totalResults} results for ${what} ${where}. Book top-rated ${what.toLowerCase()} appointments instantly on SpaAdvisor.`;
+        }
+
+        const keywords = [
+            `${term.toLowerCase()} near me`,
+            `best ${term.toLowerCase()} in ${locName.toLowerCase()}`,
+            `${term.toLowerCase()} ${locName.toLowerCase()}`,
+            "spa booking",
+            "salon near me",
+            "wellness center",
+            cat ? `${cat.toLowerCase()} near me` : "",
+            "affordable spa",
+            "luxury spa"
+        ].filter(Boolean).join(", ");
+
+        const canonicalPath = `/spa${location.search}`;
+
+        return { title, description, keywords, canonicalPath };
+    }, [searchParams, totalResults, routeQuery, routeLocation, location.search]);
 
     return (
         <div className="bg-gray-50 min-h-screen">
+            <SEO
+                title={seoMeta.title}
+                description={seoMeta.description}
+                keywords={seoMeta.keywords}
+                canonical={seoMeta.canonicalPath}
+                type="website"
+            />
+            {structuredData && (
+                <Helmet>
+                    <script type="application/ld+json">
+                        {JSON.stringify(structuredData)}
+                    </script>
+                </Helmet>
+            )}
+            <WiggleStyles />
+
             {/* Simple White Header - Fixed (Desktop Only) */}
             <div className="hidden md:block bg-white border-b border-gray-200 fixed top-14 left-0 right-0 z-20 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 py-4">
                     <div className="flex flex-col md:flex-row gap-4 items-center">
-                        <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-4">
-                            {/* Location Display (Read-Only/Reset) */}
-                            <div className="relative w-full md:w-1/3">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FiMapPin className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <div
-                                    className="w-full pl-10 pr-3 py-2 border border-gray-300  leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 sm:text-sm truncate cursor-pointer hover:bg-gray-50 flex items-center justify-between"
-                                    onClick={() => {
-                                        // Toggle: If has location, clear it. If not, maybe re-trigger geo?
-                                        // For now, simpler to just allow clearing to "All Locations"
-                                        if (currentLat) {
-                                            updateParams({ lat: '', lng: '' });
-                                        } else {
-                                            // Resetting initialization to force re-geo could be an option, but explicit is better for users.
-                                            setIsLocationInitialized(false); // This effectively triggers the mount logic again
-                                        }
-                                    }}
-                                >
-                                    <span>{currentLat ? "Near Me" : "All Locations"}</span>
-                                    {currentLat && <FiX className="text-gray-400" />}
-                                </div>
-                            </div>
-
-                            {/* Search Input */}
-                            <div className="relative w-full md:w-2/3">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FiSearch className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300  leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 sm:text-sm"
-                                    placeholder="Search by name, category, or tag..."
+                        <div className="flex-1 w-full flex items-center">
+                            {/* Single Smart Search Input */}
+                            <div className="relative w-full">
+                                <SearchAutocomplete
                                     value={localQuery}
-                                    onChange={(e) => setLocalQuery(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSearchSubmit()}
+                                    onChange={(value) => {
+                                        setLocalQuery(value);
+                                    }}
+                                    onSubmit={(value) => {
+                                        setLocalQuery(value);
+                                        handleSearchSubmit(value);
+                                    }}
+                                    onSelect={(suggestion) => {
+                                        // If it's a business suggestion, use the name
+                                        const queryText = suggestion.name || suggestion.description || suggestion.main_text;
+                                        setLocalQuery(queryText);
+                                        // If business has location, also set it
+                                        if (suggestion.location) {
+                                            setLocalLocation(suggestion.location);
+                                        }
+                                        // Auto-submit immediately with selected query and location
+                                        setTimeout(() => handleSearchSubmit(queryText, suggestion.location || undefined), 100);
+                                    }}
+                                    placeholder="Search for service, business, or location..."
+                                    icon={FiSearch}
+                                    className=""
+                                    userLocation={searchParams.lat && searchParams.lng ? {
+                                        lat: parseFloat(searchParams.lat),
+                                        lng: parseFloat(searchParams.lng)
+                                    } : null}
                                 />
                             </div>
                         </div>
-
-                        <button
-                            onClick={handleSearchSubmit}
-                            className="w-full md:w-auto px-6 py-2 border border-transparent text-sm font-medium  text-white bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                        >
-                            Search
-                        </button>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-8 pt-20 md:pt-40">
-                {/* Sidebar Filters */}
+            {/* Sidebar Filters */}
+            <div className="max-w-[99rem] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-8 pt-6 md:pt-32">
+
+                {/* Desktop Sidebar (New Professional Design) */}
+                <div className="hidden lg:block w-80 flex-shrink-0">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm sticky top-24 overflow-hidden">
+                        {/* Header */}
+                        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="font-bold text-gray-900">Filters</h3>
+                            {(currentRating > 0 || searchParams.get('radius') || searchParams.get('lat')) && (
+                                <button
+                                    onClick={handleClearAll}
+                                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 hover:underline"
+                                >
+                                    Clear All
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="p-5 space-y-6">
+                            {/* Location Section */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center justify-between">
+                                    <span className="flex items-center gap-2"><FiMapPin className="text-gray-400" /> Select Location</span>
+                                    <button
+                                        onClick={() => setIsMapModalOpen(true)}
+                                        className="text-primary-600 hover:text-primary-700 p-1.5 hover:bg-primary-50 rounded-md transition-colors"
+                                        title="View Full Map"
+                                    >
+                                        <FiMaximize2 className="w-4 h-4" />
+                                    </button>
+                                </h4>
+                                <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm mb-3 h-48">
+                                    <MapLocationPicker
+                                        initialLat={parseFloat(searchParams.get('lat')) || 20.5937}
+                                        initialLng={parseFloat(searchParams.get('lng')) || 78.9629}
+                                        radius={parseInt(searchParams.get('radius')) || 5000}
+                                        className="h-full border-none rounded-none"
+                                        onLocationChange={async (coords) => {
+                                            updateParams({ lat: coords.lat, lng: coords.lng });
+                                            // Reverse geocode handled same as mobile
+                                            try {
+                                                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                                                const data = await response.json();
+                                                const address = data.address || {};
+                                                const locality = address.suburb || address.neighbourhood || address.city_district || address.village || address.area;
+                                                const city = address.city || address.town || address.municipality;
+                                                const state = address.state;
+                                                let locationName = "Selected Location";
+                                                if (locality && city) locationName = `${locality}, ${city}`;
+                                                else if (locality) locationName = `${locality}${state ? `, ${state}` : ''}`;
+                                                else if (city) locationName = `${city}${state ? `, ${state}` : ''}`;
+                                                updateParams({ location: locationName });
+                                                setLocalLocation(locationName);
+                                            } catch (error) {
+                                                console.error("Reverse geocoding failed:", error);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            if ("geolocation" in navigator) {
+                                                navigator.geolocation.getCurrentPosition(
+                                                    async (position) => {
+                                                        const lat = position.coords.latitude;
+                                                        const lng = position.coords.longitude;
+                                                        updateParams({ lat, lng });
+                                                        try {
+                                                            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                                                            const data = await response.json();
+                                                            const address = data.address || {};
+                                                            const locality = address.suburb || address.neighbourhood || address.city_district || address.village || address.area;
+                                                            const city = address.city || address.town || address.municipality;
+                                                            const state = address.state;
+                                                            let locationName = "Current Location";
+                                                            if (locality && city) locationName = `${locality}, ${city}`;
+                                                            else if (locality) locationName = `${locality}${state ? `, ${state}` : ''}`;
+                                                            else if (city) locationName = `${city}${state ? `, ${state}` : ''}`;
+                                                            updateParams({ location: locationName });
+                                                            setLocalLocation(locationName);
+                                                        } catch (error) {
+                                                            setLocalLocation("Current Location");
+                                                        }
+                                                    },
+                                                    (error) => {
+                                                        console.error("Geolocation error:", error);
+                                                        // Don't add lat/lng to URL when permission is denied
+                                                        if (error.code === 1) { // PERMISSION_DENIED
+                                                            toast.error('Location access denied. Please allow location access in your browser settings.', {
+                                                                duration: 5000,
+                                                                icon: '🚫'
+                                                            });
+                                                        } else {
+                                                            toast.error('Unable to get your location. Please try again.', {
+                                                                duration: 4000
+                                                            });
+                                                        }
+                                                    }
+                                                );
+                                            }
+                                        }}
+                                        className="py-1.5 px-3 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-100 rounded-md transition-colors text-center"
+                                    >
+                                        Use Current
+                                    </button>
+                                    <button
+                                        onClick={() => updateParams({ lat: undefined, lng: undefined })}
+                                        className="py-1.5 px-3 text-xs font-medium text-gray-600 bg-white hover:bg-gray-50 border border-gray-200 rounded-md transition-colors text-center"
+                                    >
+                                        Reset Map
+                                    </button>
+                                </div>
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* Distance Section */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-sm font-semibold text-gray-900">Distance</h4>
+                                    <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                                        {Math.round((searchParams.get('radius') || 5000) / 1000)} km
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1000"
+                                    max="50000"
+                                    step="1000"
+                                    value={searchParams.get('radius') || 5000}
+                                    onChange={(e) => updateParams({ radius: e.target.value })}
+                                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-500 hover:accent-primary-600"
+                                />
+                                <div className="flex justify-between text-[10px] text-gray-400 mt-1 font-medium">
+                                    <span>1 km</span>
+                                    <span>50 km</span>
+                                </div>
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* Category Section */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3">Category</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {FILTER_CATEGORIES.map(cat => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => updateParams({ category: currentCategory === cat ? '' : cat })}
+                                            className={`px-3 py-1.5 rounded-full text-xll ${currentCategory === cat
+                                                ? 'bg-primary-600 text-white shadow-sm'
+                                                : 'bg-white text-gray-600 border border-gray-200 hover:border-primary-300 hover:text-primary-600'
+                                                }`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+
+                            <hr className="border-gray-100" />
+
+                            {/* Rating Section */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3">Rating</h4>
+                                <div className="space-y-1.5">
+                                    {RATING_OPTIONS.map(rating => (
+                                        <label key={rating} className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-gray-50 -mx-2 transition-colors">
+                                            <div className="relative flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    className="peer h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
+                                                    checked={currentRating === rating}
+                                                    onChange={() => {
+                                                        const newRating = currentRating === rating ? 0 : rating;
+                                                        updateParams({ rating: newRating });
+                                                    }}
+                                                />
+                                            </div>
+                                            <span className="text-sm text-gray-600 group-hover:text-gray-900 flex items-center gap-1.5">
+                                                <div className="flex gap-0.5">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <FaStar
+                                                            key={i}
+                                                            className={`w-3.5 h-3.5 ${i < rating ? 'text-yellow-400' : 'text-gray-200'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-500">& Up</span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile Sidebar (Preserved Logic) */}
                 <div className={`
                     fixed inset-0 z-50 bg-white p-4 overflow-y-auto transition-transform duration-300 ease-in-out transform
-                    lg:relative lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:transform-none lg:w-64 lg:flex-shrink-0 lg:block
-                    ${isMobileFiltersOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                    lg:hidden
+                    ${isMobileFiltersOpen ? 'translate-x-0' : '-translate-x-full'}
                 `}>
-                    <div className="bg-white border-0 lg:border border-gray-200 lg:p-4 lg:sticky lg:top-24 h-full lg:h-auto">
-                        <div className="flex justify-between items-center mb-6 lg:mb-4 pb-4 border-b border-gray-100">
-                            <h3 className="font-semibold text-gray-900 text-lg lg:text-base">Filters</h3>
+                    <div className="bg-white border-0 h-full">
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                            <h3 className="font-semibold text-gray-900 text-lg">Filters</h3>
                             <button
                                 onClick={() => setIsMobileFiltersOpen(false)}
-                                className="lg:hidden p-2 text-gray-500 hover:text-gray-700"
+                                className="p-2 text-gray-500 hover:text-gray-700"
                             >
                                 <FiX className="w-6 h-6" />
-                            </button>
-                            <button
-                                onClick={handleClearAll}
-                                className="hidden lg:block text-xs text-primary-600 hover:text-primary-800 font-medium"
-                            >
-                                Clear All
                             </button>
                         </div>
 
 
                         {/* Mobile Search Inputs */}
-                        <div className="lg:hidden mb-6 space-y-4 border-b border-gray-100 pb-6">
+                        <div className="mb-6 space-y-4 border-b border-gray-100 pb-6">
                             <div className="flex flex-col gap-3">
-                                <div className="relative w-full">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FiMapPin className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <div
-                                        className="w-full pl-10 pr-3 py-2 border border-gray-300  leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 sm:text-sm truncate cursor-pointer hover:bg-gray-50 flex items-center justify-between rounded-md"
-                                        onClick={() => {
-                                            if (currentLat) {
-                                                updateParams({ lat: '', lng: '' });
-                                            } else {
-                                                setIsLocationInitialized(false);
-                                                setIsMobileFiltersOpen(false); // Close drawer to trigger location
-                                            }
-                                        }}
-                                    >
-                                        <span>{currentLat ? "Near Me" : "All Locations"}</span>
-                                        {currentLat && <FiX className="text-gray-400" />}
-                                    </div>
-                                </div>
-
-                                <div className="relative w-full">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FiSearch className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 sm:text-sm"
-                                        placeholder="Search by name, category..."
-                                        value={localQuery}
-                                        onChange={(e) => setLocalQuery(e.target.value)}
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') {
-                                                handleSearchSubmit();
-                                                setIsMobileFiltersOpen(false);
-                                            }
-                                        }}
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={() => {
-                                        handleSearchSubmit();
+                                {/* Single Smart Search Input */}
+                                <SearchAutocomplete
+                                    value={localQuery}
+                                    onChange={(value) => setLocalQuery(value)}
+                                    onSubmit={(value) => {
+                                        setLocalQuery(value);
+                                        handleSearchSubmit(value);
                                         setIsMobileFiltersOpen(false);
                                     }}
-                                    className="w-full px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 focus:outline-none"
-                                >
-                                    Search
-                                </button>
+                                    onSelect={(suggestion) => {
+                                        const queryText = suggestion.name || suggestion.description || suggestion.main_text;
+                                        setLocalQuery(queryText);
+                                        if (suggestion.location) {
+                                            setLocalLocation(suggestion.location);
+                                        }
+                                        // Auto-submit and close mobile filter
+                                        setTimeout(() => {
+                                            handleSearchSubmit(queryText, suggestion.location || undefined);
+                                            setIsMobileFiltersOpen(false);
+                                        }, 100);
+                                    }}
+                                    placeholder="Search for service, business, or location..."
+                                    icon={FiSearch}
+                                    className=""
+                                    userLocation={searchParams.lat && searchParams.lng ? {
+                                        lat: parseFloat(searchParams.lat),
+                                        lng: parseFloat(searchParams.lng)
+                                    } : null}
+                                />
                             </div>
                         </div>
 
@@ -598,28 +1344,118 @@ const Search = () => {
                             </button>
                         </div>
 
-                        <FilterSection title="Categories">
-                            <div className="space-y-2">
-                                {['Hotel', 'Spa', 'Salon', 'Gym', 'Restaurant'].map(cat => (
-                                    <label key={cat} className="flex items-center gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                                            checked={currentCategory === cat.toLowerCase()}
-                                            onChange={() => {
-                                                const newCat = currentCategory === cat.toLowerCase() ? '' : cat.toLowerCase();
-                                                updateParams({ category: newCat });
-                                            }}
-                                        />
-                                        <span className="text-sm text-gray-700">{cat}</span>
-                                    </label>
-                                ))}
+
+                        <FilterSection title="Location Map">
+                            <div className="space-y-3">
+                                <MapLocationPicker
+                                    initialLat={parseFloat(searchParams.get('lat')) || 20.5937}
+                                    initialLng={parseFloat(searchParams.get('lng')) || 78.9629}
+                                    radius={parseInt(searchParams.get('radius')) || 20000}
+                                    businesses={results} // Using main query results for map
+                                    className="h-64 rounded-lg"
+                                    onLocationChange={async (coords) => {
+                                        // Update coordinates and set 2km radius as requested
+                                        updateParams({ lat: coords.lat, lng: coords.lng, radius: 2000 });
+
+                                        // Reverse geocode to get location name
+                                        try {
+                                            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                                            const data = await response.json();
+                                            const address = data.address || {};
+
+                                            // Construct location name
+                                            const locality = address.suburb || address.neighbourhood || address.city_district || address.village || address.area;
+                                            const city = address.city || address.town || address.municipality;
+                                            const state = address.state;
+
+                                            let locationName = "Selected Location";
+                                            if (locality && city) {
+                                                locationName = `${locality}, ${city}`;
+                                            } else if (locality) {
+                                                locationName = `${locality}${state ? `, ${state}` : ''}`;
+                                            } else if (city) {
+                                                locationName = `${city}${state ? `, ${state}` : ''}`;
+                                            }
+
+                                            // Update location in search params and local state
+                                            updateParams({ location: locationName });
+                                            setLocalLocation(locationName);
+                                        } catch (error) {
+                                            console.error("Reverse geocoding failed:", error);
+                                        }
+                                    }}
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            if ("geolocation" in navigator) {
+                                                navigator.geolocation.getCurrentPosition(
+                                                    async (position) => {
+                                                        const lat = position.coords.latitude;
+                                                        const lng = position.coords.longitude;
+
+                                                        updateParams({ lat, lng });
+
+                                                        // Reverse geocode to get location name
+                                                        try {
+                                                            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                                                            const data = await response.json();
+                                                            const address = data.address || {};
+
+                                                            const locality = address.suburb || address.neighbourhood || address.city_district || address.village || address.area;
+                                                            const city = address.city || address.town || address.municipality;
+                                                            const state = address.state;
+
+                                                            let locationName = "Current Location";
+                                                            if (locality && city) {
+                                                                locationName = `${locality}, ${city}`;
+                                                            } else if (locality) {
+                                                                locationName = `${locality}${state ? `, ${state}` : ''}`;
+                                                            } else if (city) {
+                                                                locationName = `${city}${state ? `, ${state}` : ''}`;
+                                                            }
+
+                                                            updateParams({ location: locationName });
+                                                            setLocalLocation(locationName);
+                                                        } catch (error) {
+                                                            console.error("Reverse geocoding failed:", error);
+                                                            setLocalLocation("Current Location");
+                                                        }
+                                                    },
+                                                    (error) => {
+                                                        console.error("Geolocation error:", error);
+                                                        // Don't add lat/lng to URL when permission is denied
+                                                        if (error.code === 1) { // PERMISSION_DENIED
+                                                            toast.error('Location access denied. Please allow location access in your browser settings.', {
+                                                                duration: 5000,
+                                                                icon: '🚫'
+                                                            });
+                                                        } else {
+                                                            toast.error('Unable to get your location. Please try again.', {
+                                                                duration: 4000
+                                                            });
+                                                        }
+                                                    }
+                                                );
+                                            }
+                                        }}
+                                        className="flex-1 px-3 py-2 text-xs border border-primary-500 text-primary-600 rounded hover:bg-primary-50 font-medium"
+                                    >
+                                        📍 Use Current Location
+                                    </button>
+                                    <button
+                                        onClick={() => updateParams({ lat: undefined, lng: undefined })}
+                                        className="px-3 py-2 text-xs border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
                             </div>
                         </FilterSection>
 
                         <FilterSection title="Rating">
                             <div className="space-y-2">
-                                {[4, 3, 2].map(rating => (
+                                {RATING_OPTIONS.map(rating => (
                                     <label key={rating} className="flex items-center gap-3 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -637,58 +1473,101 @@ const Search = () => {
                                 ))}
                             </div>
                         </FilterSection>
+
+                        <FilterSection title="Category">
+                            <div className="flex flex-wrap gap-2">
+                                {FILTER_CATEGORIES.map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => updateParams({ category: currentCategory === cat ? '' : cat })}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${currentCategory === cat
+                                            ? 'bg-primary-600 text-white shadow-sm'
+                                            : 'bg-white text-gray-600 border border-gray-200'
+                                            }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </FilterSection>
+
+                        <FilterSection title="Privilege">
+                            <label className="flex items-center justify-between cursor-pointer">
+                                <span className="text-sm text-gray-700">Show only items with Special Offers</span>
+                                <div className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out"
+                                    style={{ backgroundColor: searchParams.get('offers') === 'true' ? '#B20000' : '#E5E7EB' }}
+                                    onClick={() => updateParams({ offers: searchParams.get('offers') === 'true' ? undefined : 'true' })}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${searchParams.get('offers') === 'true' ? 'translate-x-[1.25rem]' : 'translate-x-0'}`}
+                                    />
+                                </div>
+                            </label>
+                        </FilterSection>
+
+                        <FilterSection title="Distance">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-600">Within {Math.round((searchParams.get('radius') || 20000) / 1000)} km</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1000"
+                                    max="50000"
+                                    step="1000"
+                                    value={searchParams.get('radius') || 5000}
+                                    onChange={(e) => updateParams({ radius: e.target.value })}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500">
+                                    <span>1 km</span>
+                                    <span>50 km</span>
+                                </div>
+                            </div>
+                        </FilterSection>
+
                     </div>
                 </div>
 
                 {/* Results List */}
                 <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4">
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="flex flex-row flex-wrap items-center justify-between mb-3 gap-2">
+                        <div className="flex items-center gap-2">
                             {/* Mobile Filter Toggle */}
                             <button
                                 onClick={() => setIsMobileFiltersOpen(true)}
-                                className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 flex-1 sm:flex-none justify-center"
+                                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs font-medium hover:bg-gray-50 justify-center"
                             >
-                                <FiFilter className="w-4 h-4" />
-                                <span>Filters</span>
+                                <FiFilter className="w-3.5 h-3.5" />
+                                <span className="hidden xs:inline">Filters</span>
                             </button>
-                            <h2 className="text-lg font-medium text-gray-900">
-                                {totalResults} Results Found
+                            <h2 className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                                {totalResults} Results
                             </h2>
                         </div>
-                        <div className="flex items-center gap-2 self-end">
-                            <label className="text-sm text-gray-500">Sort by:</label>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500 hidden sm:block">Sort by:</label>
                             <select
                                 value={currentSort}
                                 onChange={(e) => updateParams({ sort: e.target.value })}
-                                className="text-sm border-gray-300  focus:ring-primary-500 focus:border-primary-500"
+                                className="text-xs py-1.5 pl-2 pr-6 border-gray-300 focus:ring-primary-500 focus:border-primary-500 rounded-md bg-white"
                             >
-                                <option value="recommended">Recommended</option>
-                                <option value="distance">Distance</option>
-                                <option value="rating">Rating</option>
+                                {SORT_OPTIONS.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
 
-                    {loading && page === 1 ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="bg-white border border-gray-200 h-40  p-4 flex gap-4">
-                                    <div className="w-48 bg-gray-100 rounded"></div>
-                                    <div className="flex-1 space-y-2 py-2">
-                                        <div className="h-4 bg-gray-100 w-3/4 rounded"></div>
-                                        <div className="h-4 bg-gray-100 w-1/2 rounded"></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : error && page === 1 ? (
+                    {isLoading ? (
+                        <SkeletonSearch />
+                    ) : isError ? (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-12 text-center">
                             <div className="flex justify-center mb-4">
                                 <FiAlertCircle className="w-12 h-12 text-red-500" />
                             </div>
                             <h3 className="text-lg font-medium text-red-800 mb-2">Oops! Something went wrong</h3>
-                            <p className="text-red-600 mb-6">{error}</p>
+                            <p className="text-red-600 mb-6">{error?.message || "Error fetching data"}</p>
                             <button
                                 onClick={() => window.location.reload()}
                                 className="px-4 py-2 bg-white border border-red-200 text-red-700 rounded-md hover:bg-red-50 font-medium transition-colors"
@@ -699,19 +1578,35 @@ const Search = () => {
                     ) : results.length > 0 ? (
                         <div className="space-y-4">
                             {results.map((business, index) => {
+                                // Create a placeholder that matches roughly the card height to minimize layout shift
+                                const placeholder = <div className="h-48 w-full bg-gray-100 rounded-lg animate-pulse" />;
+
                                 if (results.length === index + 1) {
                                     return (
-                                        <div ref={lastBusinessElementRef} key={business.id || index}>
-                                            <SearchBusinessCard business={business} />
+                                        <div ref={lastBusinessElementRef} key={business._id || business.id || index}>
+                                            <LazySection fallback={placeholder}>
+                                                <SearchBusinessCard
+                                                    business={business}
+                                                    onInquiry={(biz) => setInquiryBusiness(biz)}
+                                                />
+                                            </LazySection>
                                         </div>
                                     );
                                 } else {
-                                    return <SearchBusinessCard key={business.id || index} business={business} />;
+                                    return (
+                                        <LazySection key={business._id || business.id || index} fallback={placeholder}>
+                                            <SearchBusinessCard
+                                                business={business}
+                                                onInquiry={(biz) => setInquiryBusiness(biz)}
+                                            />
+                                        </LazySection>
+                                    );
                                 }
                             })}
+                            {isFetchingNextPage && <SkeletonSearch />}
                         </div>
                     ) : (
-                        <div className="bg-white border border-gray-200  p-12 text-center">
+                        <div className="bg-white border border-gray-200 p-12 text-center">
                             <p className="text-gray-500 text-lg">No businesses found matching your criteria.</p>
                             <button
                                 onClick={handleClearAll}
@@ -723,6 +1618,84 @@ const Search = () => {
                     )}
                 </div>
             </div>
+
+            {/* Map Selection Modal */}
+            {isMapModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-scaleIn">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <FiMapPin className="text-primary-500" /> Select Search Location
+                            </h3>
+                            <button
+                                onClick={() => setIsMapModalOpen(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <FiX className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Map Container */}
+                        <div className="flex-1 relative w-full bg-gray-100 flex flex-col">
+                            <MapLocationPicker
+                                initialLat={parseFloat(searchParams.get('lat')) || 20.5937}
+                                initialLng={parseFloat(searchParams.get('lng')) || 78.9629}
+                                radius={parseInt(searchParams.get('radius')) || 5000}
+                                className="h-full w-full border-none rounded-none"
+                                onLocationChange={async (coords) => {
+                                    updateParams({ lat: coords.lat, lng: coords.lng });
+                                    try {
+                                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                                        const data = await response.json();
+                                        const address = data.address || {};
+                                        const locality = address.suburb || address.neighbourhood || address.city_district || address.village || address.area;
+                                        const city = address.city || address.town || address.municipality;
+                                        const state = address.state;
+                                        let locationName = "Selected Location";
+                                        if (locality && city) locationName = `${locality}, ${city}`;
+                                        else if (locality) locationName = `${locality}${state ? `, ${state}` : ''}`;
+                                        else if (city) locationName = `${city}${state ? `, ${state}` : ''}`;
+                                        updateParams({ location: locationName });
+                                        setLocalLocation(locationName);
+                                    } catch (error) {
+                                        console.error("Reverse geocoding failed:", error);
+                                    }
+                                }}
+                            />
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 border-t border-gray-100 flex justify-between items-center bg-white">
+                            <p className="text-sm text-gray-500">
+                                Drag the map to pinpoint your search area
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsMapModalOpen(false)}
+                                    className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => setIsMapModalOpen(false)}
+                                    className="px-6 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 shadow-sm"
+                                >
+                                    Confirm Location
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Inquiry Modal */}
+            <InquiryModal
+                isOpen={!!inquiryBusiness}
+                onClose={() => setInquiryBusiness(null)}
+                businessId={inquiryBusiness?._id || inquiryBusiness?.id}
+                businessName={inquiryBusiness?.name}
+            />
         </div >
     );
 };

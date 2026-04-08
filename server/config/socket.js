@@ -2,12 +2,40 @@
 const socketIO = require('socket.io');
 const { verifyAccessToken } = require('../utils/generateToken');
 
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { redis, createTrackedDuplicate } = require('./redis');
+
 let io = null;
+let redisSubClient = null; // Store reference for cleanup
 
 const initializeSocket = (server) => {
+    let adapter;
+
+    // Only attempt to use Redis adapter if Redis is configured and not explicitly disabled
+    try {
+        const pubClient = redis;
+        redisSubClient = createTrackedDuplicate(redis); // Use tracked duplicate
+
+        // CRITICAL: Handle errors on the subClient to prevent crashing
+        redisSubClient.on('error', (err) => {
+            console.error('[Socket.IO] Redis Sub Client Error:', err.message);
+        });
+
+        adapter = createAdapter(pubClient, redisSubClient);
+    } catch (err) {
+        console.warn('[Socket.IO] Failed to initialize Redis Adapter, falling back to memory adapter:', err.message);
+    }
+
     io = socketIO(server, {
+        adapter: adapter, // Will be undefined if failed, triggering default memory adapter
         cors: {
-            origin: process.env.CLIENT_URL || 'http://localhost:5173',
+            origin: [
+                process.env.CLIENT_URL,
+                'https://spaadvisor.in',
+                'https://admin.spaadvisor.in', // Added likely admin domain
+                'http://localhost:5173',
+                'http://localhost:3000'
+            ].filter(Boolean),
             methods: ['GET', 'POST'],
             credentials: true
         },
@@ -19,9 +47,9 @@ const initializeSocket = (server) => {
     io.use((socket, next) => {
         try {
             let token = socket.handshake.auth.token || socket.handshake.query.token;
-            
+
             if (!token) {
-                console.error('❌ Socket auth failed: No token provided');
+                console.error('Socket auth failed: No token provided');
                 return next(new Error('No token provided'));
             }
 
@@ -33,31 +61,31 @@ const initializeSocket = (server) => {
             try {
                 decoded = verifyAccessToken(token);
             } catch (err) {
-                console.error('❌ Socket token verification failed:', err.message);
+                console.error('Socket token verification failed:', err.message);
                 if (err.name === 'TokenExpiredError') {
                     return next(new Error('Token expired'));
                 }
                 return next(new Error('Invalid token'));
             }
-            
+
             if (!decoded || !decoded.id) {
-                console.error('❌ Socket auth failed: Invalid token payload');
+                console.error('Socket auth failed: Invalid token payload');
                 return next(new Error('Invalid token payload'));
             }
 
             socket.userId = decoded.id;
             socket.userRole = decoded.role || 'user';
-            
-            console.log(`✅ Socket authenticated: User ${socket.userId} (${socket.userRole})`);
+
+            console.log(`Socket authenticated: User ${socket.userId} (${socket.userRole})`);
             next();
         } catch (error) {
-            console.error('❌ Socket authentication error:', error.message);
+            console.error('Socket authentication error:', error.message);
             next(new Error('Authentication failed'));
         }
     });
 
     io.on('connection', (socket) => {
-        console.log(`✅ User connected: ${socket.userId} (${socket.userRole})`);
+        console.log(`User connected: ${socket.userId} (${socket.userRole})`);
 
         // Join user-specific room
         socket.join(`user:${socket.userId}`);
@@ -65,7 +93,7 @@ const initializeSocket = (server) => {
 
         // Handle disconnect
         socket.on('disconnect', (reason) => {
-            console.log(`❌ User disconnected: ${socket.userId} (${reason})`);
+            console.log(`User disconnected: ${socket.userId} (${reason})`);
         });
 
         // Handle errors
@@ -79,7 +107,7 @@ const initializeSocket = (server) => {
         });
     });
 
-    console.log('✅ Socket.IO initialized');
+    console.log('Socket.IO initialized');
     return io;
 };
 
@@ -126,12 +154,37 @@ const getConnectedUsersCount = () => {
     return io.engine.clientsCount;
 };
 
+// Shutdown Socket.IO and close Redis connections
+const shutdown = async () => {
+    console.log('[Socket.IO] Shutting down...');
+
+    if (io) {
+        // Close all socket connections
+        io.close();
+        io = null;
+    }
+
+    // Close Redis sub client
+    if (redisSubClient && redisSubClient.status !== 'end') {
+        try {
+            await redisSubClient.quit();
+        } catch (err) {
+            console.error('[Socket.IO] Error closing Redis sub client:', err.message);
+            await redisSubClient.disconnect();
+        }
+        redisSubClient = null;
+    }
+
+    console.log('[Socket.IO] Shutdown complete');
+};
+
 module.exports = {
     initializeSocket,
     getIO,
     emitToUser,
     emitToRole,
     emitToAll,
-    getConnectedUsersCount
+    getConnectedUsersCount,
+    shutdown
 };
 

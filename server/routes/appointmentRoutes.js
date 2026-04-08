@@ -12,6 +12,9 @@ router.get("/business/:businessLink/info", appointmentController.getBusinessInfo
 // Get available time slots (by businessLink)
 router.get("/business/:businessLink/slots", appointmentController.getAvailableSlotsForBooking);
 
+// Get available slots (by businessId - Internal/Shared)
+router.get("/available-slots", appointmentController.getAvailableSlots);
+
 // Book appointment (by businessLink)
 router.post("/business/:businessLink/book", appointmentController.bookAppointmentPublic);
 
@@ -71,5 +74,8 @@ router.post("/:id/review", appointmentController.addReview);
 
 // Update appointment status
 router.patch("/:id/status", appointmentController.updateAppointmentStatus);
+
+// Download Invoice
+router.get("/:id/invoice", appointmentController.downloadInvoice);
 
 module.exports = router;

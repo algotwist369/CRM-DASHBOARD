@@ -163,13 +163,15 @@ const ServiceList = () => {
   const [selectedBusinessId, setSelectedBusinessId] = useState('');
   const [categories, setCategories] = useState([]);
   const [businessesLoaded, setBusinessesLoaded] = useState(false);
+  const [businessSearch, setBusinessSearch] = useState('');
+  const [isBusinessDropdownOpen, setIsBusinessDropdownOpen] = useState(false);
 
   const [filtersOpen, setFiltersOpen] = useState(false); // <-- New toggle state
 
   // Fetch businesses
   const fetchBusinesses = useCallback(async () => {
     try {
-      const response = await adminService.getBusinesses();
+      const response = await adminService.getBusinesses({ limit: 1000 });
       if (response.success) {
         const businessList = (response.data || []).map((business) => ({
           ...business,
@@ -330,21 +332,70 @@ const ServiceList = () => {
 
             {/* Business Selector */}
             {businesses.length > 0 && (
-              <div className="w-full">
-                <select
-                  value={selectedBusinessId}
+              <div className="w-full relative">
+                <input
+                  type="text"
+                  placeholder="Search and select a business..."
+                  value={businessSearch || (selectedBusinessId === '' ? 'All Businesses' : businesses.find(b => b._id === selectedBusinessId)?.name || '')}
                   onChange={(e) => {
-                    setSelectedBusinessId(e.target.value);
-                    localStorage.setItem('selectedBusinessId', e.target.value);
-                    setCurrentPage(1);
+                    setBusinessSearch(e.target.value);
+                    setIsBusinessDropdownOpen(true);
                   }}
-                  className="w-full px-4 py-2 border border-gray-300  bg-white focus:outline-none focus:ring-0 transition"
-                >
-                  <option value="">All Businesses</option>
-                  {businesses.filter(b => b?._id).map(b => (
-                    <option key={b._id} value={b._id}>{b.name}</option>
-                  ))}
-                </select>
+                  onFocus={() => setIsBusinessDropdownOpen(true)}
+                  className="w-full px-4 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-0 transition cursor-pointer"
+                />
+                {isBusinessDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => {
+                        setIsBusinessDropdownOpen(false);
+                        setBusinessSearch('');
+                      }}
+                    />
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      <div
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedBusinessId('');
+                          localStorage.setItem('selectedBusinessId', '');
+                          setBusinessSearch('');
+                          setIsBusinessDropdownOpen(false);
+                          setCurrentPage(1);
+                        }}
+                        className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${selectedBusinessId === '' ? 'bg-gray-50 font-medium' : ''
+                          }`}
+                      >
+                        All Businesses
+                      </div>
+                      {businesses
+                        .filter(b => b?._id)
+                        .filter(b =>
+                          businessSearch === '' ||
+                          b.name.toLowerCase().includes(businessSearch.toLowerCase())
+                        )
+                        .map(b => (
+                          <div
+                            key={b._id}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedBusinessId(b._id);
+                              localStorage.setItem('selectedBusinessId', b._id);
+                              setBusinessSearch('');
+                              setIsBusinessDropdownOpen(false);
+                              setCurrentPage(1);
+                            }}
+                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${selectedBusinessId === b._id ? 'bg-gray-50 font-medium' : ''
+                              }`}
+                          >
+                            {b.name}
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

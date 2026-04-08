@@ -1,11 +1,23 @@
-import apiClient from '../api/client'
+import apiClient from './client'
 import { endpoints } from '../../constants/api/endpoints'
+import { decryptPayload } from '../../utils/encryption'
 
 class AppointmentService {
   // Get business information for booking (by businessLink)
   async getBusinessInfo(businessLink) {
     try {
       const response = await apiClient.get(endpoints.appointments.businessInfo(businessLink))
+
+      // Decrypt payload if present
+      if (response.data?.payload) {
+        const decryptedData = decryptPayload(response.data.payload);
+        if (decryptedData) {
+          return { success: true, data: { ...response.data, data: decryptedData } };
+        } else {
+          return { success: false, error: 'Security verification failed' };
+        }
+      }
+
       return { success: true, data: response.data }
     } catch (error) {
       return {
@@ -128,6 +140,64 @@ class AppointmentService {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to cancel appointment'
+      }
+    }
+  }
+
+  // Get business reviews
+  async getBusinessReviews(businessId, params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.business.reviews(businessId), { params })
+
+      // Decrypt payload if present
+      if (response.data?.payload) {
+        const decryptedData = decryptPayload(response.data.payload);
+        if (decryptedData) {
+          return {
+            success: true,
+            data: decryptedData.reviews || [],
+            pagination: decryptedData.pagination || {}
+          }
+        } else {
+          return { success: false, error: 'Security verification failed' };
+        }
+      }
+
+      // Fallback for non-encrypted (or legacy)
+      return {
+        success: true,
+        data: response.data.data,
+        pagination: response.data.pagination
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch reviews'
+      }
+    }
+  }
+
+  async addBusinessReview(businessId, reviewData) {
+    try {
+      const response = await apiClient.post(endpoints.business.addReview(businessId), reviewData)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to submit review'
+      }
+    }
+  }
+
+  // Mark review as helpful
+  async markReviewHelpful(reviewId) {
+    try {
+      const response = await apiClient.post(endpoints.business.markReviewHelpful(reviewId))
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to mark review as helpful'
       }
     }
   }

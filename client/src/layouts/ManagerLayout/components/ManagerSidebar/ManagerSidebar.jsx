@@ -8,14 +8,15 @@ import {
   HiOutlineCalendar,
   HiOutlineCurrencyDollar,
   HiOutlineChartBar,
-  HiOutlineBell,
   HiOutlineCog,
   HiOutlineChevronRight,
   HiOutlineChevronLeft,
   HiOutlineChevronDown,
+  HiDocumentReport,
 } from 'react-icons/hi'
-import { FaBullhorn } from 'react-icons/fa'
+import { FaBell, FaQuestionCircle, FaRupeeSign, FaWhatsapp } from 'react-icons/fa'
 import { FaUserCircle } from 'react-icons/fa';
+import { MdCampaign } from "react-icons/md";
 import { RiLogoutBoxRLine } from "react-icons/ri";
 import authService from '../../../../services/auth/authService';
 import managerService from '../../../../services/manager/managerService';
@@ -27,6 +28,22 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
   const [pendingSubmenu, setPendingSubmenu] = useState(null)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [pendingLeadsCount, setPendingLeadsCount] = useState(0)
+
+  // Get manager info from localStorage
+  const getUserInfo = () => {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        return JSON.parse(userStr)
+      } catch (e) {
+        return null
+      }
+    }
+    return null
+  }
+
+  const userInfo = getUserInfo()
 
   // Fetch initial notification count
   useEffect(() => {
@@ -41,10 +58,23 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
       }
     };
     fetchCount();
+
+    // Fetch pending leads count
+    const fetchPendingLeadsCount = async () => {
+      try {
+        const result = await managerService.getPendingLeadsCount();
+        if (result.success) {
+          setPendingLeadsCount(result.count || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending leads count:', error);
+      }
+    };
+    fetchPendingLeadsCount();
   }, [])
 
   // Socket integration for real-time notification count
-  const { socket } = useSocket() || {}
+  const { socket, connected } = useSocket() || {}
 
   const handleLogout = () => {
     authService.logout()
@@ -90,6 +120,28 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
     }
   }, [socket])
 
+  // Listen for pending leads count updates
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    const handlePendingLeadsUpdate = (data) => {
+      // Verify if this update is for this manager
+      if (data.managerId && userInfo && userInfo.id !== data.managerId) {
+        return; // Ignore updates for other managers (though server should filter, good to be safe)
+      }
+
+      if (data.count !== undefined) {
+        setPendingLeadsCount(data.count);
+      }
+    };
+
+    socket.on('manager:leads:pending:updated', handlePendingLeadsUpdate);
+
+    return () => {
+      socket.off('manager:leads:pending:updated', handlePendingLeadsUpdate);
+    };
+  }, [socket, connected, userInfo]);
+
   // When sidebar expands and there's a pending submenu, open it
   useEffect(() => {
     if (!isCollapsed && pendingSubmenu) {
@@ -103,24 +155,27 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
   }, [isCollapsed, pendingSubmenu])
 
   const navigationItems = [
+    //manager dashboard
     {
       name: 'Dashboard',
       href: '/manager/dashboard',
       icon: <HiOutlineHome className="w-5 h-5" />,
     },
+    //manager's staff
     {
       name: 'Staff',
       href: '/manager/staff',
-      icon: <HiOutlineUserGroup className="w-5 h-5" />,
-      submenu: [
-        { name: 'All Staff', href: '/manager/staff' },
-        { name: 'Add Staff', href: '/manager/staff/add' },
-      ],
+      icon: <HiOutlineUsers className="w-5 h-5" />,
+      // submenu: [
+      //   { name: 'All Staff', href: '/manager/staff' },
+      //   { name: 'Add Staff', href: '/manager/staff/add' },
+      // ],
     },
+    //manager's customers
     {
       name: 'Customers',
       href: '/manager/customers',
-      icon: <HiOutlineUsers className="w-5 h-5" />,
+      icon: <HiOutlineUserGroup className="w-5 h-5" />,
       submenu: [
         { name: 'All Customers', href: '/manager/customers' },
         { name: 'Customer Analytics', href: '/manager/customers/analytics' },
@@ -129,6 +184,7 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
         // { name: 'Customer Targeting', href: '/manager/customers/targeting' },
       ],
     },
+    //manager's appointments
     {
       name: 'Appointments',
       href: '/manager/appointments',
@@ -138,45 +194,67 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
         { name: 'Calendar View', href: '/manager/appointments/calendar' },
       ],
     },
+    //manager's transactions
     {
       name: 'Transactions',
       href: '/manager/transactions',
-      icon: <HiOutlineCurrencyDollar className="w-5 h-5" />,
+      icon: <FaRupeeSign className="w-5 h-5" />,
       submenu: [
         { name: 'All Transactions', href: '/manager/transactions' },
         { name: 'Add Transaction', href: '/manager/transactions/add' },
       ],
     },
+    // manager's daily business
     {
       name: 'Daily Business',
       href: '/manager/daily-business',
       icon: <HiOutlineChartBar className="w-5 h-5" />,
       submenu: [
         { name: 'Daily Records', href: '/manager/daily-business' },
-        { name: 'Add Record', href: '/manager/daily-business/add' },
+        { name: 'Business Analytics', href: '/manager/daily-business/analytics' },
+        { name: 'Close Daily Business', href: '/manager/daily-business/close' },
       ],
     },
+    //manager's notifications
     {
       name: 'Notifications',
       href: '/manager/notifications',
-      icon: <HiOutlineBell className="w-5 h-5" />,
+      icon: <FaBell className="w-5 h-5 text-yellow-500" />,
       badge: notificationCount > 0 ? notificationCount : null,
     },
+    //manager's marketing campaigns
     {
       name: 'Campaigns',
       href: '/manager/campaigns',
-      icon: <FaBullhorn className="w-5 h-5" />,
+      icon: <MdCampaign className="text-8xl text-red-500 font-bold" />,
       submenu: [
         { name: 'All Campaigns', href: '/manager/campaigns' },
-        { name: 'Create Campaign', href: '/manager/campaigns/create' },
         { name: 'Campaign Analytics', href: '/manager/campaigns/analytics' },
       ],
     },
+    //manager's inquiries
+    {
+      name: 'Inquiries',
+      href: '/manager/inquiries',
+      icon: <FaQuestionCircle className="w-5 h-5 text-amber-500" />,
+    },
+    //manager's whatsapp leads
+    {
+      name: 'WhatsApp Leads',
+      // icon: <FaLock className="w-5 h-5 text-gray-500" />,
+      // disabled: true,
+      href: '/manager/watsapp-leads',
+      icon: <FaWhatsapp className="w-5 h-5 text-red-400" />,
+      badge: pendingLeadsCount > 0 ? pendingLeadsCount : null,
+      badgeColor: 'bg-red-500',
+    },
+    //manager's reports
     {
       name: 'Reports',
       href: '/manager/reports',
-      icon: <HiOutlineChartBar className="w-5 h-5" />,
+      icon: <HiDocumentReport className="w-5 h-5" />,
     },
+    //manager's business settings
     {
       name: 'Business Settings',
       href: '/manager/business-settings',
@@ -193,21 +271,6 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
 
   const isSubmenuActive = (submenuItems) =>
     submenuItems.some((item) => isActiveRoute(item.href))
-
-  // Get manager info from localStorage
-  const getUserInfo = () => {
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      try {
-        return JSON.parse(userStr)
-      } catch (e) {
-        return null
-      }
-    }
-    return null
-  }
-
-  const userInfo = getUserInfo()
 
   return (
     <div
@@ -282,7 +345,7 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
                 <>
                   <span className="ml-3 flex-1 text-left">{item.name}</span>
                   {item.badge && (
-                    <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+                    <span className={`ml-2 px-2 py-0.5 ${item.badgeColor || 'bg-red-500'} text-white text-xs font-semibold rounded-full`}>
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
@@ -293,6 +356,11 @@ const ManagerSidebar = ({ isCollapsed, onToggle }) => {
                     />
                   )}
                 </>
+              )}
+              {isCollapsed && item.badge && (
+                <span className={`absolute top-0 right-0 min-w-[18px] h-[18px] ${item.badgeColor || 'bg-red-500'} text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-pulse shadow-lg border-2 border-gray-900`}>
+                  {item.badge > 9 ? '9+' : item.badge}
+                </span>
               )}
             </NavLink>
 

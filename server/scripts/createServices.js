@@ -477,11 +477,11 @@ async function createServices() {
         for (let i = 0; i < businesses.length; i++) {
             const business = businesses[i];
             const config = serviceConfigs[business.type] || serviceConfigs.spa;
-            
+
             // Select 5-10 random services for this business
             const numServices = 5 + Math.floor(Math.random() * 6); // 5-10 services
             const selectedServices = getRandomItems(config.services, numServices);
-            
+
             let created = 0;
             let skipped = 0;
             let errors = 0;
@@ -496,7 +496,7 @@ async function createServices() {
 
             for (let j = 0; j < selectedServices.length; j++) {
                 const serviceTemplate = selectedServices[j];
-                
+
                 try {
                     // Check if service already exists
                     const existingService = await Service.findOne({

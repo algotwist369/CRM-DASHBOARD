@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import SEO from '../../../../components/common/SEO'
 import {
-  FaSpinner,
   FaMapMarkerAlt,
   FaPhoneAlt,
   FaEnvelope,
@@ -21,21 +21,43 @@ import {
   FaYoutube,
   FaTelegram,
   FaTag,
-  FaArrowLeft,
-  FaChevronLeft,
-  FaChevronRight,
+  FaChevronDown,
+  FaChevronUp,
   FaTimes
 } from 'react-icons/fa';
+import BackButton from '../../../../components/common/Button/BackButton'
 import appointmentService from '../../../../services/public/appointmentService'
 import { usePageTitle } from '../../../../hooks/usePageTitle'
 import { useLeadTracking } from '../../../../hooks/useLeadTracking';
-import Map from '../../../../components/common/Map/Map'
-import BusinessInfoReviews from './BusinessInfoReviews'
+import SkeletonBusinessInfo from './SkeletonBusinessInfo'
+import LazySection from '../../../../components/common/LazySection/LazySection'
+
+// Lazy load heavy components
+const Map = lazy(() => import('../../../../components/common/Map/Map'))
+const BusinessInfoReviews = lazy(() => import('./BusinessInfoReviews'))
 import HeroSection from './HeroSection'
-import MediaRenderer from './MediaRenderer'
+import MediaGallery from './MediaGallery'
 import { trackLeadClick } from '../../../../utils/analytics'
+import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
+import SpecialOfferModal from '../../../../components/public/Offer/SpecialOfferModal'
+
 
 import { useQuery } from '@tanstack/react-query'
+
+const ShakeZoomStyles = React.memo(() => (
+  <style>
+    {`
+      @keyframes shakeZoom {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        10%, 20% { transform: scale(1.2) rotate(-10deg); }
+        30%, 50%, 70%, 90% { transform: scale(1.2) rotate(10deg); }
+        40%, 60%, 80% { transform: scale(1.2) rotate(-10deg); }
+      }
+    `}
+  </style>
+))
+
+const shakeZoomAnimation = { animation: 'shakeZoom 2s ease-in-out infinite' }
 
 const BusinessInfo = () => {
   const navigate = useNavigate()
@@ -43,6 +65,20 @@ const BusinessInfo = () => {
   // currentImageIndex state moved to HeroSection to optimize re-renders
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false)
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false)
+
+  // Popup queue system
+  const currentModalRef = useRef(null) // Track which modal is currently open
+  // Track which popups have been shown to prevent duplicates
+  const hasShownInquiryRef = useRef(false)
+  const hasShownOfferRef = useRef(false)
+
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const [showAllServices, setShowAllServices] = useState(false)
+  const [showAllFeatures, setShowAllFeatures] = useState(false)
+  const [showAllAmenities, setShowAllAmenities] = useState(false)
+
 
   // Fetch business info using React Query
   const {
@@ -64,7 +100,23 @@ const BusinessInfo = () => {
       return businessData
     },
     enabled: !!businessLink,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData: () => {
+      const stored = sessionStorage.getItem('bookingBusiness')
+      if (!stored) return undefined
+
+      try {
+        const parsed = JSON.parse(stored)
+        // Only use stored data if it matches current business
+        if (parsed.businessLink === businessLink || parsed.slug === businessLink) {
+          return parsed
+        }
+      } catch (e) {
+        console.error("Failed to parse stored business data", e);
+      }
+      return undefined
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     retry: 1
   })
 
@@ -77,11 +129,9 @@ const BusinessInfo = () => {
     }
   }, [error])
 
-  // Update page title based on business name
-  const pageTitle = useMemo(() => {
-    return business ? `${business.name}${business.branch ? ` - ${business.branch}` : ''} - Booking App` : null
-  }, [business])
-  usePageTitle(pageTitle)
+  // Update page title is now handled by the SEO component below
+  // to avoid conflicts between direct document.title updates and react-helmet-async
+  // usePageTitle(pageTitle)
 
   // Track page view
   useLeadTracking(business?._id, !!business);
@@ -151,19 +201,90 @@ const BusinessInfo = () => {
 
     // Fallback to business phone number
     const phoneNumber = business.phone?.replace(/[^0-9]/g, '')
-    return phoneNumber ? `https://wa.me/${phoneNumber}` : null
+    const baseUrl = phoneNumber ? `https://wa.me/${phoneNumber}` : null
+
+    if (baseUrl) {
+      return `${baseUrl}?text=${encodeURIComponent(`Hi ${business.name || 'Business'}, I found your business on SpaAdvisor and would like to inquire about your services.`)}`
+    }
+    return null
+  }, [business])
+
+  // Popup queue management
+  // Show InquiryModal after 7 seconds
+  useEffect(() => {
+    if (!business) return
+
+    const timer = setTimeout(() => {
+      if (!hasShownInquiryRef.current && !currentModalRef.current) {
+        hasShownInquiryRef.current = true
+        setIsInquiryOpen(true)
+        currentModalRef.current = 'inquiry'
+      }
+    }, 7000)
+
+    return () => clearTimeout(timer)
+  }, [business])
+
+  const closeCurrentModal = useCallback((modalType) => {
+    // Clear current modal reference only if this is the currently open modal
+    if (currentModalRef.current === modalType) {
+      currentModalRef.current = null
+
+      // Mark as shown when closing
+      if (modalType === 'inquiry') {
+        hasShownInquiryRef.current = true
+
+        // Show Special Offer Modal after Inquiry Modal closes
+        setTimeout(() => {
+          if (!hasShownOfferRef.current && business?.services?.length > 0) {
+            hasShownOfferRef.current = true
+            setIsOfferModalOpen(true)
+            currentModalRef.current = 'offer'
+          }
+        }, 500)
+      } else if (modalType === 'offer') {
+        hasShownOfferRef.current = true
+      }
+    }
   }, [business])
 
   // Memoize all images collection
   const allImages = useMemo(() => {
     if (!business?.images) return []
     const images = []
-    if (business.images.banner) images.push({ src: business.images.banner, type: 'Banner' })
-    if (business.images.thumbnail) images.push({ src: business.images.thumbnail, type: 'Thumbnail' })
-    if (business.images.logo) images.push({ src: business.images.logo, type: 'Logo' })
+    const getImageUrl = (url) => {
+      if (!url) return null
+      // Check for Google 360/Photosphere URLs
+      if (url.includes('google.com/local/place') && url.includes('photosphere')) {
+        try {
+          const urlObj = new URL(url)
+          let iuParams = urlObj.searchParams.get('iu')
+          if (iuParams) {
+            // Try to upgrade quality from thumbnail to larger size
+            return iuParams.replace(/=w\d+-h\d+/, '=w800-h600')
+          }
+          return null // Return null if we can't extract an image URL
+        } catch (e) {
+          console.warn('Failed to parse 360 image URL:', e)
+          return null
+        }
+      }
+      return url
+    }
+
+    const bannerUrl = getImageUrl(business.images.banner)
+    if (bannerUrl) images.push({ src: bannerUrl, type: 'Banner' })
+
+    const thumbnailUrl = getImageUrl(business.images.thumbnail)
+    if (thumbnailUrl) images.push({ src: thumbnailUrl, type: 'Thumbnail' })
+
+    const logoUrl = getImageUrl(business.images.logo)
+    if (logoUrl) images.push({ src: logoUrl, type: 'Logo' })
+
     if (Array.isArray(business.images.gallery)) {
       business.images.gallery.forEach(img => {
-        if (img) images.push({ src: img, type: 'Gallery' })
+        const galleryUrl = getImageUrl(img)
+        if (galleryUrl) images.push({ src: galleryUrl, type: 'Gallery' })
       })
     }
     return images
@@ -222,9 +343,6 @@ const BusinessInfo = () => {
   // Function to determine if we should render hero
   const shouldRenderHero = allImages.length > 0
 
-  // Clean nextImage/prevImage as they are now internal to HeroSection or Modal specific
-  // The logic for Modal navigation remains here as BusinessInfo controls the modal state
-  // ... (keeping modal logic if needed or relying on simple state updates)dinates and zoom
   const mapCoordinates = useMemo(() => {
     if (business?.location?.coordinates) {
       return business.location.coordinates // [lng, lat] format
@@ -263,7 +381,7 @@ const BusinessInfo = () => {
   }, [business])
 
   const renderBookingCard = useCallback(() => (
-    <div className="bg-white   border border-gray-200 p-6">
+    <div className="bg-white hidden md:block border border-gray-200 p-6">
       {business.appointmentSettings?.allowOnlineBooking ? (
         <>
           <div className="flex items-center gap-2 text-green-600 mb-4">
@@ -282,6 +400,28 @@ const BusinessInfo = () => {
           {(!business.services || business.services.length === 0) && (
             <p className="text-xs text-gray-500 text-center">No services available</p>
           )}
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200"></span>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-400">Or</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              trackLeadClick(business._id, 'inquiry');
+              hasShownInquiryRef.current = true
+              currentModalRef.current = 'inquiry'
+              setIsInquiryOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary-600 border-2 border-primary-600 font-semibold text-lg hover:bg-primary-50 transition-colors"
+          >
+            <FaEnvelope />
+            Send Enquiry
+          </button>
         </>
       ) : (
         <div className="text-center py-4">
@@ -608,121 +748,136 @@ const BusinessInfo = () => {
     )
   }, [business])
 
-  // renderMedia and renderHeroSlider Logic moved to separate components
-  // to avoid re-rendering the entire page on auto-slide interval
-  // which was causing performance issues and image flickering
+  // Swipe handlers for modal
+  const modalTouchStart = useRef(null)
+  const modalTouchEnd = useRef(null)
+  const minSwipeDistance = 50
 
-  // Auto-slide logic removed from here and moved to HeroSection
+  const onModalTouchStart = (e) => {
+    modalTouchEnd.current = null
+    modalTouchStart.current = e.targetTouches[0].clientX
+  }
+
+  const onModalTouchMove = (e) => {
+    modalTouchEnd.current = e.targetTouches[0].clientX
+  }
+
+  const onModalTouchEnd = () => {
+    if (!modalTouchStart.current || !modalTouchEnd.current) return
+    const distance = modalTouchStart.current - modalTouchEnd.current
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      nextModalImage()
+    } else if (isRightSwipe) {
+      prevModalImage()
+    }
+  }
 
   // Image Modal/Lightbox Component
   const renderImageModal = useCallback(() => {
-    if (!isImageModalOpen || allImages.length === 0) return null
+    if (!isImageModalOpen) return null
 
     return (
       <div
-        className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300"
+        className="fixed inset-0 z-[100] bg-black flex items-center justify-center transition-opacity duration-300"
         onClick={closeImageModal}
       >
         {/* Close Button */}
         <button
           onClick={closeImageModal}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
-          aria-label="Close image viewer"
+          className="absolute top-4 right-4 z-[110] bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
+          aria-label="Close media viewer"
         >
           <FaTimes className="text-xl sm:text-2xl" />
         </button>
 
-        {/* Image Container */}
         <div
-          className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
+          className="w-full h-full relative"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Previous Button */}
-          {allImages.length > 1 && (
-            <button
-              onClick={prevModalImage}
-              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 sm:p-4 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
-              aria-label="Previous image"
-            >
-              <FaChevronLeft className="text-xl sm:text-2xl" />
-            </button>
-          )}
-
-          {/* Image */}
-          <div className="relative w-full h-full flex items-center justify-center">
-            <MediaRenderer
-              item={allImages[modalImageIndex]}
-              className="max-w-full max-h-[90vh] object-contain select-none rounded-lg shadow-2xl"
-              alt={`${business?.name} - Full screen`}
-            />
-          </div>
-
-          {/* Next Button */}
-          {allImages.length > 1 && (
-            <button
-              onClick={nextModalImage}
-              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 sm:p-4 rounded-full text-white transition-all duration-300 hover:scale-110 active:scale-95"
-              aria-label="Next image"
-            >
-              <FaChevronRight className="text-xl sm:text-2xl" />
-            </button>
-          )}
-
-          {/* Image Counter & Info */}
-          {allImages.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-sm sm:text-base">
-              <span className="font-medium">{modalImageIndex + 1}</span>
-              <span className="mx-2">/</span>
-              <span>{allImages.length}</span>
-            </div>
-          )}
-
-          {/* Image Type Badge */}
-          <div className="absolute top-4 left-4 z-40 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-white text-xs sm:text-sm">
-            {allImages[modalImageIndex].type}
-          </div>
+          <MediaGallery
+            business={business}
+            allImages={allImages}
+            isModal={true}
+            modalImageIndex={modalImageIndex}
+            nextModalImage={nextModalImage}
+            prevModalImage={prevModalImage}
+            onClose={closeImageModal}
+          />
         </div>
-
-        {/* Thumbnail Strip (Mobile) */}
-        {allImages.length > 1 && (
-          <div className="absolute bottom-4 left-0 right-0 z-40 px-4 overflow-x-auto">
-            <div className="flex gap-2 justify-center max-w-4xl mx-auto">
-              {allImages.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setModalImageIndex(index)
-                  }}
-                  className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all duration-300 ${index === modalImageIndex
-                    ? 'border-white scale-110 shadow-lg'
-                    : 'border-white/30 hover:border-white/60'
-                    }`}
-                >
-                  <MediaRenderer
-                    item={image}
-                    className="w-full h-full object-cover"
-                    isActive={false}
-                    alt={`Thumbnail ${index + 1}`}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     )
-  }, [isImageModalOpen, allImages, modalImageIndex, business, closeImageModal, prevModalImage, nextModalImage])
+  }, [isImageModalOpen, business, allImages, modalImageIndex, nextModalImage, prevModalImage, closeImageModal])
+
+  // SEO Configuration
+  const seoConfig = useMemo(() => {
+    if (!business) return null;
+
+    const { seo, name, category, city, description, images, branch } = business;
+
+    // If backend provides a title, use it. Otherwise, build one.
+    const metaTitle = seo?.metaTitle || `${name}${branch ? ` - ${branch}` : ''} | ${category || 'Spa'} in ${city}`;
+
+    return {
+      title: metaTitle,
+      description: seo?.metaDescription || description?.substring(0, 160) || `Book appointments at ${name} in ${city}. Check reviews, services, and working hours.`,
+      keywords: Array.isArray(seo?.keywords) ? seo.keywords.join(', ') : seo?.keywords || [name, category, city, business.services?.map(s => s.name)].flat().filter(Boolean).join(', '),
+      image: seo?.ogImage || images?.banner || images?.logo || "https://spaadvisor.in",
+      ogUrl: window.location.href,
+      canonical: window.location.href
+    };
+  }, [business]);
+
+  // Structured Data (JSON-LD)
+  const structuredData = useMemo(() => {
+    if (!business) return null;
+
+    const { name, images, phone, email, address, city, state, country, location, workingHours, ratings, category } = business;
+
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": name,
+      "image": images?.banner || images?.logo || images?.thumbnail,
+      "telephone": phone,
+      "email": email,
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": address,
+        "addressLocality": city,
+        "addressRegion": state,
+        "addressCountry": country || "IN"
+      },
+      "geo": location?.coordinates ? {
+        "@type": "GeoCoordinates",
+        "latitude": location.coordinates[1],
+        "longitude": location.coordinates[0]
+      } : undefined,
+      "url": window.location.href,
+      "priceRange": "₹₹",
+      "category": category,
+      "openingHoursSpecification": workingHours?.days?.map((day) => ({
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": day.charAt(0).toUpperCase() + day.slice(1),
+        "opens": workingHours.open || "10:00",
+        "closes": workingHours.close || "23:00"
+      })),
+      "aggregateRating": ratings ? {
+        "@type": "AggregateRating",
+        "ratingValue": ratings.average || 0,
+        "reviewCount": ratings.totalReviews || 0,
+        "bestRating": "5",
+        "worstRating": "1"
+      } : undefined
+    };
+
+    return JSON.stringify(schema);
+  }, [business]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <FaSpinner className="animate-spin mx-auto text-primary-600 text-4xl mb-4" />
-          <p className="text-gray-600 text-sm">Loading business information...</p>
-        </div>
-      </div>
-    )
+    return <SkeletonBusinessInfo />
   }
 
   if (error || !business) {
@@ -743,25 +898,56 @@ const BusinessInfo = () => {
     )
   }
 
+
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0 overflow-x-hidden">
+      {/* SEO Meta Tags */}
+      {seoConfig && (
+        <SEO
+          title={seoConfig.title}
+          description={seoConfig.description}
+          keywords={seoConfig.keywords}
+          image={seoConfig.image}
+          ogUrl={seoConfig.ogUrl}
+          canonical={seoConfig.canonical}
+        />
+      )}
+      {/* Structured Data */}
+      {structuredData && (
+        <script type="application/ld+json">
+          {structuredData}
+        </script>
+      )}
+      <ShakeZoomStyles />
       {/* Image Modal */}
       {renderImageModal()}
 
-      {/* Back Button - Mobile Optimized */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 ">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-gray-50  border border-gray-200 font-medium text-sm active:bg-gray-100"
-          >
-            <FaArrowLeft className="text-sm" />
-            <span>Back</span>
-          </button>
-        </div>
-      </div>
+      {/* Inquiry Modal */}
+      <InquiryModal
+        isOpen={isInquiryOpen}
+        onClose={() => {
+          setIsInquiryOpen(false)
+          closeCurrentModal('inquiry')
+        }}
+        businessId={business?._id}
+        businessName={business?.name}
+        businessLink={businessLink}
+      />
+
+      {/* Special Offer Modal */}
+      <SpecialOfferModal
+        isOpen={isOfferModalOpen}
+        onClose={() => {
+          setIsOfferModalOpen(false)
+          closeCurrentModal('offer')
+        }}
+        onBookNow={handleBookNow}
+      />
+
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <BackButton />
         <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 lg:gap-10 lg:items-start">
           <div className="space-y-6">
             {/* Hero Section */}
@@ -780,9 +966,21 @@ const BusinessInfo = () => {
 
               {/* About Section */}
               {business.description && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">About</h2>
-                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{business.description}</p>
+                  <div className={`relative transition-all duration-300 ${!isDescriptionExpanded ? 'max-h-24 overflow-hidden' : ''}`}>
+                    <p className={`text-sm sm:text-base text-gray-700 leading-relaxed ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
+                      {business.description}
+                    </p>
+                  </div>
+                  {business.description.length > 150 && (
+                    <button
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className="mt-2 text-primary-600 font-medium text-sm hover:underline focus:outline-none"
+                    >
+                      {isDescriptionExpanded ? 'Read Less' : 'Read More'}
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -790,8 +988,10 @@ const BusinessInfo = () => {
               {business.services && business.services.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
+
+                  {/* Initial 12 Services */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {business.services.map((service, index) => {
+                    {business.services.slice(0, 12).map((service, index) => {
                       const serviceKey = typeof service === 'object' && service?._id ? service._id : `service-${index}`
                       return (
                         <div key={serviceKey} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50  border border-gray-100">
@@ -812,42 +1012,171 @@ const BusinessInfo = () => {
                       )
                     })}
                   </div>
+
+                  {/* Hidden Services with Grid Transition */}
+                  {business.services.length > 12 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllServices ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3">
+                          {business.services.slice(12).map((service, index) => {
+                            const serviceKey = typeof service === 'object' && service?._id ? service._id : `extra-service-${index}`
+                            return (
+                              <div key={serviceKey} className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50  border border-gray-100">
+                                <FaCheckCircle className="text-green-600 mt-0.5 flex-shrink-0 text-sm" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs sm:text-sm font-medium text-gray-900">
+                                    {typeof service === 'object' ? service.name || service.serviceName : service}
+                                  </p>
+                                  {typeof service === 'object' && (service.price || service.duration) && (
+                                    <p className="text-xs text-gray-600 mt-0.5 sm:mt-1">
+                                      {service.price ? `₹${service.price}` : ''}
+                                      {service.price && service.duration ? ' • ' : ''}
+                                      {service.duration ? `${service.duration} min` : ''}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.services.length > 12 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllServices ? '-mt-12 pt-6 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllServices(!showAllServices)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllServices ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.services.length - 12} services <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Features Section */}
               {business.features && business.features.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {business.features.map((feature, index) => (
+
+                  {/* Initial 8 Features */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {business.features.slice(0, 8).map((feature, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700  text-xs sm:text-sm border border-purple-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {feature}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Features with Grid Transition */}
+                  {business.features.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllFeatures ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.features.slice(8).map((feature, index) => (
+                            <span
+                              key={`extra-feature-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.features.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllFeatures ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllFeatures(!showAllFeatures)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllFeatures ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.features.length - 8} features <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Amenities Section */}
               {business.amenities && business.amenities.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {business.amenities.map((amenity, index) => (
+
+                  {/* Initial 8 Amenities */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {business.amenities.slice(0, 8).map((amenity, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700  text-xs sm:text-sm border border-indigo-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {amenity}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Amenities with Grid Transition */}
+                  {business.amenities.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllAmenities ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.amenities.slice(8).map((amenity, index) => (
+                            <span
+                              key={`extra-amenity-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {amenity}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.amenities.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllAmenities ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllAmenities(!showAllAmenities)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllAmenities ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.amenities.length - 8} amenities <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -874,7 +1203,10 @@ const BusinessInfo = () => {
                       href={`tel:${business.phone}`}
                       className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50  active:bg-gray-100"
                     >
-                      <FaPhoneAlt className="text-primary-600 flex-shrink-0 text-base sm:text-lg" />
+                      <FaPhoneAlt
+                        className="text-primary-600 flex-shrink-0 text-base sm:text-lg"
+                        style={shakeZoomAnimation}
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">Phone</p>
                         <p className="text-sm sm:text-base text-primary-600 font-medium">{business.phone}</p>
@@ -953,19 +1285,21 @@ const BusinessInfo = () => {
 
               {/* Location - Mobile */}
               {(mapCoordinates || business.googleMapsUrl) && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                     <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
                     <span>Location</span>
                   </h2>
-                  <Map
-                    coordinates={mapCoordinates}
-                    googleMapsUrl={business.googleMapsUrl}
-                    zoom={mapZoom}
-                    height="300px"
-                    className="sm:h-[400px]"
-                    showLink={true}
-                  />
+                  <Suspense fallback={<div className="h-[300px] bg-gray-100 animate-pulse rounded"></div>}>
+                    <Map
+                      coordinates={mapCoordinates}
+                      googleMapsUrl={business.googleMapsUrl}
+                      zoom={mapZoom}
+                      height="300px"
+                      className="sm:h-[400px]"
+                      showLink={true}
+                    />
+                  </Suspense>
                 </div>
               )}
 
@@ -982,12 +1316,21 @@ const BusinessInfo = () => {
                 </div>
               )}
 
+              {/* Media Gallery Section */}
+              <MediaGallery
+                business={business}
+                allImages={allImages}
+                openImageModal={openImageModal}
+              />
+
               {/* Services Section */}
               {business.services && business.services.length > 0 && (
                 <div className="bg-white   border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Services</h2>
+
+                  {/* Initial 12 Services */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {business.services.map((service, index) => {
+                    {business.services.slice(0, 12).map((service, index) => {
                       const isObject = typeof service === 'object' && service !== null
                       const serviceKey = isObject && service?._id ? service._id : `service-${index}`
                       const name =
@@ -1042,60 +1385,225 @@ const BusinessInfo = () => {
                       )
                     })}
                   </div>
+
+                  {/* Hidden Services with Grid Transition */}
+                  {business.services.length > 12 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllServices ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3">
+                          {business.services.slice(12).map((service, index) => {
+                            const isObject = typeof service === 'object' && service !== null
+                            const serviceKey = isObject && service?._id ? service._id : `extra-service-${index}`
+                            const name =
+                              (isObject && (service.name || service.serviceName || service.title)) ||
+                              (typeof service === 'string' ? service : `Service ${index + 1}`)
+                            const duration = isObject && service.duration ? `${service.duration} min` : ''
+                            const category = isObject && service.category ? service.category : ''
+                            const serviceImages = isObject && Array.isArray(service.images) ? service.images.filter(Boolean) : []
+                            const hasImage = serviceImages.length > 0
+                            const mainImage = hasImage ? serviceImages[0] : null
+
+                            return (
+                              <div
+                                key={serviceKey}
+                                className="bg-white border border-gray-200 overflow-hidden"
+                              >
+                                {hasImage && (
+                                  <div className="w-full h-24 sm:h-28 bg-gray-100 overflow-hidden">
+                                    <img
+                                      src={mainImage}
+                                      alt={name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none'
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <div className="p-2 sm:p-2.5">
+                                  <div className="flex items-start gap-1.5">
+                                    <FaCheckCircle className="text-green-600 text-xs mt-0.5 flex-shrink-0" />
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                      <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-0.5">{name}</h3>
+                                      <div className="flex flex-wrap gap-1.5 text-[10px] text-gray-600">
+                                        {duration && (
+                                          <span className="flex items-center gap-0.5">
+                                            <FaClock className="text-[9px]" />
+                                            {duration}-120 min
+                                          </span>
+                                        )}
+                                        {category && (
+                                          <span className="flex items-center gap-0.5">
+                                            <FaTag className="text-[9px]" />
+                                            {category}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.services.length > 12 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllServices ? '-mt-12 pt-6 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllServices(!showAllServices)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllServices ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.services.length - 12} services <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Features Section */}
               {business.features && business.features.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white  border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Features</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {business.features.map((feature, index) => (
+
+                  {/* Initial 8 Features */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {business.features.slice(0, 8).map((feature, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700  text-xs sm:text-sm border border-purple-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {feature}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Features with Grid Transition */}
+                  {business.features.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllFeatures ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.features.slice(8).map((feature, index) => (
+                            <span
+                              key={`extra-feature-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-purple-50 text-purple-700 text-xs sm:text-sm border border-purple-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.features.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllFeatures ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllFeatures(!showAllFeatures)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllFeatures ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.features.length - 8} features <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Amenities Section */}
               {business.amenities && business.amenities.length > 0 && (
-                <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">Amenities</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {business.amenities.map((amenity, index) => (
+
+                  {/* Initial 8 Amenities */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {business.amenities.slice(0, 8).map((amenity, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700  text-xs sm:text-sm border border-indigo-100"
+                        className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
                       >
                         <FaCheckCircle className="text-xs" />
                         {amenity}
                       </span>
                     ))}
                   </div>
+
+                  {/* Hidden Amenities with Grid Transition */}
+                  {business.amenities.length > 8 && (
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${showAllAmenities ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                      <div className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          {business.amenities.slice(8).map((amenity, index) => (
+                            <span
+                              key={`extra-amenity-${index}`}
+                              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-indigo-50 text-indigo-700 text-xs sm:text-sm border border-indigo-100"
+                            >
+                              <FaCheckCircle className="text-xs" />
+                              {amenity}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {business.amenities.length > 8 && (
+                    <div className={`relative z-10 bg-white pt-2 ${!showAllAmenities ? '-mt-8 pt-8 bg-gradient-to-t from-white via-white/90 to-transparent' : ''}`}>
+                      <button
+                        onClick={() => setShowAllAmenities(!showAllAmenities)}
+                        className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                      >
+                        {showAllAmenities ? (
+                          <>
+                            Show Less <FaChevronUp className="text-xs" />
+                          </>
+                        ) : (
+                          <>
+                            Show more + {business.amenities.length - 8} amenities <FaChevronDown className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
 
               {(mapCoordinates || business.googleMapsUrl) && (
                 <div className="mt-6 sm:mt-8">
-                  <div className="bg-white   border border-gray-200 p-4 sm:p-6">
+                  <div className="bg-white border border-gray-200 p-4 sm:p-6">
                     <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                       <FaMapMarkerAlt className="text-primary-600 text-base sm:text-lg" />
                       <span>Location</span>
                     </h2>
-                    <Map
-                      coordinates={mapCoordinates}
-                      googleMapsUrl={business.googleMapsUrl}
-                      zoom={mapZoom}
-                      height="400px"
-                      showLink={true}
-                    />
+                    <Suspense fallback={<div className="h-[400px] bg-gray-100 animate-pulse rounded"></div>}>
+                      <Map
+                        coordinates={mapCoordinates}
+                        googleMapsUrl={business.googleMapsUrl}
+                        zoom={mapZoom}
+                        height="400px"
+                        showLink={true}
+                      />
+                    </Suspense>
                   </div>
                 </div>
               )}
@@ -1155,7 +1663,11 @@ const BusinessInfo = () => {
         </div>
 
         {/* Ratings and reviews */}
-        <BusinessInfoReviews business={business} />
+        <LazySection fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>
+          <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded mt-10"></div>}>
+            <BusinessInfoReviews business={business} />
+          </Suspense>
+        </LazySection>
 
         {/* Quick Actions - Mobile Sticky Bottom */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 p-4">
@@ -1165,7 +1677,7 @@ const BusinessInfo = () => {
                 href={`tel:${business.phone}`}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white  font-medium text-sm active:bg-blue-700"
               >
-                <FaPhoneAlt />
+                <FaPhoneAlt style={shakeZoomAnimation} />
                 <span>Call</span>
               </a>
             )}
@@ -1191,6 +1703,26 @@ const BusinessInfo = () => {
             )}
           </div>
         </div>
+
+        {/* Floating Inquiry Button - Mobile only */}
+        <button
+          onClick={() => {
+            trackLeadClick(business._id, 'inquiry');
+            hasShownInquiryRef.current = true
+            currentModalRef.current = 'inquiry'
+            setIsInquiryOpen(true);
+          }}
+          className="lg:hidden fixed right-0 top-[60%] z-50 flex items-center justify-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-t-xl shadow-xl border-x-2 border-t-2 border-white hover:bg-primary-700 active:bg-primary-800 transition-all duration-300 font-bold -rotate-90 origin-bottom-right"
+          title="Send Enquiry"
+        >
+          <FaEnvelope className="text-sm" />
+          <span className="text-xs uppercase tracking-widest">Enquiry</span>
+          {/* Notification Dot Animation */}
+          <span className="absolute -top-1 -left-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500 border-2 border-white"></span>
+          </span>
+        </button>
       </div>
     </div>
   )

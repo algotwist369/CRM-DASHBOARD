@@ -653,123 +653,157 @@ const getManagerStats = async (req, res, next) => {
 
         // Helper for Date Ranges
         const now = new Date();
-        const startOfDay = new Date(now);
-        startOfDay.setHours(0, 0, 0, 0);
+        const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); startOfMonth.setHours(0, 0, 0, 0);
 
-        const endOfDay = new Date(now);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        startOfMonth.setHours(0, 0, 0, 0);
-
-        // 1. Total Staff & Customers
+        // 1. Total Staff
         const totalStaff = await Staff.countDocuments({ business: businessId, isActive: true });
-        // 2. Total Revenue (Transactions + Missing Appointments)
-        // A. Revenue from Transactions
-        const totalTxnStats = await Transaction.aggregate([
-            { $match: { business: businessId, paymentStatus: 'completed', isRefunded: false } },
-            { $group: { _id: null, total: { $sum: "$finalPrice" }, count: { $sum: 1 } } }
-        ]);
-        const txnRevenue = totalTxnStats[0]?.total || 0;
-        const txnCount = totalTxnStats[0]?.count || 0;
 
-        // B. Revenue from Missing Appointments (Ghost Revenue)
-        // Find completed appointments that DO NOT have a transaction linked
-        const missingApptStats = await Appointment.aggregate([
-            {
-                $match: {
-                    business: businessId,
-                    status: 'completed'
-                }
-            },
-            {
-                $lookup: {
-                    from: "transactions",
-                    localField: "_id",
-                    foreignField: "appointment",
-                    as: "existingTxn"
-                }
-            },
-            {
-                $match: {
-                    existingTxn: { $size: 0 } // Filter where NO transaction exists
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: "$totalAmount" },
-                    count: { $sum: 1 }
-                }
+        // helper function for Hybrid Data by Date Range
+        const getHybridData = async (query = {}) => {
+            // A. Transactions (Revenue + Customers)
+            const transactions = await Transaction.find({
+                business: businessId,
+                paymentStatus: 'completed',
+                isRefunded: false,
+                ...query
+            }).select('finalPrice customer customerPhone');
+
+            const revenueFromTxns = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
+            const txnCustomerIds = transactions.map(t => t.customer?.toString()).filter(id => id);
+            const walkInPhones = transactions.filter(t => !t.customer).map(t => t.customerPhone);
+
+            // B. Untracked Appointments (Ghost Revenue + Customers)
+            // Logic: Completed appointments that do NOT have a transaction
+            // Note: For revenue, we only want untracked. For customers, we want ALL appt customers to dedupe.
+
+            // 1. Get ALL completed appointments for customers check
+            const appointments = await Appointment.find({
+                business: businessId,
+                status: 'completed',
+                ...(query.transactionDate ? { appointmentDate: query.transactionDate } : {}) // Map transactionDate query to appointmentDate
+            }).select('totalAmount customer');
+
+            const appCustomerIds = appointments.map(a => a.customer?.toString()).filter(id => id);
+
+            // 2. Identify untracked appointments for Revenue addition
+            // We need to check if these appointments are linked to any transaction.
+            // Since we already fetched transactions, we can check if any transaction has 'appointment' field? 
+            // The transactions list above didn't select 'appointment'. Let's optimize.
+            // Actually, fetching all transactions for 'All Time' might be heavy.
+            // But this is Manager Dashboard, usually limited data volume compared to Admin.
+            // For safety, let's keep using Aggregation for Revenue to avoid loading all docs if possible, 
+            // BUT we need distinct customers. loading IDs is cheap.
+
+            // Let's stick to the previous robust Aggregation for Revenue, but fix the Customer Logic.
+            return {
+                txnCustomerIds,
+                walkInPhones,
+                appCustomerIds
+            };
+        };
+
+        // --- Execute Calculations ---
+
+        // A. REVENUE (Using efficient Aggregation)
+        const calculateRevenue = async (dateMatch = {}) => {
+            // 1. Transaction Revenue
+            const txnAgg = await Transaction.aggregate([
+                { $match: { business: businessId, paymentStatus: 'completed', isRefunded: false, ...dateMatch } },
+                { $group: { _id: null, total: { $sum: "$finalPrice" }, count: { $sum: 1 } } }
+            ]);
+            const txnRevenue = txnAgg[0]?.total || 0;
+            const txnCount = txnAgg[0]?.count || 0;
+
+            // 2. Untracked Appointment Revenue
+            // Need to match appointments in date range that have NO transactions
+            const apptQuery = { business: businessId, status: 'completed' };
+            if (dateMatch.transactionDate) {
+                apptQuery.appointmentDate = dateMatch.transactionDate;
             }
+
+            const apptAgg = await Appointment.aggregate([
+                { $match: apptQuery },
+                {
+                    $lookup: {
+                        from: "transactions",
+                        localField: "_id",
+                        foreignField: "appointment",
+                        as: "existingTxn"
+                    }
+                },
+                { $match: { existingTxn: { $size: 0 } } },
+                { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
+            ]);
+
+            const apptRevenue = apptAgg[0]?.total || 0;
+            const apptCount = apptAgg[0]?.count || 0;
+
+            return {
+                revenue: txnRevenue + apptRevenue,
+                txnCount: txnCount + apptCount // Hybrid transaction count
+            };
+        };
+
+        // B. CUSTOMERS (Using Distinct Queries - more efficient than loading all docs)
+        const countUniqueCustomers = async (dateMatch = {}) => {
+            const apptQuery = { business: businessId }; // Include pending? No, usually 'active' means visited. Let's stick to general interaction.
+            // Dashboard typically shows "Total Customers" = Database size or Active? 
+            // "Total Customers" typically means Registry size. 
+            // "Monthly Customers" means Active in that month.
+
+            if (dateMatch.transactionDate) {
+                apptQuery.appointmentDate = dateMatch.transactionDate;
+            }
+
+            // 1. Transaction Customers (Registered)
+            const txnCusts = await Transaction.distinct('customer', { business: businessId, ...dateMatch });
+            // 2. Transaction Walk-ins (Phones)
+            const walkIns = await Transaction.distinct('customerPhone', { business: businessId, customer: null, ...dateMatch });
+            // 3. Appointment Customers
+            const apptCusts = await Appointment.distinct('customer', apptQuery);
+
+            const unique = new Set([
+                ...txnCusts.filter(id => id).map(id => id.toString()),
+                ...apptCusts.filter(id => id).map(id => id.toString()),
+                ...walkIns.filter(phone => phone) // Also good practice to filter empty phones
+            ]);
+            return unique.size;
+        };
+
+        // Parallelize for Performance
+        const [
+            totalData,
+            todayData,
+            monthlyData,
+            totalUniqueCustomers, // Global Customer Count (Registry)
+            todayUniqueCustomers,
+            monthlyUniqueCustomers
+        ] = await Promise.all([
+            calculateRevenue({}),
+            calculateRevenue({ transactionDate: { $gte: startOfDay, $lte: endOfDay } }),
+            calculateRevenue({ transactionDate: { $gte: startOfMonth } }),
+            // For global 'Total Customers', we basically want everyone who ever visited OR is in Customer List?
+            // Usually dashboard "Total Customers" is just Customer.countDocuments({ business }) + WalkIns.
+            // Let's stick to "Active" set for consistency with logic, or rely on Registry?
+            // Previous code: online + walkin. 
+            // Let's use the Robust Unique Set for "All Time" Interaction.
+            countUniqueCustomers({}),
+            countUniqueCustomers({ transactionDate: { $gte: startOfDay, $lte: endOfDay } }),
+            countUniqueCustomers({ transactionDate: { $gte: startOfMonth } })
         ]);
-        const apptRevenue = missingApptStats[0]?.total || 0;
-        const apptCount = missingApptStats[0]?.count || 0;
-
-        const totalRevenue = txnRevenue + apptRevenue;
-        // Hybrid Total Customers (Visits/Sales)
-        const totalCustomers = txnCount + apptCount;
-
-        // Hybrid Total Transactions (Completed Sales/Appts)
-        const totalTransactions = txnCount + apptCount;
-
-        // 3. Today's Revenue (Hybrid)
-        const todayTxnStats = await Transaction.aggregate([
-            { $match: { business: businessId, transactionDate: { $gte: startOfDay, $lte: endOfDay }, paymentStatus: 'completed', isRefunded: false } },
-            { $group: { _id: null, total: { $sum: "$finalPrice" }, customers: { $sum: 1 } } }
-        ]);
-
-        const todayApptStats = await Appointment.aggregate([
-            { $match: { business: businessId, status: 'completed', appointmentDate: { $gte: startOfDay, $lte: endOfDay } } },
-            {
-                $lookup: {
-                    from: "transactions",
-                    localField: "_id",
-                    foreignField: "appointment",
-                    as: "existingTxn"
-                }
-            },
-            { $match: { existingTxn: { $size: 0 } } },
-            { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
-        ]);
-
-        const todayRevenue = (todayTxnStats[0]?.total || 0) + (todayApptStats[0]?.total || 0);
-        // Note: Customers metric is a bit tricky to combine exactly without overlapping, 
-        // but for now summing counts is a safe approximation for distinct interactions.
-        const todayCustomers = (todayTxnStats[0]?.customers || 0) + (todayApptStats[0]?.count || 0);
-
-        // 4. Monthly Revenue (Hybrid)
-        const monthlyTxnStats = await Transaction.aggregate([
-            { $match: { business: businessId, transactionDate: { $gte: startOfMonth }, paymentStatus: 'completed', isRefunded: false } },
-            { $group: { _id: null, total: { $sum: "$finalPrice" }, customers: { $sum: 1 } } }
-        ]);
-
-        const monthlyApptStats = await Appointment.aggregate([
-            { $match: { business: businessId, status: 'completed', appointmentDate: { $gte: startOfMonth } } },
-            {
-                $lookup: {
-                    from: "transactions",
-                    localField: "_id",
-                    foreignField: "appointment",
-                    as: "existingTxn"
-                }
-            },
-            { $match: { existingTxn: { $size: 0 } } },
-            { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
-        ]);
-
-        const monthlyRevenue = (monthlyTxnStats[0]?.total || 0) + (monthlyApptStats[0]?.total || 0);
-        const monthlyCustomers = (monthlyTxnStats[0]?.customers || 0) + (monthlyApptStats[0]?.count || 0);
 
         const stats = {
             totalStaff,
-            totalCustomers,
-            totalRevenue,
-            totalTransactions,
-            todayRevenue,
-            todayCustomers,
-            monthlyRevenue,
-            monthlyCustomers
+            totalCustomers: totalUniqueCustomers,
+            totalRevenue: totalData.revenue,
+            totalTransactions: totalData.txnCount,
+            check: "verified",
+            todayRevenue: todayData.revenue,
+            todayCustomers: todayUniqueCustomers,
+            monthlyRevenue: monthlyData.revenue,
+            monthlyCustomers: monthlyUniqueCustomers
         };
 
         // Cache for 5 minutes
@@ -860,6 +894,119 @@ const getManagerAppointmentStats = async (req, res, next) => {
     }
 };
 
+// ================== Update Transaction ==================
+const updateTransaction = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const managerId = req.user.id;
+        const updates = req.body;
+
+        // Get manager's business
+        const manager = await Manager.findById(managerId);
+        if (!manager) {
+            return res.status(404).json({ success: false, message: "Manager not found" });
+        }
+
+        // Find transaction first to verify ownership
+        const transaction = await Transaction.findOne({ _id: id, business: manager.business });
+        if (!transaction) {
+            console.log(`[UpdateTransaction] Transaction not found or unauthorized for ID: ${id}`);
+            return res.status(404).json({ success: false, message: "Transaction not found" });
+        }
+
+        console.log(`[UpdateTransaction] Processing update for TXN ${id}`);
+        console.log(`[UpdateTransaction] Payload:`, JSON.stringify(updates, null, 2));
+
+        // --- Logic to re-link Customer/Service if changed ---
+
+        // 1. Try to link Customer (if phone/email provided and changed)
+        if (updates.customerPhone || updates.customerEmail) {
+            const customerQuery = { business: manager.business };
+            if (updates.customerPhone) customerQuery.phone = updates.customerPhone;
+            else if (updates.customerEmail) customerQuery.email = updates.customerEmail;
+
+            const existingCustomer = await Customer.findOne(customerQuery);
+            if (existingCustomer) {
+                updates.customer = existingCustomer._id;
+                updates.isNewCustomer = false; // Linked
+            } else {
+                // If specific phone entered but no customer found, unlink previous customer if names mismatch? 
+                // Safer: If user explicitly updates phone, we try to match. If no match, maybe they are indeed new or unlinked.
+                // We allow 'customer' to be set to null if we want to unlink, but usually we just leave it or set it if found.
+            }
+        }
+
+        // 2. Try to link Service (if name provided)
+        if (updates.serviceName) {
+            const existingService = await Service.findOne({
+                business: manager.business,
+                name: { $regex: new RegExp(`^${updates.serviceName}$`, 'i') }
+            });
+            if (existingService) {
+                updates.service = existingService._id;
+            }
+        }
+
+        // 3. Recalculate Final Price if not provided but components are
+        // (If user edits basePrice but clears finalPrice, we recalc. If they send finalPrice, we use it)
+        if (updates.finalPrice === undefined && (updates.basePrice || updates.discount || updates.tax)) {
+            const base = parseFloat(updates.basePrice !== undefined ? updates.basePrice : transaction.basePrice);
+            const disc = parseFloat(updates.discount !== undefined ? updates.discount : transaction.discount);
+            const tax = parseFloat(updates.tax !== undefined ? updates.tax : transaction.tax);
+            updates.finalPrice = base - disc + tax;
+        }
+
+        // Perform Update
+        const updatedTransaction = await Transaction.findByIdAndUpdate(
+            id,
+            { ...updates, updatedAt: new Date() },
+            { new: true, runValidators: true }
+        ).populate('staff', 'name role');
+
+        // Invalidate caches
+        await deleteCache(`manager:${managerId}:dashboard`);
+        await deleteCache(`business:${manager.business}:transactions`);
+        // Also invalidate specific transaction cache if any (though we usually cache lists)
+
+        return res.json({
+            success: true,
+            message: "Transaction updated successfully",
+            data: updatedTransaction
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Single Transaction ==================
+const getTransaction = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const managerId = req.user.id;
+
+        // Get manager's business
+        const manager = await Manager.findById(managerId);
+        if (!manager) {
+            return res.status(404).json({ success: false, message: "Manager not found" });
+        }
+
+        // Find transaction with business ownership check
+        const transaction = await Transaction.findOne({ _id: id, business: manager.business })
+            .populate('staff', 'name role')
+            .populate('customer', 'firstName lastName email phone')
+            .populate('service', 'name type');
+
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: "Transaction not found" });
+        }
+
+        return res.json({ success: true, data: transaction });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getManagerStats,
     getManagerDashboard,
@@ -868,7 +1015,9 @@ module.exports = {
     updateStaff,
     deleteStaff,
     addTransaction,
+    updateTransaction,
     getTransactions,
+    getTransaction, // Added
     updateBusiness,
     getBusinessInfo,
     getAlerts,

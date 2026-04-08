@@ -18,9 +18,9 @@ class AdminService {
   }
 
   // Get admin stats
-  async getStats() {
+  async getStats(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.admin.stats)
+      const response = await apiClient.get(endpoints.admin.stats, { params })
       return { success: true, data: response.data }
     } catch (error) {
       return {
@@ -1039,6 +1039,21 @@ class AdminService {
     }
   }
 
+  // Download Invoice
+  async downloadInvoice(id) {
+    try {
+      const response = await apiClient.get(endpoints.appointments.getById(id) + '/invoice', {
+        responseType: 'blob'
+      })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to download invoice'
+      }
+    }
+  }
+
   // Confirm appointment
   async confirmAppointment(id) {
     try {
@@ -1509,6 +1524,141 @@ class AdminService {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to fetch trends and predictions'
+      }
+    }
+  }
+
+  // ============ INQUIRY MANAGEMENT ============
+  async getInquiries(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.inquiries.list, { params })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch inquiries'
+      }
+    }
+  }
+
+  async markInquiryAsReceived(id) {
+    try {
+      const response = await apiClient.patch(endpoints.inquiries.receive(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update inquiry status'
+      }
+    }
+  }
+
+  async deleteInquiry(id) {
+    try {
+      const response = await apiClient.delete(endpoints.inquiries.delete(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to delete inquiry'
+      }
+    }
+  }
+
+  async remarkInquiry(id, remarkData) {
+    try {
+      const response = await apiClient.patch(endpoints.inquiries.remark(id), remarkData)
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to remark inquiry'
+      }
+    }
+  }
+
+  async exportInquiries(params = {}) {
+    try {
+      const response = await apiClient.get(endpoints.inquiries.export, {
+        params,
+        responseType: params.format === 'csv' ? 'blob' : 'arraybuffer'
+      })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to export inquiries'
+      }
+    }
+  }
+
+  // ================== WHATSAPP INTEGRATION ==================
+
+  // Get WhatsApp QR code
+  async getWhatsAppQR() {
+    try {
+      const response = await apiClient.get('/admin/whatsapp/qr')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get QR code'
+      }
+    }
+  }
+
+  // Get WhatsApp connection status
+  async getWhatsAppStatus() {
+    try {
+      const response = await apiClient.get('/admin/whatsapp/status')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get status'
+      }
+    }
+  }
+
+  // Logout from WhatsApp
+  async logoutWhatsApp() {
+    try {
+      const response = await apiClient.post('/admin/whatsapp/logout')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to logout'
+      }
+    }
+  }
+
+  // Force Reset WhatsApp (Connect New)
+  async resetWhatsApp() {
+    try {
+      const response = await apiClient.post('/admin/whatsapp/reset')
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reset'
+      }
+    }
+  }
+
+  // ================== WHATSAPP LEADS ==================
+
+  // Get pending leads count for admin sidebar badge
+  async getPendingLeadsCount() {
+    try {
+      const response = await apiClient.get('/google-sheets/pending-count/admin')
+      return { success: true, count: response.data.count || 0 }
+    } catch (error) {
+      console.error('Failed to fetch pending leads count:', error)
+      return {
+        success: false,
+        count: 0,
+        error: error.response?.data?.message || 'Failed to fetch pending leads count'
       }
     }
   }

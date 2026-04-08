@@ -1,5 +1,6 @@
 // businessController.js - Business-specific operations for managers and admins
 const Business = require("../models/Business");
+const Review = require("../models/Review");
 const mongoose = require("mongoose");
 
 // Fetch services for all businesses
@@ -18,10 +19,34 @@ const DailyBusiness = require("../models/DailyBusiness");
 const { setCache, getCache } = require("../utils/cache");
 const { generateBusinessAnalytics } = require("../utils/businessUtils");
 const indiaLocations = require("../data/indiaLocations");
+const { encryptResponse } = require("../utils/encryptionUtils");
+const googlePlaces = require("../utils/googlePlaces");
+
+// Pre-compute known locations for fast lookup
+const knownLocations = new Set();
+// Initialize knownLocations
+(function initKnownLocations() {
+    if (Array.isArray(indiaLocations)) {
+        indiaLocations.forEach(loc => {
+            if (loc.state) knownLocations.add(loc.state.toLowerCase());
+            if (loc.cities && Array.isArray(loc.cities)) {
+                loc.cities.forEach(city => knownLocations.add(city.toLowerCase()));
+            }
+        });
+    }
+})();
+
+const isKnownLocation = (text) => {
+    if (!text) return false;
+    const clean = text.trim().toLowerCase();
+    if (knownLocations.has(clean)) return true;
+    const parts = clean.split(',').map(p => p.trim());
+    return parts.some(p => knownLocations.has(p));
+};
 
 
 // ===========================================
-// ============ PUBLIC CONTROLLERS ===========
+//              PUBLIC CONTROLLERS  
 // ===========================================
 
 // ================== Get All Public Businesses (Public) ==================
@@ -53,8 +78,8 @@ const getPublicBusinesses = async (req, res, next) => {
         }
 
         const cacheKey = useCursor
-            ? `public:businesses:cursor:${cursor || 'start'}:${limitNumber}:${search || ''}:${type || ''}`
-            : `public:businesses:page:${pageNumber}:${limitNumber}:${search || ''}:${type || ''}`;
+            ? `public:businesses:v2:cursor:${cursor || 'start'}:${limitNumber}:${search || ''}:${type || ''}`
+            : `public:businesses:v2:page:${pageNumber}:${limitNumber}:${search || ''}:${type || ''}`;
 
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
@@ -92,7 +117,7 @@ const getPublicBusinesses = async (req, res, next) => {
         const skip = useCursor ? 0 : (pageNumber - 1) * limitNumber;
 
         const businesses = await Business.find(query)
-            .select('name type branch address city state country phone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category tags createdAt')
+            .select('name type branch address city state country phone email website description settings businessLink images google360ImageUrl videos socialMedia location googleMapsUrl ratings features amenities category tags createdAt seo')
             .sort({ createdAt: -1, _id: -1 })
             .skip(skip)
             .limit(limitNumber)
@@ -161,6 +186,7 @@ const getPublicBusinesses = async (req, res, next) => {
                 allowOnlineBooking: business.settings?.appointmentSettings?.allowOnlineBooking,
                 slotDuration: business.settings?.appointmentSettings?.slotDuration
             },
+            seo: business.seo,
             createdAt: business.createdAt
         }));
 
@@ -178,8 +204,7 @@ const getPublicBusinesses = async (req, res, next) => {
             : null;
 
         const response = {
-            success: true,
-            data: formattedBusinesses,
+            businesses: formattedBusinesses,
             pagination: useCursor
                 ? null
                 : {
@@ -197,9 +222,19 @@ const getPublicBusinesses = async (req, res, next) => {
             }
         };
 
-        await setCache(cacheKey, response, 300);
+        // Simple obfuscation/encryption function
+        // Uses shared utility
 
-        return res.json(response);
+        const secureResponse = {
+            success: true,
+            message: "fetched successfully",
+            payload: encryptResponse(response)
+        };
+
+        // Cache the secure response
+        await setCache(cacheKey, secureResponse, 300);
+
+        return res.json(secureResponse);
     } catch (err) {
         next(err);
     }
@@ -211,7 +246,7 @@ const getBusinessInfoByLink = async (req, res, next) => {
         const { businessLink } = req.params;
 
         const business = await Business.findOne({ businessLink, isActive: true })
-            .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods')
+            .select('name type branch address city state country zipCode phone alternatePhone email website description settings businessLink images google360ImageUrl videos socialMedia location googleMapsUrl ratings features amenities category subCategory tags specialties capacity paymentMethods seo')
             .lean();
 
         if (!business) {
@@ -262,7 +297,8 @@ const getBusinessInfoByLink = async (req, res, next) => {
             workingHours: business.settings?.workingHours,
             appointmentSettings: business.settings?.appointmentSettings,
             currency: business.settings?.currency,
-            timezone: business.settings?.timezone
+            timezone: business.settings?.timezone,
+            seo: business.seo
         };
 
         return res.json({ success: true, data: businessInfo });
@@ -351,8 +387,8 @@ const getBusinessesNearby = async (req, res, next) => {
 
         // ================== Cache Check ==================
         const cacheKey = useCursor
-            ? `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:cursor:${hasCursorDistance ? parsedCursorDistance : 'none'}:${cursorObjectId || 'none'}:${limitNumber}`
-            : `nearby:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:page:${pageNumber}:${limitNumber}`;
+            ? `nearby:v2:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:cursor:${hasCursorDistance ? parsedCursorDistance : 'none'}:${cursorObjectId || 'none'}:${limitNumber}`
+            : `nearby:v2:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${maxDistanceMeters}:${type || 'all'}:page:${pageNumber}:${limitNumber}`;
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({
@@ -407,6 +443,8 @@ const getBusinessesNearby = async (req, res, next) => {
                     location: 1,
                     googleMapsUrl: 1,
                     images: 1,
+                    google360ImageUrl: 1,
+                    videos: 1,
                     socialMedia: 1,
                     ratings: 1,
                     category: 1,
@@ -415,7 +453,8 @@ const getBusinessesNearby = async (req, res, next) => {
                     amenities: 1,
                     'settings.workingHours': 1,
                     'settings.appointmentSettings': 1,
-                    distance: 1
+                    distance: 1,
+                    seo: 1
                 }
             },
             {
@@ -543,7 +582,8 @@ const getBusinessesNearby = async (req, res, next) => {
                 },
                 distance: Math.round(distance),
                 distanceKm: parseFloat((distance / 1000).toFixed(2)),
-                distanceMeters: distance
+                distanceMeters: distance,
+                seo: business.seo
             };
         });
 
@@ -618,185 +658,250 @@ const getBusinessesNearby = async (req, res, next) => {
     }
 };
 
-// ================== Search Businesses (Public - Advanced) ==================
-// TODO: Required Indexes:
-// 1. db.businesses.createIndex({ location: "2dsphere" })
-// 2. db.businesses.createIndex({ name: "text", category: "text", subCategory: "text", tags: "text", description: "text" })
-
-// TODO: Geocoding Stub
-// function geocodeAddress(address) {
-//     // Integration with Google Maps Geocoding API or similar would go here
-//     // return { lat, lng };
-//     console.log("Geocoding not implemented yet");
-//     return null;
-// }
-
-/**
- * Advanced Location-Based Search API
- * 
- * Supports:
- * - "best hotel near me" (via q + lat/lng)
- * - "spa in vashi" (via q - currently requires lat/lng of "vashi" to be passed from frontend Geocoding)
- * - Category filtering
- * - Sorting
- * 
- * Test Outlines:
- * 1. Missing Coords -> 400 Bad Request
- *    curl "http://localhost:5000/api/business/public/search?q=hotel"
- * 2. Valid Search -> Success with Results
- *    curl "http://localhost:5000/api/business/public/search?lat=19.0760&lng=72.8777&q=spa&radius=5000"
- */
 const searchBusinesses = async (req, res, next) => {
     try {
         const {
             lat,
             lng,
             q,
+            location,
             category,
             minRating,
-            radius = 5000,
+            minPrice,
+            maxPrice,
+            service,
+            offers,
+            radius = 20000,
             sort,
             page = 1,
             limit = 20
         } = req.query;
 
         // 1. Validation & Setup
-        // lat/lng are optional now to support "All Locations" default view.
-        // const hasLocation = lat && lng;
         let hasLocation = false;
         let latitude, longitude;
+        let hasLocationFilter = false; // Track if we're filtering by location text
 
         if (lat && lng) {
             latitude = parseFloat(lat);
             longitude = parseFloat(lng);
-            if (!isNaN(latitude) && !isNaN(longitude)) {
-                hasLocation = true;
+            if (!isNaN(latitude) && !isNaN(longitude)) hasLocation = true;
+        }
+
+        // Handle "Near Me" intent detection
+        let isNearMeIntent = false;
+        let searchQuery = q;
+
+        // Check for "near me" or "nearby" in the query string
+        if (searchQuery && /\b(near[\s-]?me|nearby)\b/i.test(searchQuery)) {
+            isNearMeIntent = true;
+            // Remove "near me" from the search query to avoid text matching issues
+            searchQuery = searchQuery.replace(/\b(near[\s-]?me|nearby)\b/gi, "").trim();
+            // If the query was ONLY "near me", set it to null so we don't do text search
+            if (!searchQuery) searchQuery = null;
+        }
+
+        const maxDistance = parseInt(radius) || 20000; // Default to 20km for wider reach
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(Math.max(parseInt(limit), 1), 5000);
+
+        // Check for location-only searches (no lat/lng but has location parameter)
+        hasLocationFilter = !!location && !hasLocation;
+
+        // SMART INTENT DETECTION (Ambiguity Resolution)
+        // If we have a location string but no explicit query, and no coords,
+        // we check if the location string is actually a known city/state.
+        // If not, we treat it as a general keyword search (e.g. "Massage", "Spa").
+        if (hasLocationFilter && !searchQuery && !category && !minRating && !isNearMeIntent) {
+            const isLoc = isKnownLocation(location);
+            if (!isLoc) {
+                // Switch to keyword search
+                searchQuery = location;
+                hasLocationFilter = false;
             }
         }
 
-        const maxDistance = parseInt(radius) || 5000;
-        const pageNum = Math.max(1, parseInt(page));
-        const limitNum = Math.min(Math.max(parseInt(limit), 1), 50);
+        // 2. Build Cache Key for location-only searches
+        let cacheKey = null;
+        // Skip cache if "near me" intent is present (as it depends on specific user context)
+        if (hasLocationFilter && !searchQuery && !category && !minRating && !isNearMeIntent) {
+            // Simple location search - cache it
+            cacheKey = `search:location:${location}:${sort}:${page}:${limit}`;
+            const cachedData = await getCache(cacheKey);
+            if (cachedData) {
+                return res.json({
+                    success: true,
+                    message: "Fetched successfully",
+                    source: "cache",
+                    payload: encryptResponse(cachedData)
+                });
+            }
+        }
 
-        // 2. Build Pipeline
+        // 3. Build Aggregation Pipeline
         const pipeline = [];
 
-        // Base match criteria (always required)
+        // Base match criteria
         const baseMatch = {
             isActive: true,
             'settings.appointmentSettings.allowOnlineBooking': true
         };
 
-        // Handle q (Text Search vs Regex)
-        // If Geo Search ($geoNear) is used, we CANNOT use $text in a subsequent stage.
-        // So we must use Regex for 'q' if doing Geo Search.
-        // If Global Search (No Geo), we can use $text as part of the first stage.
-
         if (hasLocation) {
-            // Stage 1: GeoNear
             pipeline.push({
                 $geoNear: {
                     near: { type: "Point", coordinates: [longitude, latitude] },
                     distanceField: "distance",
                     maxDistance: maxDistance,
                     spherical: true,
-                    query: baseMatch // $text cannot be here
+                    query: baseMatch
+                }
+            });
+        } else {
+            pipeline.push({ $match: baseMatch });
+        }
+
+        // Lookup services
+        pipeline.push({
+            $lookup: {
+                from: "services",
+                localField: "_id",
+                foreignField: "business",
+                as: "serviceDetails"
+            }
+        });
+
+        // Build dynamic match for search query and filters
+        const matchStage = {};
+        let matchConditions = [];
+
+        // Text-based search (q parameter) - Using cleaned searchQuery
+        if (searchQuery) {
+            const terms = searchQuery.trim().split(/\s+/);
+            matchConditions.push({
+                $and: terms.map(term => {
+                    const regex = new RegExp(term, "i");
+                    return {
+                        $or: [
+                            { name: regex },
+                            { category: regex },
+                            { tags: regex },
+                            { description: regex },
+                            { address: regex },
+                            { city: regex },
+                            { state: regex },
+                            { zipCode: regex },
+                            { "serviceDetails.name": regex }
+                        ]
+                    };
+                })
+            });
+        }
+
+        // Location text filter (independent of geo coords)
+        // ONLY apply this if we didn't search by Lat/Lng.
+        // If we have Lat/Lng, we trust the radius.
+        if (hasLocationFilter) {
+            // Flexible Location Matching
+            // Normalize location string
+            const normalizedLocation = location.trim().toLowerCase();
+
+            // Split by comma for compound locations (e.g., "Vashi, Navi Mumbai")
+            const locationParts = location.split(',')
+                .map(p => p.trim())
+                .filter(p => p.length > 0); // Include parts of any length
+
+            // Create regex patterns with higher specificity for exact matches
+            const regexes = [new RegExp(`^${normalizedLocation}$`, "i")]; // Exact match
+            regexes.push(new RegExp(normalizedLocation, "i")); // Partial match
+
+            // Add individual parts as separate search terms
+            locationParts.forEach(part => {
+                const trimmedPart = part.trim();
+                if (trimmedPart.length > 0 && trimmedPart.toLowerCase() !== normalizedLocation) {
+                    regexes.push(new RegExp(`^${trimmedPart}$`, "i")); // Exact match for parts
+                    regexes.push(new RegExp(trimmedPart, "i")); // Partial match for parts
                 }
             });
 
-            // Stage 2: Match (Smart Regex for q: supports "spa london" etc.)
-            const matchStage = {};
-            if (q) {
-                // Split query into terms to allow "Spa London" (Category + City)
-                const terms = q.trim().split(/\s+/);
-                const termConditions = terms.map(term => {
-                    const regex = new RegExp(term, 'i');
-                    return {
-                        $or: [
-                            { name: regex },
-                            { category: regex },
-                            { "tags": regex },
-                            { description: regex },
-                            { address: regex },
-                            { city: regex },
-                            { state: regex },
-                            { zipCode: regex }
-                        ]
-                    };
-                });
+            // Build OR conditions for each location field
+            // Priority: city > state > address > branch
+            const locationOrConditions = [];
 
-                if (termConditions.length > 0) {
-                    matchStage.$and = termConditions;
-                }
-            }
+            // Add exact match conditions first (highest priority)
+            [new RegExp(`^${normalizedLocation}$`, "i")].forEach(regex => {
+                locationOrConditions.push({ city: regex });
+                locationOrConditions.push({ state: regex });
+            });
 
-            // Add Category filter
-            if (category) {
-                matchStage.type = { $regex: category, $options: 'i' };
-            }
+            // Add partial match conditions
+            regexes.forEach(regex => {
+                locationOrConditions.push({ city: regex });
+                locationOrConditions.push({ state: regex });
+                locationOrConditions.push({ address: regex });
+                locationOrConditions.push({ branch: regex });
+            });
 
-            // Add Min Rating
-            if (minRating) {
-                matchStage['ratings.average'] = { $gte: parseFloat(minRating) };
-            }
-
-            if (Object.keys(matchStage).length > 0) {
-                pipeline.push({ $match: matchStage });
-            }
-
-        } else {
-            // Global Search (No Location)
-            // We can use $text here, but it MUST be in the first stage combined with basic filters.
-
-            if (q) {
-                // Smart Regex Search Implementation
-                const terms = q.trim().split(/\s+/);
-                const termConditions = terms.map(term => {
-                    const regex = new RegExp(term, 'i');
-                    return {
-                        $or: [
-                            { name: regex },
-                            { category: regex },
-                            { "tags": regex },
-                            { description: regex },
-                            { address: regex },
-                            { city: regex },
-                            { state: regex },
-                            { zipCode: regex }
-                        ]
-                    };
-                });
-
-                if (termConditions.length > 0) {
-                    baseMatch.$and = termConditions;
-                }
-            }
-
-            pipeline.push({ $match: baseMatch });
-
-            // Subsequent Match Stage for other filters (Category, Rating)
-            // Note: $text results are not sorted by score unless we project metadata.
-
-            const secondaryMatch = {};
-            if (category) {
-                secondaryMatch.type = { $regex: category, $options: 'i' };
-            }
-            if (minRating) {
-                secondaryMatch['ratings.average'] = { $gte: parseFloat(minRating) };
-            }
-
-            if (Object.keys(secondaryMatch).length > 0) {
-                pipeline.push({ $match: secondaryMatch });
-            }
+            matchConditions.push({ $or: locationOrConditions });
         }
 
-        // Stage 3: Project (Format & Snippet)
+        // Category filter
+        if (category) {
+            matchConditions.push({ type: { $regex: category, $options: "i" } });
+        }
+
+        // Rating filter
+        if (minRating) {
+            matchConditions.push({ 'ratings.average': { $gte: parseFloat(minRating) } });
+        }
+
+        // Service filter
+        if (service) {
+            matchConditions.push({ 'serviceDetails.name': { $regex: service, $options: 'i' } });
+        }
+
+        // Offers filter
+        if (offers) {
+            matchConditions.push({ 'offers': { $exists: true, $ne: [] } });
+        }
+
+        // Combine all match conditions
+        if (matchConditions.length > 0) {
+            if (matchConditions.length === 1) {
+                Object.assign(matchStage, matchConditions[0]);
+            } else {
+                matchStage.$and = matchConditions;
+            }
+            // console.log("Search Match Stage:", JSON.stringify(matchStage, null, 2)); // Debug log
+            pipeline.push({ $match: matchStage });
+        }
+
+        // Price filtering (after lookup so serviceDetails exists)
+        if (minPrice || maxPrice) {
+            const priceCondition = {};
+            if (minPrice) priceCondition.$gte = Number(minPrice);
+            if (maxPrice) priceCondition.$lte = Number(maxPrice);
+
+            pipeline.push({
+                $match: {
+                    serviceDetails: {
+                        $elemMatch: {
+                            price: priceCondition
+                        }
+                    }
+                }
+            });
+        }
+
+        // Projection stage
         pipeline.push({
             $project: {
                 name: 1,
                 type: 1,
                 branch: 1,
                 address: 1,
+                city: 1,
+                state: 1,
                 location: 1,
                 images: 1,
                 image: { $ifNull: ["$images.thumbnail", { $ifNull: ["$images.logo", { $ifNull: ["$images.banner", null] }] }] },
@@ -808,81 +913,107 @@ const searchBusinesses = async (req, res, next) => {
                 socialMedia: 1,
                 businessLink: 1,
                 distance: { $ifNull: ["$distance", null] },
-                // Create a snippet
-                snippet: {
-                    $concat: [
-                        { $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] },
-                        "..."
-                    ]
-                }
+                snippet: { $concat: [{ $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] }, "..."] },
+                serviceDetails: 1,
+                offers: 1,
+                createdAt: 1
             }
         });
 
-        // Stage 4: Sort
-        if (sort === 'rating') {
-            pipeline.push({ $sort: { "ratings.average": -1 } });
-        } else if (!hasLocation && !q) {
-            // Default sort for non-geo, non-text search: Newest first
-            pipeline.push({ $sort: { createdAt: -1 } });
+        // Scoring for Exact/Partial Match (for searchQuery parameter)
+        if (searchQuery) {
+            const cleanQ = searchQuery.trim().toLowerCase();
+            pipeline.push({
+                $addFields: {
+                    exactMatchScore: {
+                        $cond: {
+                            if: { $eq: [{ $toLower: "$name" }, cleanQ] },
+                            then: 100, // Exact match gets highest priority
+                            else: {
+                                $cond: {
+                                    if: { $eq: [{ $indexOfCP: [{ $toLower: "$name" }, cleanQ] }, 0] },
+                                    then: 50, // Starts with query gets medium priority
+                                    else: 0
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            pipeline.push({ $addFields: { exactMatchScore: 0 } });
         }
-        // If geo search, default sort is by distance (handled by $geoNear)
-        // If text search, default is relevance (unless sorting overridden)
-        // If sorting by relevance (text score), we would need to project { score: { $meta: "textScore" } } earlier.
-        // For now, supporting requested sort params.
+ 
+        // Check for Random Distribution (Fair Lead Strategy)
+        // Applied when: Default sort, No Geo-Location (distance matters less), No Near Me intent, AND No specific Text Query (relevance matters!)
+        const useRandomDistribution = (!sort || sort === 'recommended') && !hasLocation && !isNearMeIntent && !searchQuery;
 
-        // Stage 5: Pagination Facet
-        pipeline.push({
-            $facet: {
-                results: [
-                    { $skip: (pageNum - 1) * limitNum },
-                    { $limit: limitNum }
-                ],
-                totalCount: [
-                    { $count: "count" }
-                ]
+        if (sort === 'rating') {
+            pipeline.push({ $sort: { exactMatchScore: -1, 'ratings.average': -1, 'ratings.totalReviews': -1 } });
+        } else if (sort === 'price') {
+            pipeline.push({ $sort: { exactMatchScore: -1, 'serviceDetails.price': 1 } });
+        } else if (sort === 'distance' && hasLocation) {
+            pipeline.push({ $sort: { exactMatchScore: -1, distance: 1 } });
+        } else {
+            // Default / Recommended sorting
+            if (isNearMeIntent && hasLocation) {
+                // "Near Me" intent: Prioritize DISTANCE above all else
+                pipeline.push({ $sort: { distance: 1, exactMatchScore: -1, 'ratings.average': -1 } });
+            } else if (hasLocation) {
+                // Geo-based: prioritize exact match, then distance, then rating
+                pipeline.push({ $sort: { exactMatchScore: -1, distance: 1, 'ratings.average': -1 } });
+            } else if (hasLocationFilter) {
+                // Location text filter: prioritize rating, then recency
+                pipeline.push({ $sort: { 'ratings.average': -1, 'ratings.totalReviews': -1, createdAt: -1 } });
+            } else if (!useRandomDistribution) {
+                // General search fallback (if random not eligible for some reason): prioritize exact match, then rating
+                pipeline.push({ $sort: { exactMatchScore: -1, 'ratings.average': -1, createdAt: -1 } });
             }
-        });
+            // If useRandomDistribution is true, we SKIP sorting here to let $sample handle it
+        }
 
-        // 3. Execute
-        const result = await Business.aggregate(pipeline);
-
-        const businesses = result[0].results;
-        const totalResults = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
-        const businessIds = businesses.map(b => b._id);
-        const servicesMap = {};
-
-        if (businessIds.length > 0) {
-            const services = await Service.find({
-                business: { $in: businessIds },
-                isActive: true
-            })
-                .select('name business')
-                .lean();
-
-            services.forEach(service => {
-                if (!servicesMap[service.business]) {
-                    servicesMap[service.business] = [];
+        // Pagination & Result Shaping
+        if (useRandomDistribution) {
+            // Random Mode: Use $sample to pick random businesses from the matched set
+            // This ensures fair visibility ("Equal Leads") for all matching businesses
+            pipeline.push({
+                $facet: {
+                    results: [
+                        { $sample: { size: limitNum } }
+                    ],
+                    totalCount: [{ $count: "count" }]
                 }
-                // Limit to 5 services per business for listing
-                if (servicesMap[service.business].length < 5) {
-                    servicesMap[service.business].push({
-                        name: service.name
-                    });
+            });
+        } else {
+            // Standard Mode: Use deterministic Skip/Limit
+            pipeline.push({
+                $facet: {
+                    results: [
+                        { $skip: (pageNum - 1) * limitNum },
+                        { $limit: limitNum }
+                    ],
+                    totalCount: [{ $count: "count" }]
                 }
             });
         }
 
-        // 4. Format Output
+        // 4. Execute Query
+        const result = await Business.aggregate(pipeline);
+        const businesses = result[0]?.results || [];
+        const totalResults = result[0]?.totalCount[0]?.count || 0;
+
+        // Format output
         const formattedResults = businesses.map(b => {
-            // Calculate human readable distance
             let distanceText = "";
             if (b.distance !== null && b.distance !== undefined) {
-                if (b.distance < 1000) {
-                    distanceText = `${Math.round(b.distance)} m`;
-                } else {
-                    distanceText = `${(b.distance / 1000).toFixed(1)} km`;
-                }
+                distanceText = `${(b.distance / 1000).toFixed(1)} km`;
             }
+
+            // Format services from lookup result (max 5)
+            const formattedServices = (b.serviceDetails || [])
+                .filter(s => s.isActive !== false) // Ensure active
+                .slice(0, 5)
+                .map(s => ({ name: s.name, price: s.price }));
 
             return {
                 id: b._id,
@@ -890,35 +1021,53 @@ const searchBusinesses = async (req, res, next) => {
                 type: b.type,
                 branch: b.branch,
                 address: b.address,
+                city: b.city,
+                state: b.state,
                 category: b.category,
                 tags: b.tags,
                 ratings: b.ratings,
                 image: b.image || b.images?.thumbnail || b.images?.logo,
                 gallery: b.images?.gallery || [],
                 distance: b.distance,
-                distanceText: distanceText,
+                distanceText,
                 snippet: b.snippet,
                 location: b.location,
                 phone: b.phone,
                 socialMedia: b.socialMedia,
-                services: servicesMap[b._id] || [],
-                businessLink: b.businessLink
+                services: formattedServices,
+                offers: b.offers || [],
+                businessLink: b.businessLink,
+                seo: b.seo
             };
         });
 
-        return res.json({
-            success: true,
+        // Encrypt & respond
+        const responseData = {
             page: pageNum,
             limit: limitNum,
-            totalResults: totalResults,
-            results: formattedResults
-        });
+            totalResults,
+            results: formattedResults,
+            searchType: isNearMeIntent && hasLocation ? 'near-me' : (hasLocation ? 'geo' : (hasLocationFilter ? 'location' : 'general'))
+        };
+
+        const secureResponse = {
+            success: true,
+            message: "Fetched successfully",
+            payload: encryptResponse(responseData)
+        };
+
+        // Cache location-only searches for 5 minutes
+        if (cacheKey) {
+            await setCache(cacheKey, responseData, 300);
+        }
+
+        return res.json(secureResponse);
 
     } catch (err) {
+        console.error('Error in searchBusinesses:', err);
         next(err);
     }
 };
-
 
 const getIndiaLocations = async (req, res, next) => {
     try {
@@ -962,15 +1111,21 @@ const getIndiaLocations = async (req, res, next) => {
             }))
         );
 
+        // Encryption logic
+        // Uses shared utility
+
+        const responseData = {
+            totalStates: indiaLocations.length,
+            matchedStates: states.length,
+            totalCities: flattenedLocations.length,
+            states,
+            locations: flattenedLocations
+        };
+
         return res.json({
             success: true,
-            data: {
-                totalStates: indiaLocations.length,
-                matchedStates: states.length,
-                totalCities: flattenedLocations.length,
-                states,
-                locations: flattenedLocations
-            }
+            message: "Fetched successfully",
+            payload: encryptResponse(responseData)
         });
     } catch (error) {
         next(error);
@@ -978,7 +1133,7 @@ const getIndiaLocations = async (req, res, next) => {
 };
 
 // ===========================================
-// ============ ADMIN & MANAGER ==============
+//              ADMIN & MANAGER  
 // ===========================================
 
 // ================== Get Business by ID ==================
@@ -1371,16 +1526,43 @@ const updateBusiness = async (req, res, next) => {
             }
         }
 
-        // Update business - pre-save hook will extract lat/lng from googleMapsUrl if changed
-        const updatedBusiness = await Business.findByIdAndUpdate(
-            businessId,
-            { ...updates, updatedAt: new Date() },
-            { new: true, runValidators: true }
-        ).populate('managers', 'name username email phone isActive');
+        // Helper function for deep merging objects
+        const deepMerge = (target, source) => {
+            const output = { ...(target.toObject?.() || target) };
 
-        if (!updatedBusiness) {
-            return res.status(404).json({ success: false, message: "Business not found" });
-        }
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    // Recursively merge nested objects
+                    if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                        output[key] = deepMerge(target[key], source[key]);
+                    } else {
+                        output[key] = source[key];
+                    }
+                } else {
+                    // Direct assignment for primitives and arrays
+                    output[key] = source[key];
+                }
+            }
+
+            return output;
+        };
+
+        // Apply updates to the business object with deep merge
+        Object.keys(updates).forEach(key => {
+            if (updates[key] && typeof updates[key] === 'object' && !Array.isArray(updates[key]) && business[key]) {
+                // For nested objects (like settings, seo, etc.), use deep merge
+                business[key] = deepMerge(business[key], updates[key]);
+            } else {
+                // For primitive values and arrays, direct assignment
+                business[key] = updates[key];
+            }
+        });
+
+        // Save to trigger pre-save hooks (for Google Maps URL lat/lng extraction and businessLink generation)
+        const updatedBusiness = await business.save();
+
+        // Populate the managers field after save
+        await updatedBusiness.populate('managers', 'name username email phone isActive');
 
         // Invalidate relevant caches
         if (userRole === 'admin') {
@@ -1432,6 +1614,700 @@ const updateBusiness = async (req, res, next) => {
     }
 };
 
+// ================== Add Business Review (Public) ==================
+const addBusinessReview = async (req, res, next) => {
+    try {
+        const { id } = req.params; // Business ID
+        const { name, email, rating, review } = req.body;
+
+        // validation
+        if (!name || !email || !rating || !review) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide all required fields: name, email, rating, review"
+            });
+        }
+
+        if (rating < 1 || rating > 5) {
+            return res.status(400).json({
+                success: false,
+                message: "Rating must be between 1 and 5"
+            });
+        }
+
+        const business = await Business.findById(id);
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+
+        // Create the review
+        const newReview = await Review.create({
+            business: id,
+            guestName: name,
+            guestEmail: email,
+            rating: Number(rating),
+            review: review,
+            isPublished: true, // Auto-publish for now
+            status: 'approved',
+            source: 'website'
+        });
+
+        // Update Business Ratings
+        const ratingField = ['oneStar', 'twoStars', 'threeStars', 'fourStars', 'fiveStars'][Math.round(rating) - 1];
+
+        // Use atomic update for counts
+        const incUpdate = {
+            'ratings.totalReviews': 1
+        };
+        if (ratingField) {
+            incUpdate[`ratings.${ratingField}`] = 1;
+        }
+
+        await Business.findByIdAndUpdate(id, { $inc: incUpdate });
+
+        // Recalculate average
+        const updatedBusiness = await Business.findById(id).select('ratings');
+        const r = updatedBusiness.ratings;
+        const totalStars = (r.fiveStars * 5) + (r.fourStars * 4) + (r.threeStars * 3) + (r.twoStars * 2) + (r.oneStar * 1);
+        const newAverage = r.totalReviews > 0 ? totalStars / r.totalReviews : 0;
+
+        await Business.findByIdAndUpdate(id, { 'ratings.average': newAverage });
+
+        return res.status(201).json({
+            success: true,
+            message: "Review submitted successfully",
+            data: newReview
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Get Business Reviews (Public) ==================
+const getBusinessReviews = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20; // Default limit 20
+        const skip = (page - 1) * limit;
+
+        // Fetch reviews with pagination
+        const reviews = await Review.find({
+            business: id,
+            isPublished: true
+        })
+            .select('guestName guestEmail rating review createdAt helpfulCount notHelpfulCount') // Added helpful counts
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        const total = await Review.countDocuments({ business: id, isPublished: true });
+
+        // Secure response by masking email
+        const securedData = {
+            reviews: reviews.map(review => ({
+                _id: review._id,
+                guestName: review.guestName,
+                // guestEmail removed for security
+                rating: review.rating,
+                review: review.review,
+                createdAt: review.createdAt,
+                helpfulPercentage: (review.helpfulCount + review.notHelpfulCount) > 0
+                    ? Math.round((review.helpfulCount / (review.helpfulCount + review.notHelpfulCount)) * 100)
+                    : 0
+            })),
+            pagination: {
+                total,
+                page,
+                limit,
+                pages: Math.ceil(total / limit),
+                hasMore: (page * limit) < total
+            }
+        };
+
+        // Simple obfuscation/encryption function for the response
+        // This hides the data in the network tab as requested
+        // Uses shared utility
+
+        res.json({
+            success: true,
+            message: "fetched successfully",
+            payload: encryptResponse(securedData)
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Mark Review Helpful (Public) ==================
+const markReviewHelpful = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        const review = await Review.findById(id);
+
+        if (!review) {
+            return res.status(404).json({
+                success: false,
+                message: "Review not found"
+            });
+        }
+
+        await review.markHelpful();
+
+        return res.json({
+            success: true,
+            message: "Review marked as helpful",
+            data: {
+                helpfulCount: review.helpfulCount,
+                helpfulPercentage: review.helpfulPercentage
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Business Autocomplete (Database Search) ==================
+const getBusinessAutocomplete = async (req, res, next) => {
+    try {
+        const { input, limit = 20, lat, lng } = req.query; // Increase default limit to 20
+
+        if (!input || input.trim().length < 2) {
+            return res.json({
+                success: true,
+                suggestions: []
+            });
+        }
+
+        const normalizedInput = input.trim();
+        const lowerInput = normalizedInput.toLowerCase();
+
+        // 1. Handle "Near Me" Intent
+        if (lowerInput.includes('near me') || lowerInput.includes('nearby')) {
+            return res.json({
+                success: true,
+                suggestions: [{
+                    id: 'near-me',
+                    name: 'Search Near Me',
+                    location: 'Current Location',
+                    displayText: '📍 Search Near Me',
+                    type: 'action',
+                    action: 'near_me'
+                }]
+            });
+        }
+
+        let keyword = normalizedInput;
+        let location = '';
+
+        // 2. Handle "Best/Top" Intent (Rating Sort)
+        let isQualitySearch = false;
+        if (lowerInput.startsWith('best ') || lowerInput.startsWith('top ')) {
+            isQualitySearch = true;
+            keyword = normalizedInput.replace(/^(best|top)\s+/i, '').trim();
+        }
+
+        // 3. Parse "Keyword IN Location" Pattern
+        // Regex for "something in place" or "something at place"
+        const locationMatch = keyword.match(/^(.*?)\s+(?:in|at|near|from)\s+(.*)$/i);
+        if (locationMatch) {
+            keyword = locationMatch[1]; // e.g., "spa"
+            location = locationMatch[2]; // e.g., "vashi"
+        }
+
+        const suggestions = [];
+        const limitNum = parseInt(limit);
+
+        // 3. Parallel Searches
+        const searchPromises = [];
+
+        // A. Business Search (Direct Match)
+        const businessQuery = {
+            isActive: true,
+            'settings.appointmentSettings.allowOnlineBooking': true,
+            $or: [
+                { name: { $regex: keyword, $options: 'i' } },
+                { branch: { $regex: keyword, $options: 'i' } }
+            ]
+        };
+
+        // If location was parsed, restrict business search
+        if (location) {
+            businessQuery.$or.push({ address: { $regex: location, $options: 'i' } });
+            businessQuery.$or.push({ city: { $regex: location, $options: 'i' } });
+            businessQuery.$or.push({ area: { $regex: location, $options: 'i' } });
+        } else {
+            businessQuery.$or.push({ address: { $regex: keyword, $options: 'i' } });
+            businessQuery.$or.push({ city: { $regex: keyword, $options: 'i' } });
+            businessQuery.$or.push({ area: { $regex: keyword, $options: 'i' } });
+        }
+
+        // Sort configuration
+        let sortConfig = { 'ratings.average': -1, 'stats.popularity': -1 }; // Default: High rating -> Popularity
+
+        // Behavior:
+        // 1. If lat/lng provided: Sort by distance is implicitly desired but mongo needs $near or aggregation
+        // 2. For basic find(), we can't easily mixed sort specific items by distance without geoNear
+        // 3. However, user wants "High Rated 20 Near Location".
+
+        searchPromises.push(
+            Business.find(businessQuery)
+                .select('name address city branch area businessLink ratings.average stats.popularity location')
+                .sort(sortConfig) // Prioritize high rated
+                .limit(limitNum)
+                .lean()
+                .then(results => results.map(b => {
+                    const loc = [b.branch, b.area, b.city].filter(Boolean).join(', ');
+
+                    // Basic distance scoring if lat/lng available (client-side of this function)
+                    let distScore = 0;
+                    if (lat && lng && b.location && b.location.coordinates) {
+                        const [bLng, bLat] = b.location.coordinates;
+                        // Simple Euclidean distance for sorting (accurate enough for sorting)
+                        const dist = Math.sqrt(Math.pow(parseFloat(lat) - bLat, 2) + Math.pow(parseFloat(lng) - bLng, 2));
+                        distScore = 100 / (dist + 1); // Closer = higher score
+                    }
+
+                    return {
+                        id: b._id,
+                        name: b.name,
+                        location: loc,
+                        displayText: `${b.name} - ${loc}`,
+                        businessLink: b.businessLink,
+                        rating: b.ratings?.average || 0,
+                        type: 'business',
+                        score: 10 + (b.ratings?.average || 0) + distScore // Combined score
+                    };
+                }))
+        );
+
+        // B. Service Search
+        // Find services matching the keyword
+        const serviceQuery = {
+            isActive: true,
+            name: { $regex: keyword, $options: 'i' }
+        };
+
+        searchPromises.push(
+            Service.find(serviceQuery)
+                .select('name category business')
+                .populate('business', 'name city area branch')
+                .limit(5)
+                .lean()
+                .then(results => results
+                    .filter(s => s.business) // Ensure business exists
+                    .map(s => {
+                        const loc = [s.business.branch, s.business.area, s.business.city].filter(Boolean).join(', ');
+                        return {
+                            id: s._id,
+                            name: s.name, // Search query becomes service name
+                            location: loc,
+                            displayText: `${s.name} at ${s.business.name} (${loc})`,
+                            businessLink: s.business.businessLink, // Or separate service link
+                            type: 'service',
+                            score: 8
+                        };
+                    }))
+        );
+
+        // C. Category/Tag Search (Generic)
+        // If keyword matches a category, suggest "Category in Location" or just "Category"
+        // We can check available categories or just synthetically generate this if no exact business match
+        // For now, let's skip complex aggregation for speed and just rely on service search which covers categories often
+
+        // Execute Searches
+        const [businessResults, serviceResults] = await Promise.all(searchPromises);
+
+        // Merge and Sort
+        const allSuggestions = [...businessResults, ...serviceResults];
+
+        // Deduplicate by displayText
+        const uniqueSuggestions = [];
+        const seenTexts = new Set();
+
+        allSuggestions.sort((a, b) => b.score - a.score); // Priority sorting
+
+        for (const item of allSuggestions) {
+            if (!seenTexts.has(item.displayText)) {
+                seenTexts.add(item.displayText);
+                uniqueSuggestions.push(item);
+            }
+            if (uniqueSuggestions.length >= limitNum) break;
+        }
+
+        // If parsed location exists but no direct results found, 
+        // add a generic "Search for [Keyword] in [Location]" suggestion
+        if (uniqueSuggestions.length === 0 && location) {
+            uniqueSuggestions.push({
+                id: 'generic-search',
+                name: keyword,
+                location: location,
+                displayText: `🔍 Search for "${keyword}" in ${location}`,
+                type: 'generic'
+            });
+        }
+
+        // Add "Best Rated [Keyword]" suggestion if quality intent detected
+        if (isQualitySearch) {
+            uniqueSuggestions.unshift({
+                id: 'best-rated',
+                name: keyword,
+                displayText: `⭐ Best Rated ${keyword} ${location ? 'in ' + location : ''}`,
+                type: 'generic',
+                searchQuery: `best ${keyword} ${location ? 'in ' + location : ''}`
+            });
+        }
+
+        return res.json({
+            success: true,
+            suggestions: uniqueSuggestions,
+            source: 'database_smart'
+        });
+    } catch (error) {
+        console.error('[Business Autocomplete] Error:', error);
+        return res.json({
+            success: true,
+            suggestions: [],
+            source: 'error'
+        });
+    }
+};
+
+// ================== Google Places Autocomplete (Public) ==================
+const getPlacesAutocomplete = async (req, res, next) => {
+    try {
+        const { input, types, location } = req.query;
+
+        if (!input || input.trim().length < 2) {
+            return res.json({
+                success: true,
+                suggestions: []
+            });
+        }
+
+        // Try Google Places API first
+        const options = {};
+        if (types) options.types = types;
+        if (location) {
+            const coords = location.split(',');
+            if (coords.length === 2) {
+                options.location = `${coords[0]},${coords[1]}`;
+                options.radius = 50000; // 50km radius for bias
+            }
+        }
+
+        const result = await googlePlaces.autocomplete(input, options);
+
+        if (result.success && result.suggestions.length > 0) {
+            return res.json({
+                success: true,
+                suggestions: result.suggestions,
+                source: 'google_places'
+            });
+        }
+
+        // Fallback: Return empty suggestions if Places API fails
+        // Frontend will handle manual input
+        return res.json({
+            success: true,
+            suggestions: [],
+            source: 'fallback',
+            message: 'Google Places API unavailable. Please enter location manually.'
+        });
+    } catch (error) {
+        console.error('[Places Autocomplete] Error:', error);
+        // Return empty instead of error for better UX
+        return res.json({
+            success: true,
+            suggestions: [],
+            source: 'error'
+        });
+    }
+};
+
+// ================== Get Place Details (Public) ==================
+const getPlaceDetails = async (req, res, next) => {
+    try {
+        const { place_id } = req.query;
+
+        if (!place_id) {
+            return res.status(400).json({
+                success: false,
+                error: 'place_id is required'
+            });
+        }
+
+        const result = await googlePlaces.getPlaceDetails(place_id);
+
+        if (result.success) {
+            return res.json({
+                success: true,
+                place: result.place
+            });
+        }
+
+        return res.status(404).json({
+            success: false,
+            error: result.error || 'Place not found'
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ================== Enhanced Search with Google Places (Public) ==================
+const searchWithPlaces = async (req, res, next) => {
+    try {
+        const {
+            lat,
+            lng,
+            q,
+            location,
+            category,
+            minRating,
+            radius = 5000,
+            page = 1,
+            limit = 20
+        } = req.query;
+
+        let searchLat = lat ? parseFloat(lat) : null;
+        let searchLng = lng ? parseFloat(lng) : null;
+
+        // If location name is provided but no coordinates, geocode it
+        if (location && (!searchLat || !searchLng)) {
+            const geocodeResult = await googlePlaces.geocode(location);
+            if (geocodeResult.success && geocodeResult.result) {
+                searchLat = geocodeResult.result.lat;
+                searchLng = geocodeResult.result.lng;
+            }
+        } else if (!location && !searchLat && q) {
+            // Smart Parse: If no location provided but 'q' exists
+
+            // 1. Check for "Keyword IN Location" pattern
+            const locationMatch = q.match(/^(.*?)\s+(?:in|at|near|from)\s+(.*)$/i);
+            if (locationMatch) {
+                const extractedLocation = locationMatch[2];
+                const geocodeResult = await googlePlaces.geocode(extractedLocation);
+                if (geocodeResult.success && geocodeResult.result) {
+                    searchLat = geocodeResult.result.lat;
+                    searchLng = geocodeResult.result.lng;
+                }
+            }
+        }
+
+        // Handle "Best/Top" Intent in Query
+        let searchQuery = q;
+        let sortOption = req.query.sort;
+        let minRatingFilter = minRating;
+
+        if (q && (q.toLowerCase().startsWith('best ') || q.toLowerCase().startsWith('top '))) {
+            searchQuery = q.replace(/^(best|top)\s+/i, '').trim();
+            sortOption = 'rating'; // Sort by rating
+            if (!minRatingFilter) minRatingFilter = 4; // Auto-filter for high rating
+        }
+
+        // Fetch Google Places results (if enabled)
+        let placesResults = [];
+        if (searchLat && searchLng && googlePlaces.isEnabled()) {
+            const keyword = q || category || 'spa';
+            const nearbyResult = await googlePlaces.nearbySearch(
+                searchLat,
+                searchLng,
+                keyword,
+                parseInt(radius)
+            );
+
+            if (nearbyResult.success) {
+                placesResults = nearbyResult.places;
+            }
+        }
+
+        // Fetch database results (existing search)
+        const dbParams = {
+            lat: searchLat,
+            lng: searchLng,
+            q: searchQuery, // Use parsed query (stripped of 'best'/'top')
+            location,
+            category,
+            minRating: minRatingFilter, // Use filter from quality intent
+            sort: sortOption, // Use sort from quality intent
+            radius,
+            page,
+            limit
+        };
+
+        // Use existing searchBusinesses logic
+        const pipeline = [];
+        const baseMatch = {
+            isActive: true,
+            'settings.appointmentSettings.allowOnlineBooking': true
+        };
+
+        if (searchLat && searchLng) {
+            pipeline.push({
+                $geoNear: {
+                    near: { type: "Point", coordinates: [searchLng, searchLat] },
+                    distanceField: "distance",
+                    maxDistance: parseInt(radius),
+                    spherical: true,
+                    query: baseMatch
+                }
+            });
+        } else {
+            pipeline.push({ $match: baseMatch });
+        }
+
+        pipeline.push({
+            $lookup: {
+                from: "services",
+                localField: "_id",
+                foreignField: "business",
+                as: "serviceDetails"
+            }
+        });
+
+        const matchStage = {};
+        if (q) {
+            const terms = q.trim().split(/\s+/);
+            matchStage.$and = terms.map(term => {
+                const regex = new RegExp(term, "i");
+                return {
+                    $or: [
+                        { name: regex },
+                        { category: regex },
+                        { tags: regex },
+                        { description: regex },
+                        { address: regex },
+                        { "serviceDetails.name": regex }
+                    ]
+                };
+            });
+        }
+
+        if (category) matchStage.type = { $regex: category, $options: "i" };
+        if (minRating) matchStage['ratings.average'] = { $gte: parseFloat(minRating) };
+
+        if (Object.keys(matchStage).length > 0) {
+            pipeline.push({ $match: matchStage });
+        }
+
+        pipeline.push({
+            $project: {
+                name: 1,
+                type: 1,
+                branch: 1,
+                address: 1,
+                location: 1,
+                images: 1,
+                image: { $ifNull: ["$images.thumbnail", { $ifNull: ["$images.logo", "$images.banner"] }] },
+                ratings: 1,
+                category: 1,
+                tags: 1,
+                description: 1,
+                phone: 1,
+                socialMedia: 1,
+                businessLink: 1,
+                distance: { $ifNull: ["$distance", null] },
+                snippet: { $concat: [{ $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] }, "..."] },
+                serviceDetails: 1,
+                offers: 1
+            }
+        });
+
+        if (searchLat && searchLng) {
+            pipeline.push({ $sort: { distance: 1, 'ratings.average': -1 } });
+        } else {
+            pipeline.push({ $sort: { 'ratings.average': -1, createdAt: -1 } });
+        }
+
+        const limitNum = Math.min(Math.max(parseInt(limit), 1), 5000);
+        pipeline.push({
+            $facet: {
+                results: [
+                    { $skip: (parseInt(page) - 1) * limitNum },
+                    { $limit: limitNum }
+                ],
+                totalCount: [{ $count: "count" }]
+            }
+        });
+
+        const dbResult = await Business.aggregate(pipeline);
+        const businesses = dbResult[0]?.results || [];
+        const totalResults = dbResult[0]?.totalCount[0]?.count || 0;
+
+        // Format database results
+        const formattedResults = businesses.map(b => ({
+            id: b._id,
+            name: b.name,
+            type: b.type,
+            branch: b.branch,
+            address: b.address,
+            category: b.category,
+            tags: b.tags,
+            ratings: b.ratings,
+            image: b.image || b.images?.thumbnail || b.images?.logo,
+            gallery: b.images?.gallery || [],
+            distance: b.distance,
+            distanceText: b.distance ? `${(b.distance / 1000).toFixed(1)} km` : '',
+            snippet: b.snippet,
+            location: b.location,
+            phone: b.phone,
+            socialMedia: b.socialMedia,
+            services: (b.serviceDetails || []).slice(0, 5).map(s => ({ name: s.name, price: s.price })),
+            offers: b.offers || [],
+            businessLink: b.businessLink,
+            source: 'database'
+        }));
+
+        // Merge results (Google Places + Database)
+        // Remove duplicates by name proximity
+        const mergedResults = [...formattedResults];
+        const existingNames = new Set(formattedResults.map(b => b.name.toLowerCase()));
+
+        placesResults.forEach(place => {
+            // Simple duplicate check by name
+            if (!existingNames.has(place.name.toLowerCase())) {
+                mergedResults.push({
+                    id: place.place_id,
+                    name: place.name,
+                    address: place.vicinity,
+                    ratings: place.rating ? { average: place.rating, totalReviews: place.user_ratings_total || 0 } : null,
+                    location: { coordinates: [place.lng, place.lat] },
+                    distance: null, // Will be calculated on frontend if needed
+                    snippet: `Found on Google Places - ${place.vicinity}`,
+                    source: 'google_places',
+                    isExternal: true, // Flag for frontend to handle differently
+                    place_id: place.place_id
+                });
+                existingNames.add(place.name.toLowerCase());
+            }
+        });
+
+        const responseData = {
+            page: parseInt(page),
+            limit: limitNum,
+            totalResults: mergedResults.length,
+            results: mergedResults,
+            sources: {
+                database: formattedResults.length,
+                google_places: placesResults.length
+            }
+        };
+
+        return res.json({
+            success: true,
+            message: "Fetched successfully",
+            payload: encryptResponse(responseData)
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getPublicBusinesses,
     getBusinessInfoByLink,
@@ -1440,7 +2316,14 @@ module.exports = {
     getBusinessDailyRecords,
     getBusinessAnalytics,
     getBusinessesNearby,
-    searchBusinesses, // Added new API
+    searchBusinesses,
     getIndiaLocations,
-    updateBusiness
+    updateBusiness,
+    addBusinessReview,
+    getBusinessReviews,
+    markReviewHelpful,
+    getBusinessAutocomplete,
+    getPlacesAutocomplete,
+    getPlaceDetails,
+    searchWithPlaces
 };

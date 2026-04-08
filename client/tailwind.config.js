@@ -15,18 +15,18 @@ export default {
     },
     extend: {
       colors: {
-       primary: {
-          50:  '#f0fdff',
-          100: '#ccf7fe',
-          200: '#99eefd',
-          300: '#66e5fc',
-          400: '#42d1f5',
-          500: '#42d1f5', // main brand shade
-          600: '#0ea5e9',
-          700: '#0284c7',
-          800: '#0369a1',
-          900: '#0c4a6e',
-          950: '#082f49',
+        primary: {
+          50: '#e6f7f7',  // very light teal tint
+          100: '#cceeee',
+          200: '#99dddd',
+          300: '#66cccc',
+          400: '#33b3b3',
+          500: '#008080',  // ✅ MAIN BRAND COLOR
+          600: '#007070',  // darker teal
+          700: '#005f5f',
+          800: '#004d4d',
+          900: '#003333',
+          950: '#001f1f',
         },
 
         // Secondary Colors - Professional Gray

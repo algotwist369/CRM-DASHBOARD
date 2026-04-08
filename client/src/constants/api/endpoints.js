@@ -31,7 +31,7 @@ export const endpoints = {
     businesses: `${API_BASE_URL}/admin/businesses`,
     business: (id) => `${API_BASE_URL}/admin/${id}`,
     createBusiness: `${API_BASE_URL}/admin/business`,
-    updateBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
+    updateBusiness: (id) => `${API_BASE_URL}/business/${id}`,
     updateBusinessStatus: (id) => `${API_BASE_URL}/admin/business/${id}/status`,
     deleteBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     businessLink: (id) => `${API_BASE_URL}/admin/business/${id}/link`,
@@ -54,6 +54,8 @@ export const endpoints = {
     deleteStaff: (id) => `${API_BASE_URL}/manager/staff/${id}`,
     transactions: `${API_BASE_URL}/manager/transactions`,
     addTransaction: `${API_BASE_URL}/manager/transaction`,
+    getTransaction: (id) => `${API_BASE_URL}/manager/transaction/${id}`,
+    updateTransaction: (id) => `${API_BASE_URL}/manager/transaction/${id}`,
   },
 
   // Staff endpoints
@@ -108,6 +110,9 @@ export const endpoints = {
     getDailyRecords: (id) => `${API_BASE_URL}/business/${id}/daily-business`,
     getDailySummary: (id) => `${API_BASE_URL}/business/${id}/daily-business/summary`,
     getDailyAnalytics: (id) => `${API_BASE_URL}/business/${id}/daily-business/analytics`,
+    reviews: (id) => `${API_BASE_URL}/business/public/${id}/reviews`,
+    addReview: (id) => `${API_BASE_URL}/business/public/${id}/reviews`,
+    markReviewHelpful: (id) => `${API_BASE_URL}/business/public/reviews/${id}/helpful`,
 
   },
 
@@ -125,6 +130,7 @@ export const endpoints = {
     getAnalytics: `${API_BASE_URL}/customers/analytics/overview`,
     getInsights: `${API_BASE_URL}/customers/analytics/insights`,
     getTargetCustomers: `${API_BASE_URL}/customers/analytics/target`,
+    updateTier: (id) => `${API_BASE_URL}/customers/${id}/tier`,
   },
 
   // Notification endpoints
@@ -279,8 +285,20 @@ export const endpoints = {
     analytics: {
       summary: `${API_BASE_URL}/leads/analytics/summary`,
       businessBreakdown: `${API_BASE_URL}/leads/analytics/business-breakdown`,
+      sourceBreakdown: `${API_BASE_URL}/leads/analytics/source-breakdown`,
+      availableSources: `${API_BASE_URL}/leads/analytics/available-sources`,
       ipJourneys: `${API_BASE_URL}/leads/analytics/ip-journeys`,
     }
+  },
+  // Inquiry endpoints
+  inquiries: {
+    list: `${API_BASE_URL}/inquiries`,
+    export: `${API_BASE_URL}/inquiries/export`,
+    sendOtp: `${API_BASE_URL}/inquiries/send-otp`,
+    create: `${API_BASE_URL}/inquiries`,
+    receive: (id) => `${API_BASE_URL}/inquiries/${id}/receive`,
+    remark: (id) => `${API_BASE_URL}/inquiries/${id}/remark`,
+    delete: (id) => `${API_BASE_URL}/inquiries/${id}`,
   }
 }
 

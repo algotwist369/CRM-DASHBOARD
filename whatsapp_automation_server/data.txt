@@ -1,0 +1,31 @@
+backend/
+│
+├── src/
+│   ├── server.js
+│
+│   ├── config/
+│   │   ├── db.js
+│   │   └── twilio.js
+│
+│   ├── models/
+│   │   ├── Lead.js
+│   │   └── Manager.js
+│
+│   ├── services/
+│   │   ├── googleSheet.js
+│   │   └── whatsapp.js
+│
+│   ├── controllers/
+│   │   ├── lead.controller.js
+│   │   └── manager.controller.js
+│
+│   ├── routes/
+│   │   ├── lead.routes.js
+│   │   └── manager.routes.js
+│
+│   ├── cron/
+│   │   └── syncAndSend.js
+│
+├── .env
+├── package.json
+└── README.md
