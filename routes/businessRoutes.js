@@ -3,6 +3,7 @@ const router = express.Router();
 const businessController = require("../controllers/businessController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const { uploadS3BusinessImages, handleUploadError } = require("../middleware/uploadMiddleware");
 
 // ================== Public Routes (No Authentication Required) ==================
 
@@ -56,6 +57,8 @@ router.get("/info/:businessLink", businessController.getBusinessInfoByLink);
 router.put("/:id",
     authMiddleware,
     roleMiddleware(["admin", "manager"]),
+    uploadS3BusinessImages,
+    handleUploadError,
     businessController.updateBusiness
 );
 

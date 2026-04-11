@@ -336,23 +336,27 @@ async function processDripCampaigns() {
 function startCampaignScheduler() {
     console.log('[Campaign Scheduler] Starting scheduler...');
     
-    // Execute automated campaigns every hour
+    // Execute automated campaigns every hour (DISABLED)
+    /*
     setInterval(async () => {
         await executeAutomatedCampaigns();
     }, 60 * 60 * 1000); // 1 hour
+    */
 
-    // Process drip campaigns every 15 minutes
+    // Process drip campaigns every 15 minutes (DISABLED)
+    /*
     setInterval(async () => {
         await processDripCampaigns();
     }, 15 * 60 * 1000); // 15 minutes
+    */
 
     // Also run once on startup (after 30 seconds to allow DB connection)
     setTimeout(async () => {
-        await executeAutomatedCampaigns();
-        await processDripCampaigns();
+        // await executeAutomatedCampaigns(); // DISABLED
+        // await processDripCampaigns(); // DISABLED
     }, 30000);
 
-    console.log('[Campaign Scheduler] Scheduler started successfully');
+    console.log('[Campaign Scheduler] Scheduler started successfully (Automated/Drip processing disabled)');
 }
 
 module.exports = {

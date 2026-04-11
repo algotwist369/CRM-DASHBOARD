@@ -89,14 +89,42 @@ app.use('/api/', limiter);
 // Stricter rate limiting for auth endpoints
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // Limit each IP to 50 auth requests per windowMs
+    max: 50, // Limit each IP to 50 auth requests per windowMs
     message: {
         success: false,
         message: 'Too many authentication attempts, please try again later.'
-    }
+    },
+    standardHeaders: true,
+    legacyHeaders: false
 });
 
 app.use('/api/auth/', authLimiter);
+
+// Public API rate limiting (for business search, etc.)
+const publicApiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    message: {
+        success: false,
+        message: 'Too many requests, please slow down.'
+    }
+});
+
+app.use('/api/business/public', publicApiLimiter);
+app.use('/api/services/public', publicApiLimiter);
+
+// Appointment booking rate limiting (prevent bot spam)
+const bookingLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // Limit each IP to 20 bookings per hour
+    message: {
+        success: false,
+        message: 'Booking limit reached for this hour. Please try again later.'
+    }
+});
+
+app.use('/api/appointments/book', bookingLimiter);
+app.use('/api/appointments/public', bookingLimiter);
 
 // Optimized logging (only in development)
 if (process.env.NODE_ENV === 'development') {

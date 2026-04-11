@@ -99,7 +99,7 @@ const uploadStaffProfile = createUploadMiddleware('staff/profiles', 'profile', 1
 const uploadManagerProfile = createUploadMiddleware('managers/profiles', 'profile', 1, FILE_SIZE_LIMITS.profile);
 const uploadAdminProfile = createUploadMiddleware('admin/profiles', 'profile', 1, FILE_SIZE_LIMITS.profile);
 
-// Multiple uploads for business (all images at once)
+// Multiple uploads for business (all images at once) - Disk Storage
 const uploadBusinessImages = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => {
@@ -140,6 +140,21 @@ const uploadBusinessImages = multer({
     { name: 'gallery', maxCount: 10 },
     { name: 'thumbnail', maxCount: 1 },
     { name: 'qrcode', maxCount: 1 }
+]);
+
+// Memory storage for S3 uploads (direct to S3 without saving locally)
+const uploadS3BusinessImages = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: imageFileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB max
+        files: 15
+    }
+}).fields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'banner', maxCount: 1 },
+    { name: 'gallery', maxCount: 10 },
+    { name: 'thumbnail', maxCount: 1 }
 ]);
 
 // Helper function to delete file
@@ -234,6 +249,7 @@ module.exports = {
     uploadBusinessThumbnail,
     uploadBusinessQRCode,
     uploadBusinessImages,
+    uploadS3BusinessImages,
     uploadStaffProfile,
     uploadManagerProfile,
     uploadAdminProfile,

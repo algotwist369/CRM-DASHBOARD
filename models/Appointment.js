@@ -294,6 +294,8 @@ appointmentSchema.index({ business: 1, status: 1 });
 appointmentSchema.index({ business: 1, customer: 1 });
 appointmentSchema.index({ business: 1, staff: 1, appointmentDate: 1 });
 appointmentSchema.index({ business: 1, service: 1 });
+appointmentSchema.index({ appointmentDate: 1, status: 1 });
+appointmentSchema.index({ business: 1, appointmentDate: 1, status: 1 });
 appointmentSchema.index({ createdAt: -1 });
 
 // Virtual for formatted booking number
@@ -476,9 +478,10 @@ appointmentSchema.statics.checkAvailability = async function (businessId, staffI
                 endTime: { $lte: endTime }
             }
         ]
-    });
+    }).select('_id').lean();
 
     return conflictingAppointments.length === 0;
 };
 
-module.exports = mongoose.model("Appointment", appointmentSchema);
+const Appointment = mongoose.model("Appointment", appointmentSchema);
+module.exports = Appointment;

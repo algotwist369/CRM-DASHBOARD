@@ -23,50 +23,44 @@ require("dotenv").config();
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {
     try {
-        const business = await Business.findById(businessId);
-        const managers = await Manager.find({ business: businessId, isActive: true });
+        // Use lean() for better performance as we only need IDs and basic info
+        const [business, managers] = await Promise.all([
+            Business.findById(businessId).select('admin name').lean(),
+            Manager.find({ business: businessId, isActive: true }).select('_id email').lean()
+        ]);
+
+        if (!business) return;
 
         console.log(`[NotifyStaff] Found ${managers.length} managers for business ${businessId}`);
 
-        // 1. Create persistent notification for managers FIRST (to avoid race condition)
+        // 1. Create persistent notification for managers in parallel
         if (notificationData && managers.length > 0) {
             console.log('[NotifyStaff] Creating persistent notifications for managers:', notificationData.title);
-            const promises = managers.map(async (manager) => {
-                try {
-                    const notif = await ManagerNotification.createNotification(
-                        manager._id,
-                        businessId,
-                        notificationData.title,
-                        notificationData.message,
-                        {
-                            type: notificationData.type || 'appointment',
-                            priority: notificationData.priority || 'normal',
-                            relatedAppointment: notificationData.relatedAppointment,
-                            actionUrl: notificationData.actionUrl,
-                            metadata: notificationData.metadata
-                        }
-                    );
-                    return notif;
-                } catch (err) {
-                    console.error(`[NotifyStaff] FAILED to create notification for manager ${manager._id}:`, err);
-                    return null;
-                }
-            });
-            await Promise.all(promises);
-            console.log('[NotifyStaff] All persistent notifications created.');
-        } else {
-            console.log('[NotifyStaff] Skipping persistent notification: No notificationData or no managers');
+            await Promise.all(managers.map(manager => 
+                ManagerNotification.createNotification(
+                    manager._id,
+                    businessId,
+                    notificationData.title,
+                    notificationData.message,
+                    {
+                        type: notificationData.type || 'appointment',
+                        priority: notificationData.priority || 'normal',
+                        relatedAppointment: notificationData.relatedAppointment,
+                        actionUrl: notificationData.actionUrl,
+                        metadata: notificationData.metadata
+                    }
+                ).catch(err => console.error(`[NotifyStaff] FAILED for manager ${manager._id}:`, err))
+            ));
         }
 
         // 2. Notify managers via Socket
         managers.forEach(manager => {
-            console.log(`[NotifyStaff] Emitting socket to manager: ${manager._id}`);
-            emitToUser(manager._id, event, data);
+            emitToUser(manager._id.toString(), event, data);
         });
 
         // 3. Notify Admin via Socket
-        if (business && business.admin) {
-            emitToUser(business.admin, event, data);
+        if (business.admin) {
+            emitToUser(business.admin.toString(), event, data);
         }
 
     } catch (error) {
@@ -95,53 +89,35 @@ const createAppointment = async (req, res, next) => {
             tracking // Extract tracking data
         } = req.body;
 
-        // Determine business
-        let business;
+        // Determine business, verify customer and service in parallel
+        let businessPromise;
         if (userRole === 'admin') {
             if (!businessId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Business ID is required"
-                });
+                return res.status(400).json({ success: false, message: "Business ID is required" });
             }
-            business = await Business.findOne({ _id: businessId, admin: userId });
+            businessPromise = Business.findOne({ _id: businessId, admin: userId }).lean();
         } else if (userRole === 'manager') {
-            const manager = await Manager.findById(userId);
-            business = await Business.findById(manager.business);
+            businessPromise = Manager.findById(userId).then(manager => 
+                manager ? Business.findById(manager.business).lean() : null
+            );
         }
+
+        const [business, customer, service] = await Promise.all([
+            businessPromise,
+            Customer.findOne({ _id: customerId }).lean(),
+            Service.findOne({ _id: serviceId, isActive: true }).lean()
+        ]);
 
         if (!business) {
-            return res.status(404).json({
-                success: false,
-                message: "Business not found or access denied"
-            });
+            return res.status(404).json({ success: false, message: "Business not found or access denied" });
         }
 
-        // Verify customer
-        const customer = await Customer.findOne({
-            _id: customerId,
-            business: business._id
-        });
-
-        if (!customer) {
-            return res.status(404).json({
-                success: false,
-                message: "Customer not found"
-            });
+        if (!customer || customer.business.toString() !== business._id.toString()) {
+            return res.status(404).json({ success: false, message: "Customer not found" });
         }
 
-        // Verify service
-        const service = await Service.findOne({
-            _id: serviceId,
-            business: business._id,
-            isActive: true
-        });
-
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: "Service not found or inactive"
-            });
+        if (!service || service.business.toString() !== business._id.toString()) {
+            return res.status(404).json({ success: false, message: "Service not found or inactive" });
         }
 
         // Check staff availability if staffId provided
@@ -539,9 +515,10 @@ const getAppointmentById = async (req, res, next) => {
             .populate('customer', 'firstName lastName phone email address')
             .populate('service', 'name description price duration category')
             .populate('staff', 'name role phone email')
-            .populate('createdBy')
-            .populate('cancelledBy')
-            .populate('rescheduledBy');
+            .populate('createdBy', 'name role')
+            .populate('cancelledBy', 'name role')
+            .populate('rescheduledBy', 'name role')
+            .lean();
 
         if (!appointment) {
             return res.status(404).json({

@@ -155,33 +155,33 @@ const getAdminReports = async (req, res, next) => {
             const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
             const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
 
-            // 1. Fetch Metrics for this day/business
-            const transactions = await Transaction.find({
-                business: businessId,
-                transactionDate: { $gte: startOfDay, $lte: endOfDay }
-            }).populate('manager', 'username name');
+            // 1. Fetch Metrics for this day/business in parallel
+            const [transactions, appCustomerIds, dailyRecord] = await Promise.all([
+                Transaction.find({
+                    business: businessId,
+                    transactionDate: { $gte: startOfDay, $lte: endOfDay }
+                }).populate('manager', 'username name').lean(),
+                
+                Appointment.distinct('customer', {
+                    business: businessId,
+                    appointmentDate: { $gte: startOfDay, $lte: endOfDay }
+                }),
+                
+                DailyBusiness.findOne({
+                    business: businessId,
+                    date: { $gte: startOfDay, $lte: endOfDay }
+                }).populate('manager', 'username name').lean()
+            ]);
 
             const transactionRevenue = transactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
             const transCustomerIds = transactions.map(t => t.customer?.toString()).filter(id => id);
             const walkInPhones = transactions.filter(t => !t.customer).map(t => t.customerPhone);
-
-            // 2. Untracked Appointments Metrics
-            const appCustomerIds = await Appointment.distinct('customer', {
-                business: businessId,
-                appointmentDate: { $gte: startOfDay, $lte: endOfDay }
-            });
 
             const uniqueCustomers = new Set([
                 ...transCustomerIds,
                 ...appCustomerIds.map(id => id.toString()),
                 ...walkInPhones
             ]);
-
-            // 3. Try to find existing DailyBusiness record (for Expenses/Status)
-            const dailyRecord = await DailyBusiness.findOne({
-                business: businessId,
-                date: { $gte: startOfDay, $lte: endOfDay }
-            }).populate('manager', 'username name');
 
             return {
                 _id: dailyRecord?._id || `virt-${dateStr}-${businessId}`,

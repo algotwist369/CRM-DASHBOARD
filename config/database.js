@@ -5,8 +5,8 @@ require('dotenv').config();
 // Database connection options for high performance
 const dbOptions = {
     // Connection pool settings
-    maxPoolSize: 20, // Maintain up to 20 socket connections
-    minPoolSize: 5,  // Maintain a minimum of 5 socket connections
+    maxPoolSize: 100, // Increased for 10k+ users concurrency
+    minPoolSize: 10,  // Maintain a minimum of 10 socket connections
     maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
     serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
     socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity

@@ -22,6 +22,7 @@ const { setCache, getCache, deleteCache, getOrSet } = require("../utils/cache");
 const { cacheKeys } = require("../config/redis");
 const { formatCurrency } = require("../utils/businessUtils");
 const { notifyNewBusinessCreated, notifyNewManagerCreated, notifyBusinessDeleted } = require("../utils/adminNotifications");
+const { parseJsonFields, handleBusinessImages, deleteAllBusinessImages, deleteFromS3 } = require("../utils/fileHandler");
 
 // ================== Admin Dashboard ==================
 const getAdminDashboard = async (req, res, next) => {
@@ -168,6 +169,9 @@ const getAdminDashboard = async (req, res, next) => {
 // ================== Create Business ==================
 const createBusiness = async (req, res, next) => {
     try {
+        // Parse JSON fields if multipart/form-data was used
+        const body = parseJsonFields(req.body);
+
         const {
             // Basic Information
             type,
@@ -233,9 +237,6 @@ const createBusiness = async (req, res, next) => {
             // Notification Preferences
             notificationPreferences, // { emailNotifications, smsNotifications, whatsappNotifications, pushNotifications }
 
-            // Custom Fields
-            customFields, // Flexible key-value pairs [{ key, value, type }]
-
             // Business Hours & Days Off
             businessHours, // Mixed type for flexible business hours structure
             daysOff, // [{ type: Date }] Specific dates when business is closed
@@ -243,9 +244,12 @@ const createBusiness = async (req, res, next) => {
             // Holidays
             holidays, // [{ name, date, reason }]
 
+            // Slug
+            slug,
+
             // Settings
             settings
-        } = req.body;
+        } = body;
         const adminId = req.user.id;
 
         // Validate business type - now supports more types
@@ -280,8 +284,8 @@ const createBusiness = async (req, res, next) => {
         // NEW: Google Maps URL - coordinates will be auto-extracted by pre-save hook
         if (googleMapsUrl) businessData.googleMapsUrl = googleMapsUrl;
 
-        // Images
-        if (images) businessData.images = images;
+        // Images - handle both files and URLs
+        businessData.images = await handleBusinessImages(req.files, images || {});
 
         // Social Media
         if (socialMedia) businessData.socialMedia = socialMedia;
@@ -326,8 +330,8 @@ const createBusiness = async (req, res, next) => {
         // Notification Preferences - map to 'notifications' as per model
         if (notificationPreferences) businessData.notifications = notificationPreferences;
 
-        // Custom Fields
-        if (customFields) businessData.customFields = customFields;
+        // Slug support
+        if (slug) businessData.slug = slug;
 
         // Business Hours
         if (businessHours) businessData.businessHours = businessHours;
@@ -418,7 +422,8 @@ const getBusinesses = async (req, res, next) => {
             .populate('staff', 'name role isActive')
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean(); // Use lean for performance
 
         const total = await Business.countDocuments(query);
 
@@ -437,17 +442,12 @@ const getBusinesses = async (req, res, next) => {
                 website: business.website,
                 businessLink: business.businessLink,
                 isActive: business.isActive,
-                // NEW: Include location and maps data
                 location: business.location,
                 googleMapsUrl: business.googleMapsUrl,
-                // Include images for display
                 images: business.images,
-                // Social media links
                 socialMedia: business.socialMedia,
-                // Counts
-                managersCount: business.managers.length,
-                staffCount: business.staff.length,
-                // Timestamps
+                managersCount: business.managers?.length || 0,
+                staffCount: business.staff?.length || 0,
                 createdAt: business.createdAt,
                 updatedAt: business.updatedAt
             })),
@@ -485,7 +485,8 @@ const getBusinessById = async (req, res, next) => {
         const business = await Business.findOne({ _id: id, admin: adminId })
             .populate('managers', 'name username email phone isActive lastLogin')
             .populate('staff', 'name role phone email isActive')
-            .populate('admin', 'name companyName email');
+            .populate('admin', 'name companyName email')
+            .lean(); // Use lean for performance
 
         if (!business) {
             return res.status(404).json({ success: false, message: "Business not found" });
@@ -501,7 +502,7 @@ const getBusinessById = async (req, res, next) => {
 const updateBusiness = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const updates = parseJsonFields(req.body);
         const adminId = req.user.id;
 
         // Check if business belongs to admin
@@ -550,6 +551,31 @@ const updateBusiness = async (req, res, next) => {
         if (updates.notificationPreferences) {
             updates.notifications = updates.notificationPreferences;
             delete updates.notificationPreferences;
+        }
+
+        // Handle Images if files are uploaded or URLs are updated
+        if (req.files && Object.keys(req.files).length > 0 || updates.images) {
+            updates.images = await handleBusinessImages(req.files, updates.images || {}, business.images || {});
+        }
+
+        // Handle other S3 media updates (Google 360, Videos, SEO)
+        // Check for removed Google 360 images
+        if (Array.isArray(updates.google360ImageUrl) && Array.isArray(business.google360ImageUrl)) {
+            const removed = business.google360ImageUrl.filter(url => !updates.google360ImageUrl.includes(url));
+            for (const url of removed) await deleteFromS3(url);
+        }
+
+        // Check for removed videos
+        if (Array.isArray(updates.videos) && Array.isArray(business.videos)) {
+            const removed = business.videos.filter(url => !updates.videos.includes(url));
+            for (const url of removed) await deleteFromS3(url);
+        }
+
+        // Check for removed SEO OG image
+        if (updates.seo && updates.seo.ogImage && business.seo && business.seo.ogImage && updates.seo.ogImage !== business.seo.ogImage) {
+            await deleteFromS3(business.seo.ogImage);
+        } else if (updates.seo && updates.seo.ogImage === null && business.seo && business.seo.ogImage) {
+            await deleteFromS3(business.seo.ogImage);
         }
 
         // Apply updates to the business object with deep merge
@@ -637,6 +663,9 @@ const deleteBusiness = async (req, res, next) => {
 
         // Hard delete
         await Business.findByIdAndDelete(id);
+
+        // Delete associated S3 images
+        await deleteAllBusinessImages(business);
 
         // Create notification
         await notifyBusinessDeleted(adminId, business.name);

@@ -74,6 +74,8 @@ transactionSchema.index({ business: 1, transactionDate: -1 });
 transactionSchema.index({ manager: 1, transactionDate: -1 });
 transactionSchema.index({ staff: 1, transactionDate: -1 });
 transactionSchema.index({ customerPhone: 1 });
+transactionSchema.index({ business: 1, paymentStatus: 1, isRefunded: 1, transactionDate: -1 });
+transactionSchema.index({ business: 1, customer: 1, transactionDate: -1 });
 
 // Smart Pricing Hook
 transactionSchema.pre('save', function (next) {
