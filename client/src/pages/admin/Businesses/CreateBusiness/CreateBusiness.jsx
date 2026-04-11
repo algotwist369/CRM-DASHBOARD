@@ -26,6 +26,7 @@ const INITIAL_STATE = {
   google360ImageUrl: [],
   videos: [],
   images: { logo: "", banner: "", thumbnail: "", gallery: [] },
+  files: { logo: null, banner: null, thumbnail: null, gallery: [] },
   socialMedia: { facebook: "", instagram: "", twitter: "", linkedin: "", youtube: "", whatsapp: "", telegram: "" },
   registration: { gstNumber: "", panNumber: "", registrationNumber: "", licenseNumber: "", taxId: "", registrationDate: "", expiryDate: "" },
   paymentMethods: { cash: true, card: false, upi: false, netBanking: false, wallet: false },
@@ -92,6 +93,8 @@ const CreateBusiness = () => {
     handleArrayAdd,
     handleArrayRemove,
     setNestedValue,
+    handleFileChange,
+    handleFileRemove,
     clearForm
   } = useBusinessForm(INITIAL_STATE);
 
@@ -104,10 +107,12 @@ const CreateBusiness = () => {
     if (step === 1) {
       if (!formData.type) newErrors.type = "Required";
       if (!formData.name) newErrors.name = "Required";
+      if (!formData.branch) newErrors.branch = "Required";
     }
     if (step === 2) {
       if (!formData.address) newErrors.address = "Required";
-      if (!formData.phone) newErrors.phone = "Required";
+      if (!formData.city) newErrors.city = "Required";
+      if (!formData.state) newErrors.state = "Required";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -122,21 +127,101 @@ const CreateBusiness = () => {
     if (!validateStep(1) || !validateStep(2)) return;
     try {
       setLoading(true);
-      const res = await businessService.createBusiness(formData);
+
+      // Check if there are any files to upload
+      const hasFiles = formData.files && (
+        formData.files.logo ||
+        formData.files.banner ||
+        formData.files.thumbnail ||
+        (formData.files.gallery && formData.files.gallery.length > 0)
+      );
+
+      let payload;
+      if (hasFiles) {
+        payload = new FormData();
+        
+        // Helper to append nested objects/arrays
+        const appendNested = (obj, prefix = "") => {
+          Object.keys(obj).forEach(key => {
+            const fullKey = prefix ? `${prefix}[${key}]` : key;
+            if (key === 'files') return; // Skip files object, we handle it separately
+            
+            if (Array.isArray(obj[key])) {
+              obj[key].forEach((item, index) => {
+                if (typeof item === 'object' && item !== null) {
+                  appendNested(item, `${fullKey}[${index}]`);
+                } else {
+                  payload.append(`${fullKey}[${index}]`, item);
+                }
+              });
+            } else if (typeof obj[key] === 'object' && obj[key] !== null && !(obj[key] instanceof Date)) {
+              appendNested(obj[key], fullKey);
+            } else {
+              payload.append(fullKey, obj[key]);
+            }
+          });
+        };
+
+        // Append all data except files - skip empty arrays/objects to prevent Mongoose errors
+        const { files, ...restData } = formData;
+        
+        Object.keys(restData).forEach(key => {
+          const value = restData[key];
+          
+          // Skip null or undefined
+          if (value === null || value === undefined) return;
+
+          // Handle Arrays
+          if (Array.isArray(value)) {
+            if (value.length > 0) {
+              payload.append(key, JSON.stringify(value));
+            }
+            return;
+          }
+
+          // Handle Objects
+          if (typeof value === 'object' && !(value instanceof Date)) {
+            // Check if object has any non-empty values
+            const hasData = Object.values(value).some(v => v !== "" && v !== null && v !== undefined);
+            if (hasData) {
+              payload.append(key, JSON.stringify(value));
+            }
+            return;
+          }
+
+          // Handle Primitives
+          if (value !== "") {
+            payload.append(key, value);
+          }
+        });
+
+        // Append files
+        if (files.logo) payload.append("logo", files.logo);
+        if (files.banner) payload.append("banner", files.banner);
+        if (files.thumbnail) payload.append("thumbnail", files.thumbnail);
+        if (files.gallery && files.gallery.length > 0) {
+          files.gallery.forEach(file => payload.append("gallery", file));
+        }
+      } else {
+        payload = formData;
+      }
+
+      const res = await businessService.createBusiness(payload);
       if (res.success) {
         toast.success("Business Created!");
         clearForm();
         navigate("/admin/businesses");
       }
     } catch (e) {
-      toast.error("Submission failed");
+      console.error("Submission error:", e);
+      toast.error(e.response?.data?.message || "Submission failed");
     } finally {
       setLoading(false);
     }
   };
 
 
-  const stepProps = { formData, errors, handleChange, handleArrayAdd, handleArrayRemove, setNestedValue };
+  const stepProps = { formData, errors, handleChange, handleArrayAdd, handleArrayRemove, setNestedValue, handleFileChange, handleFileRemove };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">

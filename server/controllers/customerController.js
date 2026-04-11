@@ -282,7 +282,6 @@ const getCustomers = async (req, res, next) => {
 
         // Get registered customers
         let registeredCustomers = [];
-        let registeredTotal = 0;
 
         if (customerType !== 'walkin') {
             registeredCustomers = await Customer.find(query)
@@ -290,9 +289,8 @@ const getCustomers = async (req, res, next) => {
                 .populate('preferences.preferredStaff', 'name role')
                 .populate('referredBy', 'firstName lastName phone')
                 .select('-internalNotes')
+                .sort(sortOptions)
                 .lean();
-
-            registeredTotal = registeredCustomers.length;
         }
 
         // Calculate real-time stats for registered customers

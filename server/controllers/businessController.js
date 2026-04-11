@@ -21,6 +21,7 @@ const { generateBusinessAnalytics } = require("../utils/businessUtils");
 const indiaLocations = require("../data/indiaLocations");
 const { encryptResponse } = require("../utils/encryptionUtils");
 const googlePlaces = require("../utils/googlePlaces");
+const { parseJsonFields, handleBusinessImages } = require("../utils/fileHandler");
 
 // Pre-compute known locations for fast lookup
 const knownLocations = new Set();
@@ -1464,7 +1465,7 @@ const getBusinessAnalytics = async (req, res, next) => {
 const updateBusiness = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const updates = parseJsonFields(req.body);
         const userId = req.user.id;
         const userRole = req.user.role;
 
@@ -1513,6 +1514,11 @@ const updateBusiness = async (req, res, next) => {
             delete updates.admin;
             delete updates.isActive;
             delete updates.businessLink;
+        }
+
+        // Handle Images if files are uploaded or URLs are updated
+        if (req.files && Object.keys(req.files).length > 0 || updates.images) {
+            updates.images = await handleBusinessImages(req.files, updates.images || {}, business.images || {});
         }
 
         // Validate business type if being updated

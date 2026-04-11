@@ -148,8 +148,8 @@ const performSync = async () => {
 const startGoogleSheetSync = () => {
     if (syncInterval) return;
     performSync(); // Initial run
-    syncInterval = setInterval(performSync, 30000);
-    console.log("[GoogleSheet Auto-Sync] ✓ Service started (30s interval)");
+    syncInterval = setInterval(performSync, 120000); // Increased to 2 minutes
+    console.log("[GoogleSheet Auto-Sync] ✓ Service started (2m interval)");
 };
 
 const stopGoogleSheetSync = () => {

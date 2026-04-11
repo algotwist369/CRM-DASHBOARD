@@ -1,24 +1,97 @@
-import React from "react";
+import React, { useState } from "react";
 import FormField from "../../../../../components/forms/FormField/FormField";
 import MultiInput from "../../../../../components/forms/MultiInput/MultiInput";
+import { FaUpload, FaLink, FaTrashAlt, FaPlus } from "react-icons/fa";
 
-const ImagePreview = ({ url, label }) => {
-    if (!url) return null;
+const ImagePreview = ({ file, url, label, onRemove }) => {
+    const previewUrl = file ? URL.createObjectURL(file) : url;
+    if (!previewUrl) return null;
     return (
-        <div className="mt-2 group relative">
-            <div className="w-20 h-20 rounded-xl border-2 border-secondary-200 overflow-hidden bg-secondary-50 transition-all group-hover:border-primary-400">
+        <div className="mt-2 group relative inline-block">
+            <div className="w-24 h-24 rounded-xl border-2 border-secondary-200 overflow-hidden bg-secondary-50 transition-all group-hover:border-primary-400">
                 <img
-                    src={url}
+                    src={previewUrl}
                     alt={label || "Preview"}
                     className="w-full h-full object-cover"
+                    onLoad={() => file && URL.revokeObjectURL(previewUrl)}
                     onError={(e) => {
-                        e.target.src = "https://placehold.co/100x100?text=Invalid+URL";
+                        e.target.src = "https://placehold.co/100x100?text=Invalid+Image";
                     }}
                 />
             </div>
+            {onRemove && (
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                >
+                    <FaTrashAlt size={10} />
+                </button>
+            )}
             <span className="absolute -bottom-1 -right-1 bg-primary-500 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                Preview
+                {file ? "File" : "URL"}
             </span>
+        </div>
+    );
+};
+
+const ImageInputSelector = ({ label, name, value, file, onChange, onFileChange, onRemoveFile, placeholder }) => {
+    const [mode, setMode] = useState(file ? "file" : "url");
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <label className="text-sm font-bold text-secondary-700">{label}</label>
+                <div className="flex bg-secondary-100 p-1 rounded-lg">
+                    <button
+                        type="button"
+                        onClick={() => setMode("url")}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${mode === "url" ? "bg-white text-primary-600 shadow-sm" : "text-secondary-500"}`}
+                    >
+                        <FaLink className="inline mr-1" /> URL
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMode("file")}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${mode === "file" ? "bg-white text-primary-600 shadow-sm" : "text-secondary-500"}`}
+                    >
+                        <FaUpload className="inline mr-1" /> UPLOAD
+                    </button>
+                </div>
+            </div>
+
+            {mode === "url" ? (
+                <div className="relative">
+                    <input
+                        type="text"
+                        className="w-full px-4 py-3 rounded-xl border border-secondary-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-secondary-900 placeholder:text-secondary-400 font-medium bg-white"
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder={placeholder}
+                    />
+                    <FaLink className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary-300" />
+                </div>
+            ) : (
+                <div className="relative">
+                    <div className="flex items-center gap-3">
+                        <label className="flex-1 cursor-pointer group">
+                            <div className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-secondary-200 group-hover:border-primary-400 group-hover:bg-primary-50/50 transition-all">
+                                <FaUpload className="text-secondary-400 group-hover:text-primary-500" />
+                                <span className="text-sm font-semibold text-secondary-500 group-hover:text-primary-700">
+                                    {file ? file.name : "Choose file..."}
+                                </span>
+                            </div>
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => onFileChange(e.target.files[0])}
+                            />
+                        </label>
+                    </div>
+                </div>
+            )}
+            <ImagePreview url={value} file={file} label={label} onRemove={mode === "file" && file ? onRemoveFile : null} />
         </div>
     );
 };
@@ -29,7 +102,7 @@ const extractUrl = (input) => {
     return match ? match[1] : input.trim();
 };
 
-const MediaSocialStep = ({ formData, handleChange, handleArrayAdd, handleArrayRemove }) => {
+const MediaSocialStep = ({ formData, handleChange, handleArrayAdd, handleArrayRemove, handleFileChange, handleFileRemove }) => {
     return (
         <div>
             <div className="mb-10">
@@ -41,26 +114,39 @@ const MediaSocialStep = ({ formData, handleChange, handleArrayAdd, handleArrayRe
                 <div>
                     <h3 className="text-sm font-bold uppercase tracking-widest text-secondary-400 mb-6">Brand Assets</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <FormField
-                                label="Logo Image (URL)"
-                                name="images.logo"
-                                value={formData.images.logo}
-                                onChange={(val) => handleChange({ target: { name: "images.logo", value: val } })}
-                                placeholder="https://..."
-                            />
-                            <ImagePreview url={formData.images.logo} label="Logo" />
-                        </div>
-                        <div>
-                            <FormField
-                                label="Cover Banner (URL)"
-                                name="images.banner"
-                                value={formData.images.banner}
-                                onChange={(val) => handleChange({ target: { name: "images.banner", value: val } })}
-                                placeholder="https://..."
-                            />
-                            <ImagePreview url={formData.images.banner} label="Banner" />
-                        </div>
+                        <ImageInputSelector
+                            label="Logo Image"
+                            name="images.logo"
+                            value={formData.images.logo}
+                            file={formData.files?.logo}
+                            onChange={(val) => handleChange({ target: { name: "images.logo", value: val } })}
+                            onFileChange={(file) => handleFileChange("logo", file)}
+                            onRemoveFile={() => handleFileRemove("logo")}
+                            placeholder="https://..."
+                        />
+                        <ImageInputSelector
+                            label="Cover Banner"
+                            name="images.banner"
+                            value={formData.images.banner}
+                            file={formData.files?.banner}
+                            onChange={(val) => handleChange({ target: { name: "images.banner", value: val } })}
+                            onFileChange={(file) => handleFileChange("banner", file)}
+                            onRemoveFile={() => handleFileRemove("banner")}
+                            placeholder="https://..."
+                        />
+                    </div>
+
+                    <div className="mt-8">
+                        <ImageInputSelector
+                            label="Thumbnail Image"
+                            name="images.thumbnail"
+                            value={formData.images.thumbnail}
+                            file={formData.files?.thumbnail}
+                            onChange={(val) => handleChange({ target: { name: "images.thumbnail", value: val } })}
+                            onFileChange={(file) => handleFileChange("thumbnail", file)}
+                            onRemoveFile={() => handleFileRemove("thumbnail")}
+                            placeholder="https://..."
+                        />
                     </div>
 
                     <div className="mt-8 pt-8 border-t border-secondary-100">
@@ -111,21 +197,39 @@ const MediaSocialStep = ({ formData, handleChange, handleArrayAdd, handleArrayRe
                     </div>
 
                     <div className="mt-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <label className="text-sm font-bold text-secondary-700">Gallery (URLs & Uploads)</label>
+                            <label className="flex items-center gap-2 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg cursor-pointer hover:bg-primary-100 transition-all text-xs font-bold">
+                                <FaPlus /> Upload New
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => {
+                                        Array.from(e.target.files).forEach(file => handleFileChange("gallery", file));
+                                    }}
+                                />
+                            </label>
+                        </div>
+                        
                         <MultiInput
-                            label="External Image Gallery"
                             value={formData.images.gallery}
                             onChange={(val) => handleArrayAdd("images.gallery", val)}
                             onRemove={(idx) => handleArrayRemove("images.gallery", idx)}
-                            placeholder="Paste image URLs"
+                            placeholder="Paste external image URL and press Enter"
                         />
-                        {formData.images.gallery.length > 0 && (
-                            <div className="mt-4 flex flex-wrap gap-3">
+
+                        {/* Combined Gallery Preview (Files + URLs) */}
+                        {(formData.images.gallery.length > 0 || formData.files?.gallery?.length > 0) && (
+                            <div className="mt-6 flex flex-wrap gap-4">
+                                {/* URL Images */}
                                 {formData.images.gallery.map((url, idx) => (
-                                    <div key={idx} className="relative group">
-                                        <div className="w-16 h-16 rounded-lg border border-secondary-200 overflow-hidden bg-secondary-50 hover:border-primary-400 transition-all">
+                                    <div key={`url-${idx}`} className="relative group">
+                                        <div className="w-20 h-20 rounded-xl border-2 border-secondary-200 overflow-hidden bg-secondary-50 hover:border-primary-400 transition-all shadow-sm">
                                             <img
                                                 src={url}
-                                                alt={`Gallery ${idx}`}
+                                                alt={`Gallery URL ${idx}`}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
                                                     e.target.src = "https://placehold.co/100x100?text=Error";
@@ -135,10 +239,33 @@ const MediaSocialStep = ({ formData, handleChange, handleArrayAdd, handleArrayRe
                                         <button
                                             type="button"
                                             onClick={() => handleArrayRemove("images.gallery", idx)}
-                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
                                         >
                                             ×
                                         </button>
+                                        <span className="absolute -bottom-1 -left-1 bg-secondary-500 text-white text-[8px] px-1 py-0.5 rounded font-bold">URL</span>
+                                    </div>
+                                ))}
+
+                                {/* Uploaded Files */}
+                                {formData.files?.gallery?.map((file, idx) => (
+                                    <div key={`file-${idx}`} className="relative group">
+                                        <div className="w-20 h-20 rounded-xl border-2 border-primary-100 overflow-hidden bg-primary-50 hover:border-primary-400 transition-all shadow-sm">
+                                            <img
+                                                src={URL.createObjectURL(file)}
+                                                alt={`Gallery File ${idx}`}
+                                                className="w-full h-full object-cover"
+                                                onLoad={(e) => URL.revokeObjectURL(e.target.src)}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleFileRemove("gallery", idx)}
+                                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                        >
+                                            ×
+                                        </button>
+                                        <span className="absolute -bottom-1 -left-1 bg-primary-500 text-white text-[8px] px-1 py-0.5 rounded font-bold">FILE</span>
                                     </div>
                                 ))}
                             </div>

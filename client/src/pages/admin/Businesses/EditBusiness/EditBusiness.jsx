@@ -25,6 +25,7 @@ const INITIAL_STATE = {
   category: "", subCategory: "", tags: [], specialties: [], languages: [],
   google360ImageUrl: [],
   images: { logo: "", banner: "", thumbnail: "", gallery: [] },
+  files: { logo: null, banner: null, thumbnail: null, gallery: [] },
   socialMedia: { facebook: "", instagram: "", twitter: "", linkedin: "", youtube: "", whatsapp: "", telegram: "" },
   registration: { gstNumber: "", panNumber: "", registrationNumber: "", licenseNumber: "", taxId: "", registrationDate: "", expiryDate: "" },
   paymentMethods: { cash: true, card: false, upi: false, netBanking: false, wallet: false },
@@ -93,7 +94,9 @@ const EditBusiness = () => {
     handleChange,
     handleArrayAdd,
     handleArrayRemove,
-    setNestedValue
+    setNestedValue,
+    handleFileChange,
+    handleFileRemove
   } = useBusinessForm(INITIAL_STATE, null); // No localStorage for Edit
 
   useEffect(() => {
@@ -119,6 +122,7 @@ const EditBusiness = () => {
               }
             },
             images: { ...prev.images, ...(data.images || {}) },
+            files: { ...prev.files }, // Reset files on fetch
             socialMedia: { ...prev.socialMedia, ...(data.socialMedia || {}) },
             registration: { ...prev.registration, ...(data.registration || {}) },
             paymentMethods: { ...prev.paymentMethods, ...(data.paymentMethods || {}) },
@@ -146,10 +150,12 @@ const EditBusiness = () => {
     if (step === 1) {
       if (!formData.type) newErrors.type = "Required";
       if (!formData.name) newErrors.name = "Required";
+      if (!formData.branch) newErrors.branch = "Required";
     }
     if (step === 2) {
       if (!formData.address) newErrors.address = "Required";
-      if (!formData.phone) newErrors.phone = "Required";
+      if (!formData.city) newErrors.city = "Required";
+      if (!formData.state) newErrors.state = "Required";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -164,13 +170,71 @@ const EditBusiness = () => {
     if (!validateStep(1) || !validateStep(2)) return;
     try {
       setLoading(true);
-      const res = await businessService.updateBusiness(id, formData);
+
+      // Check if there are any files to upload
+      const hasFiles = formData.files && (
+        formData.files.logo ||
+        formData.files.banner ||
+        formData.files.thumbnail ||
+        (formData.files.gallery && formData.files.gallery.length > 0)
+      );
+
+      let payload;
+      if (hasFiles) {
+        payload = new FormData();
+        
+        // Append all data except files as stringified JSON if they are objects - skip empty data
+        const { files, ...restData } = formData;
+        
+        Object.keys(restData).forEach(key => {
+          const value = restData[key];
+          
+          // Skip null or undefined
+          if (value === null || value === undefined) return;
+
+          // Handle Arrays
+          if (Array.isArray(value)) {
+            if (value.length > 0) {
+              payload.append(key, JSON.stringify(value));
+            }
+            return;
+          }
+
+          // Handle Objects
+          if (typeof value === 'object' && !(value instanceof Date)) {
+            // Check if object has any non-empty values
+            const hasData = Object.values(value).some(v => v !== "" && v !== null && v !== undefined);
+            if (hasData) {
+              payload.append(key, JSON.stringify(value));
+            }
+            return;
+          }
+
+          // Handle Primitives
+          if (value !== "") {
+            payload.append(key, value);
+          }
+        });
+
+        // Append files
+        if (files.logo) payload.append("logo", files.logo);
+        if (files.banner) payload.append("banner", files.banner);
+        if (files.thumbnail) payload.append("thumbnail", files.thumbnail);
+        if (files.gallery && files.gallery.length > 0) {
+          files.gallery.forEach(file => payload.append("gallery", file));
+        }
+      } else {
+        payload = formData;
+      }
+
+      const res = await businessService.updateBusiness(id, payload);
       if (res.success) {
         toast.success("Business Updated!");
         navigate("/admin/businesses");
       }
     } catch (e) {
-      toast.error("Update failed");
+      console.error("Update error:", e);
+      toast.error(e.response?.data?.message || "Update failed");
     } finally {
       setLoading(false);
     }
@@ -185,7 +249,7 @@ const EditBusiness = () => {
     </div>
   );
 
-  const stepProps = { formData, errors, handleChange, handleArrayAdd, handleArrayRemove, setNestedValue };
+  const stepProps = { formData, errors, handleChange, handleArrayAdd, handleArrayRemove, setNestedValue, handleFileChange, handleFileRemove };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">

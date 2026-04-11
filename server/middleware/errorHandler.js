@@ -24,9 +24,21 @@ const errorHandler = (err, req, res, next) => {
         return next(err);
     }
 
-    // Default status
-    const statusCode = err.statusCode || err.status || 500;
-    const message = err.message || 'Internal Server Error';
+    let statusCode = err.statusCode || err.status || 500;
+    let message = err.message || 'Internal Server Error';
+
+    // Handle specific Mongoose/MongoDB errors
+    if (err.name === 'ValidationError') {
+        statusCode = 400;
+        message = Object.values(err.errors).map(val => val.message).join(', ');
+    } else if (err.code === 11000) {
+        statusCode = 400;
+        const field = Object.keys(err.keyPattern)[0];
+        message = `Duplicate field value entered: ${field}. Please use another value.`;
+    } else if (err.name === 'CastError') {
+        statusCode = 400;
+        message = `Resource not found with id of ${err.value}`;
+    }
 
     // Minimal error body for production, extended for development
     const body = {
@@ -40,11 +52,14 @@ const errorHandler = (err, req, res, next) => {
             stack: err.stack,
             name: err.name,
         };
+    } else {
+        // Log critical errors in production (avoid heavy console logs, but keep important ones)
+        if (statusCode === 500) {
+            console.error(`[CRITICAL ERROR] ${req.method} ${req.originalUrl} - ${err.stack || message}`);
+        } else {
+            console.warn(`[API WARNING] ${req.method} ${req.originalUrl} - ${statusCode} - ${message}`);
+        }
     }
-
-    // Optionally log server-side (console for now; replace with winston or pino)
-    console.error(`[ERROR] ${req.method} ${req.originalUrl} - ${message}`);
-    if (err.stack) console.error(err.stack);
 
     res.status(statusCode).json(body);
 }

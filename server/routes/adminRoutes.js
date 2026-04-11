@@ -4,6 +4,7 @@ const adminController = require("../controllers/adminController");
 const adminNotificationController = require("../controllers/adminNotificationController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const { uploadS3BusinessImages, handleUploadError } = require("../middleware/uploadMiddleware");
 
 // Admin only routes
 router.use(authMiddleware, roleMiddleware(["admin"]));
@@ -27,10 +28,10 @@ router.delete("/notifications/all", adminNotificationController.deleteAllNotific
 router.delete("/notifications/:id", adminNotificationController.deleteNotification);
 
 // ================== Business Management ==================
-router.post("/business", adminController.createBusiness);
+router.post("/business", uploadS3BusinessImages, handleUploadError, adminController.createBusiness);
 router.get("/businesses", adminController.getBusinesses);
 router.get("/business/:businessId/link", adminController.getBusinessLink);
-router.put("/business/:id", adminController.updateBusiness);
+router.put("/business/:id", uploadS3BusinessImages, handleUploadError, adminController.updateBusiness);
 router.put("/business/:id/status", adminController.updateBusinessStatus);
 router.delete("/business/:id", adminController.deleteBusiness);
 

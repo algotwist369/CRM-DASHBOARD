@@ -89,6 +89,34 @@ const useBusinessForm = (initialState, storageKey = null) => {
         });
     }, []);
 
+    const handleFileChange = useCallback((field, file) => {
+        setFormData((prev) => {
+            const newFiles = { ...prev.files };
+            if (field.includes("gallery")) {
+                const galleryFiles = Array.isArray(newFiles.gallery) ? [...newFiles.gallery] : [];
+                if (file) {
+                    galleryFiles.push(file);
+                }
+                newFiles.gallery = galleryFiles;
+            } else {
+                newFiles[field] = file;
+            }
+            return { ...prev, files: newFiles };
+        });
+    }, []);
+
+    const handleFileRemove = useCallback((field, index) => {
+        setFormData((prev) => {
+            const newFiles = { ...prev.files };
+            if (field === "gallery" && index !== undefined) {
+                newFiles.gallery = newFiles.gallery.filter((_, i) => i !== index);
+            } else {
+                delete newFiles[field];
+            }
+            return { ...prev, files: newFiles };
+        });
+    }, []);
+
     return {
         formData,
         setFormData,
@@ -98,6 +126,8 @@ const useBusinessForm = (initialState, storageKey = null) => {
         handleArrayAdd,
         handleArrayRemove,
         setNestedValue,
+        handleFileChange,
+        handleFileRemove,
         clearForm
     };
 };

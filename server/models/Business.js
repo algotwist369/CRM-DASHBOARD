@@ -5,7 +5,7 @@ const businessSchema = new mongoose.Schema(
         admin: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true, index: true },
         type: {
             type: String,
-            enum: ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"],
+            enum: ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "spa & wellness", "others"],
             required: true,
             index: true
         },
@@ -39,13 +39,13 @@ const businessSchema = new mongoose.Schema(
 
         // Social Media Links
         socialMedia: {
-            facebook: { type: String },
-            instagram: { type: String },
-            twitter: { type: String },
-            linkedin: { type: String },
-            youtube: { type: String },
-            whatsapp: { type: String },
-            telegram: { type: String }
+            facebook: { type: String, default: "" },
+            instagram: { type: String, default: "" },
+            twitter: { type: String, default: "" },
+            linkedin: { type: String, default: "" },
+            youtube: { type: String, default: "" },
+            whatsapp: { type: String, default: "" },
+            telegram: { type: String, default: "" }
         },
 
         // Business Videos
@@ -151,13 +151,6 @@ const businessSchema = new mongoose.Schema(
             pushNotifications: { type: Boolean, default: true }
         },
 
-        // Custom Fields (for flexibility)
-        customFields: [{
-            key: { type: String },
-            value: { type: mongoose.Schema.Types.Mixed },
-            type: { type: String, enum: ["text", "number", "date", "boolean", "array"] }
-        }],
-
         // Business Hours & Days Off
         businessHours: {
             type: mongoose.Schema.Types.Mixed,
@@ -213,6 +206,7 @@ const businessSchema = new mongoose.Schema(
 
         managers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Manager" }],
         staff: [{ type: mongoose.Schema.Types.ObjectId, ref: "Staff" }],
+        slug: { type: String, unique: true, sparse: true }
     },
     { timestamps: true }
 );

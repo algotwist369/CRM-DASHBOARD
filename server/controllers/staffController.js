@@ -90,16 +90,11 @@ const getStaffDashboard = async (req, res, next) => {
         }
 
         // Get staff with business and manager info
-        const staff = await Staff.findById(staffId)
+        const staffPromise = Staff.findById(staffId)
             .populate('business', 'name type branch address')
-            .populate('manager', 'name username');
+            .populate('manager', 'name username')
+            .lean();
         
-        if (!staff || !staff.business) {
-            return res.status(404).json({ success: false, message: "Staff or business not found" });
-        }
-
-        const business = staff.business;
-
         // Get today's date range
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -111,48 +106,47 @@ const getStaffDashboard = async (req, res, next) => {
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
-        // Get today's appointments for this staff
-        const todayAppointments = await Appointment.find({
-            staff: staffId,
-            appointmentDate: { $gte: today, $lt: tomorrow }
-        }).populate('customer', 'name phone').populate('service', 'name price');
+        // Run all queries in parallel for better performance
+        const [staff, todayAppointments, monthlyAppointments, todayTransactions, monthlyTransactions, upcomingAppointments] = await Promise.all([
+            staffPromise,
+            // Today's appointments
+            Appointment.find({
+                staff: staffId,
+                appointmentDate: { $gte: today, $lt: tomorrow }
+            }).populate('customer', 'name phone').populate('service', 'name price').lean(),
+            // Monthly appointments
+            Appointment.find({
+                staff: staffId,
+                appointmentDate: { $gte: startOfMonth }
+            }).select('_id').lean(),
+            // Today's transactions
+            Transaction.find({
+                staff: staffId,
+                transactionDate: { $gte: today, $lt: tomorrow }
+            }).select('finalPrice customer').lean(),
+            // Monthly transactions
+            Transaction.find({
+                staff: staffId,
+                transactionDate: { $gte: startOfMonth }
+            }).select('finalPrice customer').lean(),
+            // Upcoming appointments
+            Appointment.find({
+                staff: staffId,
+                appointmentDate: { $gte: new Date() },
+                status: { $in: ['confirmed', 'pending'] }
+            })
+            .populate('customer', 'name phone')
+            .populate('service', 'name price')
+            .sort({ appointmentDate: 1 })
+            .limit(5)
+            .lean()
+        ]);
+        
+        if (!staff || !staff.business) {
+            return res.status(404).json({ success: false, message: "Staff or business not found" });
+        }
 
-        // Get this month's appointments
-        const monthlyAppointments = await Appointment.find({
-            staff: staffId,
-            appointmentDate: { $gte: startOfMonth }
-        });
-
-        // Get today's transactions for this staff
-        const todayTransactions = await Transaction.find({
-            business: business._id,
-            staff: staffId,
-            transactionDate: { $gte: today, $lt: tomorrow }
-        });
-
-        // Get this month's transactions
-        const monthlyTransactions = await Transaction.find({
-            business: business._id,
-            staff: staffId,
-            transactionDate: { $gte: startOfMonth }
-        });
-
-        // Calculate stats
-        const todayRevenue = todayTransactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
-        const monthlyRevenue = monthlyTransactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
-        const todayCustomers = new Set(todayTransactions.map(t => t.customer?.toString())).size;
-        const monthlyCustomers = new Set(monthlyTransactions.map(t => t.customer?.toString())).size;
-
-        // Get upcoming appointments (next 5)
-        const upcomingAppointments = await Appointment.find({
-            staff: staffId,
-            appointmentDate: { $gte: new Date() },
-            status: { $in: ['confirmed', 'pending'] }
-        })
-        .populate('customer', 'name phone')
-        .populate('service', 'name price')
-        .sort({ appointmentDate: 1 })
-        .limit(5);
+        const business = staff.business;
 
         const dashboard = {
             staff: {
