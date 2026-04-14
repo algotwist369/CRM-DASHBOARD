@@ -437,8 +437,8 @@ export const STORAGE_CONSTANTS = {
     SESSION: 'session'
   },
   LIMITS: {
-    LOCAL_STORAGE: 5 * 1024 * 1024, // 5MB
-    SESSION_STORAGE: 5 * 1024 * 1024 // 5MB
+    LOCAL_STORAGE: 15 * 1024 * 1024, // 5MB
+    SESSION_STORAGE: 15 * 1024 * 1024 // 5MB
   },
   EVENTS: {
     STORAGE: 'storage',

@@ -451,12 +451,12 @@ export const FILE_CONSTANTS = {
     CODE: ['js', 'ts', 'html', 'css', 'json', 'xml', 'py', 'java', 'cpp', 'c']
   },
   SIZE_LIMITS: {
-    IMAGE: 5 * 1024 * 1024, // 5MB
+    IMAGE: 15 * 1024 * 1024, // 5MB
     VIDEO: 100 * 1024 * 1024, // 100MB
     AUDIO: 20 * 1024 * 1024, // 20MB
     DOCUMENT: 10 * 1024 * 1024, // 10MB
     ARCHIVE: 50 * 1024 * 1024, // 50MB
-    DEFAULT: 5 * 1024 * 1024 // 5MB
+    DEFAULT: 15 * 1024 * 1024 // 5MB
   }
 }
 
