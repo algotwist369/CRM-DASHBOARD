@@ -30,12 +30,6 @@ const withRetry = async (fn, retries = 3, delay = 1000) => {
     }
 };
 
-/**
- * Upload a file to S3
- * @param {Object} file - The file object from multer
- * @param {string} folder - The folder name (e.g., 'business-gallery')
- * @returns {Promise<string>} - The S3 URL of the uploaded file
- */
 const uploadToS3 = async (file, folder) => {
     if (!file || !file.buffer) return null;
 
@@ -54,7 +48,7 @@ const uploadToS3 = async (file, folder) => {
                     ContentType: file.mimetype,
                 },
                 // Optimize for memory: use smaller part size for 10k+ users concurrency
-                partSize: 5 * 1024 * 1024, // 5MB parts
+                partSize: 15 * 1024 * 1024, // 15MB parts
                 queueSize: 4, // limit concurrent parts to save memory
             });
 
@@ -67,11 +61,6 @@ const uploadToS3 = async (file, folder) => {
     });
 };
 
-/**
- * Delete a file from S3
- * @param {string} fileUrl - The full S3 URL of the file
- * @returns {Promise<boolean>} - Success status
- */
 const deleteFromS3 = async (fileUrl) => {
     if (!fileUrl || typeof fileUrl !== 'string' || !fileUrl.includes(BUCKET_NAME)) {
         return false;
@@ -98,11 +87,6 @@ const deleteFromS3 = async (fileUrl) => {
     });
 };
 
-/**
- * Extract S3 key from full URL
- * @param {string} url - The full S3 URL
- * @returns {string|null} - The S3 key
- */
 const extractKeyFromUrl = (url) => {
     try {
         // Example: https://spaadvisor-bucket.s3.ap-south-1.amazonaws.com/business-gallery/12345.jpg
