@@ -203,10 +203,9 @@ const getCustomers = async (req, res, next) => {
             tags,
             sortBy = 'lastVisit',
             sortOrder = 'desc',
-            includeWalkIns = 'true' // Include walk-ins by default
+            includeWalkIns = 'true'
         } = req.query;
 
-        // Determine business ID
         let businessIds = [];
         let business;
 
@@ -248,7 +247,11 @@ const getCustomers = async (req, res, next) => {
         const cacheKeyPrefix = businessId ? `business:${businessId}` : `admin:${userId}`;
         const cacheKey = `${cacheKeyPrefix}:customers:${page}:${limit}:${search}:${customerType}:${tags}:${sortBy}:${sortOrder}`;
 
-        // Build query for registered customers
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json(cachedData);
+        }
+
         let query = { isActive: true };
         if (businessIds.length === 1) {
             query.business = businessIds[0];
@@ -256,17 +259,14 @@ const getCustomers = async (req, res, next) => {
             query.business = { $in: businessIds };
         }
 
-        // Filter by customer type (skip for walk-in filter)
         if (customerType && customerType !== 'walkin') {
             query.customerType = customerType;
         }
 
-        // Filter by tags
         if (tags) {
             query.tags = { $in: tags.split(',') };
         }
 
-        // Search
         if (search) {
             query.$or = [
                 { firstName: { $regex: search, $options: 'i' } },
@@ -276,48 +276,36 @@ const getCustomers = async (req, res, next) => {
             ];
         }
 
-        // Sort options
         const sortOptions = {};
         sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-        // Get registered customers
         let registeredCustomers = [];
+        let appointmentStats = [];
+        let walkInCustomers = [];
 
         if (customerType !== 'walkin') {
-            registeredCustomers = await Customer.find(query)
-                .populate('business', 'name type branch')
-                .populate('preferences.preferredStaff', 'name role')
-                .populate('referredBy', 'firstName lastName phone')
-                .select('-internalNotes')
-                .sort(sortOptions)
-                .lean();
+            const [customers, stats] = await Promise.all([
+                Customer.find(query)
+                    .populate('business', 'name type branch')
+                    .populate('preferences.preferredStaff', 'name role')
+                    .populate('referredBy', 'firstName lastName phone')
+                    .select('-internalNotes')
+                    .sort(sortOptions)
+                    .lean(),
+                Appointment.aggregate([
+                    { $match: { status: 'completed' } },
+                    { $group: { _id: "$customer", totalVisits: { $sum: 1 }, totalSpent: { $sum: "$totalAmount" }, lastVisit: { $max: "$appointmentDate" } } }
+                ])
+            ]);
+            registeredCustomers = customers;
+            appointmentStats = stats;
         }
-
-        // Calculate real-time stats for registered customers
-        const customerIds = registeredCustomers.map(c => c._id);
-        const appointmentStats = await Appointment.aggregate([
-            {
-                $match: {
-                    customer: { $in: customerIds },
-                    status: 'completed'
-                }
-            },
-            {
-                $group: {
-                    _id: "$customer",
-                    totalVisits: { $sum: 1 },
-                    totalSpent: { $sum: "$totalAmount" },
-                    lastVisit: { $max: "$appointmentDate" }
-                }
-            }
-        ]);
 
         const statsMap = {};
         appointmentStats.forEach(stat => {
             statsMap[stat._id.toString()] = stat;
         });
 
-        // Format registered customers
         let formattedCustomers = registeredCustomers.map(customer => {
             const stats = statsMap[customer._id.toString()] || {};
             const totalVisits = stats.totalVisits || customer.totalVisits || 0;
@@ -344,13 +332,10 @@ const getCustomers = async (req, res, next) => {
             };
         });
 
-        // Get walk-in customers from transactions (without linked customer profiles)
-        let walkInCustomers = [];
         if (includeWalkIns === 'true' && (!customerType || customerType === 'walkin')) {
-            // Build search query for walk-ins
             let walkInMatch = {
                 business: businessIds.length === 1 ? businessIds[0] : { $in: businessIds },
-                customer: null // Only transactions without linked customer profile
+                customer: null
             };
 
             if (search) {
@@ -361,7 +346,6 @@ const getCustomers = async (req, res, next) => {
                 ];
             }
 
-            // Aggregate unique walk-in customers from transactions
             const walkInAggregation = await Transaction.aggregate([
                 { $match: walkInMatch },
                 {
@@ -380,43 +364,38 @@ const getCustomers = async (req, res, next) => {
                 { $sort: { lastVisit: -1 } }
             ]);
 
-            // Get business info for walk-ins
-            const businessMap = {};
             if (walkInAggregation.length > 0) {
                 const businessIdsForLookup = [...new Set(walkInAggregation.map(w => w.business?.toString()).filter(Boolean))];
                 const businessesData = await Business.find({ _id: { $in: businessIdsForLookup } }).select('name type branch').lean();
+                const businessMap = {};
                 businessesData.forEach(b => businessMap[b._id.toString()] = b);
-            }
 
-            // Format walk-in customers
-            walkInCustomers = walkInAggregation.map((walkin, index) => ({
-                id: `walkin_${walkin._id || index}`,
-                fullName: walkin.customerName || 'Unknown',
-                email: walkin.customerEmail || null,
-                phone: walkin.customerPhone || walkin._id,
-                business: businessMap[walkin.business?.toString()] || null,
-                customerType: 'walkin',
-                source: 'transaction',
-                totalVisits: walkin.totalVisits,
-                totalSpent: walkin.totalSpent,
-                averageSpent: walkin.totalVisits > 0 ? Math.round(walkin.totalSpent / walkin.totalVisits) : 0,
-                lastVisit: walkin.lastVisit,
-                loyaltyPoints: 0,
-                membershipTier: 'none',
-                tags: [],
-                isActive: true,
-                createdAt: walkin.firstVisit
-            }));
+                walkInCustomers = walkInAggregation.map((walkin, index) => ({
+                    id: `walkin_${walkin._id || index}`,
+                    fullName: walkin.customerName || 'Unknown',
+                    email: walkin.customerEmail || null,
+                    phone: walkin.customerPhone || walkin._id,
+                    business: businessMap[walkin.business?.toString()] || null,
+                    customerType: 'walkin',
+                    source: 'transaction',
+                    totalVisits: walkin.totalVisits,
+                    totalSpent: walkin.totalSpent,
+                    averageSpent: walkin.totalVisits > 0 ? Math.round(walkin.totalSpent / walkin.totalVisits) : 0,
+                    lastVisit: walkin.lastVisit,
+                    loyaltyPoints: 0,
+                    membershipTier: 'none',
+                    tags: [],
+                    isActive: true,
+                    createdAt: walkin.firstVisit
+                }));
+            }
         }
 
-        // Merge and deduplicate by phone
         const phoneSet = new Set(formattedCustomers.map(c => c.phone));
         const uniqueWalkIns = walkInCustomers.filter(w => !phoneSet.has(w.phone));
 
-        // Combine all customers
         let allCustomers = [...formattedCustomers, ...uniqueWalkIns];
 
-        // Sort combined results
         if (sortBy === 'lastVisit') {
             allCustomers.sort((a, b) => {
                 const dateA = new Date(a.lastVisit || 0);
@@ -433,7 +412,6 @@ const getCustomers = async (req, res, next) => {
             });
         }
 
-        // Apply pagination
         const total = allCustomers.length;
         const startIndex = (parseInt(page) - 1) * parseInt(limit);
         const paginatedCustomers = allCustomers.slice(startIndex, startIndex + parseInt(limit));
@@ -449,6 +427,7 @@ const getCustomers = async (req, res, next) => {
             }
         };
 
+        await setCache(cacheKey, response, 120);
         return res.json(response);
     } catch (err) {
         next(err);
@@ -830,6 +809,8 @@ const addLoyaltyPoints = async (req, res, next) => {
 
         await customer.addLoyaltyPoints(points);
 
+        await deleteCache(`business:${customer.business}:customers`);
+
         return res.json({
             success: true,
             message: `${points} loyalty points added successfully`,
@@ -866,6 +847,8 @@ const redeemLoyaltyPoints = async (req, res, next) => {
         }
 
         const redeemed = await customer.redeemPoints(points);
+
+        await deleteCache(`business:${customer.business}:customers`);
 
         if (!redeemed) {
             return res.status(400).json({
@@ -1528,6 +1511,8 @@ const updateCustomerTier = async (req, res, next) => {
 
         customer.membershipTier = tier;
         await customer.save();
+
+        await deleteCache(`business:${customer.business}:customers`);
 
         return res.json({
             success: true,

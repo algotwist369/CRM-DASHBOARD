@@ -28,19 +28,77 @@ const { parseJsonFields, handleBusinessImages, deleteAllBusinessImages, deleteFr
 const getAdminDashboard = async (req, res, next) => {
     try {
         const adminId = req.user.id;
-        const { recentBusinessesPage = 1, recentBusinessesLimit = 5 } = req.query;
+        const { recentBusinessesPage = 1, recentBusinessesLimit = 15 } = req.query;
         const cacheKey = cacheKeys.adminDashboard(adminId);
 
         // Use getOrSet for optimal caching
         const dashboard = await getOrSet(cacheKey, async () => {
-            // Get admin info
-            const admin = await Admin.findById(adminId).select('name companyName email');
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-            // Get businesses count by type with optimized query
-            const businesses = await Business.find({ admin: adminId, isActive: true })
-                .select('type name branch businessLink managers staff')
-                .sort({ createdAt: -1 }) // Sort by newest first
-                .lean(); // Use lean() for better performance
+            // STEP 1: Get Admin and Business List in Parallel
+            const [admin, businesses] = await Promise.all([
+                Admin.findById(adminId).select('name companyName email').lean(),
+                Business.find({ admin: adminId, isActive: true })
+                    .select('type name branch businessLink managers staff')
+                    .sort({ createdAt: -1 })
+                    .lean()
+            ]);
+
+            if (!businesses.length) {
+                return {
+                    admin: admin || {},
+                    stats: { businesses: { total: 0 }, managers: 0, staff: 0, totalRevenue: formatCurrency(0), totalAdditionalAmount: formatCurrency(0), totalCustomers: 0, recentTransactions: 0 },
+                    analytics: { period: 'all-time', totalRevenue: 0, totalAdditionalAmount: 0, totalCustomers: 0, averageRevenuePerCustomer: 0, recentTransactions: 0, revenueByBusiness: {} },
+                    businesses: []
+                };
+            }
+
+            const businessIds = businesses.map(b => b._id);
+
+            // STEP 2: Execute all heavy analytical queries in parallel
+            const [managerCount, staffCount, additionalAmountPerBusiness, transactionStats, appointmentStats] = await Promise.all([
+                // Managers Count
+                Manager.countDocuments({ business: { $in: businessIds }, isActive: true }),
+                
+                // Staff Count
+                Staff.countDocuments({ business: { $in: businessIds }, isActive: true }),
+                
+                // Per-Business Additional Amount (Aggregation)
+                Appointment.aggregate([
+                    { $match: { business: { $in: businessIds }, status: 'completed', additionalAmount: { $gt: 0 } } },
+                    { $group: { _id: '$business', total: { $sum: '$additionalAmount' } } }
+                ]),
+
+                // Transaction Stats (30 days) - Single Aggregation for speed
+                Transaction.aggregate([
+                    { $match: { business: { $in: businessIds }, transactionDate: { $gte: thirtyDaysAgo } } },
+                    {
+                        $facet: {
+                            totals: [{ $group: { _id: null, totalRevenue: { $sum: '$finalPrice' }, count: { $sum: 1 } } }],
+                            customers: [{ $group: { _id: '$customerPhone' } }, { $count: 'total' }],
+                            byBusiness: [{ $group: { _id: '$business', revenue: { $sum: '$finalPrice' } } }]
+                        }
+                    }
+                ]),
+
+                // Appointment Stats (30 days) - Single Aggregation for speed
+                Appointment.aggregate([
+                    { $match: { business: { $in: businessIds }, appointmentDate: { $gte: thirtyDaysAgo }, status: 'completed', additionalAmount: { $gt: 0 } } },
+                    { $group: { _id: null, total: { $sum: '$additionalAmount' } } }
+                ])
+            ]);
+
+            // STEP 3: Process the results
+            const additionalAmountMap = {};
+            additionalAmountPerBusiness.forEach(item => {
+                additionalAmountMap[item._id.toString()] = item.total;
+            });
+
+            // Add totalAdditionalAmount to each business
+            businesses.forEach(b => {
+                b.totalAdditionalAmount = additionalAmountMap[b._id.toString()] || 0;
+            });
 
             const businessStats = {
                 total: businesses.length,
@@ -49,84 +107,61 @@ const getAdminDashboard = async (req, res, next) => {
                 hotel: businesses.filter(b => b.type === 'hotel').length
             };
 
-            // Get managers count with optimized query
-            const managerCount = await Manager.countDocuments({
-                business: { $in: businesses.map(b => b._id) },
-                isActive: true
-            });
+            const tStats = transactionStats[0];
+            const transactionRevenue = tStats.totals[0]?.totalRevenue || 0;
+            const recentTransactionsCount = tStats.totals[0]?.count || 0;
+            const totalCustomers = tStats.customers[0]?.total || 0;
+            const totalAdditionalAmount = appointmentStats[0]?.total || 0;
 
-            // Get staff count with optimized query
-            const staffCount = await Staff.countDocuments({
-                business: { $in: businesses.map(b => b._id) },
-                isActive: true
-            });
+            // Combine transaction revenue and additional amounts for total revenue
+            const totalRevenue = transactionRevenue + totalAdditionalAmount;
 
-            // Get recent transactions (last 30 days) with optimized query
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-            // Only query transactions if there are businesses
-            let recentTransactions = [];
-            if (businesses.length > 0) {
-                recentTransactions = await Transaction.find({
-                    business: { $in: businesses.map(b => b._id) },
-                    transactionDate: { $gte: thirtyDaysAgo, $exists: true, $ne: null }
-                }).select('finalPrice customerPhone transactionDate business').lean();
-            }
-
-            const totalRevenue = recentTransactions.reduce((sum, t) => sum + (t.finalPrice || 0), 0);
-            const totalCustomers = new Set(recentTransactions.map(t => t.customerPhone)).size;
-
-            // Create simple analytics for admin dashboard
-            // Note: generateBusinessAnalytics expects daily business records, not businesses
-            const analytics = {
-                period: 'monthly',
-                totalRevenue: totalRevenue,
-                totalCustomers: totalCustomers,
-                averageRevenuePerCustomer: totalCustomers > 0 ? totalRevenue / totalCustomers : 0,
-                recentTransactions: recentTransactions.length,
-                revenueByBusiness: {}
-            };
-
-            // Calculate revenue by business type
-            // Create a map of business IDs to types for efficient lookup
+            // Revenue by Business Type (using transaction and appointment aggregation results)
+            const revenueByBusiness = {};
             const businessTypeMap = {};
-            businesses.forEach(business => {
-                businessTypeMap[business._id.toString()] = business.type;
+            businesses.forEach(b => { businessTypeMap[b._id.toString()] = b.type; });
+
+            // Add revenue from transactions
+            tStats.byBusiness.forEach(item => {
+                const type = businessTypeMap[item._id.toString()];
+                if (type) {
+                    revenueByBusiness[type] = (revenueByBusiness[type] || 0) + item.revenue;
+                }
             });
 
-            // Calculate revenue by business type
-            recentTransactions.forEach(transaction => {
-                const businessId = transaction.business?.toString();
-                if (businessId && businessTypeMap[businessId]) {
-                    const businessType = businessTypeMap[businessId];
-                    if (!analytics.revenueByBusiness[businessType]) {
-                        analytics.revenueByBusiness[businessType] = 0;
-                    }
-                    analytics.revenueByBusiness[businessType] += (transaction.finalPrice || 0);
+            // Add revenue from additional amounts
+            additionalAmountPerBusiness.forEach(item => {
+                const type = businessTypeMap[item._id.toString()];
+                if (type) {
+                    revenueByBusiness[type] = (revenueByBusiness[type] || 0) + item.total;
                 }
             });
 
             return {
-                admin: {
-                    name: admin.name,
-                    companyName: admin.companyName,
-                    email: admin.email
-                },
+                admin: { name: admin.name, companyName: admin.companyName, email: admin.email },
                 stats: {
                     businesses: businessStats,
                     managers: managerCount,
                     staff: staffCount,
                     totalRevenue: formatCurrency(totalRevenue),
+                    totalAdditionalAmount: formatCurrency(totalAdditionalAmount),
                     totalCustomers,
-                    recentTransactions: recentTransactions.length
+                    recentTransactions: recentTransactionsCount
                 },
-                analytics,
-                businesses: businesses // Return all businesses for pagination
+                analytics: {
+                    period: 'monthly',
+                    totalRevenue,
+                    totalAdditionalAmount,
+                    totalCustomers,
+                    averageRevenuePerCustomer: totalCustomers > 0 ? totalRevenue / totalCustomers : 0,
+                    recentTransactions: recentTransactionsCount,
+                    revenueByBusiness
+                },
+                businesses: businesses
             };
         }, 300); // Cache for 5 minutes
 
-        // Apply pagination to recent businesses (after caching)
+        // Apply pagination
         const page = parseInt(recentBusinessesPage);
         const limit = parseInt(recentBusinessesLimit);
         const startIndex = (page - 1) * limit;
@@ -141,11 +176,11 @@ const getAdminDashboard = async (req, res, next) => {
             type: b.type,
             branch: b.branch,
             businessLink: b.businessLink,
-            managersCount: b.managers.length,
-            staffCount: b.staff.length
+            managersCount: b.managers?.length || 0,
+            staffCount: b.staff?.length || 0,
+            totalAdditionalAmount: b.totalAdditionalAmount || 0
         }));
 
-        // Remove the businesses array from response and add pagination
         const { businesses, ...restDashboard } = dashboard;
 
         return res.json({
@@ -385,81 +420,109 @@ const createBusiness = async (req, res, next) => {
 const getBusinesses = async (req, res, next) => {
     try {
         const adminId = req.user.id;
-        const { page = 1, limit = 10, type, search, status = 'active' } = req.query;
-        const cacheKey = `admin:${adminId}:businesses:${type}:${search}:${status}:${page}:${limit}`;
+        const { page = 1, limit = 10, type, search, status = 'active', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+        const cacheKey = `admin:${adminId}:businesses:${type || 'all'}:${search || 'none'}:${status}:${sortBy}:${sortOrder}:${page}:${limit}`;
 
-        // Try cache first
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
 
-        let query = { admin: adminId };
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+        const sortDir = sortOrder === 'asc' ? 1 : -1;
 
-        // Handle status filtering
+        const matchStage = { admin: new mongoose.Types.ObjectId(adminId) };
+
         if (status === 'active') {
-            query.isActive = true;
+            matchStage.isActive = true;
         } else if (status === 'inactive') {
-            query.isActive = false;
+            matchStage.isActive = false;
         }
-        // if status === 'all', we don't add isActive filter
 
-        // Filter by type
         if (type && ['salon', 'spa', 'hotel', 'restaurant', 'retail', 'gym', 'clinic', 'cafe', 'studio', 'education', 'automotive', 'others'].includes(type)) {
-            query.type = type;
+            matchStage.type = type;
         }
 
-        // Search by name or branch
         if (search) {
-            query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { branch: { $regex: search, $options: 'i' } }
+            matchStage.$or = [
+                { name: { $regex: `^${search}`, $options: 'i' } },
+                { branch: { $regex: `^${search}`, $options: 'i' } },
+                { type: { $regex: `^${search}`, $options: 'i' } }
             ];
         }
 
-        const businesses = await Business.find(query)
-            .populate('managers', 'name username isActive')
-            .populate('staff', 'name role isActive')
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
-            .sort({ createdAt: -1 })
-            .lean(); // Use lean for performance
+        const sortableFields = ['name', 'type', 'branch', 'createdAt', 'managersCount', 'staffCount', 'servicesCount', 'remark'];
+        const sortField = sortableFields.includes(sortBy) ? sortBy : 'createdAt';
+        const sortStage = { [sortField]: sortDir };
 
-        const total = await Business.countDocuments(query);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const aggregationResult = await Business.aggregate([
+            { $match: matchStage },
+            {
+                $addFields: {
+                    managersCount: { $size: { $ifNull: ['$managers', []] } },
+                    staffCount: { $size: { $ifNull: ['$staff', []] } },
+                    isNew: { $gte: ['$createdAt', twentyFourHoursAgo] }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'services',
+                    localField: '_id',
+                    foreignField: 'business',
+                    as: 'services'
+                }
+            },
+            {
+                $addFields: {
+                    servicesCount: { $size: '$services' }
+                }
+            },
+            { $sort: sortStage },
+            {
+                $facet: {
+                    metadata: [{ $count: 'total' }],
+                    data: [
+                        { $skip: skip },
+                        { $limit: limitNum },
+                        {
+                            $project: {
+                                id: '$_id',
+                                _id: 0,
+                                name: 1,
+                                type: 1,
+                                branch: 1,
+                                businessLink: 1,
+                                isActive: 1,
+                                managersCount: 1,
+                                staffCount: 1,
+                                servicesCount: 1,
+                                isNew: 1,
+                                remark: 1
+                            }
+                        }
+                    ]
+                }
+            }
+        ]);
+
+        const total = aggregationResult[0]?.metadata[0]?.total || 0;
+        const businesses = aggregationResult[0]?.data || [];
 
         const response = {
             success: true,
-            data: businesses.map(business => ({
-                id: business._id,
-                name: business.name,
-                type: business.type,
-                branch: business.branch,
-                address: business.address,
-                city: business.city,
-                state: business.state,
-                phone: business.phone,
-                email: business.email,
-                website: business.website,
-                businessLink: business.businessLink,
-                isActive: business.isActive,
-                location: business.location,
-                googleMapsUrl: business.googleMapsUrl,
-                images: business.images,
-                socialMedia: business.socialMedia,
-                managersCount: business.managers?.length || 0,
-                staffCount: business.staff?.length || 0,
-                createdAt: business.createdAt,
-                updatedAt: business.updatedAt
-            })),
+            data: businesses,
             pagination: {
                 total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit)
+                page: pageNum,
+                limit: limitNum,
+                pages: Math.ceil(total / limitNum)
             }
         };
 
-        // Cache for 2 minutes
         await setCache(cacheKey, response, 120);
 
         return res.json(response);
@@ -474,7 +537,6 @@ const getBusinessById = async (req, res, next) => {
         const { id } = req.params;
         const adminId = req.user.id;
 
-        // Validate ID
         if (!id || !isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
@@ -482,17 +544,58 @@ const getBusinessById = async (req, res, next) => {
             });
         }
 
-        const business = await Business.findOne({ _id: id, admin: adminId })
-            .populate('managers', 'name username email phone isActive lastLogin')
-            .populate('staff', 'name role phone email isActive')
-            .populate('admin', 'name companyName email')
-            .lean(); // Use lean for performance
-
-        if (!business) {
-            return res.status(404).json({ success: false, message: "Business not found" });
+        const cacheKey = `admin:${adminId}:business:${id}`;
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, source: "cache", data: cachedData });
         }
 
-        return res.json({ success: true, data: business });
+        const businessData = await Business.findOne({
+            _id: id,
+            admin: adminId
+        })
+            .populate('admin', '-password -refreshToken')
+            .lean();
+
+        if (!businessData) {
+            return res.status(404).json({
+                success: false,
+                message: "Business not found"
+            });
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Fetch managers and staff using the IDs stored in the business document
+        // This ensures we return all data that is explicitly linked, even if back-references are missing
+        const [managers, staff, servicesCount, appointmentsCount, totalCustomers, appointmentsToday] = await Promise.all([
+            Manager.find({ _id: { $in: businessData.managers || [] } }).select('-password -pin').lean(),
+            Staff.find({ _id: { $in: businessData.staff || [] } }).lean(),
+            Service.countDocuments({ business: id }),
+            Appointment.countDocuments({ business: id }),
+            Customer.countDocuments({ business: id }),
+            Appointment.countDocuments({ business: id, date: { $gte: today } })
+        ]);
+
+        businessData.id = businessData._id.toString();
+        businessData.managers = managers;
+        businessData.staff = staff;
+        businessData.servicesCount = servicesCount;
+        businessData.managersCount = managers.length;
+        businessData.staffCount = staff.length;
+        businessData.appointmentsCount = appointmentsCount;
+        businessData.totalCustomers = totalCustomers;
+        businessData.appointmentsToday = appointmentsToday;
+        businessData.isNew = (Date.now() - new Date(businessData.createdAt).getTime()) < (24 * 60 * 60 * 1000);
+
+        await setCache(cacheKey, businessData, 300);
+
+        return res.json({
+            success: true,
+            data: businessData
+        });
+
     } catch (err) {
         next(err);
     }
@@ -589,7 +692,7 @@ const updateBusiness = async (req, res, next) => {
             }
         });
 
-        // Save to trigger pre-save hooks (for Google Maps URL lat/lng extraction and businessLink generation)
+        business.isNew = false;
         const updatedBusiness = await business.save();
 
         // Populate the managers field after save
@@ -644,6 +747,32 @@ const updateBusinessStatus = async (req, res, next) => {
         next(error);
     }
 };
+
+// Add OR Update business Remark
+const addOrUpdateBusinessRemark = async (req, res, next) =>{
+    try {
+        const { id } = req.params;
+        const { remark } = req.body;
+        const adminId = req.user.id;
+        const business = await Business.findOne({ _id: id, admin: adminId });
+        if (!business) {
+            return res.status(404).json({ success: false, message: "Business not found" });
+        }
+        business.remark = remark;
+        await business.save();
+        return res.json({
+            success: true,
+            message: "Business remark updated successfully",
+            data: {
+                id: business._id,
+                remark: business.remark,
+                updatedAt: business.updatedAt
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
 
 // ================== Delete Business ==================
 const deleteBusiness = async (req, res, next) => {
@@ -751,19 +880,29 @@ const createManager = async (req, res, next) => {
 const getManagers = async (req, res, next) => {
     try {
         const adminId = req.user.id;
-        const { page = 1, limit = 10, search } = req.query;
-        const cacheKey = `admin:${adminId}:managers:${page}:${limit}:${search}`;
+        const { page = 1, limit = 10, search, businessId } = req.query;
+        const cacheKey = `admin:${adminId}:managers:${page}:${limit}:${search || ''}:${businessId || 'all'}`;
 
         const cachedData = await getCache(cacheKey);
         if (cachedData) {
             return res.json({ success: true, source: "cache", ...cachedData });
         }
 
-        // Get all businesses for this admin first
-        const businesses = await Business.find({ admin: adminId }).select('_id');
-        const businessIds = businesses.map(b => b._id);
+        let query = {};
 
-        let query = { business: { $in: businessIds } };
+        if (businessId) {
+            // Verify business belongs to admin
+            const business = await Business.findOne({ _id: businessId, admin: adminId }).select('_id');
+            if (!business) {
+                return res.status(404).json({ success: false, message: "Business not found or access denied" });
+            }
+            query.business = businessId;
+        } else {
+            // Get all businesses for this admin
+            const businesses = await Business.find({ admin: adminId }).select('_id');
+            const businessIds = businesses.map(b => b._id);
+            query.business = { $in: businessIds };
+        }
 
         if (search) {
             query.$or = [
@@ -1039,7 +1178,7 @@ const getBusinessLink = async (req, res, next) => {
                 businessId: business._id,
                 businessName: business.name,
                 businessLink,
-                managersCount: business.managers.length
+                managersCount: business.managers?.length || 0
             }
         });
     } catch (err) {
@@ -1444,6 +1583,7 @@ module.exports = {
     getBusinesses,
     getBusinessById,
     updateBusiness,
+    addOrUpdateBusinessRemark,
     updateBusinessStatus,
     deleteBusiness,
     createManager,

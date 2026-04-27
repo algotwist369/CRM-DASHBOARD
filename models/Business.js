@@ -23,6 +23,7 @@ const businessSchema = new mongoose.Schema(
         description: { type: String },
         businessLink: { type: String, unique: true, index: true },
         isActive: { type: Boolean, default: true, index: true },
+        remark: { type: String },
 
         // Business Images
         images: {
@@ -326,19 +327,23 @@ businessSchema.pre('save', async function (next) {
         }
 
         // Extract lat/lng from Google Maps URL if provided
-        if (this.googleMapsUrl && this.isModified('googleMapsUrl')) {
-            const coordinates = extractLatLngFromGoogleMapsUrl(this.googleMapsUrl);
+        if (this.isModified('googleMapsUrl')) {
+            if (this.googleMapsUrl && typeof this.googleMapsUrl === 'string' && this.googleMapsUrl.trim()) {
+                const coordinates = extractLatLngFromGoogleMapsUrl(this.googleMapsUrl);
 
-            if (coordinates) {
-                // Update location with extracted coordinates
-                // MongoDB uses [longitude, latitude] order for GeoJSON
-                this.location = {
-                    type: 'Point',
-                    coordinates: [coordinates.lng, coordinates.lat]
-                };
-                console.log(`✅ Extracted coordinates from Google Maps URL: Lat ${coordinates.lat}, Lng ${coordinates.lng}`);
+                if (coordinates) {
+                    this.location = {
+                        type: 'Point',
+                        coordinates: [coordinates.lng, coordinates.lat]
+                    };
+                    console.log(`✅ Extracted coordinates from Google Maps URL: Lat ${coordinates.lat}, Lng ${coordinates.lng}`);
+                } else {
+                    console.warn('⚠️ Could not extract coordinates from Google Maps URL. Please check the URL format.');
+                }
             } else {
-                console.warn('⚠️ Could not extract coordinates from Google Maps URL. Please check the URL format.');
+                this.googleMapsUrl = null;
+                this.location = { type: 'Point', coordinates: [0, 0] };
+                console.log('🗑️ Cleared Google Maps URL and coordinates');
             }
         }
 

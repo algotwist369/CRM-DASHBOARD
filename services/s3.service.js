@@ -29,7 +29,7 @@ const withRetry = async (fn, retries = 3, delay = 1000) => {
         return withRetry(fn, retries - 1, delay * 2);
     }
 };
-
+ 
 const uploadToS3 = async (file, folder) => {
     if (!file || !file.buffer) return null;
 
@@ -61,6 +61,11 @@ const uploadToS3 = async (file, folder) => {
     });
 };
 
+/**
+ * Delete a file from S3
+ * @param {string} fileUrl - The full S3 URL of the file
+ * @returns {Promise<boolean>} - Success status
+ */
 const deleteFromS3 = async (fileUrl) => {
     if (!fileUrl || typeof fileUrl !== 'string' || !fileUrl.includes(BUCKET_NAME)) {
         return false;
@@ -87,6 +92,11 @@ const deleteFromS3 = async (fileUrl) => {
     });
 };
 
+/**
+ * Extract S3 key from full URL
+ * @param {string} url - The full S3 URL
+ * @returns {string|null} - The S3 key
+ */
 const extractKeyFromUrl = (url) => {
     try {
         // Example: https://spaadvisor-bucket.s3.ap-south-1.amazonaws.com/business-gallery/12345.jpg

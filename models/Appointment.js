@@ -25,6 +25,14 @@ const appointmentSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Staff"
         },
+        remark: {
+            type: String,
+            default: ""
+        },
+        additionalAmount: {
+            type: Number,
+            default: 0
+        },
 
         // Booking Number
         bookingNumber: {
@@ -321,8 +329,13 @@ appointmentSchema.virtual('isUpcoming').get(function () {
     return appointmentDateTime > now && ['pending', 'confirmed'].includes(this.status);
 });
 
-// Pre-save middleware to generate booking number
+// Pre-save middleware to generate booking number and handle totals
 appointmentSchema.pre('save', async function (next) {
+    // Recalculate total amount if relevant fields are modified
+    if (this.isModified('servicePrice') || this.isModified('tax') || this.isModified('discount') || this.isModified('additionalAmount') || this.isModified('additionalCharges')) {
+        this.totalAmount = (this.servicePrice || 0) + (this.tax || 0) + (this.additionalCharges || 0) + (this.additionalAmount || 0) - (this.discount || 0);
+    }
+
     if (!this.bookingNumber) {
         // Generate unique booking number: YYYYMMDD + random 4 digits
         const date = new Date();
