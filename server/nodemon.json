@@ -1,0 +1,22 @@
+{
+  "watch": [
+    "*.js",
+    "routes/**/*",
+    "controllers/**/*",
+    "models/**/*",
+    "services/**/*",
+    "config/**/*",
+    "middleware/**/*",
+    "utils/**/*"
+  ],
+  "ignore": [
+    ".wwebjs_auth/**",
+    ".wwebjs_cache/**",
+    "node_modules/**",
+    "uploads/**",
+    "*.log"
+  ],
+  "ext": "js,json",
+  "delay": 1000,
+  "verbose": false
+}

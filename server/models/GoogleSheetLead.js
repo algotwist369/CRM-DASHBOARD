@@ -1,0 +1,125 @@
+const mongoose = require("mongoose");
+
+
+const itemsURI = process.env.MONGO_URI_FOR_GOOGLE_SHEET || "mongodb+srv://infoalgotwist_db_user:oqgmuAaUJMvyISsR@cluster0.mrvbcuo.mongodb.net/whatsapp-leads";
+
+let dbConnection;
+if (itemsURI) {
+    console.log("GoogleSheet Service: Connecting to dedicated separate database...");
+    dbConnection = mongoose.createConnection(itemsURI);
+
+    dbConnection.on('connected', () => {
+        console.log("GoogleSheet Service: Connected to microservice database.");
+    });
+
+    dbConnection.on('error', (err) => {
+        console.error("GoogleSheet Service DB Error:", err.message);
+    });
+} else {
+    console.warn("GoogleSheet Service: MONGO_URI_FOR_GOOGLE_SHEET not found, using default database.");
+    dbConnection = mongoose; // Fallback to default
+}
+
+const googleSheetLeadSchema = new mongoose.Schema(
+    {
+        location: {
+            type: String,
+            required: true,
+            trim: true,
+            index: true
+        },
+        customerPhone: {
+            type: String,
+            required: true,
+            trim: true,
+            index: true
+        },
+        customerName: {
+            type: String,
+            trim: true
+        },
+        syncedAt: {
+            type: Date,
+            default: Date.now
+        },
+        isCalled: {
+            type: Boolean,
+            default: false
+        },
+        isWhatsapp: {
+            type: Boolean,
+            default: false
+        },
+        isCalledBy: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Manager"
+        }],
+        isWhatsappBy: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Manager"
+        }],
+        lastModified: {
+            type: Date,
+            default: Date.now
+        },
+        // Admin status tracking for analytics
+        status: {
+            type: String,
+            enum: ['pending', 'forwarded', 'done'],
+            default: 'pending',
+            index: true
+        },
+        statusUpdatedAt: {
+            type: Date
+        },
+        statusUpdatedBy: {
+            type: String // Stores the name of the admin/user who updated the status
+        },
+        // Detailed tracking for multiple managers
+        managerStatus: [{
+            managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Manager' },
+            managerName: { type: String },
+            action: { type: String },
+            timestamp: { type: Date, default: Date.now }
+        }],
+        // Remarks / Notes
+        remarks: [{
+            text: { type: String, required: true },
+            by: { type: String, required: true },
+            createdAt: { type: Date, default: Date.now }
+        }]
+    },
+    {
+        timestamps: true
+    }
+);
+
+// Compound index for uniqueness (Location + Phone) to prevent duplicates
+googleSheetLeadSchema.index({ location: 1, customerPhone: 1 }, { unique: true });
+
+// Index for efficient querying
+googleSheetLeadSchema.index({ syncedAt: -1 });
+googleSheetLeadSchema.index({ createdAt: -1 });
+
+// High-Performance Compound Indexes (10M+ record optimization)
+// optimize "Get Leads by Location and Status" (Manager View)
+googleSheetLeadSchema.index({ location: 1, status: 1, createdAt: -1 });
+// optimize "Get Leads by Location" (Manager View - All)
+googleSheetLeadSchema.index({ location: 1, createdAt: -1 });
+// optimize "Get Leads by Global Status" (Admin View)
+googleSheetLeadSchema.index({ status: 1, createdAt: -1 });
+
+// Text Index for High-Performance Search
+googleSheetLeadSchema.index(
+    { customerName: "text", customerPhone: "text", location: "text" },
+    { weights: { customerPhone: 10, customerName: 5, location: 1 } }
+);
+
+// Pre-save middleware to update lastModified
+googleSheetLeadSchema.pre('save', function (next) {
+    this.lastModified = new Date();
+    next();
+});
+
+
+module.exports = dbConnection.model("GoogleSheetLead", googleSheetLeadSchema);
