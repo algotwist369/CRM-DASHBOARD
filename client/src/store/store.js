@@ -104,7 +104,7 @@ export const persistor = persistStore(store)
 export const storeConfig = {
   // Redux DevTools configuration
   devTools: {
-    name: 'CRM Dashboard Store',
+    name: 'SpaAdvisor Store',
     trace: true,
     traceLimit: 25
   },

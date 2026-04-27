@@ -592,12 +592,131 @@ const updateAppointment = async (req, res, next) => {
             data: appointment
         });
 
-        // Notify staff
-        notifyBusinessStaff(appointment.business, 'appointment_updated', {
-            appointmentId: appointment._id,
-            status: appointment.status,
-            message: `Appointment updated`,
-            data: appointment
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ================== Remark & Additional Amount ==================
+
+/**
+ * Add or update remark for an appointment
+ */
+const addOrUpdateRemark = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { remark } = req.body;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const appointment = await Appointment.findById(id);
+        if (!appointment) {
+            return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        // Verify access
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: appointment.business, admin: userId });
+            if (!business) return res.status(403).json({ success: false, message: "Access denied" });
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager.business.toString() !== appointment.business.toString()) {
+                return res.status(403).json({ success: false, message: "Access denied" });
+            }
+        }
+
+        appointment.remark = remark || "";
+        appointment.updatedBy = userId;
+        appointment.updatedByModel = userRole === 'admin' ? 'Admin' : 'Manager';
+
+        await appointment.save();
+
+        return res.json({
+            success: true,
+            message: "Remark updated successfully",
+            data: { remark: appointment.remark }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * Add or update additional amount for an appointment
+ */
+const addOrUpdateAdditionalAmount = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { additionalAmount } = req.body;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const appointment = await Appointment.findById(id);
+        if (!appointment) {
+            return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        // Verify access
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: appointment.business, admin: userId });
+            if (!business) return res.status(403).json({ success: false, message: "Access denied" });
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager.business.toString() !== appointment.business.toString()) {
+                return res.status(403).json({ success: false, message: "Access denied" });
+            }
+        }
+
+        appointment.additionalAmount = Number(additionalAmount) || 0;
+        appointment.updatedBy = userId;
+        appointment.updatedByModel = userRole === 'admin' ? 'Admin' : 'Manager';
+
+        await appointment.save(); // Triggers pre-save total recalculation
+
+        return res.json({
+            success: true,
+            message: "Additional amount updated successfully",
+            data: {
+                additionalAmount: appointment.additionalAmount,
+                totalAmount: appointment.totalAmount
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * Get remark and additional amount for an appointment
+ */
+const getRemarkAndAdditionalAmount = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const appointment = await Appointment.findById(id).select('remark additionalAmount business');
+        if (!appointment) {
+            return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        // Verify access
+        if (userRole === 'admin') {
+            const business = await Business.findOne({ _id: appointment.business, admin: userId });
+            if (!business) return res.status(403).json({ success: false, message: "Access denied" });
+        } else if (userRole === 'manager') {
+            const manager = await Manager.findById(userId);
+            if (manager.business.toString() !== appointment.business.toString()) {
+                return res.status(403).json({ success: false, message: "Access denied" });
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                remark: appointment.remark,
+                additionalAmount: appointment.additionalAmount
+            }
         });
     } catch (err) {
         next(err);
@@ -3259,6 +3378,9 @@ module.exports = {
     getAppointments,
     getAppointmentById,
     updateAppointment,
+    addOrUpdateRemark,
+    addOrUpdateAdditionalAmount,
+    getRemarkAndAdditionalAmount,
     confirmAppointment,
     startAppointment,
     completeAppointment,

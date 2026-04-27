@@ -33,7 +33,7 @@ const MOBILE_SECTIONS = [
   { title: 'Explore', items: EXPLORE_LINKS },
   { title: 'For Businesses', items: BUSINESS_LINKS },
   { title: 'Quick Actions', items: QUICK_ACTION_LINKS },
-  { title: 'More', items: [{ name: 'Advertise', href: '/advertise' }] }
+  // { title: 'More', items: [{ name: 'Advertise', href: '/advertise' }] }
 ]
 
 // Utility function to check if a link is active
@@ -181,6 +181,13 @@ const PublicHeader = () => {
     const styleEl = document.createElement('style')
     styleEl.id = styleId
     styleEl.textContent = `
+      @keyframes membershipGlow {
+        0%, 100% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.3); }
+        50% { box-shadow: 0 0 15px rgba(234, 179, 8, 0.6); }
+      }
+      .membership-highlight {
+        animation: membershipGlow 2s ease-in-out infinite;
+      }
       @keyframes freeBadgeWave {
         0%, 100% { transform: translateY(-10%) rotate(-6deg) scale(1); }
         50% { transform: translateY(10%) rotate(6deg) scale(1.05); }
@@ -321,160 +328,120 @@ const PublicHeader = () => {
 
   return (
     <>
-      <header className="bg-primary-50 border-b border-gray-200 sticky top-0 z-50">
+      <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 transition-all duration-300">
         <div className="max-w-[86rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Logo */}
-            <Link
-              to="/"
-              className="flex items-center flex-shrink-0 transition-opacity hover:opacity-80"
-            >
-              {/* Logo */}
-              <img
-                src="/logo/main_logo.png"
-                srcSet="/logo/main_logo_small.png 400w, /logo/main_logo_medium.png 800w, /logo/main_logo.png 2813w"
-                sizes="(max-width: 768px) 150px, 200px"
-                alt="SpaAdvisor"
-                className="md:w-[200px] w-[150px] h-full object-contain"
-              />
-            </Link>
-
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center space-x-3 xl:space-x-4">
-              <Dropdown
-                label="Explore"
-                links={EXPLORE_LINKS}
-                location={location}
-                activeKey={openDropdown}
-                setActiveKey={setOpenDropdown}
-                onSelect={handleAction}
-                dropdownRef={exploreRef}
-              />
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden lg:flex items-center space-x-2 xl:space-x-3">
-              <Dropdown
-                label="Quick Actions"
-                align="right"
-                links={QUICK_ACTION_LINKS}
-                location={location}
-                activeKey={openDropdown}
-                setActiveKey={setOpenDropdown}
-                onSelect={handleAction}
-                dropdownRef={quickRef}
-              />
+          <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20">
+            {/* Logo Section */}
+            <div className="flex items-center gap-4">
               <Link
-                to="/advertise"
-                className={`relative flex items-center gap-1 text-sm xl:text-base font-medium transition-all duration-200 whitespace-nowrap px-2 py-1 rounded-md ${location.pathname === '/advertise'
-                  ? 'text-primary-600 bg-primary-50'
-                  : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
+                to="/"
+                className="flex items-center flex-shrink-0 transition-opacity hover:opacity-80"
               >
-                <span className="inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5">
-                  <GrAnnounce className="w-full h-full advertise-icon-animate text-blue-500" />
-                </span>
-                Advertise
+                <img
+                  src="/logo/main_logo.png"
+                  srcSet="/logo/main_logo_small.png 400w, /logo/main_logo_medium.png 800w, /logo/main_logo.png 2813w"
+                  sizes="(max-width: 768px) 120px, (max-width: 1024px) 160px, 200px"
+                  alt="SpaAdvisor"
+                  className="w-[120px] sm:w-[150px] md:w-[180px] lg:w-[200px] h-auto object-contain"
+                />
               </Link>
-              {/* <button
-              onClick={() => handleNavigate('/notifications')}
-              className="relative p-1.5 sm:p-2 text-gray-700 hover:text-primary-600 transition-colors duration-200 rounded-md hover:bg-gray-50"
-              aria-label="Notifications"
-            >
-              <FaBell className="w-4 h-4 sm:w-5 sm:h-5" />
-              {NotificationBadge}
-            </button> */}
-              {/* <Button variant="outline" onClick={() => handleNavigate('/auth/login')} className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2">
-                Login
-              </Button> */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  onClick={handleOpenBookDemo}
-                  className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2"
-                >
-                  Book Demo
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => handleNavigate('/free-listing')}
-                  className="relative overflow-visible text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2"
-                >
-                  <span className="hidden xl:inline">Free Listing</span>
-                  <span className="xl:hidden">Free</span>
-                  <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-[8px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap shadow-xl border-2 border-white z-10 free-badge-animate">
-                    <span className="relative z-10">FREE</span>
-                    <span className="absolute inset-0 bg-red-500 rounded-full blur-sm opacity-50"></span>
-                  </span>
-                </Button>
-              </div>
+
+              {/* Desktop Navigation - Hidden on lg and below */}
+              <nav className="hidden lg:flex items-center ml-4 space-x-1 xl:space-x-4">
+                <Dropdown
+                  label="Explore"
+                  links={EXPLORE_LINKS}
+                  location={location}
+                  activeKey={openDropdown}
+                  setActiveKey={setOpenDropdown}
+                  onSelect={handleAction}
+                  dropdownRef={exploreRef}
+                />
+              </nav>
             </div>
 
-            {/* Tablet Actions */}
-            <div className="hidden md:flex lg:hidden items-center space-x-2">
+            {/* Actions Section */}
+            <div className="flex items-center gap-1.5 sm:gap-3 lg:gap-4">
+              {/* Desktop Quick Actions - Hidden on lg and below */}
+              <div className="hidden lg:block">
+                <Dropdown
+                  label="Quick Actions"
+                  align="right"
+                  links={QUICK_ACTION_LINKS}
+                  location={location}
+                  activeKey={openDropdown}
+                  setActiveKey={setOpenDropdown}
+                  onSelect={handleAction}
+                  dropdownRef={quickRef}
+                />
+              </div>
+
+              {/* Membership Button - Hidden on mobile, visible from md up */}
+              <Button
+                variant="primary"
+                onClick={() => handleNavigate('/spa-membership')}
+                className="membership-highlight hidden md:flex bg-gradient-to-r from-amber-500 to-yellow-600 border-none hover:from-amber-600 hover:to-yellow-700 shadow-sm hover:shadow-md transition-all duration-300
+                  text-[10px] sm:text-xs lg:text-sm 
+                  px-2 sm:px-3 lg:px-4 
+                  py-1.5 sm:py-2 
+                  h-8 sm:h-9 lg:h-10
+                  font-bold lg:font-semibold"
+              >
+                <span className="hidden sm:inline">Spa Membership</span>
+                <span className="sm:hidden">Membership</span>
+              </Button>
+
+              {/* Notifications - Hidden on mobile, visible from md up */}
               <button
                 onClick={() => handleNavigate('/notifications')}
-                className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors duration-200 rounded-md hover:bg-gray-50"
+                className="hidden md:block relative p-1.5 sm:p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-50 transition-colors duration-200 rounded-lg"
                 aria-label="Notifications"
               >
-                <FaBell className="w-5 h-5" />
+                <FaBell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {NotificationBadge}
               </button>
-              <div className="flex items-center gap-2">
-                <Button variant="primary" onClick={handleOpenBookDemo} className="text-sm px-3 py-1.5">
-                  Book Demo
-                </Button>
-                <Button variant="primary" onClick={() => handleNavigate('/free-listing')} className="relative overflow-visible text-sm px-3 py-1.5">
-                  Free
-                  <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap shadow-xl border-2 border-white z-10 free-badge-animate">
-                    <span className="relative z-10">FREE</span>
-                    <span className="absolute inset-0 bg-red-500 rounded-full blur-sm opacity-50"></span>
-                  </span>
-                </Button>
-              </div>
-            </div>
 
-            {/* Mobile Actions */}
-            <div className="md:hidden flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => handleNavigate('/notifications')}
-                className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors duration-200 rounded-md hover:bg-gray-100"
-                aria-label="Notifications"
-              >
-                <FaBell className="w-5 h-5" />
-                {notificationCount > 0 && (
-                  <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold leading-none text-white bg-red-600 rounded-full">
-                    {notificationCount > 9 ? '9+' : notificationCount}
-                  </span>
-                )}
-              </button>
-              <div className="flex items-center gap-1.5">
+              {/* Primary Action Buttons - Hidden on mobile, visible from md up */}
+              <div className="hidden md:flex items-center gap-1.5 sm:gap-2 lg:gap-3">
+                {/* Book Demo - Text changes on mobile */}
                 <Button
                   variant="primary"
                   onClick={handleOpenBookDemo}
-                  className="text-xs sm:text-sm font-semibold px-3 sm:px-3.5 py-1.5 sm:py-2 h-8 sm:h-9"
+                  className="text-[10px] sm:text-xs lg:text-sm font-bold lg:font-semibold px-2.5 sm:px-3.5 lg:px-5 py-1.5 sm:py-2 h-8 sm:h-9 lg:h-10"
                 >
-                  Demo
+                  <span className="hidden sm:inline">Book Demo</span>
+                  <span className="sm:hidden">Demo</span>
                 </Button>
+
+                {/* Free Listing - Responsive badge and text */}
                 <Button
                   variant="primary"
                   onClick={() => handleNavigate('/free-listing')}
-                  className="relative overflow-visible text-xs sm:text-sm font-semibold px-3 sm:px-3.5 py-1.5 sm:py-2 h-8 sm:h-9 shadow-md hover:shadow-lg transition-shadow"
+                  className="relative overflow-visible text-[10px] sm:text-xs lg:text-sm font-bold lg:font-semibold px-2.5 sm:px-3.5 lg:px-5 py-1.5 sm:py-2 h-8 sm:h-9 lg:h-10 shadow-sm hover:shadow-md"
                 >
-                  <span className="relative z-0">Free</span>
-                  <span className="absolute -top-1.5 -right-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg border-2 border-white z-10 free-badge-animate">
+                  <span className="hidden lg:inline">Free Listing</span>
+                  <span className="lg:hidden">Free</span>
+                  
+                  <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-[7px] sm:text-[9px] lg:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap shadow-lg border-2 border-white z-10 free-badge-animate">
                     <span className="relative z-10">FREE</span>
                     <span className="absolute inset-0 bg-red-500 rounded-full blur-sm opacity-50"></span>
                   </span>
                 </Button>
               </div>
+
+              {/* Hamburger Menu Toggle - Visible on lg and below */}
               <button
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 rounded-md"
-                aria-label="Menu"
+                className="lg:hidden p-1.5 sm:p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 rounded-lg"
+                aria-label="Toggle navigation menu"
                 aria-expanded={mobileMenuOpen}
               >
-                <svg className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg 
+                  className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 ${mobileMenuOpen ? 'rotate-90' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
                   {mobileMenuOpen ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   ) : (
@@ -485,23 +452,36 @@ const PublicHeader = () => {
             </div>
           </div>
 
-          {/* Mobile Navigation */}
+          {/* Mobile/Tablet Navigation Overlay */}
           {mobileMenuOpen && (
-            <div className="md:hidden border-t border-gray-200 py-3 sm:py-4 max-h-[calc(100vh-4rem)] overflow-y-auto mobile-menu-enter">
-              <nav className="flex flex-col space-y-1 sm:space-y-2">
+            <div className="lg:hidden border-t border-gray-100 py-4 sm:py-6 max-h-[calc(100vh-5rem)] overflow-y-auto mobile-menu-enter bg-white shadow-inner">
+              <nav className="flex flex-col space-y-3 sm:space-y-4 px-1">
                 {MOBILE_SECTIONS.map(renderMobileSection)}
-                <div className="px-4 pt-3 sm:pt-4 border-t border-gray-200 space-y-2 sm:space-y-3">
-                  <Button variant="ghost" className="w-full text-sm sm:text-base py-2.5 sm:py-3" onClick={handleOpenBookDemo}>
+                
+                {/* Additional Mobile-only Quick Links */}
+                <div className="px-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
+                  <Button 
+                    variant="primary" 
+                    className="w-full text-sm sm:text-base py-3 sm:py-3.5 bg-gradient-to-r from-amber-500 to-yellow-600 border-none shadow-md font-bold" 
+                    onClick={() => handleNavigate('/spa-membership')}
+                  >
+                    Spa Membership
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full text-sm sm:text-base py-3 sm:py-3.5 font-semibold" 
+                    onClick={handleOpenBookDemo}
+                  >
                     Book a Demo
                   </Button>
-                  {/* <Button variant="outline" className="w-full text-sm sm:text-base py-2.5 sm:py-3" onClick={() => handleNavigate('/auth/login')}>
-                    Login
-                  </Button> */}
-                  <Button variant="primary" className="w-full relative overflow-visible text-sm sm:text-base py-2.5 sm:py-3" onClick={() => handleNavigate('/free-listing')}>
+                  <Button 
+                    variant="primary" 
+                    className="w-full relative overflow-visible text-sm sm:text-base py-3 sm:py-3.5 font-bold" 
+                    onClick={() => handleNavigate('/free-listing')}
+                  >
                     Free Listing
-                    <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap shadow-xl border-2 border-white z-10 free-badge-animate">
-                      <span className="relative z-10">FREE</span>
-                      <span className="absolute inset-0 bg-red-500 rounded-full blur-sm opacity-50"></span>
+                    <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xl border-2 border-white z-10 free-badge-animate">
+                      FREE
                     </span>
                   </Button>
                 </div>

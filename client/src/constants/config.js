@@ -1,11 +1,11 @@
 // Application configuration
 export const APP_CONFIG = {
   // Application info
-  APP_NAME: 'CRM Dashboard',
+  APP_NAME: 'SpaAdvisor',
   APP_VERSION: '1.0.0',
-  APP_DESCRIPTION: 'Comprehensive CRM Dashboard for Business Management',
-  APP_AUTHOR: 'CRM Team',
-  APP_URL: 'https://crm-dashboard.com',
+  APP_DESCRIPTION: 'Comprehensive Spa & Wellness Management Dashboard',
+  APP_AUTHOR: 'SpaAdvisor Team',
+  APP_URL: 'https://spaadvisor.in',
   
   // Environment
   ENVIRONMENT: import.meta.env.MODE || 'development',

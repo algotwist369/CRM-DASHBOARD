@@ -196,7 +196,9 @@ const Careers = lazy(() => import('./pages/public').then(module => ({ default: m
 const Notifications = lazy(() => import('./pages/public').then(module => ({ default: module.Notifications })))
 const Contact = lazy(() => import('./pages/public').then(module => ({ default: module.Contact })))
 const FreeListing = lazy(() => import('./pages/public').then(module => ({ default: module.FreeListing })))
+const Membership = lazy(() => import('./pages/public').then(module => ({ default: module.Membership })))
 const BookDemo = lazy(() => import('./pages/public').then(module => ({ default: module.BookDemo })))
+const PrivacyPolicy = lazy(() => import('./pages/public').then(module => ({ default: module.PrivacyPolicy })))
 const GoogleMyBusinessReviews = lazy(() => import('./pages/public').then(module => ({ default: module.GoogleMyBusinessReviews })))
 const FacebookReviews = lazy(() => import('./pages/public').then(module => ({ default: module.FacebookReviews })))
 const YelpReviews = lazy(() => import('./pages/public').then(module => ({ default: module.YelpReviews })))
@@ -234,7 +236,7 @@ function App() {
                   <Routes>
                     {/* Auth Routes */}
                     <Route path="/auth" element={<AuthLayout />}>
-                      <Route path="business-registration" element={<Register />} />
+                      {/* <Route path="business-registration" element={<Register />} /> */}
                       <Route path="login" element={<Login />} />
                       <Route path="manager-login" element={<ManagerLogin />} />
                       <Route path="staff-login" element={<StaffLogin />} />
@@ -415,7 +417,9 @@ function App() {
                       <Route path="careers" element={<Careers />} />
                       <Route path="contact-2" element={<Contact />} />
                       <Route path="free-listing" element={<FreeListing />} />  {/* need to fix the otp sending - issue */}
+                      <Route path="spa-membership" element={<Membership />} />
                       <Route path="book-demo" element={<BookDemo />} />  {/* need to fix the otp sending - issue */}
+                      <Route path="privacy-policy" element={<PrivacyPolicy />} />
                       {/* notifications */}
                       <Route path="notifications" element={<Notifications />} /> {/* have to remove this notificaitons route, no use in public pages */}
                       {/* search routes ----> these routes are same need to update more in this and make it propertly SEO friendly */}

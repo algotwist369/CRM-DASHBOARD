@@ -15,17 +15,11 @@ const PublicFooter = () => {
 
         {/* Right */}
         <div className="flex items-center gap-4 text-sm">
-          {/* <Link to="/privacy" className="text-gray-500 hover:text-gray-900">
-            Privacy
+          <Link to="/privacy-policy" className="text-gray-500 hover:text-gray-900">
+            Terms & Privacy
           </Link>
-          <Link to="/terms" className="text-gray-500 hover:text-gray-900">
-            Terms
-          </Link> */}
-          {/* <Link to="/contact" className="text-gray-500 hover:text-gray-900">
-            Contact
-          </Link> */}
-
-          support - dishaspaadvisor@gmail.com
+          <span className="text-gray-300">|</span>
+          <span className="text-gray-500">support: support@spaadvisor.in</span>
         </div>
 
       </div>

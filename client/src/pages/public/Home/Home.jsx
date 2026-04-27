@@ -12,6 +12,7 @@ import SearchPlaceholder from './SearchPlaceholder'
 import BusinessExplorer from './BusinessExplorer'
 import SkeletonHome from './SkeletonHome'
 import LazySection from '../../../components/common/LazySection/LazySection'
+import TrustSlider from '../Booking/BusinessInfo/TrustSlider'
 
 
 import {
@@ -270,7 +271,15 @@ const Home = memo(() => {
           </div>
 
         </div>
+
       </section>
+
+      {/* Full Width Trust Slider for Home Page */}
+      <div className="w-full bg-white border-y border-gray-200 py-8 mb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <TrustSlider isHomePage={true} />
+        </div>
+      </div>
 
       <div className="min-h-screen bg-gray-100 overflow-x-hidden">
         {/* Businesses Section - Now handled by BusinessExplorer */}

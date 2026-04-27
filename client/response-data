@@ -1,0 +1,215 @@
+{
+  "_id": "69eefb9c4aa7dbb1c8f99314",
+  "admin": {
+    "_id": "693ac1c598122ad3ee90e8aa",
+    "companyName": "Disha Online Solution",
+    "name": "Dinesh Maurya",
+    "email": "dos.dineshmaurya@gmail.com"
+  },
+  "type": "spa",
+  "name": "AURIC WORLD SPA BHOPAL",
+  "branch": "BHOPAL",
+  "address": "Shop No. 101, 1st Floor, Vishnu Vilas Building, Malviya Nagar Road, New Market, Opposite Indian Coffee House, T.T. Nagar, Bhopal, Madhya Pradesh 462003",
+  "city": "Bhopal",
+  "state": "Madhya Pradesh",
+  "country": "India",
+  "zipCode": "462003",
+  "phone": "8422892208",
+  "email": "auricworldspa.bhopal@gmail.com",
+  "website": "https://auricworldspa.in/",
+  "description": "Auric World Spa in Bhopal offers premium spa services including massages, facials, and body therapies for relaxation and wellness. Located in Bhopal, we prioritize customer comfort with skilled therapists and serene environments. Open daily from 10:00 AM to 11:00 PM, book your session today for rejuvenating treatments tailored to your needs.\n\n",
+  "isActive": true,
+  "images": {
+    "logo": "",
+    "banner": "",
+    "gallery": [],
+    "thumbnail": ""
+  },
+  "google360ImageUrl": [],
+  "socialMedia": {
+    "facebook": "",
+    "instagram": "",
+    "twitter": "",
+    "linkedin": "",
+    "youtube": "",
+    "whatsapp": "8422892208 ",
+    "telegram": ""
+  },
+  "videos": [],
+  "registration": {
+    "gstNumber": "",
+    "panNumber": "",
+    "registrationNumber": "",
+    "licenseNumber": "",
+    "taxId": "",
+    "registrationDate": null,
+    "expiryDate": null
+  },
+  "category": "spa services bhopal",
+  "subCategory": "luxury spa treatments bhopal",
+  "tags": [
+    "best spa in bhopal",
+    "spa near me bhopal",
+    "massage spa bhopal",
+    "luxury spa bhopal",
+    "spa services bhopal",
+    "full body massage bhopal",
+    "spa packages bhopalcouples spa bhopal",
+    "spa booking bhopal",
+    "top spa bhopal",
+    "relaxing spa bhopal",
+    "spa therapy bhopal",
+    "affordable spa bhopal",
+    "premium spa bhopal",
+    "spa center bhopal"
+  ],
+  "specialties": [
+    "Deep Tissue Massage",
+    "Aromatherapy Sessions",
+    "Swedish Massage",
+    "Facial Treatments",
+    "Body Scrubs",
+    "Foot Reflexology"
+  ],
+  "paymentMethods": {
+    "cash": true,
+    "card": true,
+    "upi": true,
+    "netBanking": true,
+    "wallet": false
+  },
+  "bankDetails": {
+    "accountName": "",
+    "accountNumber": "",
+    "bankName": "",
+    "ifscCode": "",
+    "branch": "",
+    "upiId": "",
+    "qrCode": ""
+  },
+  "capacity": {
+    "seatingCapacity": null,
+    "parkingSpaces": null,
+    "numberOfRooms": null,
+    "numberOfFloors": null,
+    "totalArea": ""
+  },
+  "ratings": {
+    "average": 0,
+    "totalReviews": 0,
+    "fiveStars": 0,
+    "fourStars": 0,
+    "threeStars": 0,
+    "twoStars": 0,
+    "oneStar": 0
+  },
+  "features": [
+    "Deep Tissue Massage",
+    "Aromatherapy Sessions",
+    "Hot Stone Therapy",
+    "Swedish Massage",
+    "Facial Treatments",
+    "Body Scrubs",
+    "Foot Reflexology"
+  ],
+  "amenities": [
+    "Private Treatment Rooms",
+    "Experienced Therapists",
+    "Customized Packages",
+    "Clean Sanitized Spaces",
+    "Quick Booking Online"
+  ],
+  "languages": [
+    "Hindi, English, Urdu"
+  ],
+  "seo": {
+    "metaTitle": "Best Spa in Bhopal",
+    "metaDescription": "Discover Auric World Spa in Bhopal for luxury massages, facials, and spa therapies. Open 10 AM–11 PM. Book now for relaxation and wellness services in Bhopal.",
+    "keywords": [
+      "spa bhopal",
+      "massage bhopal",
+      "luxury spa bhopal",
+      "body massage bhopal",
+      "spa services bhopal",
+      "best spa bhopal",
+      "couples spa bhopal",
+      "spa packages bhopal",
+      "spa therapy bhopal",
+      "full body massage bhopal"
+    ],
+    "ogImage": ""
+  },
+  "subscription": {
+    "plan": "free",
+    "startDate": null,
+    "endDate": null,
+    "isActive": true,
+    "features": []
+  },
+  "stats": {
+    "totalCustomers": 0,
+    "totalAppointments": 0,
+    "totalRevenue": 0,
+    "totalOrders": 0,
+    "averageRating": 0
+  },
+  "notifications": {
+    "emailNotifications": true,
+    "smsNotifications": false,
+    "whatsappNotifications": false,
+    "pushNotifications": true
+  },
+  "daysOff": [],
+  "holidays": [],
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      0,
+      0
+    ]
+  },
+  "settings": {
+    "workingHours": {
+      "open": "10:00",
+      "close": "23:00",
+      "days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ]
+    },
+    "currency": "INR",
+    "timezone": "Asia/Kolkata",
+    "appointmentSettings": {
+      "advanceBookingDays": 10,
+      "minAdvanceBookingHours": 1,
+      "maxAdvanceBookingHours": 480,
+      "slotDuration": 30,
+      "bufferTime": 15,
+      "allowOnlineBooking": true,
+      "requireAdvancePayment": false,
+      "advancePaymentPercentage": 0,
+      "cancellationPolicy": {
+        "allowCancellation": true,
+        "minCancellationHours": 24,
+        "refundPercentage": 100
+      },
+      "reminderSettings": {
+        "sendSMSReminder": false,
+        "sendEmailReminder": false,
+        "sendWhatsappReminder": true,
+        "reminderHours": 24
+      }
+    }
+  },
+  "managers": [],
+  "staff": [],
+  "createdAt": "2026-04-27T06:01:00.660Z",
+  "updatedAt": "2026-04-27T06:01:00.660Z",
+  "businessLink": "auricworldspabhopal_314",
+  "__v": 0
+}

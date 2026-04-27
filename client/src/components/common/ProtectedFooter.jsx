@@ -23,8 +23,8 @@ const ProtectedFooter = ({
                     <a href="/admin/support" className="hover:text-gray-900 transition">
                         Support
                     </a>
-                    <a href="/admin/privacy" className="hover:text-gray-900 transition">
-                        Privacy
+                    <a href="/privacy-policy" className="hover:text-gray-900 transition">
+                        Privacy & Terms
                     </a>
                 </div>
 

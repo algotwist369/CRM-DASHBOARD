@@ -19,6 +19,7 @@ const ROUTE_TITLES = {
     '/notifications': `Notifications - ${APP_NAME}`,
     '/contact': `Contact - ${APP_NAME}`,
     '/free-listing': `Free Listing - ${APP_NAME}`,
+    '/spa-membership': `Elite Spa Memberships - ${APP_NAME}`,
     '/book-demo': `Book a Demo - ${APP_NAME}`,
     '/google-my-business-reviews': `Google My Business Reviews - ${APP_NAME}`,
     '/facebook-reviews': `Facebook Reviews - ${APP_NAME}`,

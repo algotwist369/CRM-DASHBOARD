@@ -28,22 +28,23 @@ router.delete("/notifications/all", adminNotificationController.deleteAllNotific
 router.delete("/notifications/:id", adminNotificationController.deleteNotification);
 
 // ================== Business Management ==================
-router.post("/business", uploadS3BusinessImages, handleUploadError, adminController.createBusiness);
 router.get("/businesses", adminController.getBusinesses);
 router.get("/business/:businessId/link", adminController.getBusinessLink);
+router.post("/business", uploadS3BusinessImages, handleUploadError, adminController.createBusiness);
 router.put("/business/:id", uploadS3BusinessImages, handleUploadError, adminController.updateBusiness);
+router.put("/business/:id/remark", adminController.addOrUpdateBusinessRemark);
 router.put("/business/:id/status", adminController.updateBusinessStatus);
 router.delete("/business/:id", adminController.deleteBusiness);
 
 // ================== Manager Management ==================
-router.post("/manager", adminController.createManager);
 router.get("/managers", adminController.getManagers);
 router.get("/manager/:id", adminController.getManagerById);
+router.post("/manager", adminController.createManager);
 router.put("/manager/:id", adminController.updateManager);
 router.put("/manager/:id/status", adminController.updateManagerStatus);
 router.delete("/manager/:id", adminController.deleteManager);
 
-// ================== Get Business by ID (must be last to avoid conflicts) ==================
+// Get business by ID (must be after other routes to avoid matching)
 router.get("/:id", adminController.getBusinessById);
 
 module.exports = router;

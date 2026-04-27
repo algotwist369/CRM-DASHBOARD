@@ -1,6 +1,6 @@
-# CRM Dashboard Frontend
+# SpaAdvisor Frontend
 
-A modern React-based frontend for the CRM Dashboard system, built with Vite, Tailwind CSS, and Redux Toolkit.
+A modern React-based frontend for the Spa & Wellness Management system, built with Vite, Tailwind CSS, and Redux Toolkit.
 
 ## 🚀 Features
 
@@ -37,7 +37,7 @@ cp env.example .env
 3. Update environment variables in `.env`:
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
-VITE_APP_NAME=CRM Dashboard
+VITE_APP_NAME=SpaAdvisor
 VITE_APP_VERSION=1.0.0
 ```
 
@@ -113,4 +113,4 @@ npm run lint
 
 ## 📄 License
 
-This project is part of the CRM Dashboard system.
+This project is part of the SpaAdvisor system.

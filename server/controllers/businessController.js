@@ -1564,7 +1564,7 @@ const updateBusiness = async (req, res, next) => {
             }
         });
 
-        // Save to trigger pre-save hooks (for Google Maps URL lat/lng extraction and businessLink generation)
+        business.isNew = false;
         const updatedBusiness = await business.save();
 
         // Populate the managers field after save

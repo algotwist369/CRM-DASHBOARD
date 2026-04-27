@@ -68,16 +68,16 @@ const imageFileFilter = (req, file, cb) => {
 
 // Size limits (in bytes)
 const FILE_SIZE_LIMITS = {
-    logo: 15 * 1024 * 1024,      // 5MB
+    logo: 5 * 1024 * 1024,      // 5MB
     banner: 10 * 1024 * 1024,   // 10MB
     gallery: 10 * 1024 * 1024,  // 10MB
     thumbnail: 2 * 1024 * 1024, // 2MB
     qrcode: 2 * 1024 * 1024,    // 2MB
-    profile: 15 * 1024 * 1024    // 5MB
+    profile: 5 * 1024 * 1024    // 5MB
 };
 
 // Create upload middleware for different types
-const createUploadMiddleware = (subfolder, fieldName, maxCount = 1, maxSize = 15 * 1024 * 1024) => {
+const createUploadMiddleware = (subfolder, fieldName, maxCount = 1, maxSize = 5 * 1024 * 1024) => {
     return multer({
         storage: createStorage(subfolder),
         fileFilter: imageFileFilter,

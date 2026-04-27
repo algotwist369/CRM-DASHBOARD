@@ -1,169 +1,44 @@
 import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
 import {
-  FaPlus,
-  FaEdit,
   FaEye,
   FaTrash,
-  FaChartBar,
-  FaUsers,
-  FaBuilding,
-  FaUserTie,
-  FaPhoneAlt,
-  FaEnvelope,
-  FaGlobe,
   FaLink,
   FaFilter,
   FaFileExport,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
+  FaUndo,
+  FaComment,
 } from "react-icons/fa";
 import { FiRefreshCw, FiArrowLeft } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import businessService from "../../../../services/admin/businessService";
-import adminService from "../../../../services/admin/adminService";
 import { useNavigate } from "react-router-dom";
-import Modal from "../../../../components/common/Modal/Modal";
-
-// Constants
-const INITIAL_FORM_DATA = {
-  type: "",
-  name: "",
-  branch: "",
-  address: "",
-  city: "",
-  state: "",
-  country: "India",
-  zipCode: "",
-  phone: "",
-  alternatePhone: "",
-  email: "",
-  website: "",
-  description: "",
-  googleMapsUrl: "",
-};
-
-const BUSINESS_TYPES = ["salon", "spa", "hotel", "restaurant", "retail", "gym", "clinic", "cafe", "studio", "education", "automotive", "others"];
-
-const ADDRESS_FIELDS = ["city", "state", "country"];
 
 const TABLE_COLUMNS = [
   { key: "name", label: "Name" },
   { key: "type", label: "Type", capitalize: true },
   { key: "branch", label: "Branch" },
   { key: "link", label: "Business Link" },
-  { key: "managers", label: "Managers" },
-  { key: "staff", label: "Staff" },
+  { key: "managersCount", label: "Managers", sortable: true },
+  { key: "staffCount", label: "Staff", sortable: true },
+  { key: "servicesCount", label: "Services", sortable: true },
   { key: "isActive", label: "Status" },
   { key: "actions", label: "Actions" },
 ];
 
-// Utility function to check if business is new (created within 2 days)
-const isNewBusiness = (createdAt) => {
-  if (!createdAt) return false;
-  const created = new Date(createdAt);
-  const now = new Date();
-  const diffInMs = now - created;
-  const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-  return diffInDays <= 2;
-};
-
-// Memoized NEW Badge Component
-const NewBadge = memo(() => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse">
-    NEW
-  </span>
-));
-
-// Memoized Analytics Card Component
-const AnalyticsCard = memo(({ title, value, icon: Icon }) => (
-  <div className="bg-white border   sm: p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
-    <div className="bg-gray-100 p-2 sm:p-3 rounded-full">
-      <Icon className="text-gray-500 text-xl" />
-    </div>
-    <div>
-      <h3 className="text-xs sm:text-sm text-gray-500">{title}</h3>
-      <p className="text-lg sm:text-xl font-semibold text-gray-800">{value}</p>
-    </div>
-  </div>
-));
-
-// Memoized Form Field Component
-const FormField = memo(({ label, name, value, onChange, error, type = "text", placeholder, required = false, options, rows }) => {
-  const baseLabelClass = "block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1";
-  const baseInputClass = `w-full border ${error ? "border-red-500" : "border-gray-300"}  p-2 sm:p-2.5 text-sm focus:ring-2 focus:ring-primary-500`;
-
-  if (type === "select") {
-    return (
-      <div>
-        <label className={baseLabelClass}>{label}{required && " *"}</label>
-        <select name={name} value={value} onChange={onChange} className={baseInputClass}>
-          <option value="">Select Type</option>
-          {options.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-        {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
-      </div>
-    );
-  }
-
-  if (type === "textarea") {
-    return (
-      <div>
-        <label className={baseLabelClass}>{label}</label>
-        <textarea
-          name={name}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          rows={rows}
-          className={`${baseInputClass} resize-none`}
-        />
-        {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <label className={baseLabelClass}>{label}{required && " *"}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={baseInputClass}
-      />
-      {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
-    </div>
-  );
-});
-
-// Memoized Icon Input Field Component
-const IconInputField = memo(({ label, name, value, onChange, error, type = "text", placeholder, icon: Icon, required = false }) => (
-  <div>
-    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">{label}{required && " *"}</label>
-    <div className="flex items-center border border-gray-300  p-1.5 sm:p-2">
-      <Icon className="text-gray-400 mr-2 text-sm" />
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="w-full focus:outline-none text-sm"
-      />
-    </div>
-    {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
-  </div>
-));
-
 // Memoized Business Row Component for Desktop
-const BusinessRow = memo(({ business, onView, onEdit, onDelete, onStatusChange }) => (
+const BusinessRow = memo(({ business, onView, onDelete, onStatusChange, onRemark }) => (
   <tr className="hover:bg-gray-50 transition-all text-gray-600">
     <td className="px-4 py-3 border-b">
       <div className="flex items-center gap-2">
         <span>{business.name}</span>
-        {isNewBusiness(business.createdAt) && <NewBadge />}
+        {business.isNew && (
+          <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+            NEW
+          </span>
+        )}
       </div>
     </td>
     <td className="px-4 py-3 border-b capitalize">{business.type}</td>
@@ -183,8 +58,9 @@ const BusinessRow = memo(({ business, onView, onEdit, onDelete, onStatusChange }
         <span className="text-gray-400 text-xs">—</span>
       )}
     </td>
-    <td className="px-4 py-3 border-b">{business.managersCount ?? business.managers?.length ?? 0}</td>
-    <td className="px-4 py-3 border-b">{business.staffCount ?? business.staff?.length ?? 0}</td>
+    <td className="px-4 py-3 border-b">{business.managersCount || 0}</td>
+    <td className="px-4 py-3 border-b">{business.staffCount || 0}</td>
+    <td className="px-4 py-3 border-b">{business.servicesCount || 0}</td>
     <td className="px-4 py-3 border-b">
       <div className="flex items-center gap-2">
         <button
@@ -199,9 +75,6 @@ const BusinessRow = memo(({ business, onView, onEdit, onDelete, onStatusChange }
               }`}
           />
         </button>
-        <span className="text-xs font-medium text-gray-600">
-          {business.isActive ? 'On' : 'Off'}
-        </span>
       </div>
     </td>
     <td className="px-4 py-3 border-b">
@@ -209,8 +82,8 @@ const BusinessRow = memo(({ business, onView, onEdit, onDelete, onStatusChange }
         <button onClick={() => onView(business.id || business._id)} className="text-blue-500 hover:text-blue-700" title="View">
           <FaEye />
         </button>
-        <button onClick={() => onEdit(business.id || business._id)} className="text-green-500 hover:text-green-700" title="Edit">
-          <FaEdit />
+        <button onClick={() => onRemark(business)} className="text-yellow-500 hover:text-yellow-700" title="Add/Edit Remark">
+          <FaComment />
         </button>
         <button onClick={() => onDelete(business.id || business._id)} className="text-red-500 hover:text-red-700" title="Delete">
           <FaTrash />
@@ -221,13 +94,17 @@ const BusinessRow = memo(({ business, onView, onEdit, onDelete, onStatusChange }
 ));
 
 // Memoized Business Card Component for Mobile
-const BusinessCard = memo(({ business, onView, onEdit, onDelete, onStatusChange }) => (
+const BusinessCard = memo(({ business, onView, onDelete, onStatusChange, onRemark }) => (
   <div className="border border-gray-200  p-4 bg-white hover:shadow-md transition-shadow">
     <div className="flex justify-between items-start mb-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="font-semibold text-gray-800 truncate">{business.name}</h3>
-          {isNewBusiness(business.createdAt) && <NewBadge />}
+          {business.isNew && (
+            <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+              NEW
+            </span>
+          )}
         </div>
         <p className="text-sm text-gray-500 capitalize">{business.type}</p>
       </div>
@@ -255,11 +132,15 @@ const BusinessCard = memo(({ business, onView, onEdit, onDelete, onStatusChange 
       </div>
       <div>
         <span className="text-gray-500">Managers:</span>
-        <p className="font-medium text-gray-700">{business.managersCount ?? business.managers?.length ?? 0}</p>
+        <p className="font-medium text-gray-700">{business.managersCount || 0}</p>
       </div>
       <div>
         <span className="text-gray-500">Staff:</span>
-        <p className="font-medium text-gray-700">{business.staffCount ?? business.staff?.length ?? 0}</p>
+        <p className="font-medium text-gray-700">{business.staffCount || 0}</p>
+      </div>
+      <div>
+        <span className="text-gray-500">Services:</span>
+        <p className="font-medium text-gray-700">{business.servicesCount || 0}</p>
       </div>
       {business.businessLink && (
         <div className="col-span-2">
@@ -280,8 +161,8 @@ const BusinessCard = memo(({ business, onView, onEdit, onDelete, onStatusChange 
       <button onClick={() => onView(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:bg-blue-50 py-2  transition-colors">
         <FaEye /> View
       </button>
-      <button onClick={() => onEdit(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-green-600 hover:bg-green-50 py-2  transition-colors">
-        <FaEdit /> Edit
+      <button onClick={() => onRemark(business)} className="flex-1 flex items-center justify-center gap-2 text-yellow-600 hover:bg-yellow-50 py-2  transition-colors">
+        <FaComment /> Remark
       </button>
       <button onClick={() => onDelete(business.id || business._id)} className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2  transition-colors">
         <FaTrash /> Delete
@@ -299,21 +180,16 @@ const BusinessList = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
-  const [dashboardStats, setDashboardStats] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, limit: 20 });
-
-  // Modal states
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingBusiness, setEditingBusiness] = useState(null);
-
-  // Form states
-  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
-  const [formErrors, setFormErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [showRemarkModal, setShowRemarkModal] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [remarkText, setRemarkText] = useState("");
+  const [updatingRemark, setUpdatingRemark] = useState(false);
 
   // Memoized fetch function
   const fetchBusinesses = useCallback(async () => {
@@ -322,7 +198,9 @@ const BusinessList = () => {
       setError(null);
       const params = {
         page: pagination.currentPage,
-        limit: pagination.limit
+        limit: pagination.limit,
+        sortBy,
+        sortOrder
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (filterType) params.type = filterType;
@@ -330,8 +208,7 @@ const BusinessList = () => {
 
       const res = await businessService.getBusinesses(params);
       if (res.success) {
-        // Handle nested data structure from service wrapper
-        const responseData = res.data?.data || res.data?.businesses || [];
+        const responseData = res.data?.data || [];
         const paginationData = res.data?.pagination;
 
         setBusinesses(responseData);
@@ -353,29 +230,12 @@ const BusinessList = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.currentPage, pagination.limit, debouncedSearch, filterType]);
+  }, [pagination.currentPage, pagination.limit, debouncedSearch, filterType, filterStatus, sortBy, sortOrder]);
 
-  // Fetch dashboard stats once
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      const res = await adminService.getDashboard(1, 5);
-      if (res.success && res.data.data) {
-        setDashboardStats(res.data.data);
-      }
-    } catch (e) {
-      console.error("Failed to fetch dashboard stats:", e);
-    }
-  }, []);
-
-  // Single effect for fetching businesses
+  // Initial fetch
   useEffect(() => {
     fetchBusinesses();
   }, [fetchBusinesses]);
-
-  // Fetch dashboard stats once on mount
-  useEffect(() => {
-    fetchDashboardStats();
-  }, [fetchDashboardStats]);
 
   // Debounce search input
   useEffect(() => {
@@ -384,22 +244,17 @@ const BusinessList = () => {
   }, [search]);
 
   // Memoized handlers
-  const handleAdd = useCallback(() => {
-    navigate('/admin/businesses/create');
-  }, [navigate]);
-
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await fetchBusinesses();
-      await fetchDashboardStats();
       toast.success('Business data refreshed successfully');
     } catch (error) {
       toast.error('Failed to refresh data');
     } finally {
       setRefreshing(false);
     }
-  }, [fetchBusinesses, fetchDashboardStats]);
+  }, [fetchBusinesses]);
 
   const handleBack = useCallback(() => {
     navigate('/admin/dashboard');
@@ -407,39 +262,6 @@ const BusinessList = () => {
 
   const toggleFilters = useCallback(() => {
     setShowFilters(prev => !prev);
-  }, []);
-
-  const handleEdit = useCallback(async (id) => {
-    try {
-      const res = await businessService.getBusiness(id);
-      const data = res?.data?.data || res?.data;
-      if (data) {
-        setFormData({
-          type: data.type || "",
-          name: data.name || "",
-          branch: data.branch || "",
-          address: data.address || "",
-          city: data.city || "",
-          state: data.state || "",
-          country: data.country || "India",
-          zipCode: data.zipCode || "",
-          phone: data.phone || "",
-          alternatePhone: data.alternatePhone || "",
-          email: data.email || "",
-          website: data.website || "",
-          description: data.description || "",
-          googleMapsUrl: data.googleMapsUrl || "",
-        });
-        setEditingBusiness(data);
-        setFormErrors({});
-        setIsEditModalOpen(true);
-      } else {
-        toast.error("Business not found");
-      }
-    } catch (error) {
-      console.error("Error loading business:", error);
-      toast.error("Failed to load business details");
-    }
   }, []);
 
   const handleView = useCallback((id) => navigate(`/admin/businesses/${id}`), [navigate]);
@@ -457,6 +279,46 @@ const BusinessList = () => {
     } catch (error) {
       toast.error('Delete failed');
     }
+  }, []);
+
+  const handleRemark = useCallback((business) => {
+    setSelectedBusiness(business);
+    setRemarkText(business.remark || "");
+    setShowRemarkModal(true);
+  }, []);
+
+  const handleSaveRemark = useCallback(async () => {
+    if (!selectedBusiness) return;
+    try {
+      setUpdatingRemark(true);
+      const res = await businessService.updateBusinessRemark(
+        selectedBusiness.id || selectedBusiness._id,
+        remarkText
+      );
+      if (res.success) {
+        setBusinesses(prev => prev.map(b =>
+          (b.id || b._id) === (selectedBusiness.id || selectedBusiness._id)
+            ? { ...b, remark: remarkText, updatedAt: res.data?.updatedAt || new Date() }
+            : b
+        ));
+        toast.success("Business remark updated successfully");
+        setShowRemarkModal(false);
+        setSelectedBusiness(null);
+        setRemarkText("");
+      } else {
+        toast.error(res.error || 'Failed to update remark');
+      }
+    } catch (error) {
+      toast.error('Failed to update remark');
+    } finally {
+      setUpdatingRemark(false);
+    }
+  }, [selectedBusiness, remarkText]);
+
+  const handleCloseRemarkModal = useCallback(() => {
+    setShowRemarkModal(false);
+    setSelectedBusiness(null);
+    setRemarkText("");
   }, []);
 
   const handleStatusChange = useCallback(async (business) => {
@@ -528,65 +390,6 @@ const BusinessList = () => {
     }
   }, []);
 
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setFormErrors((prev) => {
-      if (prev[name]) {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      }
-      return prev;
-    });
-  }, []);
-
-  const validateForm = useCallback(() => {
-    const errors = {};
-    if (!formData.type) errors.type = "Business type is required";
-    if (!formData.name.trim()) errors.name = "Business name is required";
-    if (formData.phone && !/^[6-9]\d{9}$/.test(formData.phone))
-      errors.phone = "Enter a valid 10-digit phone number starting with 6-9";
-    if (formData.alternatePhone && !/^[6-9]\d{9}$/.test(formData.alternatePhone))
-      errors.alternatePhone = "Enter a valid 10-digit phone number starting with 6-9";
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      errors.email = "Invalid email format";
-    if (formData.website && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(formData.website))
-      errors.website = "Invalid website URL";
-    if (formData.googleMapsUrl && !/^https?:\/\/[^\s$.?#].[^\s]*$/.test(formData.googleMapsUrl))
-      errors.googleMapsUrl = "Invalid Google Maps URL";
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  }, [formData]);
-
-  const refreshBusinesses = useCallback(async () => {
-    const params = {
-      page: pagination.currentPage,
-      limit: pagination.limit
-    };
-    if (debouncedSearch) params.search = debouncedSearch;
-    if (filterType) params.type = filterType;
-    if (filterStatus) params.status = filterStatus;
-    const listRes = await businessService.getBusinesses(params);
-    if (listRes.success) {
-      const list = listRes.data?.data || listRes.data?.businesses || [];
-      const paginationData = listRes.data?.pagination;
-
-      setBusinesses(list);
-
-      if (paginationData) {
-        setPagination(prev => ({
-          ...prev,
-          currentPage: paginationData.page,
-          totalPages: paginationData.pages,
-          total: paginationData.total,
-          limit: paginationData.limit
-        }));
-      }
-    }
-    await fetchDashboardStats();
-  }, [debouncedSearch, filterType, pagination.currentPage, pagination.limit, fetchDashboardStats]);
-
   const handlePageChange = useCallback((newPage) => {
     setPagination(prev => ({ ...prev, currentPage: newPage }));
   }, []);
@@ -596,127 +399,26 @@ const BusinessList = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   }, []);
 
-  const handleCreateSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      setSubmitting(true);
-      // Prepare data - only send fields that have values
-      const payload = {
-        type: formData.type,
-        name: formData.name.trim(),
-        branch: formData.branch.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        state: formData.state.trim(),
-        country: formData.country || "India",
-      };
-
-      // Add optional fields only if they have values
-      if (formData.zipCode) payload.zipCode = formData.zipCode.trim();
-      if (formData.phone) payload.phone = formData.phone.trim();
-      if (formData.alternatePhone) payload.alternatePhone = formData.alternatePhone.trim();
-      if (formData.email) payload.email = formData.email.trim();
-      if (formData.website) payload.website = formData.website.trim();
-      if (formData.description) payload.description = formData.description.trim();
-      if (formData.googleMapsUrl) payload.googleMapsUrl = formData.googleMapsUrl.trim();
-
-      const res = await businessService.createBusiness(payload);
-      if (res.success) {
-        toast.success(`${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} created successfully`);
-        setIsCreateModalOpen(false);
-        setFormData(INITIAL_FORM_DATA);
-        setFormErrors({});
-        await refreshBusinesses();
-      } else {
-        toast.error(res.error || 'Failed to create business');
-      }
-    } catch (error) {
-      console.error("Create business error:", error);
-      toast.error("Failed to create business");
-    } finally {
-      setSubmitting(false);
+  const handleSort = useCallback((columnKey) => {
+    if (sortBy === columnKey) {
+      setSortOrder(prev => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(columnKey);
+      setSortOrder("desc");
     }
-  }, [formData, validateForm, refreshBusinesses]);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  }, [sortBy]);
 
-  const handleEditSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      setSubmitting(true);
-      // Prepare update data - only send fields that are being updated
-      const payload = {
-        type: formData.type,
-        name: formData.name.trim(),
-        branch: formData.branch.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        state: formData.state.trim(),
-        country: formData.country || "India",
-      };
-
-      // Add optional fields - send empty string to clear or value to update
-      payload.zipCode = formData.zipCode || undefined;
-      payload.phone = formData.phone || undefined;
-      payload.alternatePhone = formData.alternatePhone || undefined;
-      payload.email = formData.email || undefined;
-      payload.website = formData.website || undefined;
-      payload.description = formData.description || undefined;
-      payload.googleMapsUrl = formData.googleMapsUrl || undefined;
-
-      // Remove undefined fields
-      Object.keys(payload).forEach(key => {
-        if (payload[key] === undefined) delete payload[key];
-      });
-
-      const businessId = editingBusiness._id || editingBusiness.id;
-      const res = await businessService.updateBusiness(businessId, payload);
-      if (res.success) {
-        toast.success("Business updated successfully");
-        setIsEditModalOpen(false);
-        setEditingBusiness(null);
-        setFormData(INITIAL_FORM_DATA);
-        setFormErrors({});
-        await refreshBusinesses();
-      } else {
-        toast.error(res.error || "Failed to update business");
-      }
-    } catch (error) {
-      console.error("Update business error:", error);
-      toast.error("Failed to update business");
-    } finally {
-      setSubmitting(false);
-    }
-  }, [formData, editingBusiness, validateForm, refreshBusinesses]);
-
-  // Memoized analytics values from dashboard stats
-  const analyticsValues = useMemo(() => {
-    if (!dashboardStats) {
-      return [
-        { icon: FaBuilding, title: "Total Businesses", value: "—" },
-        { icon: FaUsers, title: "Total Customers", value: "—" },
-        { icon: FaUserTie, title: "Active Staff", value: "—" },
-        { icon: FaChartBar, title: "Total Revenue", value: "—" },
-      ];
-    }
-    return [
-      { icon: FaBuilding, title: "Total Businesses", value: dashboardStats.stats?.businesses?.total || 0 },
-      { icon: FaUsers, title: "Total Customers", value: dashboardStats.stats?.totalCustomers || 0 },
-      { icon: FaUserTie, title: "Active Staff", value: dashboardStats.stats?.staff || 0 },
-      { icon: FaChartBar, title: "Total Revenue", value: dashboardStats.stats?.totalRevenue || "₹0" },
-    ];
-  }, [dashboardStats]);
-
-  // Memoized business type options
-  const businessTypeOptions = useMemo(() =>
-    BUSINESS_TYPES.map(type => ({
-      value: type,
-      label: type.charAt(0).toUpperCase() + type.slice(1)
-    })),
-    []
-  );
+  const handleReset = useCallback(() => {
+    setSearch("");
+    setDebouncedSearch("");
+    setFilterType("");
+    setFilterStatus("active");
+    setSortBy("createdAt");
+    setSortOrder("desc");
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    toast.success("Filters and sorting reset");
+  }, []);
 
   // Memoized table columns
   const tableHeaders = useMemo(() => TABLE_COLUMNS, []);
@@ -727,7 +429,7 @@ const BusinessList = () => {
       <header className="mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
-            Business Dashboard
+            Business List
           </h1>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
@@ -746,6 +448,14 @@ const BusinessList = () => {
             >
               <FiRefreshCw className={`text-base sm:text-lg ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 sm:px-4 py-2  hover:bg-gray-200 transition-colors text-sm font-medium"
+              title="Reset All Filters"
+            >
+              <FaUndo className="text-base sm:text-lg" />
+              <span className="hidden sm:inline">Reset</span>
             </button>
             <button
               onClick={toggleFilters}
@@ -792,6 +502,15 @@ const BusinessList = () => {
                 <option value="salon">Salon</option>
                 <option value="spa">Spa</option>
                 <option value="hotel">Hotel</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="retail">Retail</option>
+                <option value="gym">Gym</option>
+                <option value="clinic">Clinic</option>
+                <option value="cafe">Cafe</option>
+                <option value="studio">Studio</option>
+                <option value="education">Education</option>
+                <option value="automotive">Automotive</option>
+                <option value="others">Others</option>
               </select>
             </div>
             <div className="sm:w-48">
@@ -809,15 +528,10 @@ const BusinessList = () => {
                 <option value="all">All</option>
               </select>
             </div>
-            {(search || filterType || filterStatus !== 'active') && (
+            {(search || filterType || filterStatus !== 'active' || sortBy !== 'createdAt') && (
               <div className="flex items-end">
                 <button
-                  onClick={() => {
-                    setSearch('');
-                    setFilterType('');
-                    setFilterStatus('active');
-                    setPagination(prev => ({ ...prev, currentPage: 1 }));
-                  }}
+                  onClick={handleReset}
                   className="px-3 py-2 text-sm bg-gray-100 text-gray-700  hover:bg-gray-200 transition-colors whitespace-nowrap"
                 >
                   Clear All
@@ -866,18 +580,6 @@ const BusinessList = () => {
         </div>
       )}
 
-      {/* Analytics Cards */}
-      {/* <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        {analyticsValues.map((card) => (
-          <AnalyticsCard
-            key={card.title}
-            icon={card.icon}
-            title={card.title}
-            value={card.value}
-          />
-        ))}
-      </section> */}
-
       {/* Business List Table */}
       <section className="bg-white shadow-md  sm: p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-5">
@@ -894,12 +596,7 @@ const BusinessList = () => {
               <FaFileExport className={exporting ? "animate-pulse" : ""} />
               {exporting ? "Exporting..." : "Export Links"}
             </button>
-            <button
-              onClick={handleAdd}
-              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2  transition-all text-sm sm:text-base"
-            >
-              <FaPlus /> Add Business
-            </button>
+
           </div>
         </div>
 
@@ -909,7 +606,24 @@ const BusinessList = () => {
             <thead className="bg-gray-100 text-gray-700">
               <tr>
                 {tableHeaders.map(column => (
-                  <th key={column.key} className="text-left px-4 py-3 border-b">{column.label}</th>
+                  <th
+                    key={column.key}
+                    className={`text-left px-4 py-3 border-b ${column.sortable ? 'cursor-pointer select-none hover:bg-gray-200 transition-colors' : ''}`}
+                    onClick={() => column.sortable && handleSort(column.key)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {column.label}
+                      {column.sortable && (
+                        <span className="text-gray-400">
+                          {sortBy === column.key ? (
+                            sortOrder === 'asc' ? <FaSortUp className="text-primary-600" /> : <FaSortDown className="text-primary-600" />
+                          ) : (
+                            <FaSort className="text-gray-300" />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -919,14 +633,14 @@ const BusinessList = () => {
                   key={b.id || b._id}
                   business={b}
                   onView={handleView}
-                  onEdit={handleEdit}
                   onDelete={handleDelete}
                   onStatusChange={handleStatusChange}
+                  onRemark={handleRemark}
                 />
               ))}
               {loading && (
                 <tr>
-                  <td colSpan={8} className="p-4 text-center text-sm text-gray-500">Loading businesses…</td>
+                  <td colSpan={9} className="p-4 text-center text-sm text-gray-500">Loading businesses…</td>
                 </tr>
               )}
             </tbody>
@@ -940,16 +654,15 @@ const BusinessList = () => {
               key={b.id || b._id}
               business={b}
               onView={handleView}
-              onEdit={handleEdit}
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
+              onRemark={handleRemark}
             />
           ))}
           {loading && <div className="p-4 text-sm text-gray-500 text-center">Loading businesses…</div>}
           {!loading && businesses.length === 0 && <div className="p-8 text-sm text-gray-500 text-center">No businesses found</div>}
         </div>
 
-        {/* Pagination */}
         {/* Pagination */}
         {pagination.totalPages > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-200 mt-4 gap-4">
@@ -990,297 +703,51 @@ const BusinessList = () => {
         )}
       </section>
 
-      {/* Create Business Modal */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setFormData(INITIAL_FORM_DATA);
-          setFormErrors({});
-        }}
-        title="Add New Business"
-        size="xl"
-      >
-        <form onSubmit={handleCreateSubmit} className="space-y-2 sm:space-y-2.5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
-            <FormField
-              label="Business Type"
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              error={formErrors.type}
-              type="select"
-              options={businessTypeOptions}
-              required
-            />
-
-            <IconInputField
-              label="Business Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              error={formErrors.name}
-              placeholder="Enter business name"
-              icon={FaBuilding}
-              required
-            />
-
-            <FormField
-              label="Branch"
-              name="branch"
-              value={formData.branch}
-              onChange={handleChange}
-              placeholder="e.g., Main Branch"
-            />
-
-            <FormField
-              label="Zip Code"
-              name="zipCode"
-              value={formData.zipCode}
-              onChange={handleChange}
-              placeholder="Enter zip code"
-            />
-
-            <IconInputField
-              label="Phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              error={formErrors.phone}
-              placeholder="10-digit phone number"
-              icon={FaPhoneAlt}
-            />
-
-            <IconInputField
-              label="Alternate Phone"
-              name="alternatePhone"
-              value={formData.alternatePhone}
-              onChange={handleChange}
-              error={formErrors.alternatePhone}
-              placeholder="Alternate phone number"
-              icon={FaPhoneAlt}
-            />
-
-            <IconInputField
-              label="Email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              error={formErrors.email}
-              type="email"
-              placeholder="Business email"
-              icon={FaEnvelope}
-            />
-
-            <IconInputField
-              label="Website"
-              name="website"
-              value={formData.website}
-              onChange={handleChange}
-              error={formErrors.website}
-              placeholder="https://example.com"
-              icon={FaGlobe}
-            />
-          </div>
-
-          <FormField
-            label="Address"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            type="textarea"
-            rows={2}
-            placeholder="Enter address"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            {ADDRESS_FIELDS.map((field) => (
-              <FormField
-                key={field}
-                label=""
-                name={field}
-                value={formData[field]}
-                onChange={handleChange}
-                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+      {/* Remark Modal */}
+      {showRemarkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800">
+                {selectedBusiness?.remark ? "Edit Remark" : "Add Remark"}
+              </h3>
+              <button
+                onClick={handleCloseRemarkModal}
+                className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Remark for <span className="text-primary-600">{selectedBusiness?.name}</span>
+              </label>
+              <textarea
+                value={remarkText}
+                onChange={(e) => setRemarkText(e.target.value)}
+                placeholder="Enter your remark about this business..."
+                rows={4}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               />
-            ))}
+            </div>
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                onClick={handleCloseRemarkModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRemark}
+                disabled={updatingRemark}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {updatingRemark ? "Saving..." : "Save Remark"}
+              </button>
+            </div>
           </div>
-
-          <FormField
-            label="Google Maps URL"
-            name="googleMapsUrl"
-            value={formData.googleMapsUrl}
-            onChange={handleChange}
-            error={formErrors.googleMapsUrl}
-            placeholder="https://maps.google.com/..."
-            type="url"
-          />
-
-          <FormField
-            label="Description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            type="textarea"
-            rows={2}
-            placeholder="Write something about your business"
-          />
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5  font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
-          >
-            {submitting ? "Adding..." : "Add Business"}
-          </button>
-        </form>
-      </Modal>
-
-      {/* Edit Business Modal */}
-      <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingBusiness(null);
-          setFormData(INITIAL_FORM_DATA);
-          setFormErrors({});
-        }}
-        title="Edit Business"
-        size="xl"
-      >
-        <form onSubmit={handleEditSubmit} className="space-y-2 sm:space-y-2.5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
-            <FormField
-              label="Business Type"
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              error={formErrors.type}
-              type="select"
-              options={businessTypeOptions}
-              required
-            />
-
-            <IconInputField
-              label="Business Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              error={formErrors.name}
-              placeholder="Enter business name"
-              icon={FaBuilding}
-              required
-            />
-
-            <FormField
-              label="Branch"
-              name="branch"
-              value={formData.branch}
-              onChange={handleChange}
-              placeholder="e.g., Main Branch"
-            />
-
-            <FormField
-              label="Zip Code"
-              name="zipCode"
-              value={formData.zipCode}
-              onChange={handleChange}
-              placeholder="Enter zip code"
-            />
-
-            <IconInputField
-              label="Phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              error={formErrors.phone}
-              placeholder="10-digit phone number"
-              icon={FaPhoneAlt}
-            />
-
-            <IconInputField
-              label="Alternate Phone"
-              name="alternatePhone"
-              value={formData.alternatePhone}
-              onChange={handleChange}
-              error={formErrors.alternatePhone}
-              placeholder="Alternate phone number"
-              icon={FaPhoneAlt}
-            />
-
-            <IconInputField
-              label="Email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              error={formErrors.email}
-              type="email"
-              placeholder="Business email"
-              icon={FaEnvelope}
-            />
-
-            <IconInputField
-              label="Website"
-              name="website"
-              value={formData.website}
-              onChange={handleChange}
-              error={formErrors.website}
-              placeholder="https://example.com"
-              icon={FaGlobe}
-            />
-          </div>
-
-          <FormField
-            label="Address"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            type="textarea"
-            rows={2}
-            placeholder="Enter address"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            {ADDRESS_FIELDS.map((field) => (
-              <FormField
-                key={field}
-                label=""
-                name={field}
-                value={formData[field]}
-                onChange={handleChange}
-                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-              />
-            ))}
-          </div>
-
-          <FormField
-            label="Google Maps URL"
-            name="googleMapsUrl"
-            value={formData.googleMapsUrl}
-            onChange={handleChange}
-            placeholder="https://maps.google.com/..."
-            type="url"
-          />
-
-          <FormField
-            label="Description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            type="textarea"
-            rows={2}
-            placeholder="Write something about your business"
-          />
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 sm:py-2.5  font-medium transition-all disabled:opacity-60 text-sm sm:text-base"
-          >
-            {submitting ? "Updating..." : "Update Business"}
-          </button>
-        </form>
-      </Modal>
+        </div>
+      )}
     </div>
   );
 };

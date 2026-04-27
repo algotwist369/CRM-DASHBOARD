@@ -16,7 +16,9 @@ import {
   HiOutlineDuplicate,
   HiChevronDown,
   HiChevronUp,
-  HiOutlineDownload
+  HiOutlineDownload,
+  HiOutlinePencilAlt,
+  HiOutlineChatAlt
 } from 'react-icons/hi';
 import adminService from '../../../services/admin/adminService';
 import { toast } from 'react-hot-toast';
@@ -66,7 +68,7 @@ const CollapsibleSection = memo(({ title, isExpanded, onToggle, badge, children 
   </div>
 ));
 
-const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
+const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice, onUpdateRemarkAmount }) => {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     confirmed: 'bg-blue-100 text-blue-800',
@@ -154,10 +156,8 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
         <div className="text-xs text-gray-900">{serviceName}</div>
         <div className="text-[10px] text-gray-500 bg-green-200 inline p-1 rounded">{serviceDuration} mins</div>
       </td>
-      {/* Row Start */}
-      {/* Customer Column */}
       {/* Source Column */}
-      <td className="px-3 py-2 whitespace-nowrap">
+      {/* <td className="px-3 py-2 whitespace-nowrap">
         {(() => {
           const style = getPlatformStyle(appointment.tracking?.source || 'direct');
           return (
@@ -179,7 +179,7 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
             </div>
           );
         })()}
-      </td>
+      </td> */}
       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
         {appointmentDate ? appointmentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
         <div className="text-gray-500 text-[10px]">{formatTime12Hour(startTime)}</div>
@@ -197,6 +197,9 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
         ₹{price.toLocaleString()}
+        {appointment.additionalAmount > 0 && (
+          <div className="text-[9px] text-green-600 font-bold">+₹{appointment.additionalAmount} addl.</div>
+        )}
         <div className="text-[10px] text-gray-500 mt-0.5 capitalize">{appointment.bookingSource?.replace('_', ' ') || 'N/A'}</div>
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
@@ -209,8 +212,21 @@ const AppointmentRow = memo(({ appointment, onView, onDownloadInvoice }) => {
             </div>
           );
         })() : 'N/A'}
+        {appointment.remark && (
+          <div className="flex items-center gap-1 mt-1 text-primary-600" title={appointment.remark}>
+            <HiOutlineChatAlt className="w-3 h-3" />
+            <span className="text-[9px] truncate max-w-[80px]">Has remark</span>
+          </div>
+        )}
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-right flex items-center justify-end gap-1">
+        <button
+          onClick={() => onUpdateRemarkAmount(appointment)}
+          className="p-1 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+          title="Update Remark & Amount"
+        >
+          <HiOutlinePencilAlt className="w-4 h-4" />
+        </button>
         {paymentStatus === 'paid' && (
           <button
             onClick={(e) => {
@@ -238,6 +254,12 @@ const AppointmentList = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [showRemarkModal, setShowRemarkModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [remarkValue, setRemarkValue] = useState('');
+  const [additionalAmountValue, setAdditionalAmountValue] = useState('');
+  const [isUpdatingRemark, setIsUpdatingRemark] = useState(false);
+  const [isUpdatingAmount, setIsUpdatingAmount] = useState(false);
 
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -344,6 +366,67 @@ const AppointmentList = () => {
   const handleViewAppointment = useCallback((id) => {
     navigate(`/admin/appointments/${id}`);
   }, [navigate]);
+
+  const handleOpenRemarkModal = useCallback(async (appointment) => {
+    setSelectedAppointment(appointment);
+    setRemarkValue(appointment.remark || '');
+    setAdditionalAmountValue(appointment.additionalAmount || '');
+    setShowRemarkModal(true);
+
+    // Fetch latest data from server to be sure
+    try {
+      const response = await adminService.getAppointmentRemarkAndAmount(appointment._id || appointment.id);
+      if (response.success) {
+        setRemarkValue(response.data.remark || '');
+        setAdditionalAmountValue(response.data.additionalAmount || '');
+      }
+    } catch (err) {
+      console.error('Error fetching latest remark/amount:', err);
+    }
+  }, []);
+
+  const handleUpdateRemark = useCallback(async () => {
+    if (!selectedAppointment) return;
+    setIsUpdatingRemark(true);
+    try {
+      const response = await adminService.updateAppointmentRemark(
+        selectedAppointment._id || selectedAppointment.id,
+        remarkValue
+      );
+      if (response.success) {
+        toast.success('Remark updated successfully');
+        refetchAppointments();
+      } else {
+        toast.error(response.error || 'Failed to update remark');
+      }
+    } catch (err) {
+      toast.error('Error updating remark');
+    } finally {
+      setIsUpdatingRemark(false);
+    }
+  }, [selectedAppointment, remarkValue, refetchAppointments]);
+
+  const handleUpdateAdditionalAmount = useCallback(async () => {
+    if (!selectedAppointment) return;
+    setIsUpdatingAmount(true);
+    try {
+      const response = await adminService.updateAppointmentAdditionalAmount(
+        selectedAppointment._id || selectedAppointment.id,
+        Number(additionalAmountValue)
+      );
+      if (response.success) {
+        toast.success('Additional amount updated successfully');
+        refetchAppointments();
+        refetchStats();
+      } else {
+        toast.error(response.error || 'Failed to update amount');
+      }
+    } catch (err) {
+      toast.error('Error updating amount');
+    } finally {
+      setIsUpdatingAmount(false);
+    }
+  }, [selectedAppointment, additionalAmountValue, refetchAppointments, refetchStats]);
 
   const handleStatusFilterChange = useCallback((e) => {
     setStatusFilter(e.target.value);
@@ -708,7 +791,7 @@ const AppointmentList = () => {
                   "Business",
                   "Customer",
                   "Service",
-                  "source",
+                  // "source",
                   "Date & Time",
                   "Status",
                   "Payment",
@@ -746,6 +829,7 @@ const AppointmentList = () => {
                     appointment={appointment}
                     onView={handleViewAppointment}
                     onDownloadInvoice={handleDownloadInvoice}
+                    onUpdateRemarkAmount={handleOpenRemarkModal}
                   />
                 ))
               )}
@@ -799,6 +883,99 @@ const AppointmentList = () => {
           </div>
         )}
       </div>
+
+      {/* Remark & Additional Amount Modal */}
+      {showRemarkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-primary-600 px-4 py-3 flex items-center justify-between">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <HiOutlinePencilAlt className="w-5 h-5" />
+                Update Appointment Details
+              </h3>
+              <button
+                onClick={() => setShowRemarkModal(false)}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <HiOutlineX className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Appointment</p>
+                <p className="text-sm font-medium text-gray-900">
+                  #{selectedAppointment?.bookingNumber} - {selectedAppointment?.customer?.firstName} {selectedAppointment?.customer?.lastName}
+                </p>
+              </div>
+
+              {/* Remark Field */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                  <HiOutlineChatAlt className="w-4 h-4 text-primary-500" />
+                  REMARK
+                </label>
+                <textarea
+                  value={remarkValue}
+                  onChange={(e) => setRemarkValue(e.target.value)}
+                  placeholder="Enter internal remark for this appointment..."
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all h-24 resize-none"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleUpdateRemark}
+                    disabled={isUpdatingRemark}
+                    className="text-xs bg-primary-50 text-primary-700 px-3 py-1.5 rounded hover:bg-primary-100 transition-colors font-medium disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {isUpdatingRemark ? <div className="w-3 h-3 border-2 border-primary-700 border-t-transparent animate-spin rounded-full"></div> : <HiOutlineCheck className="w-3 h-3" />}
+                    Save Remark
+                  </button>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4">
+                {/* Additional Amount Field */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                    <HiOutlineCurrencyRupee className="w-4 h-4 text-green-500" />
+                    ADDITIONAL AMOUNT
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
+                    <input
+                      type="number"
+                      value={additionalAmountValue}
+                      onChange={(e) => setAdditionalAmountValue(e.target.value)}
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded pl-7 pr-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 italic">This will automatically recalculate the total amount.</p>
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={handleUpdateAdditionalAmount}
+                      disabled={isUpdatingAmount}
+                      className="text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded hover:bg-green-100 transition-colors font-medium disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {isUpdatingAmount ? <div className="w-3 h-3 border-2 border-green-700 border-t-transparent animate-spin rounded-full"></div> : <HiOutlineCheck className="w-3 h-3" />}
+                      Save Amount
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-4 py-3 flex justify-end">
+              <button
+                onClick={() => setShowRemarkModal(false)}
+                className="text-sm text-gray-600 font-medium hover:text-gray-800 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

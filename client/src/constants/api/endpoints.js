@@ -31,10 +31,11 @@ export const endpoints = {
     businesses: `${API_BASE_URL}/admin/businesses`,
     business: (id) => `${API_BASE_URL}/admin/${id}`,
     createBusiness: `${API_BASE_URL}/admin/business`,
-    updateBusiness: (id) => `${API_BASE_URL}/business/${id}`,
+    updateBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     updateBusinessStatus: (id) => `${API_BASE_URL}/admin/business/${id}/status`,
     deleteBusiness: (id) => `${API_BASE_URL}/admin/business/${id}`,
     businessLink: (id) => `${API_BASE_URL}/admin/business/${id}/link`,
+    businessRemark: (id) => `${API_BASE_URL}/admin/business/${id}/remark`,
     // Manager Management
     managers: `${API_BASE_URL}/admin/managers`,
     manager: (id) => `${API_BASE_URL}/admin/manager/${id}`,
@@ -98,6 +99,9 @@ export const endpoints = {
     markNoShow: (id) => `${API_BASE_URL}/appointments/${id}/no-show`,
     addReview: (id) => `${API_BASE_URL}/appointments/${id}/review`,
     updateAppointmentStatus: (id) => `${API_BASE_URL}/appointments/${id}/status`,
+    remark: (id) => `${API_BASE_URL}/appointments/${id}/remark`,
+    additionalAmount: (id) => `${API_BASE_URL}/appointments/${id}/additional-amount`,
+    remarkAmount: (id) => `${API_BASE_URL}/appointments/${id}/remark-amount`,
   },
 
   // Business endpoints

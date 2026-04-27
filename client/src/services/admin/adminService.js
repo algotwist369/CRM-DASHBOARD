@@ -72,7 +72,12 @@ class AdminService {
   // Get managers
   async getManagers(params = {}) {
     try {
-      const response = await apiClient.get(endpoints.admin.managers, { params })
+      // Filter out invalid businessId values
+      const cleanParams = { ...params }
+      if ('businessId' in cleanParams && (!cleanParams.businessId || cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+        delete cleanParams.businessId
+      }
+      const response = await apiClient.get(endpoints.admin.managers, { params: cleanParams })
       // Backend returns { success: true, data: [...], pagination: {...} }
       // Return it directly to maintain structure
       return response.data
@@ -426,7 +431,7 @@ class AdminService {
     try {
       // Filter out invalid businessId values
       const cleanParams = { ...params }
-      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+      if ('businessId' in cleanParams && (!cleanParams.businessId || cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
         delete cleanParams.businessId
       }
       const response = await apiClient.get(endpoints.campaigns.list, { params: cleanParams })
@@ -444,7 +449,7 @@ class AdminService {
     try {
       // Filter out invalid businessId values
       const cleanParams = { ...params }
-      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+      if ('businessId' in cleanParams && (!cleanParams.businessId || cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
         delete cleanParams.businessId
       }
       const response = await apiClient.get(endpoints.campaigns.stats, { params: cleanParams })
@@ -757,7 +762,7 @@ class AdminService {
     try {
       // Filter out invalid businessId values
       const cleanParams = { ...params }
-      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+      if ('businessId' in cleanParams && (!cleanParams.businessId || cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
         delete cleanParams.businessId
       }
       const response = await apiClient.get(endpoints.customers.list, { params: cleanParams })
@@ -826,7 +831,7 @@ class AdminService {
   async getCustomerStats(params = {}) {
     try {
       const cleanParams = { ...params }
-      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+      if ('businessId' in cleanParams && (!cleanParams.businessId || cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
         delete cleanParams.businessId
       }
       const response = await apiClient.get(`${endpoints.customers.list}/stats`, { params: cleanParams })
@@ -862,7 +867,7 @@ class AdminService {
     try {
       // Filter out invalid businessId values
       const cleanParams = { ...params }
-      if (cleanParams.businessId && (cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
+      if ('businessId' in cleanParams && (!cleanParams.businessId || cleanParams.businessId === 'undefined' || cleanParams.businessId === 'null' || !String(cleanParams.businessId).trim())) {
         delete cleanParams.businessId
       }
       const response = await apiClient.get(endpoints.services.list, { params: cleanParams })
@@ -1128,6 +1133,45 @@ class AdminService {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to mark as no-show'
+      }
+    }
+  }
+
+  // Update appointment remark
+  async updateAppointmentRemark(id, remark) {
+    try {
+      const response = await apiClient.patch(endpoints.appointments.remark(id), { remark })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update remark'
+      }
+    }
+  }
+
+  // Update appointment additional amount
+  async updateAppointmentAdditionalAmount(id, additionalAmount) {
+    try {
+      const response = await apiClient.patch(endpoints.appointments.additionalAmount(id), { additionalAmount })
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update additional amount'
+      }
+    }
+  }
+
+  // Get appointment remark and additional amount
+  async getAppointmentRemarkAndAmount(id) {
+    try {
+      const response = await apiClient.get(endpoints.appointments.remarkAmount(id))
+      return response.data
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch remark and amount'
       }
     }
   }

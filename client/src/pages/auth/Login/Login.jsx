@@ -199,7 +199,7 @@ const Login = () => {
 
         {/* Register Link */}
         <div className='mt-6 space-y-2'>
-          <p className='text-center text-gray-600 text-sm'>
+          {/* <p className='text-center text-gray-600 text-sm'>
             Don't have an account?{' '}
             <Link
               to='/auth/business-registration'
@@ -207,7 +207,7 @@ const Login = () => {
             >
               Create one
             </Link>
-          </p>
+          </p> */}
           <p className='text-center text-gray-600 text-sm'>
             Are you a manager?{' '}
             <Link

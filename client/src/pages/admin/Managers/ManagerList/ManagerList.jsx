@@ -329,6 +329,7 @@ const ManagerList = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+  const [selectedBusiness, setSelectedBusiness] = useState("");
 
   // Modal states
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -345,6 +346,8 @@ const ManagerList = () => {
   const [showPinSection, setShowPinSection] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [businessSearch, setBusinessSearch] = useState("");
+  const [isHeaderBusinessDropdownOpen, setIsHeaderBusinessDropdownOpen] = useState(false);
+  const [headerBusinessSearch, setHeaderBusinessSearch] = useState("");
 
   // Lazy load businesses only when needed (for dropdown)
   const fetchBusinesses = useCallback(async () => {
@@ -375,6 +378,7 @@ const ManagerList = () => {
       setError(null);
       const params = { page, limit };
       if (debouncedSearch) params.search = debouncedSearch;
+      if (selectedBusiness) params.businessId = selectedBusiness;
 
       const res = await adminService.getManagers(params);
       if (res.success) {
@@ -394,19 +398,18 @@ const ManagerList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, debouncedSearch, selectedBusiness]);
 
   // Only fetch managers on mount
   useEffect(() => {
     fetchManagers();
-  }, [fetchManagers]);
+    fetchBusinesses();
+  }, [fetchManagers, fetchBusinesses]);
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when search or business filter changes
   useEffect(() => {
-    if (debouncedSearch !== search) {
-      setPage(1);
-    }
-  }, [debouncedSearch, search]);
+    setPage(1);
+  }, [debouncedSearch, selectedBusiness]);
 
   // Memoize business options for dropdown
   const businessOptions = useMemo(() => {
@@ -678,25 +681,98 @@ const ManagerList = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white border   overflow-hidden mb-6">
-        <div className="flex items-center px-4 py-3">
-          <FiSearch className="text-gray-400 text-lg sm:text-xl mr-2 sm:mr-3 flex-shrink-0" />
-          <input
-            type="text"
-            placeholder="Search managers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent focus:outline-none text-gray-700 text-sm sm:text-base placeholder:text-sm sm:placeholder:text-base"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="text-gray-400 hover:text-gray-600 ml-2 text-sm"
-            >
-              Clear
-            </button>
-          )}
+      {/* Search & Filter Bar */}
+      <div className="bg-white border mb-6 relative z-30">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center px-4 py-2 sm:py-3 gap-3">
+          <div className="flex items-center flex-1">
+            <FiSearch className="text-gray-400 text-lg mr-2 sm:mr-3 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search managers..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 bg-transparent focus:outline-none text-gray-700 text-sm sm:text-base"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="text-gray-400 hover:text-gray-600 ml-2 text-sm"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-2 sm:pt-0 sm:pl-3 relative">
+            <FiBriefcase className="text-gray-400 flex-shrink-0" />
+            <div className="relative flex-1 sm:w-64">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search and select business..."
+                  value={headerBusinessSearch || (selectedBusiness ? businessOptions.find(b => b.value === selectedBusiness)?.label : "All Businesses")}
+                  onChange={(e) => {
+                    setHeaderBusinessSearch(e.target.value);
+                    setIsHeaderBusinessDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsHeaderBusinessDropdownOpen(true)}
+                  className="w-full bg-transparent focus:outline-none text-gray-700 text-sm cursor-pointer py-1 pr-8"
+                />
+                <FiChevronDown 
+                  className={`absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 transition-transform pointer-events-none ${isHeaderBusinessDropdownOpen ? 'rotate-180' : ''}`} 
+                />
+              </div>
+
+              {isHeaderBusinessDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => {
+                      setIsHeaderBusinessDropdownOpen(false);
+                      setHeaderBusinessSearch("");
+                    }}
+                  />
+                  <div className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 bg-white border border-gray-200 shadow-xl z-50 min-w-[280px] max-h-80 overflow-y-auto flex flex-col">
+                    <div
+                      className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-gray-50 transition-colors ${!selectedBusiness ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'}`}
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevent blur
+                        setSelectedBusiness("");
+                        setIsHeaderBusinessDropdownOpen(false);
+                        setHeaderBusinessSearch("");
+                      }}
+                    >
+                      All Businesses
+                    </div>
+                    {businessOptions
+                      .filter(opt => 
+                        headerBusinessSearch === "" || 
+                        opt.label.toLowerCase().includes(headerBusinessSearch.toLowerCase())
+                      )
+                      .map(opt => (
+                        <div
+                          key={opt.value}
+                          className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-gray-50 transition-colors ${selectedBusiness === opt.value ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'}`}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent blur
+                            setSelectedBusiness(opt.value);
+                            setIsHeaderBusinessDropdownOpen(false);
+                            setHeaderBusinessSearch("");
+                          }}
+                        >
+                          {opt.label}
+                        </div>
+                      ))}
+                    {businessOptions.filter(opt => opt.label.toLowerCase().includes(headerBusinessSearch.toLowerCase())).length === 0 && (
+                      <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                        No businesses found
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

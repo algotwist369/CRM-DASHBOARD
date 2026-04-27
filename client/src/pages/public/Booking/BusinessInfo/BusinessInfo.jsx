@@ -23,11 +23,11 @@ import {
   FaTag,
   FaChevronDown,
   FaChevronUp,
-  FaTimes
+  FaTimes,
+  FaFire,
 } from 'react-icons/fa';
 import BackButton from '../../../../components/common/Button/BackButton'
 import appointmentService from '../../../../services/public/appointmentService'
-import { usePageTitle } from '../../../../hooks/usePageTitle'
 import { useLeadTracking } from '../../../../hooks/useLeadTracking';
 import SkeletonBusinessInfo from './SkeletonBusinessInfo'
 import LazySection from '../../../../components/common/LazySection/LazySection'
@@ -37,6 +37,7 @@ const Map = lazy(() => import('../../../../components/common/Map/Map'))
 const BusinessInfoReviews = lazy(() => import('./BusinessInfoReviews'))
 import HeroSection from './HeroSection'
 import MediaGallery from './MediaGallery'
+import TrustSlider from './TrustSlider'
 import { trackLeadClick } from '../../../../utils/analytics'
 import InquiryModal from '../../../../components/public/Inquiry/InquiryModal'
 import SpecialOfferModal from '../../../../components/public/Offer/SpecialOfferModal'
@@ -128,10 +129,6 @@ const BusinessInfo = () => {
       toast.error(error)
     }
   }, [error])
-
-  // Update page title is now handled by the SEO component below
-  // to avoid conflicts between direct document.title updates and react-helmet-async
-  // usePageTitle(pageTitle)
 
   // Track page view
   useLeadTracking(business?._id, !!business);
@@ -364,6 +361,34 @@ const BusinessInfo = () => {
   const workingHoursList = useMemo(() => {
     return formatWorkingHours(business?.workingHours)
   }, [business?.workingHours, formatWorkingHours])
+
+  // Random booking count for today with auto-increment logic
+  const [dailyBookingCount, setDailyBookingCount] = useState(0);
+
+  useEffect(() => {
+    if (!business?._id) return;
+
+    // Initial stable count calculation
+    const getInitialCount = () => {
+      const today = new Date().toDateString();
+      const seed = business._id + today;
+      let hash = 0;
+      for (let i = 0; i < seed.length; i++) {
+        hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+        hash |= 0;
+      }
+      return 2 + (Math.abs(hash) % 30);
+    };
+
+    setDailyBookingCount(getInitialCount());
+
+    // Increment count every 4 seconds
+    const interval = setInterval(() => {
+      setDailyBookingCount(prev => prev + 1);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [business?._id]);
 
   // Memoize full address
   const fullAddress = useMemo(() => {
@@ -945,6 +970,27 @@ const BusinessInfo = () => {
         onBookNow={handleBookNow}
       />
 
+      {/* Booking Attraction Topbar */}
+      {business && (
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white py-2.5 px-4 shadow-md sticky top-0 z-[60]">
+          <div className="max-w-7xl mx-auto flex items-center justify-center gap-3 text-sm sm:text-base font-medium">
+            <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full animate-pulse">
+              <FaFire className="text-orange-400" />
+              <span className="font-bold">{dailyBookingCount}</span>
+            </div>
+            <p className="text-center">
+              <span className="hidden sm:inline">People have already booked their slots today! </span>
+              <span className="sm:hidden">Bookings confirmed today! </span>
+              <button
+                onClick={handleBookNow}
+                className="underline underline-offset-4 hover:text-orange-200 transition-colors font-bold ml-1"
+              >
+                Book Yours Now →
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <BackButton />
@@ -961,6 +1007,7 @@ const BusinessInfo = () => {
             )}
 
             <div className="lg:hidden space-y-4 sm:space-y-6">
+
               {/* Ratings Section */}
               {renderRatingsCard()}
 
@@ -983,6 +1030,9 @@ const BusinessInfo = () => {
                   )}
                 </div>
               )}
+
+              {/* Trust Building Slider */}
+              <TrustSlider business={business} />
 
               {/* Services Section */}
               {business.services && business.services.length > 0 && (
@@ -1634,7 +1684,12 @@ const BusinessInfo = () => {
           </div>
 
           <div className="hidden lg:flex flex-col gap-4">
-            <div className="sticky top-[4rem] z-20">{renderBookingCard()}</div>
+            <div className="sticky top-[4rem] z-20">
+              {renderBookingCard()}
+              <div className="mt-4">
+                <TrustSlider business={business} />
+              </div>
+            </div>
             <div className="space-y-4">
               {renderRatingsCard()}
               {renderFollowUsCard()}

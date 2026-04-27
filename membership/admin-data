@@ -1,0 +1,135 @@
+Admin Dashboard API Documentation
+Overview
+This document describes the APIs used by the Admin Dashboard to manage and monitor
+membership-related data such as purchases, redemptions, and transactions.
+All APIs require authentication using a JWT token obtained after successful login. Only
+users with the role ADDHEAD are authorized to access these endpoints.
+Authentication Flow
+1. Request OTP (Admin Login)
+Initiates login by sending an OTP to the registered mobile number.
+• Endpoint: /api/users/login/request-otp
+• Method: POST
+• Headers:
+o Content-Type: application/json
+• Request Body:
+{
+ "mobileNumber": "9876543210"
+}
+• Response:
+{
+ "message": "OTP sent successfully"
+}
+2. Verify OTP (Admin Login)
+Verifies OTP and returns JWT token for authenticated requests.
+• Endpoint: /api/users/login/verify-otp
+• Method: POST
+• Headers:
+o Content-Type: application/json
+• Request Body:
+{
+ "mobileNumber": "9876543210",
+ "otp": "1234"
+}
+• Response:
+{
+ "message": "Login successful",
+ "token": "eyJhbGciOiJIUzI1NiIsInR...",
+ "user": {},
+ "role": "ADDHEAD"
+}
+ Use the returned token as a Bearer token in all subsequent API requests.
+Admin APIs
+3. Get All Active Memberships
+Fetches a paginated list of all membership purchases across the platform.
+• Endpoint: /api/membership/admin/all
+• Method: GET
+• Query Parameters:
+o page (number) – Page number (default: 1)
+o limit (number) – Items per page (default: 20)
+o search (string) – Search by name/mobile (optional)
+• Headers:
+o Authorization: Bearer <token>
+• Example Request:
+/api/membership/admin/all?page=1&limit=20&search=
+• Response:
+{
+ "memberships": [],
+ "totalPages": 5,
+ "currentPage": 1,
+ "totalItems": 100
+}
+4. Get All Redemptions
+Fetches a paginated list of all service redemptions.
+• Endpoint: /api/membership/admin/redemptions
+• Method: GET
+• Query Parameters:
+o page (number)
+o limit (number)
+o search (string)
+• Headers:
+o Authorization: Bearer <token>
+• Example Request:
+/api/membership/admin/redemptions?page=1&limit=20&search=
+• Response:
+{
+ "redemptions": [],
+ "totalPages": 2,
+ "currentPage": 1,
+ "totalItems": 35
+}
+5. Get Recent Transactions (Activity Feed)
+Fetches a combined chronological list of purchases and redemptions.
+• Endpoint: /api/membership/admin/transactions
+• Method: GET
+• Query Parameters:
+o limit (number) – Number of records to fetch
+• Headers:
+o Authorization: Bearer <token>
+• Example Request:
+/api/membership/admin/transactions?limit=20
+• Response:
+[
+ {
+ "type": "Redemption",
+ "date": "2026-04-22T06:00:00.000Z",
+ "mobileNumber": "9876543210",
+ "name": "Gold Membership",
+ "details": "Redeemed Haircut",
+ "amount": 200,
+ "id": "69a1b2c3d..."
+ },
+ {
+ "type": "Purchase",
+ "date": "2026-04-22T05:30:00.000Z",
+ "mobileNumber": "9876543210",
+ "name": "John Doe",
+ "details": "Purchased Gold Membership",
+ "amount": 1000,
+ "id": "67f8a12b3..."
+ }
+]
+Error Handling
+All APIs may return the following error responses:
+Unauthorized Access
+{
+ "message": "Unauthorized"
+}
+Invalid Token
+{
+ "message": "Invalid or expired token"
+}
+Validation Error
+{
+ "message": "Invalid request parameters"
+}
+Notes
+• All timestamps are in ISO 8601 format (UTC)
+• Pagination should be handled at the frontend level
+• Ensure secure storage of JWT tokens
+• Role-based access is strictly enforced (ADDHEAD only)
+Conclusion
+These APIs enable the Admin Dashboard to:
+• Monitor memberships
+• Track redemptions
+• View real-time transaction activity
+Ensure proper authentication and parameter handling for seamless integration.

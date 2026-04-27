@@ -3,7 +3,7 @@ import { FaChevronLeft, FaCheck } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useParams, useNavigate } from "react-router-dom";
 import businessService from "../../../../services/admin/businessService";
-import { Button } from "../../../../../../../ankit pathak/PM_A/client/src/components/common";
+import { Button } from "../../../../components/common"; 
 import useBusinessForm from "../../../../hooks/business/useBusinessForm";
 
 // Step Components (Reused from CreateBusiness)

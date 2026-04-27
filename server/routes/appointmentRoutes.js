@@ -49,6 +49,11 @@ router.get("/:id", appointmentController.getAppointmentById);
 // Update appointment
 router.put("/:id", appointmentController.updateAppointment);
 
+// Remark & Additional Amount
+router.patch("/:id/remark", appointmentController.addOrUpdateRemark);
+router.patch("/:id/additional-amount", appointmentController.addOrUpdateAdditionalAmount);
+router.get("/:id/remark-amount", appointmentController.getRemarkAndAdditionalAmount);
+
 // ================== Appointment Actions ==================
 
 // Confirm appointment

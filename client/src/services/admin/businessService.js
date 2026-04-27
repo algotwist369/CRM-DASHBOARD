@@ -80,6 +80,19 @@ class BusinessService {
     }
   }
 
+  // Update business remark
+  async updateBusinessRemark(businessId, remark) {
+    try {
+      const response = await apiClient.put(endpoints.admin.businessRemark(businessId), { remark })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update remark'
+      }
+    }
+  }
+
   // Get business statistics
   async getBusinessStats(businessId) {
     try {

@@ -48,7 +48,7 @@ const Error = ({ error, resetError }) => {
     console.log('Error Report:', errorReport)
     
     // Open email client with error details
-    const subject = encodeURIComponent('Error Report - CRM Dashboard')
+    const subject = encodeURIComponent('Error Report - SpaAdvisor')
     const body = encodeURIComponent(`
 Error Details:
 - Message: ${errorDetails.message}
@@ -60,7 +60,7 @@ Please describe what you were doing when this error occurred:
 [Your description here]
     `)
     
-    window.open(`mailto:support@elitehair.com?subject=${subject}&body=${body}`)
+    window.open(`mailto:support@spaadvisor.in?subject=${subject}&body=${body}`)
   }
 
   const getErrorType = () => {

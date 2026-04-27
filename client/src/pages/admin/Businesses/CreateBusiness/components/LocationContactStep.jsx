@@ -77,6 +77,17 @@ const LocationContactStep = ({ formData, errors, handleChange }) => {
                         placeholder="https://..."
                     />
                 </div>
+
+                <div className="pt-8 border-t border-secondary-100">
+                    <FormField
+                        label="Google Maps URL"
+                        name="googleMapsUrl"
+                        value={formData.googleMapsUrl}
+                        onChange={(val) => handleChange({ target: { name: "googleMapsUrl", value: val } })}
+                        placeholder="https://www.google.com/maps/..."
+                        helperText="Link to your business location on Google Maps."
+                    />
+                </div>
             </div>
         </div>
     );

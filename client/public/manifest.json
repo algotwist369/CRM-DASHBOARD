@@ -1,7 +1,7 @@
 {
-  "name": "CRM Dashboard",
-  "short_name": "CRM Dashboard",
-  "description": "A comprehensive CRM system for managing businesses, staff, customers, and appointments",
+  "name": "SpaAdvisor",
+  "short_name": "SpaAdvisor",
+  "description": "A comprehensive Spa & Wellness Management system for businesses",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
