@@ -2,7 +2,7 @@ import axios from 'axios'
 import authService from '../auth/authService'
 
 // Base configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.sa.ramaai.cloud/api'
 const API_TIMEOUT = 30000 // 30 seconds
 
 // Create axios instance
