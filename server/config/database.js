@@ -8,8 +8,8 @@ const dbOptions = {
     maxPoolSize: 100, // Increased for 10k+ users concurrency
     minPoolSize: 10,  // Maintain a minimum of 10 socket connections
     maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
-    serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+    serverSelectionTimeoutMS: 15000, // Increased to 15s to be more resilient
+    socketTimeoutMS: 60000, // Increased to 60s for heavy aggregation queries
     
     // // Performance optimizations
     // useNewUrlParser: true,
@@ -29,7 +29,7 @@ const dbOptions = {
     compressors: ['zlib'],
     
     // Connection timeout
-    connectTimeoutMS: 10000,
+    connectTimeoutMS: 20000, // Increased to 20s
     
     // Heartbeat frequency
     heartbeatFrequencyMS: 10000
