@@ -36,7 +36,7 @@ let isProcessingQueue = false;
 const getSESClient = () => {
     if (sesClient) return sesClient;
 
-    const awsRegion = process.env.AWS_REGION;
+    const awsRegion = process.env.AWS_SES_REGION || process.env.AWS_REGION;
     const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
     const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 

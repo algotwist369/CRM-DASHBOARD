@@ -3,7 +3,7 @@ const { Upload } = require("@aws-sdk/lib-storage");
 const path = require("path");
 require("dotenv").config()
 
-const REGION = process.env.AWS_REGION || "eu-north-1";
+const REGION = process.env.AWS_S3_REGION || process.env.AWS_REGION || "eu-north-1";
 
 // AWS S3 Configuration with connection pooling and retry logic
 const s3Client = new S3Client({

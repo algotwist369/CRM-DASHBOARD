@@ -3335,8 +3335,8 @@ const sendConfirmationNotifications = async (appointmentId, bookingData) => {
             console.log(`[Email] Sending confirmation email to admin: ${adminEmail}...`);
             sendTemplateMail({
                 to: adminEmail,
-                template: 'appointment_notification', // You might want a different template for admin
-                data: { ...notificationData, role: 'Admin' }
+                template: 'new_booking_admin',
+                data: notificationData
             })
                 .then(res => console.log(`[Email] Admin email sent:`, res.messageId))
                 .catch(err => console.error('[Email] Admin email failed:', err.message));
@@ -3350,8 +3350,8 @@ const sendConfirmationNotifications = async (appointmentId, bookingData) => {
                 console.log(`[Email] Sending confirmation email to manager: ${manager.email}...`);
                 sendTemplateMail({
                     to: manager.email,
-                    template: 'appointment_notification',
-                    data: { ...notificationData, role: 'Manager' }
+                    template: 'new_booking_manager',
+                    data: notificationData
                 })
                     .then(res => console.log(`[Email] Manager email sent:`, res.messageId))
                     .catch(err => console.error('[Email] Manager email failed:', err.message));
