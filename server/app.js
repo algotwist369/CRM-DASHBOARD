@@ -33,6 +33,7 @@ const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const leadRoutes = require("./routes/leadRoutes");
 const inquiryRoutes = require("./routes/inquiryRoutes");
 const googleSheetRoutes = require("./routes/googleSheetRoutes");
+const freelistingRoutes = require("./routes/freelisting.routes");
 
 const app = express();
 
@@ -225,6 +226,9 @@ app.use('/api/admin/whatsapp', require("./routes/whatsappQR"));
 
 // === Google Sheets Integration ===
 app.use("/api/google-sheets", googleSheetRoutes);
+
+// === Freelisting Routes ===
+app.use("/api/freelistings", freelistingRoutes);
 
 // === SEO Routes (served at root level for crawlers) ===
 const sitemapRoutes = require("./routes/sitemap");
