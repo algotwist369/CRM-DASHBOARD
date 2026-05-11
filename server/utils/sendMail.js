@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
 const path = require('path');
 require("dotenv").config();
 
@@ -20,7 +21,10 @@ const TEMPLATE_MAP = {
     're_engagement': 'reEngagement'
 };
 
-// Singleton transporter instance
+// AWS SES Client instance
+let sesClient = null;
+
+// Singleton transporter instance for fallback
 let transporterInstance = null;
 
 // Queue Configuration
@@ -28,6 +32,33 @@ const QUEUE_CONCURRENCY = 5; // Process 5 emails at a time
 const QUEUE_DELAY = 100; // Small delay between batches to relieve event loop
 const emailQueue = [];
 let isProcessingQueue = false;
+
+const getSESClient = () => {
+    if (sesClient) return sesClient;
+
+    const awsRegion = process.env.AWS_REGION;
+    const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+    if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
+        if (!global.awsSESWarned) {
+            console.warn('⚠️ AWS SES: Credentials missing. Will try SMTP fallback.');
+            global.awsSESWarned = true;
+        }
+        return null;
+    }
+
+    sesClient = new SESClient({
+        region: awsRegion,
+        credentials: {
+            accessKeyId: awsAccessKeyId,
+            secretAccessKey: awsSecretAccessKey
+        }
+    });
+
+    console.log('✅ AWS SES: Client initialized');
+    return sesClient;
+};
 
 const getTransporter = () => {
     if (transporterInstance) return transporterInstance;
@@ -93,26 +124,80 @@ const processQueue = async () => {
 
     try {
         const batch = emailQueue.splice(0, QUEUE_CONCURRENCY);
+        const sesClient = getSESClient();
         const transporter = getTransporter();
 
-        if (!transporter) {
-            // Mock mode: Log batch and resolve instantly
-            batch.forEach(item => {
-                // Simplified logging for high concurrency
-                console.log(`📧 MOCK SENT to ${item.options.to} | Subject: ${item.options.subject}`);
-                item.resolve({ success: true, mock: true, messageId: `mock-${Date.now()}`, response: 'Logged' });
-            });
-        } else {
-            // Real Send
+        if (sesClient) {
+            // Use AWS SES
+            await Promise.all(batch.map(async (item) => {
+                try {
+                    const params = {
+                        Destination: {
+                            ToAddresses: Array.isArray(item.options.to) ? item.options.to : [item.options.to]
+                        },
+                        Message: {
+                            Body: {},
+                            Subject: {
+                                Data: item.options.subject,
+                                Charset: 'UTF-8'
+                            }
+                        },
+                        Source: process.env.AWS_SES_FROM_EMAIL || 'no-reply@spaadvisor.in'
+                    };
+
+                    if (item.options.text) {
+                        params.Message.Body.Text = {
+                            Data: item.options.text,
+                            Charset: 'UTF-8'
+                        };
+                    }
+
+                    if (item.options.html) {
+                        params.Message.Body.Html = {
+                            Data: item.options.html,
+                            Charset: 'UTF-8'
+                        };
+                    }
+
+                    const command = new SendEmailCommand(params);
+                    const response = await sesClient.send(command);
+                    console.log(`✅ AWS SES: Email sent to ${item.options.to} | MessageId: ${response.MessageId}`);
+                    item.resolve({ success: true, messageId: response.MessageId, response: response });
+                } catch (sesErr) {
+                    console.error(`❌ AWS SES FAILED to ${item.options.to}:`, sesErr.message);
+                    console.log(`🔄 Falling back to SMTP for ${item.options.to}`);
+                    // Fallback to SMTP
+                    try {
+                        if (transporter) {
+                            const info = await transporter.sendMail(item.options);
+                            item.resolve({ success: true, messageId: info.messageId, response: info.response });
+                        } else {
+                            throw new Error('SMTP transporter also unavailable');
+                        }
+                    } catch (smtpErr) {
+                        console.error(`❌ SMTP FAILED to ${item.options.to}:`, smtpErr.message);
+                        console.log(`📧 MOCKING email to ${item.options.to}`);
+                        item.resolve({ success: true, mock: true, messageId: `mock-${Date.now()}`, response: 'Mocked' });
+                    }
+                }
+            }));
+        } else if (transporter) {
+            // Use SMTP
             await Promise.all(batch.map(async (item) => {
                 try {
                     const info = await transporter.sendMail(item.options);
                     item.resolve({ success: true, messageId: info.messageId, response: info.response });
                 } catch (err) {
                     console.error(`❌ EMAIL FAILED to ${item.options.to}:`, err.message);
-                    item.resolve({ success: false, error: err.message }); // Resolve to strictly avoid crash
+                    item.resolve({ success: false, error: err.message });
                 }
             }));
+        } else {
+            // Mock mode
+            batch.forEach(item => {
+                console.log(`📧 MOCK SENT to ${item.options.to} | Subject: ${item.options.subject}`);
+                item.resolve({ success: true, mock: true, messageId: `mock-${Date.now()}`, response: 'Logged' });
+            });
         }
     } catch (criticalErr) {
         console.error('❌ CRITICAL QUEUE ERROR:', criticalErr);
@@ -139,7 +224,7 @@ const enqueueEmail = (mailOptions) => {
  */
 const sendMail = async (options) => {
     const mailOptions = {
-        from: process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER,
+        from: process.env.AWS_SES_FROM_EMAIL || process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || 'no-reply@spaadvisor.in',
         to: options.to,
         subject: options.subject,
         text: options.text,
