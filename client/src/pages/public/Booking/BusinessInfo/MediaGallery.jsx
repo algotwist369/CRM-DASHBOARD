@@ -10,7 +10,6 @@ const MediaGallery = ({
     modalImageIndex = 0,
     nextModalImage,
     prevModalImage,
-    onClose
 }) => {
     const [activeTab, setActiveTab] = useState('photos');
     const [currentTourIndex, setCurrentTourIndex] = useState(0);
@@ -139,7 +138,7 @@ const MediaGallery = ({
                             <div className="w-full h-full flex items-center justify-center p-4">
                                 <MediaRenderer
                                     item={allImages[modalImageIndex]}
-                                    className="max-w-full max-h-[80vh] object-contain select-none"
+                                    className="max-w-full max-h-[85vh] w-auto h-auto object-contain select-none"
                                     alt={`${business?.category || 'Spa'} ${business?.name} - Gallery Photo ${modalImageIndex + 1} in ${business?.city || ''}`}
                                 />
                             </div>
@@ -196,14 +195,14 @@ const MediaGallery = ({
                             )}
 
                             {/* Tour View */}
-                            <div className="w-full max-w-6xl space-y-2">
+                            <div className="w-full max-w-6xl max-h-[80vh] space-y-2">
                                 <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider px-1 text-gray-400">
                                     <span>Virtual Tour {currentTourIndex + 1}</span>
                                     <a href={tours[currentTourIndex]} target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline flex items-center gap-1">
                                         Open Full View <FaExternalLinkAlt className="text-[10px]" />
                                     </a>
                                 </div>
-                                <div className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg border border-white/10">
+                                <div className="aspect-video w-full max-h-[75vh] bg-black rounded-lg overflow-hidden shadow-lg border border-white/10">
                                     <iframe
                                         src={tours[currentTourIndex]}
                                         className="w-full h-full border-0"
@@ -229,7 +228,7 @@ const MediaGallery = ({
                                             Open Full View <FaExternalLinkAlt className="text-[10px]" />
                                         </a>
                                     </div>
-                                    <div className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg border border-gray-200">
+                                    <div className="aspect-video w-full max-h-[500px] bg-black rounded-lg overflow-hidden shadow-lg border border-gray-200">
                                         <iframe
                                             src={url}
                                             className="w-full h-full border-0"
@@ -266,11 +265,11 @@ const MediaGallery = ({
                             )}
 
                             {/* Video View */}
-                            <div className="w-full max-w-6xl space-y-2">
+                            <div className="w-full max-w-6xl max-h-[80vh] space-y-2">
                                 <div className="text-xs font-bold uppercase tracking-wider px-1 text-gray-400">
                                     Video {currentVideoIndex + 1}
                                 </div>
-                                <div className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg border border-white/10">
+                                <div className="aspect-video w-full max-h-[75vh] bg-black rounded-lg overflow-hidden shadow-lg border border-white/10">
                                     <iframe
                                         src={getVideoEmbedUrl(videos[currentVideoIndex])}
                                         className="w-full h-full border-0"
@@ -293,7 +292,7 @@ const MediaGallery = ({
                                     <div className="text-xs font-bold uppercase tracking-wider px-1 text-gray-500">
                                         Video {idx + 1}
                                     </div>
-                                    <div className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg border border-gray-200">
+                                    <div className="aspect-video w-full max-h-[400px] bg-black rounded-lg overflow-hidden shadow-lg border border-gray-200">
                                         <iframe
                                             src={getVideoEmbedUrl(url)}
                                             className="w-full h-full border-0"

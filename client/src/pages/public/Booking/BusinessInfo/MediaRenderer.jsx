@@ -37,7 +37,7 @@ const MediaRenderer = ({ item, className = '', isActive = true, alt }) => {
             <img
                 src={item.src}
                 alt={alt || item.type || 'Media'}
-                className={`w-full h-full object-cover`}
+                className={className}
                 loading={isActive ? 'eager' : 'lazy'}
                 onError={() => setHasError(true)}
             />
