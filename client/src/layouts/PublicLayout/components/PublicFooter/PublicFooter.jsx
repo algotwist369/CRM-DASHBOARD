@@ -20,6 +20,9 @@ const PublicFooter = () => {
           </Link>
           <span className="text-gray-300">|</span>
           <span className="text-gray-500">support: support@spaadvisor.in</span>
+          <Link to="/auth/manager-login" className="text-gray-500 hover:text-gray-900 text-[8px] underline">
+            Access
+          </Link>
         </div>
 
       </div>
