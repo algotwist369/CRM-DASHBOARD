@@ -227,20 +227,35 @@ businessSchema.index({ tags: 1 }); // For tag-based search
 businessSchema.index({ category: 1, subCategory: 1 }); // For category filtering
 businessSchema.index({
     name: "text",
+    branch: "text",
+    city: "text",
+    state: "text",
+    address: "text",
     category: "text",
     subCategory: "text",
     tags: "text",
     description: "text"
 }, {
     weights: {
-        name: 10,
-        category: 5,
-        subCategory: 5,
-        tags: 3,
-        description: 1
+        name: 15,
+        branch: 10,
+        city: 8,
+        state: 7,
+        address: 5,
+        category: 8,
+        subCategory: 6,
+        tags: 4,
+        description: 2
     },
-    name: "TextIndex"
+    name: "FullTextSearchIndex"
 });
+
+// Single field indexes for efficient regex queries
+businessSchema.index({ name: 1 });
+businessSchema.index({ branch: 1 });
+businessSchema.index({ city: 1 });
+businessSchema.index({ state: 1 });
+businessSchema.index({ isActive: 1, 'settings.appointmentSettings.allowOnlineBooking': 1 });
 
 /**
  * Extract latitude and longitude from Google Maps URL
