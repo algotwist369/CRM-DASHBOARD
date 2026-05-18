@@ -692,12 +692,6 @@ const searchBusinesses = async (req, res, next) => {
             limit = 20
         } = req.query;
 
-        const debugInfo = {
-            queryParams: { q, location, category, minRating, minPrice, maxPrice, service, offers, sort, page, limit },
-            timestamp: new Date().toISOString()
-        };
-        console.log('[searchBusinesses] Starting search:', debugInfo);
-
         const pageNum = parseInt(page) || 1;
         const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
         const normalizedQuery = typeof q === 'string' ? q.trim() : '';
@@ -728,7 +722,6 @@ const searchBusinesses = async (req, res, next) => {
         try {
             const cachedData = await getCache(cacheKey);
             if (cachedData) {
-                console.log('[searchBusinesses] Serving from cache:', cacheKey);
                 return res.json({
                     success: true,
                     message: "Fetched successfully (cached)",
@@ -917,10 +910,10 @@ const searchBusinesses = async (req, res, next) => {
             Business.countDocuments(baseQuery)
         ]);
 
-        const businessIds = businesses.map((business) => business._id);
         let serviceDetailsByBusiness = {};
 
-        if (businessIds.length > 0) {
+        if (needsServiceFilter && businesses.length > 0) {
+            const businessIds = businesses.map((business) => business._id);
             const serviceResults = await Service.find({
                 business: { $in: businessIds },
                 isActive: true,
@@ -997,14 +990,6 @@ const searchBusinesses = async (req, res, next) => {
             console.warn('[searchBusinesses] Cache storage failed:', cacheError.message);
         }
 
-        console.log('[searchBusinesses] Search completed successfully', {
-            resultsCount: formattedResults.length,
-            totalResults,
-            page: pageNum,
-            limit: limitNum,
-            timestamp: new Date().toISOString()
-        });
-
         return res.json(secureResponse);
 
     } catch (err) {
@@ -1020,10 +1005,7 @@ const searchBusinesses = async (req, res, next) => {
 const autocompleteSuggestions = async (req, res, next) => {
     try {
         const { q, limit = 10 } = req.query;
-        console.log('[autocompleteSuggestions] Starting autocomplete:', { q, limit, timestamp: new Date().toISOString() });
-
         if (!q || q.trim().length < 2) {
-            console.log('[autocompleteSuggestions] Query too short, returning empty results');
             return res.json({
                 success: true,
                 data: []
@@ -1061,13 +1043,8 @@ const autocompleteSuggestions = async (req, res, next) => {
         .select('name branch city state type category businessLink')
         .sort({ 'ratings.average': -1, createdAt: -1 })
         .limit(limitNum)
+        .maxTimeMS(3000)
         .lean();
-
-        console.log('[autocompleteSuggestions] Autocomplete completed successfully', {
-            searchText,
-            suggestionsFound: suggestions.length,
-            timestamp: new Date().toISOString()
-        });
 
         // Cache for 10 minutes
         try {
