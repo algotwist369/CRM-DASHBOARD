@@ -227,11 +227,14 @@ const serviceSchema = new mongoose.Schema(
 
 // Indexes for better performance
 serviceSchema.index({ business: 1, isActive: 1 });
+serviceSchema.index({ business: 1, isActive: 1, isAvailableOnline: 1, displayOrder: 1, name: 1 });
 serviceSchema.index({ business: 1, category: 1 });
 serviceSchema.index({ business: 1, serviceType: 1 });
 serviceSchema.index({ business: 1, price: 1 });
 serviceSchema.index({ business: 1, 'ratings.average': -1 });
 serviceSchema.index({ business: 1, displayOrder: 1 });
+serviceSchema.index({ isActive: 1, isAvailableOnline: 1, name: 1, business: 1 });
+serviceSchema.index({ isActive: 1, isAvailableOnline: 1, price: 1, business: 1 });
 serviceSchema.index({ tags: 1 });
 serviceSchema.index({ 'pricingOptions.price': 1 });
 serviceSchema.index({ 'pricingOptions.duration': 1 });

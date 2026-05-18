@@ -232,6 +232,9 @@ businessSchema.index({ "ratings.average": -1 }); // For sorting by rating
 businessSchema.index({ createdAt: -1 }); // For recent businesses
 businessSchema.index({ tags: 1 }); // For tag-based search
 businessSchema.index({ category: 1, subCategory: 1 }); // For category filtering
+businessSchema.index({ isActive: 1, "settings.appointmentSettings.allowOnlineBooking": 1, createdAt: -1 });
+businessSchema.index({ isActive: 1, "settings.appointmentSettings.allowOnlineBooking": 1, "ratings.average": -1, createdAt: -1 });
+businessSchema.index({ isActive: 1, "settings.appointmentSettings.allowOnlineBooking": 1, city: 1, state: 1, type: 1 });
 businessSchema.index({
     name: "text",
     category: "text",

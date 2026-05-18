@@ -45,6 +45,14 @@ const isKnownLocation = (text) => {
     return parts.some(p => knownLocations.has(p));
 };
 
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildPrefixRegex = (value = "") => new RegExp(`^${escapeRegex(value.trim())}`, "i");
+
+const buildContainsRegex = (value = "") => new RegExp(escapeRegex(value.trim()), "i");
+
+const normalizeObjectIdKey = (value) => value?.toString?.() || String(value);
+
 
 // ===========================================
 //              PUBLIC CONTROLLERS  
@@ -692,9 +700,31 @@ const searchBusinesses = async (req, res, next) => {
 
         const pageNum = parseInt(page) || 1;
         const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
+        const normalizedQuery = typeof q === 'string' ? q.trim() : '';
+        const normalizedLocation = typeof location === 'string' ? location.trim() : '';
+        const normalizedCategory = typeof category === 'string' ? category.trim() : '';
+        const normalizedService = typeof service === 'string' ? service.trim() : '';
+        const normalizedBusinessLink = typeof businessLink === 'string' ? businessLink.trim() : '';
+        const normalizedSort = typeof sort === 'string' ? sort.trim() : '';
+        const parsedMinRating = Number.parseFloat(minRating);
+        const parsedMinPrice = Number.parseFloat(minPrice);
+        const parsedMaxPrice = Number.parseFloat(maxPrice);
 
         // --- CACHE LAYER ---
-        const cacheKey = `search:${JSON.stringify({ q, location, category, minRating, minPrice, maxPrice, service, offers, sort, page, limit })}`;
+        const cacheKey = `search:${JSON.stringify({
+            q: normalizedQuery,
+            location: normalizedLocation,
+            category: normalizedCategory,
+            minRating: Number.isFinite(parsedMinRating) ? parsedMinRating : null,
+            minPrice: Number.isFinite(parsedMinPrice) ? parsedMinPrice : null,
+            maxPrice: Number.isFinite(parsedMaxPrice) ? parsedMaxPrice : null,
+            service: normalizedService,
+            offers,
+            sort: normalizedSort,
+            businessLink: normalizedBusinessLink,
+            page: pageNum,
+            limit: limitNum
+        })}`;
         try {
             const cachedData = await getCache(cacheKey);
             if (cachedData) {
@@ -710,171 +740,218 @@ const searchBusinesses = async (req, res, next) => {
             console.warn('[searchBusinesses] Cache retrieval failed:', cacheError.message);
         }
 
-        let hasLocationFilter = !!location;
-        let searchQuery = q;
+        let hasLocationFilter = !!normalizedLocation;
+        let searchQuery = normalizedQuery;
 
-        if (hasLocationFilter && !searchQuery && !category && !minRating) {
-            const isLoc = isKnownLocation(location);
+        if (hasLocationFilter && !searchQuery && !normalizedCategory && !Number.isFinite(parsedMinRating)) {
+            const isLoc = isKnownLocation(normalizedLocation);
             if (!isLoc) {
-                searchQuery = location;
+                searchQuery = normalizedLocation;
                 hasLocationFilter = false;
             }
         }
 
-        const matchConditions = [
-            { isActive: true },
-            { 'settings.appointmentSettings.allowOnlineBooking': true }
-        ];
+        const baseQuery = {
+            isActive: true,
+            'settings.appointmentSettings.allowOnlineBooking': true
+        };
 
-        // 1. Text Query Search (Regex based)
-        if (q && q !== businessLink) {
-            const keywords = q.trim().split(/\s+/).filter(k => k.length > 0);
-            if (keywords.length > 0) {
-                const orConditions = keywords.map(keyword => ({
-                    $or: [
-                        { name: { $regex: keyword, $options: 'i' } },
-                        { branch: { $regex: keyword, $options: 'i' } },
-                        { city: { $regex: keyword, $options: 'i' } },
-                        { type: { $regex: keyword, $options: 'i' } },
-                        { businessLink: { $regex: keyword, $options: 'i' } }
-                    ]
-                }));
-                matchConditions.push({ $and: orConditions });
+        if (searchQuery && searchQuery !== normalizedBusinessLink) {
+            if (searchQuery.length >= 2) {
+                baseQuery.$text = { $search: searchQuery };
+            } else {
+                const prefixRegex = buildPrefixRegex(searchQuery);
+                baseQuery.$or = [
+                    { name: prefixRegex },
+                    { branch: prefixRegex },
+                    { city: prefixRegex },
+                    { type: prefixRegex },
+                    { businessLink: prefixRegex }
+                ];
             }
         }
 
-        // 2. Location Search
-        if (location && location !== 'all') {
-            const loc = location.trim();
-            matchConditions.push({
+        if (hasLocationFilter && normalizedLocation && normalizedLocation !== 'all') {
+            const locPrefixRegex = buildPrefixRegex(normalizedLocation);
+            const locContainsRegex = buildContainsRegex(normalizedLocation);
+            baseQuery.$and = baseQuery.$and || [];
+            baseQuery.$and.push({
                 $or: [
-                    { city: { $regex: loc, $options: 'i' } },
-                    { state: { $regex: loc, $options: 'i' } },
-                    { branch: { $regex: loc, $options: 'i' } },
-                    { address: { $regex: loc, $options: 'i' } }
+                    { city: locPrefixRegex },
+                    { state: locPrefixRegex },
+                    { branch: locPrefixRegex },
+                    { address: locContainsRegex }
                 ]
             });
         }
 
-        // 3. Category Filter
-        if (category) {
-            matchConditions.push({ type: { $regex: category, $options: 'i' } });
+        if (normalizedCategory) {
+            baseQuery.type = buildPrefixRegex(normalizedCategory);
         }
 
-        // 4. Rating Filter
-        if (minRating && !isNaN(parseFloat(minRating))) {
-            matchConditions.push({ 'ratings.average': { $gte: parseFloat(minRating) } });
+        if (Number.isFinite(parsedMinRating)) {
+            baseQuery['ratings.average'] = { $gte: parsedMinRating };
         }
 
-        // 5. Offers Filter
         if (offers === 'true') {
-            matchConditions.push({ 'offers': { $exists: true, $ne: [] } });
+            baseQuery.offers = { $exists: true, $ne: [] };
         }
 
-        // 6. Business Link (Specific Business)
-        if (businessLink) {
-            matchConditions.push({
+        if (normalizedBusinessLink) {
+            const businessNameRegex = buildContainsRegex(normalizedBusinessLink.replace(/[-_]/g, ' '));
+            baseQuery.$and = baseQuery.$and || [];
+            baseQuery.$and.push({
                 $or: [
-                    { businessLink: businessLink },
-                    { name: { $regex: businessLink.replace(/[-_]/g, ' '), $options: 'i' } }
+                    { businessLink: normalizedBusinessLink },
+                    { name: businessNameRegex }
                 ]
             });
         }
-
-        const pipeline = [
-            { $match: { $and: matchConditions } }
-        ];
-
-        pipeline.push({
-            $lookup: {
-                from: "services",
-                let: { businessId: "$_id" },
-                pipeline: [
-                    {
-                        $match: {
-                            $expr: { $eq: ["$business", "$$businessId"] },
-                            isActive: true,
-                            isAvailableOnline: true
-                        }
-                    },
-                    { $limit: 5 },
-                    { $project: { name: 1, price: 1 } }
-                ],
-                as: "serviceDetails"
-            }
-        });
-
-        if (service) {
-            pipeline.push({
-                $match: {
-                    "serviceDetails.name": { $regex: service, $options: "i" }
-                }
-            });
-        }
-
-        if (minPrice || maxPrice) {
-            const priceCondition = {};
-            if (minPrice) priceCondition.$gte = Number(minPrice);
-            if (maxPrice) priceCondition.$lte = Number(maxPrice);
-            pipeline.push({
-                $match: {
-                    "serviceDetails.price": priceCondition
-                }
-            });
-        }
-
-        pipeline.push({
-            $project: {
-                name: 1,
-                type: 1,
-                branch: 1,
-                address: 1,
-                city: 1,
-                state: 1,
-                location: 1,
-                images: 1,
-                image: { $ifNull: ["$images.thumbnail", { $ifNull: ["$images.logo", { $ifNull: ["$images.banner", null] }] }] },
-                ratings: 1,
-                category: 1,
-                tags: 1,
-                description: 1,
-                phone: 1,
-                socialMedia: 1,
-                businessLink: 1,
-                snippet: { $concat: [{ $substrCP: [{ $ifNull: ["$description", ""] }, 0, 150] }, "..."] },
-                serviceDetails: 1,
-                offers: 1,
-                createdAt: 1
-            }
-        });
 
         let sortStage = {};
-        if (sort === 'rating') {
+        if (normalizedSort === 'rating') {
             sortStage['ratings.average'] = -1;
             sortStage['ratings.totalReviews'] = -1;
+        } else if (baseQuery.$text) {
+            sortStage.score = { $meta: 'textScore' };
+            sortStage['ratings.average'] = -1;
+            sortStage.createdAt = -1;
         } else {
             sortStage['ratings.average'] = -1;
             sortStage.createdAt = -1;
         }
 
-        pipeline.push({ $sort: sortStage });
+        let filteredBusinessIds = null;
+        const needsServiceFilter = Boolean(
+            normalizedService ||
+            Number.isFinite(parsedMinPrice) ||
+            Number.isFinite(parsedMaxPrice)
+        );
 
-        pipeline.push({
-            $facet: {
-                results: [
-                    { $skip: (pageNum - 1) * limitNum },
-                    { $limit: limitNum }
-                ],
-                totalCount: [{ $count: "count" }]
+        if (needsServiceFilter) {
+            const serviceQuery = {
+                isActive: true,
+                isAvailableOnline: true
+            };
+
+            if (normalizedService) {
+                serviceQuery.name = buildContainsRegex(normalizedService);
             }
-        });
 
-        const result = await Business.aggregate(pipeline);
-        const businesses = result[0]?.results || [];
-        const totalResults = result[0]?.totalCount[0]?.count || 0;
+            const priceConditions = [];
+            if (Number.isFinite(parsedMinPrice) || Number.isFinite(parsedMaxPrice)) {
+                const directPrice = {};
+                const optionPrice = {};
+                if (Number.isFinite(parsedMinPrice)) {
+                    directPrice.$gte = parsedMinPrice;
+                    optionPrice.$gte = parsedMinPrice;
+                }
+                if (Number.isFinite(parsedMaxPrice)) {
+                    directPrice.$lte = parsedMaxPrice;
+                    optionPrice.$lte = parsedMaxPrice;
+                }
+                priceConditions.push({ price: directPrice });
+                priceConditions.push({ 'pricingOptions.price': optionPrice });
+            }
+
+            if (priceConditions.length > 0) {
+                serviceQuery.$or = priceConditions;
+            }
+
+            filteredBusinessIds = await Service.distinct('business', serviceQuery);
+            if (filteredBusinessIds.length === 0) {
+                const emptyResponse = {
+                    page: pageNum,
+                    limit: limitNum,
+                    totalResults: 0,
+                    results: []
+                };
+
+                try {
+                    await setCache(cacheKey, emptyResponse, 300);
+                } catch (cacheError) {
+                    console.warn('[searchBusinesses] Cache storage failed:', cacheError.message);
+                }
+
+                return res.json({
+                    success: true,
+                    message: "Fetched successfully",
+                    payload: encryptResponse(emptyResponse)
+                });
+            }
+            baseQuery._id = { $in: filteredBusinessIds };
+        }
+
+        const businessQuery = Business.find(baseQuery)
+            .select([
+                'name',
+                'type',
+                'branch',
+                'address',
+                'city',
+                'state',
+                'location',
+                'images',
+                'ratings',
+                'category',
+                'tags',
+                'description',
+                'phone',
+                'socialMedia',
+                'businessLink',
+                'offers',
+                'createdAt',
+                'seo'
+            ].join(' '))
+            .sort(sortStage)
+            .skip((pageNum - 1) * limitNum)
+            .limit(limitNum)
+            .lean();
+
+        if (baseQuery.$text) {
+            businessQuery.select({ score: { $meta: 'textScore' } });
+        }
+
+        const [businesses, totalResults] = await Promise.all([
+            businessQuery,
+            Business.countDocuments(baseQuery)
+        ]);
+
+        const businessIds = businesses.map((business) => business._id);
+        let serviceDetailsByBusiness = {};
+
+        if (businessIds.length > 0) {
+            const serviceResults = await Service.find({
+                business: { $in: businessIds },
+                isActive: true,
+                isAvailableOnline: true
+            })
+                .select('business name price pricingOptions')
+                .sort({ displayOrder: 1, name: 1 })
+                .lean();
+
+            serviceDetailsByBusiness = serviceResults.reduce((acc, serviceItem) => {
+                const businessId = normalizeObjectIdKey(serviceItem.business);
+                if (!acc[businessId]) {
+                    acc[businessId] = [];
+                }
+                if (acc[businessId].length < 5) {
+                    const fallbackPrice = Number.isFinite(serviceItem.price) ? serviceItem.price : (
+                        Array.isArray(serviceItem.pricingOptions) && serviceItem.pricingOptions.length > 0
+                            ? serviceItem.pricingOptions[0].price
+                            : null
+                    );
+                    acc[businessId].push({
+                        name: serviceItem.name,
+                        price: fallbackPrice
+                    });
+                }
+                return acc;
+            }, {});
+        }
 
         const formattedResults = businesses.map(b => {
-            const formattedServices = (b.serviceDetails || []).map(s => ({ name: s.name, price: s.price }));
+            const formattedServices = serviceDetailsByBusiness[normalizeObjectIdKey(b._id)] || [];
 
             return {
                 id: b._id,
@@ -889,7 +966,7 @@ const searchBusinesses = async (req, res, next) => {
                 ratings: b.ratings,
                 image: b.image || b.images?.thumbnail || b.images?.logo,
                 gallery: b.images?.gallery || [],
-                snippet: b.snippet,
+                snippet: b.description ? `${b.description.slice(0, 150)}...` : '',
                 location: b.location,
                 phone: b.phone,
                 socialMedia: b.socialMedia,
@@ -971,12 +1048,18 @@ const autocompleteSuggestions = async (req, res, next) => {
             console.warn('[autocompleteSuggestions] Cache retrieval failed:', cacheError.message);
         }
 
-        // Simple database search by name
+        const searchRegex = buildPrefixRegex(searchText);
         const suggestions = await Business.find({
             isActive: true,
-            name: { $regex: searchText, $options: 'i' }
+            'settings.appointmentSettings.allowOnlineBooking': true,
+            $or: [
+                { name: searchRegex },
+                { branch: searchRegex },
+                { city: searchRegex }
+            ]
         })
         .select('name branch city state type category businessLink')
+        .sort({ 'ratings.average': -1, createdAt: -1 })
         .limit(limitNum)
         .lean();
 
