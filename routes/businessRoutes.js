@@ -21,6 +21,10 @@ router.get("/public/nearby", businessController.getBusinessesNearby);
 // Query params: lat, lng, q, category, radius, sort, page, limit
 router.get("/public/spa", businessController.searchBusinesses);
 
+// Optimized Autocomplete Suggestions
+// Query params: q (required), limit (optional, default 10)
+router.get("/public/autocomplete", businessController.autocompleteSuggestions);
+
 // Business Autocomplete - Search businesses in database
 // Query params: input (required), limit (optional, default 10)
 router.get("/public/search/business-autocomplete", businessController.getBusinessAutocomplete);

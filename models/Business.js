@@ -212,7 +212,14 @@ const businessSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// Geospatial index for location-based queries
+// COMPOUND AND SINGLE FIELD INDEXES FOR PERFORMANCE
+businessSchema.index({ name: 1 });
+businessSchema.index({ branch: 1 });
+businessSchema.index({ city: 1 });
+businessSchema.index({ state: 1 });
+businessSchema.index({ businessLink: 1 });
+businessSchema.index({ type: 1 });
+
 businessSchema.index({ location: "2dsphere" });
 
 // Compound indexes for better query performance
@@ -230,16 +237,24 @@ businessSchema.index({
     category: "text",
     subCategory: "text",
     tags: "text",
-    description: "text"
+    description: "text",
+    branch: "text",
+    city: "text",
+    state: "text",
+    address: "text"
 }, {
     weights: {
         name: 10,
+        branch: 8,
+        city: 7,
+        state: 6,
         category: 5,
         subCategory: 5,
         tags: 3,
+        address: 2,
         description: 1
     },
-    name: "TextIndex"
+    name: "ExtendedTextIndex"
 });
 
 /**
