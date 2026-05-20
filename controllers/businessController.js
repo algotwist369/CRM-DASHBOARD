@@ -20,7 +20,7 @@ const { setCache, getCache } = require("../utils/cache");
 const { generateBusinessAnalytics } = require("../utils/businessUtils");
 const indiaLocations = require("../data/indiaLocations");
 const { encryptResponse } = require("../utils/encryptionUtils");
-// const googlePlaces = require("../utils/googlePlaces");
+const googlePlaces = require("../utils/googlePlaces");
 const { parseJsonFields, handleBusinessImages } = require("../utils/fileHandler");
 
 // Pre-compute known locations for fast lookup
@@ -52,6 +52,67 @@ const buildPrefixRegex = (value = "") => new RegExp(`^${escapeRegex(value.trim()
 const buildContainsRegex = (value = "") => new RegExp(escapeRegex(value.trim()), "i");
 
 const normalizeObjectIdKey = (value) => value?.toString?.() || String(value);
+
+const parseFiniteNumber = (value) => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseSearchRadius = (value, fallback = 5000) => {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+    return Math.min(parsed, 100000);
+};
+
+const hasUsableCoordinates = (coordinates) => (
+    Array.isArray(coordinates) &&
+    coordinates.length === 2 &&
+    Number.isFinite(Number(coordinates[0])) &&
+    Number.isFinite(Number(coordinates[1])) &&
+    !(Number(coordinates[0]) === 0 && Number(coordinates[1]) === 0)
+);
+
+const findCoordinatesForLocationText = async (locationText) => {
+    if (!locationText) return null;
+
+    if (googlePlaces.isEnabled()) {
+        const geocodeResult = await googlePlaces.geocode(locationText);
+        if (
+            geocodeResult.success &&
+            geocodeResult.result &&
+            Number.isFinite(Number(geocodeResult.result.lat)) &&
+            Number.isFinite(Number(geocodeResult.result.lng))
+        ) {
+            return {
+                lat: Number(geocodeResult.result.lat),
+                lng: Number(geocodeResult.result.lng)
+            };
+        }
+    }
+
+    const locPrefixRegex = buildPrefixRegex(locationText);
+    const locContainsRegex = buildContainsRegex(locationText);
+    const nearbyAnchor = await Business.findOne({
+        isActive: true,
+        'settings.appointmentSettings.allowOnlineBooking': true,
+        'location.coordinates': { $ne: [0, 0] },
+        $or: [
+            { city: locPrefixRegex },
+            { state: locPrefixRegex },
+            { branch: locPrefixRegex },
+            { address: locContainsRegex }
+        ]
+    })
+        .select('location')
+        .lean();
+
+    if (hasUsableCoordinates(nearbyAnchor?.location?.coordinates)) {
+        const [lng, lat] = nearbyAnchor.location.coordinates.map(Number);
+        return { lat, lng };
+    }
+
+    return null;
+};
 
 
 // ===========================================
@@ -681,6 +742,10 @@ const searchBusinesses = async (req, res, next) => {
             q,
             location,
             category,
+            rating,
+            lat,
+            lng,
+            radius,
             minRating,
             minPrice,
             maxPrice,
@@ -700,18 +765,25 @@ const searchBusinesses = async (req, res, next) => {
         const normalizedService = typeof service === 'string' ? service.trim() : '';
         const normalizedBusinessLink = typeof businessLink === 'string' ? businessLink.trim() : '';
         const normalizedSort = typeof sort === 'string' ? sort.trim() : '';
-        const parsedMinRating = Number.parseFloat(minRating);
-        const parsedMinPrice = Number.parseFloat(minPrice);
-        const parsedMaxPrice = Number.parseFloat(maxPrice);
+        const parsedRating = parseFiniteNumber(rating);
+        const parsedMinRating = parseFiniteNumber(minRating) ?? parsedRating;
+        const parsedMinPrice = parseFiniteNumber(minPrice);
+        const parsedMaxPrice = parseFiniteNumber(maxPrice);
+        const parsedLat = parseFiniteNumber(lat);
+        const parsedLng = parseFiniteNumber(lng);
+        const parsedRadius = parseSearchRadius(radius);
 
         // --- CACHE LAYER ---
         const cacheKey = `search:${JSON.stringify({
             q: normalizedQuery,
             location: normalizedLocation,
             category: normalizedCategory,
-            minRating: Number.isFinite(parsedMinRating) ? parsedMinRating : null,
-            minPrice: Number.isFinite(parsedMinPrice) ? parsedMinPrice : null,
-            maxPrice: Number.isFinite(parsedMaxPrice) ? parsedMaxPrice : null,
+            minRating: parsedMinRating,
+            minPrice: parsedMinPrice,
+            maxPrice: parsedMaxPrice,
+            lat: parsedLat,
+            lng: parsedLng,
+            radius: parsedRadius,
             service: normalizedService,
             offers,
             sort: normalizedSort,
@@ -736,13 +808,21 @@ const searchBusinesses = async (req, res, next) => {
         let hasLocationFilter = !!normalizedLocation;
         let searchQuery = normalizedQuery;
 
-        if (hasLocationFilter && !searchQuery && !normalizedCategory && !Number.isFinite(parsedMinRating)) {
+        if (hasLocationFilter && !searchQuery && !normalizedCategory && parsedMinRating === null) {
             const isLoc = isKnownLocation(normalizedLocation);
             if (!isLoc) {
                 searchQuery = normalizedLocation;
                 hasLocationFilter = false;
             }
         }
+
+        let searchCoordinates = null;
+        if (parsedLat !== null && parsedLng !== null) {
+            searchCoordinates = { lat: parsedLat, lng: parsedLng };
+        } else if (hasLocationFilter && normalizedLocation && normalizedLocation !== 'all') {
+            searchCoordinates = await findCoordinatesForLocationText(normalizedLocation);
+        }
+        const hasGeoSearch = Boolean(searchCoordinates);
 
         const baseQuery = {
             isActive: true,
@@ -751,7 +831,24 @@ const searchBusinesses = async (req, res, next) => {
 
         if (searchQuery && searchQuery !== normalizedBusinessLink) {
             if (searchQuery.length >= 2) {
-                baseQuery.$text = { $search: searchQuery };
+                if (hasGeoSearch) {
+                    const textRegex = buildContainsRegex(searchQuery);
+                    baseQuery.$and = baseQuery.$and || [];
+                    baseQuery.$and.push({
+                        $or: [
+                            { name: textRegex },
+                            { branch: textRegex },
+                            { city: textRegex },
+                            { type: textRegex },
+                            { category: textRegex },
+                            { tags: textRegex },
+                            { description: textRegex },
+                            { businessLink: textRegex }
+                        ]
+                    });
+                } else {
+                    baseQuery.$text = { $search: searchQuery };
+                }
             } else {
                 const prefixRegex = buildPrefixRegex(searchQuery);
                 baseQuery.$or = [
@@ -764,7 +861,7 @@ const searchBusinesses = async (req, res, next) => {
             }
         }
 
-        if (hasLocationFilter && normalizedLocation && normalizedLocation !== 'all') {
+        if (!hasGeoSearch && hasLocationFilter && normalizedLocation && normalizedLocation !== 'all') {
             const locPrefixRegex = buildPrefixRegex(normalizedLocation);
             const locContainsRegex = buildContainsRegex(normalizedLocation);
             baseQuery.$and = baseQuery.$and || [];
@@ -782,7 +879,7 @@ const searchBusinesses = async (req, res, next) => {
             baseQuery.type = buildPrefixRegex(normalizedCategory);
         }
 
-        if (Number.isFinite(parsedMinRating)) {
+        if (parsedMinRating !== null) {
             baseQuery['ratings.average'] = { $gte: parsedMinRating };
         }
 
@@ -817,8 +914,8 @@ const searchBusinesses = async (req, res, next) => {
         let filteredBusinessIds = null;
         const needsServiceFilter = Boolean(
             normalizedService ||
-            Number.isFinite(parsedMinPrice) ||
-            Number.isFinite(parsedMaxPrice)
+            parsedMinPrice !== null ||
+            parsedMaxPrice !== null
         );
 
         if (needsServiceFilter) {
@@ -832,14 +929,14 @@ const searchBusinesses = async (req, res, next) => {
             }
 
             const priceConditions = [];
-            if (Number.isFinite(parsedMinPrice) || Number.isFinite(parsedMaxPrice)) {
+            if (parsedMinPrice !== null || parsedMaxPrice !== null) {
                 const directPrice = {};
                 const optionPrice = {};
-                if (Number.isFinite(parsedMinPrice)) {
+                if (parsedMinPrice !== null) {
                     directPrice.$gte = parsedMinPrice;
                     optionPrice.$gte = parsedMinPrice;
                 }
-                if (Number.isFinite(parsedMaxPrice)) {
+                if (parsedMaxPrice !== null) {
                     directPrice.$lte = parsedMaxPrice;
                     optionPrice.$lte = parsedMaxPrice;
                 }
@@ -873,6 +970,144 @@ const searchBusinesses = async (req, res, next) => {
                 });
             }
             baseQuery._id = { $in: filteredBusinessIds };
+        }
+
+        if (hasGeoSearch) {
+            const geoSortStage = normalizedSort === 'rating'
+                ? { 'ratings.average': -1, 'ratings.totalReviews': -1, distance: 1 }
+                : { distance: 1, 'ratings.average': -1, createdAt: -1 };
+
+            const pipeline = [
+                {
+                    $geoNear: {
+                        near: {
+                            type: 'Point',
+                            coordinates: [searchCoordinates.lng, searchCoordinates.lat]
+                        },
+                        distanceField: 'distance',
+                        maxDistance: parsedRadius,
+                        spherical: true,
+                        query: baseQuery
+                    }
+                },
+                { $sort: geoSortStage },
+                {
+                    $facet: {
+                        results: [
+                            { $skip: (pageNum - 1) * limitNum },
+                            { $limit: limitNum },
+                            {
+                                $project: {
+                                    name: 1,
+                                    type: 1,
+                                    branch: 1,
+                                    address: 1,
+                                    city: 1,
+                                    state: 1,
+                                    location: 1,
+                                    images: 1,
+                                    ratings: 1,
+                                    category: 1,
+                                    tags: 1,
+                                    description: 1,
+                                    phone: 1,
+                                    socialMedia: 1,
+                                    businessLink: 1,
+                                    offers: 1,
+                                    createdAt: 1,
+                                    seo: 1,
+                                    distance: 1
+                                }
+                            }
+                        ],
+                        totalCount: [{ $count: 'count' }]
+                    }
+                }
+            ];
+
+            const [geoResult] = await Business.aggregate(pipeline);
+            const businesses = geoResult?.results || [];
+            const totalResults = geoResult?.totalCount?.[0]?.count || 0;
+
+            let serviceDetailsByBusiness = {};
+            if (needsServiceFilter && businesses.length > 0) {
+                const businessIds = businesses.map((business) => business._id);
+                const serviceResults = await Service.find({
+                    business: { $in: businessIds },
+                    isActive: true,
+                    isAvailableOnline: true
+                })
+                    .select('business name price pricingOptions')
+                    .sort({ displayOrder: 1, name: 1 })
+                    .lean();
+
+                serviceDetailsByBusiness = serviceResults.reduce((acc, serviceItem) => {
+                    const businessId = normalizeObjectIdKey(serviceItem.business);
+                    if (!acc[businessId]) {
+                        acc[businessId] = [];
+                    }
+                    if (acc[businessId].length < 5) {
+                        const fallbackPrice = Number.isFinite(serviceItem.price) ? serviceItem.price : (
+                            Array.isArray(serviceItem.pricingOptions) && serviceItem.pricingOptions.length > 0
+                                ? serviceItem.pricingOptions[0].price
+                                : null
+                        );
+                        acc[businessId].push({
+                            name: serviceItem.name,
+                            price: fallbackPrice
+                        });
+                    }
+                    return acc;
+                }, {});
+            }
+
+            const formattedResults = businesses.map(b => {
+                const formattedServices = serviceDetailsByBusiness[normalizeObjectIdKey(b._id)] || [];
+
+                return {
+                    id: b._id,
+                    name: b.name,
+                    type: b.type,
+                    branch: b.branch,
+                    address: b.address,
+                    city: b.city,
+                    state: b.state,
+                    category: b.category,
+                    tags: b.tags,
+                    ratings: b.ratings,
+                    image: b.image || b.images?.thumbnail || b.images?.logo,
+                    gallery: b.images?.gallery || [],
+                    snippet: b.description ? `${b.description.slice(0, 150)}...` : '',
+                    location: b.location,
+                    distance: b.distance,
+                    distanceText: b.distance ? `${(b.distance / 1000).toFixed(1)} km` : '',
+                    phone: b.phone,
+                    socialMedia: b.socialMedia,
+                    services: formattedServices,
+                    offers: b.offers || [],
+                    businessLink: b.businessLink,
+                    seo: b.seo
+                };
+            });
+
+            const responseData = {
+                page: pageNum,
+                limit: limitNum,
+                totalResults,
+                results: formattedResults
+            };
+
+            try {
+                await setCache(cacheKey, responseData, 300);
+            } catch (cacheError) {
+                console.warn('[searchBusinesses] Cache storage failed:', cacheError.message);
+            }
+
+            return res.json({
+                success: true,
+                message: "Fetched successfully",
+                payload: encryptResponse(responseData)
+            });
         }
 
         const businessQuery = Business.find(baseQuery)
