@@ -1237,6 +1237,185 @@ const searchBusinesses = async (req, res, next) => {
     }
 };
 
+const searchBusinessesByBranch = async (req, res, next) => {
+    try {
+        const {
+            branch,
+            q,
+            type,
+            rating,
+            page = 1,
+            limit = 20
+        } = req.query;
+
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
+        const branchTerm = typeof branch === 'string' ? branch.trim() : '';
+        const searchTerm = typeof q === 'string' ? q.trim() : '';
+        const normalizedType = typeof type === 'string' ? type.trim() : '';
+        const parsedRating = parseFiniteNumber(rating);
+
+        const validTypes = ['salon', 'spa', 'others'];
+        if (normalizedType && !validTypes.includes(normalizedType)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid business type. Must be one of: ${validTypes.join(', ')}`,
+                code: 'INVALID_BUSINESS_TYPE'
+            });
+        }
+
+        if (rating !== undefined && parsedRating === null) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid rating filter. Provide a numeric rating value like 2, 3, or 4.',
+                code: 'INVALID_RATING_FILTER'
+            });
+        }
+
+        const cacheKey = branchTerm
+            ? `searchByBranch:businesses:${branchTerm}:${normalizedType || 'all'}:${parsedRating ?? 'all'}:${pageNum}:${limitNum}`
+            : `searchByBranch:branches:${searchTerm}:${normalizedType || 'all'}:${parsedRating ?? 'all'}:${pageNum}:${limitNum}`;
+
+        try {
+            const cachedData = await getCache(cacheKey);
+            if (cachedData) {
+                return res.json({
+                    success: true,
+                    source: 'cache',
+                    payload: encryptResponse(cachedData)
+                });
+            }
+        } catch (cacheError) {
+            console.warn('[searchBusinessesByBranch] Cache retrieval failed:', cacheError.message);
+        }
+
+        const baseQuery = {
+            isActive: true,
+            'settings.appointmentSettings.allowOnlineBooking': true
+        };
+
+        if (normalizedType) {
+            baseQuery.type = normalizedType;
+        }
+
+        if (parsedRating !== null) {
+            baseQuery['ratings.average'] = { $gte: parsedRating };
+        }
+
+        if (!branchTerm) {
+            const branchQuery = { ...baseQuery };
+            if (searchTerm) {
+                branchQuery.branch = buildContainsRegex(searchTerm);
+            }
+
+            const [branchesResult, totalBranchesResult] = await Promise.all([
+                Business.aggregate([
+                    { $match: branchQuery },
+                    { $group: { _id: '$branch', businessCount: { $sum: 1 } } },
+                    { $sort: { businessCount: -1, _id: 1 } },
+                    { $skip: (pageNum - 1) * limitNum },
+                    { $limit: limitNum }
+                ]).allowDiskUse(true),
+                Business.aggregate([
+                    { $match: branchQuery },
+                    { $group: { _id: '$branch' } },
+                    { $count: 'total' }
+                ]).allowDiskUse(true)
+            ]);
+
+            const branches = branchesResult.map((item) => ({
+                branch: item._id,
+                businessCount: item.businessCount
+            }));
+            const totalBranches = totalBranchesResult[0]?.total || 0;
+
+            const responseData = {
+                page: pageNum,
+                limit: limitNum,
+                totalBranches,
+                branches
+            };
+
+            try {
+                await setCache(cacheKey, responseData, 300);
+            } catch (cacheError) {
+                console.warn('[searchBusinessesByBranch] Cache storage failed:', cacheError.message);
+            }
+
+            return res.json({
+                success: true,
+                message: 'Fetched branches successfully',
+                payload: encryptResponse(responseData)
+            });
+        }
+
+        const branchQuery = {
+            ...baseQuery,
+            branch: buildContainsRegex(branchTerm)
+        };
+
+        const [businesses, totalResults] = await Promise.all([
+            Business.find(branchQuery)
+                .select('name type branch address city state category businessLink tags description ratings.phone socialMedia images offers location seo')
+                .sort({ 'ratings.average': -1, createdAt: -1 })
+                .skip((pageNum - 1) * limitNum)
+                .limit(limitNum)
+                .lean(),
+            Business.countDocuments(branchQuery)
+        ]);
+
+        const formattedResults = businesses.map((business) => ({
+            id: business._id,
+            name: business.name,
+            type: business.type,
+            branch: business.branch,
+            address: business.address,
+            city: business.city,
+            state: business.state,
+            category: business.category,
+            tags: business.tags || [],
+            ratings: business.ratings || { average: 0, totalReviews: 0 },
+            image: business.image || business.images?.thumbnail || business.images?.logo || '',
+            gallery: business.images?.gallery || [],
+            snippet: business.description ? `${business.description.slice(0, 150)}...` : '',
+            description: business.description || '',
+            location: business.location,
+            phone: business.phone,
+            socialMedia: business.socialMedia || {},
+            offers: business.offers || [],
+            businessLink: business.businessLink,
+            seo: business.seo
+        }));
+
+        const responseData = {
+            page: pageNum,
+            limit: limitNum,
+            branch: branchTerm,
+            totalResults,
+            results: formattedResults
+        };
+
+        try {
+            await setCache(cacheKey, responseData, 300);
+        } catch (cacheError) {
+            console.warn('[searchBusinessesByBranch] Cache storage failed:', cacheError.message);
+        }
+
+        return res.json({
+            success: true,
+            message: 'Fetched businesses by branch successfully',
+            payload: encryptResponse(responseData)
+        });
+    } catch (err) {
+        console.error('[searchBusinessesByBranch] Error:', {
+            message: err.message,
+            stack: err.stack,
+            queryParams: req.query
+        });
+        next(err);
+    }
+};
+
 const autocompleteSuggestions = async (req, res, next) => {
     try {
         const { q, limit = 10 } = req.query;
@@ -2556,6 +2735,7 @@ module.exports = {
     getBusinessAnalytics,
     getBusinessesNearby,
     searchBusinesses,
+    searchBusinessesByBranch,
     autocompleteSuggestions,
     getIndiaLocations,
     updateBusiness,

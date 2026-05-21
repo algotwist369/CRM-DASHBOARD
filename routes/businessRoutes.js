@@ -21,6 +21,14 @@ router.get("/public/nearby", businessController.getBusinessesNearby);
 // Query params: lat, lng, q, category, radius, sort, page, limit
 router.get("/public/spa", businessController.searchBusinesses);
 
+// Get searchable branch list or businesses by branch
+// Query params:
+//   q - branch partial text search when no branch is selected
+//   branch - selected branch name to fetch businesses
+//   type - optional business type filter
+//   page, limit - pagination controls
+router.get("/public/branches", businessController.searchBusinessesByBranch);
+
 // Optimized Autocomplete Suggestions
 // Query params: q (required), limit (optional, default 10)
 router.get("/public/autocomplete", businessController.autocompleteSuggestions);
