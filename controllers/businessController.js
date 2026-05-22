@@ -64,6 +64,28 @@ const parseSearchRadius = (value, fallback = 5000) => {
     return Math.min(parsed, 100000);
 };
 
+const shuffleResults = (results = []) => {
+    const shuffledResults = [...results];
+
+    for (let index = shuffledResults.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [shuffledResults[index], shuffledResults[swapIndex]] = [shuffledResults[swapIndex], shuffledResults[index]];
+    }
+
+    return shuffledResults;
+};
+
+const withShuffledBusinessResults = (responseData) => {
+    if (!Array.isArray(responseData?.results) || responseData.results.length < 2) {
+        return responseData;
+    }
+
+    return {
+        ...responseData,
+        results: shuffleResults(responseData.results)
+    };
+};
+
 const hasUsableCoordinates = (coordinates) => (
     Array.isArray(coordinates) &&
     coordinates.length === 2 &&
@@ -798,7 +820,7 @@ const searchBusinesses = async (req, res, next) => {
                     success: true,
                     message: "Fetched successfully (cached)",
                     source: "cache",
-                    payload: encryptResponse(cachedData)
+                    payload: encryptResponse(withShuffledBusinessResults(cachedData))
                 });
             }
         } catch (cacheError) {
@@ -1106,7 +1128,7 @@ const searchBusinesses = async (req, res, next) => {
             return res.json({
                 success: true,
                 message: "Fetched successfully",
-                payload: encryptResponse(responseData)
+                payload: encryptResponse(withShuffledBusinessResults(responseData))
             });
         }
 
@@ -1215,7 +1237,7 @@ const searchBusinesses = async (req, res, next) => {
         const secureResponse = {
             success: true,
             message: "Fetched successfully",
-            payload: encryptResponse(responseData)
+            payload: encryptResponse(withShuffledBusinessResults(responseData))
         };
 
         // Cache the result for 5 minutes
@@ -1282,7 +1304,7 @@ const searchBusinessesByCity = async (req, res, next) => {
                 return res.json({
                     success: true,
                     source: 'cache',
-                    payload: encryptResponse(cachedData)
+                    payload: encryptResponse(withShuffledBusinessResults(cachedData))
                 });
             }
         } catch (cacheError) {
@@ -1404,7 +1426,7 @@ const searchBusinessesByCity = async (req, res, next) => {
         return res.json({
             success: true,
             message: 'Fetched businesses by city successfully',
-            payload: encryptResponse(responseData)
+            payload: encryptResponse(withShuffledBusinessResults(responseData))
         });
     } catch (err) {
         console.error('[searchBusinessesByCity] Error:', {
