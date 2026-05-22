@@ -21,13 +21,14 @@ router.get("/public/nearby", businessController.getBusinessesNearby);
 // Query params: lat, lng, q, category, radius, sort, page, limit
 router.get("/public/spa", businessController.searchBusinesses);
 
-// Get searchable branch list or businesses by branch
+// Get searchable city list or businesses by city
 // Query params:
-//   q - branch partial text search when no branch is selected
-//   branch - selected branch name to fetch businesses
+//   q - city partial text search when no city is selected
+//   city - selected city name to fetch businesses
 //   type - optional business type filter
 //   page, limit - pagination controls
-router.get("/public/branches", businessController.searchBusinessesByBranch);
+router.get("/public/cities", businessController.searchBusinessesByCity);
+router.get("/public/branches", businessController.searchBusinessesByCity);
 
 // Optimized Autocomplete Suggestions
 // Query params: q (required), limit (optional, default 10)

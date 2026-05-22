@@ -1237,10 +1237,10 @@ const searchBusinesses = async (req, res, next) => {
     }
 };
 
-const searchBusinessesByBranch = async (req, res, next) => {
+const searchBusinessesByCity = async (req, res, next) => {
     try {
         const {
-            branch,
+            city,
             q,
             type,
             rating,
@@ -1250,7 +1250,7 @@ const searchBusinessesByBranch = async (req, res, next) => {
 
         const pageNum = Math.max(1, parseInt(page) || 1);
         const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
-        const branchTerm = typeof branch === 'string' ? branch.trim() : '';
+        const cityTerm = typeof city === 'string' ? city.trim() : '';
         const searchTerm = typeof q === 'string' ? q.trim() : '';
         const normalizedType = typeof type === 'string' ? type.trim() : '';
         const parsedRating = parseFiniteNumber(rating);
@@ -1272,9 +1272,9 @@ const searchBusinessesByBranch = async (req, res, next) => {
             });
         }
 
-        const cacheKey = branchTerm
-            ? `searchByBranch:businesses:${branchTerm}:${normalizedType || 'all'}:${parsedRating ?? 'all'}:${pageNum}:${limitNum}`
-            : `searchByBranch:branches:${searchTerm}:${normalizedType || 'all'}:${parsedRating ?? 'all'}:${pageNum}:${limitNum}`;
+        const cacheKey = cityTerm
+            ? `searchByCity:businesses:${cityTerm}:${normalizedType || 'all'}:${parsedRating ?? 'all'}:${pageNum}:${limitNum}`
+            : `searchByCity:cities:${searchTerm}:${normalizedType || 'all'}:${parsedRating ?? 'all'}:${pageNum}:${limitNum}`;
 
         try {
             const cachedData = await getCache(cacheKey);
@@ -1286,7 +1286,7 @@ const searchBusinessesByBranch = async (req, res, next) => {
                 });
             }
         } catch (cacheError) {
-            console.warn('[searchBusinessesByBranch] Cache retrieval failed:', cacheError.message);
+            console.warn('[searchBusinessesByCity] Cache retrieval failed:', cacheError.message);
         }
 
         const baseQuery = {
@@ -1302,66 +1302,66 @@ const searchBusinessesByBranch = async (req, res, next) => {
             baseQuery['ratings.average'] = { $gte: parsedRating };
         }
 
-        if (!branchTerm) {
-            const branchQuery = { ...baseQuery };
+        if (!cityTerm) {
+            const cityQuery = { ...baseQuery };
             if (searchTerm) {
-                branchQuery.branch = buildContainsRegex(searchTerm);
+                cityQuery.city = buildContainsRegex(searchTerm);
             }
 
-            const [branchesResult, totalBranchesResult] = await Promise.all([
+            const [citiesResult, totalCitiesResult] = await Promise.all([
                 Business.aggregate([
-                    { $match: branchQuery },
-                    { $group: { _id: '$branch', businessCount: { $sum: 1 } } },
+                    { $match: cityQuery },
+                    { $group: { _id: '$city', businessCount: { $sum: 1 } } },
                     { $sort: { businessCount: -1, _id: 1 } },
                     { $skip: (pageNum - 1) * limitNum },
                     { $limit: limitNum }
                 ]).allowDiskUse(true),
                 Business.aggregate([
-                    { $match: branchQuery },
-                    { $group: { _id: '$branch' } },
+                    { $match: cityQuery },
+                    { $group: { _id: '$city' } },
                     { $count: 'total' }
                 ]).allowDiskUse(true)
             ]);
 
-            const branches = branchesResult.map((item) => ({
-                branch: item._id,
+            const cities = citiesResult.map((item) => ({
+                city: item._id,
                 businessCount: item.businessCount
             }));
-            const totalBranches = totalBranchesResult[0]?.total || 0;
+            const totalCities = totalCitiesResult[0]?.total || 0;
 
             const responseData = {
                 page: pageNum,
                 limit: limitNum,
-                totalBranches,
-                branches
+                totalCities,
+                cities
             };
 
             try {
                 await setCache(cacheKey, responseData, 300);
             } catch (cacheError) {
-                console.warn('[searchBusinessesByBranch] Cache storage failed:', cacheError.message);
+                console.warn('[searchBusinessesByCity] Cache storage failed:', cacheError.message);
             }
 
             return res.json({
                 success: true,
-                message: 'Fetched branches successfully',
+                message: 'Fetched cities successfully',
                 payload: encryptResponse(responseData)
             });
         }
 
-        const branchQuery = {
+        const cityQuery = {
             ...baseQuery,
-            branch: buildContainsRegex(branchTerm)
+            city: buildContainsRegex(cityTerm)
         };
 
         const [businesses, totalResults] = await Promise.all([
-            Business.find(branchQuery)
+            Business.find(cityQuery)
                 .select('name type branch address city state category businessLink tags description ratings.phone socialMedia images offers location seo')
                 .sort({ 'ratings.average': -1, createdAt: -1 })
                 .skip((pageNum - 1) * limitNum)
                 .limit(limitNum)
                 .lean(),
-            Business.countDocuments(branchQuery)
+            Business.countDocuments(cityQuery)
         ]);
 
         const formattedResults = businesses.map((business) => ({
@@ -1390,7 +1390,7 @@ const searchBusinessesByBranch = async (req, res, next) => {
         const responseData = {
             page: pageNum,
             limit: limitNum,
-            branch: branchTerm,
+            city: cityTerm,
             totalResults,
             results: formattedResults
         };
@@ -1398,16 +1398,16 @@ const searchBusinessesByBranch = async (req, res, next) => {
         try {
             await setCache(cacheKey, responseData, 300);
         } catch (cacheError) {
-            console.warn('[searchBusinessesByBranch] Cache storage failed:', cacheError.message);
+            console.warn('[searchBusinessesByCity] Cache storage failed:', cacheError.message);
         }
 
         return res.json({
             success: true,
-            message: 'Fetched businesses by branch successfully',
+            message: 'Fetched businesses by city successfully',
             payload: encryptResponse(responseData)
         });
     } catch (err) {
-        console.error('[searchBusinessesByBranch] Error:', {
+        console.error('[searchBusinessesByCity] Error:', {
             message: err.message,
             stack: err.stack,
             queryParams: req.query
@@ -2735,7 +2735,7 @@ module.exports = {
     getBusinessAnalytics,
     getBusinessesNearby,
     searchBusinesses,
-    searchBusinessesByBranch,
+    searchBusinessesByCity,
     autocompleteSuggestions,
     getIndiaLocations,
     updateBusiness,
