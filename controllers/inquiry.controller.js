@@ -293,9 +293,15 @@ const getAllInquiries = async (req, res) => {
 
         // Additional Filters
         if (search) {
+            // Find businesses matching search term by name
+            const matchingBusinesses = await Business.find({
+                name: { $regex: search, $options: 'i' }
+            }).distinct('_id');
+
             const searchOr = [
                 { user_name: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } }
+                { phone: { $regex: search, $options: 'i' } },
+                { business_id: { $in: matchingBusinesses } }
             ];
 
             if (filter.$or) {
@@ -553,9 +559,15 @@ const exportInquiries = async (req, res) => {
         }
 
         if (search) {
+            // Find businesses matching search term by name
+            const matchingBusinesses = await Business.find({
+                name: { $regex: search, $options: 'i' }
+            }).distinct('_id');
+
             filter.$or = [
                 { user_name: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } }
+                { phone: { $regex: search, $options: 'i' } },
+                { business_id: { $in: matchingBusinesses } }
             ];
         }
         if (status !== undefined && status !== '') {

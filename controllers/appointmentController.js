@@ -410,11 +410,42 @@ const getAppointments = async (req, res, next) => {
         }
 
         if (search) {
-            // Search by booking number OR appointment ID
-            query.$or = [
+            // Find businesses matching search term by name
+            const matchingBusinesses = await Business.find({
+                name: { $regex: search, $options: 'i' }
+            }).distinct('_id');
+
+            // Find customers matching search term by name or phone
+            const customerSearchQuery = {
+                $or: [
+                    { firstName: { $regex: search, $options: 'i' } },
+                    { lastName: { $regex: search, $options: 'i' } },
+                    { phone: { $regex: search, $options: 'i' } }
+                ]
+            };
+
+            // Support full name searches like "John Doe"
+            const nameParts = search.trim().split(/\s+/);
+            if (nameParts.length > 1) {
+                customerSearchQuery.$or.push({
+                    $and: [
+                        { firstName: { $regex: nameParts[0], $options: 'i' } },
+                        { lastName: { $regex: nameParts[nameParts.length - 1], $options: 'i' } }
+                    ]
+                });
+            }
+
+            const matchingCustomers = await Customer.find(customerSearchQuery).distinct('_id');
+
+            // Search by booking number OR appointment ID OR customer OR business
+            const searchOr = [
                 { bookingNumber: { $regex: search, $options: 'i' } },
-                { _id: search.match(/^[0-9a-fA-F]{24}$/) ? search : null } // Only search by _id if valid ObjectId format
-            ].filter(condition => condition._id !== null || condition.bookingNumber);
+                { _id: search.match(/^[0-9a-fA-F]{24}$/) ? search : null }, // Only search by _id if valid ObjectId format
+                { customer: { $in: matchingCustomers } },
+                { business: { $in: matchingBusinesses } }
+            ].filter(condition => condition._id !== null || condition.bookingNumber || condition.customer || condition.business);
+
+            query.$or = searchOr;
         }
 
         const appointments = await Appointment.find(query)
