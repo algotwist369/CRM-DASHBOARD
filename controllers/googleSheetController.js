@@ -7,6 +7,45 @@ const { emitToRole } = require("../config/socket");
 
 let locationCache = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache duration
+const FOLLOW_UP_STATUSES = ['processing', 'booked', 'completed', 'canceled'];
+
+const normalizeFollowUpStatus = (status) => {
+    if (!status) return null;
+    const normalized = String(status).trim().toLowerCase();
+    if (normalized === 'pending') return 'processing';
+    return normalized === 'complited' ? 'completed' : normalized;
+};
+
+const buildFollowUp = (lead) => ({
+    status: normalizeFollowUpStatus(lead.followUp?.status) || 'processing',
+    nextFollowUpAt: lead.followUp?.nextFollowUpAt,
+    remarks: lead.followUp?.remarks || [],
+    updatedAt: lead.followUp?.updatedAt,
+    updatedBy: lead.followUp?.updatedBy
+});
+
+const applyFollowUpStatusFilter = (query, status) => {
+    if (!status || status === "All") return;
+
+    const normalizedFollowUpStatus = normalizeFollowUpStatus(status);
+    if (!FOLLOW_UP_STATUSES.includes(normalizedFollowUpStatus)) return;
+
+    if (normalizedFollowUpStatus === "processing") {
+        query.$and = [
+            ...(query.$and || []),
+            {
+                $or: [
+                    { "followUp.status": "processing" },
+                    { "followUp.status": "pending" },
+                    { "followUp.status": { $exists: false } }
+                ]
+            }
+        ];
+        return;
+    }
+
+    query["followUp.status"] = normalizedFollowUpStatus;
+};
 
 const normalizePhoneNumber = (phone) => {
     if (!phone) return "";
@@ -339,6 +378,7 @@ const getAllLeads = async (req, res) => {
             location,
             search,
             status, // New Param
+            followUpStatus,
             sortBy = "createdAt",
             sortOrder = "desc"
         } = req.query;
@@ -346,6 +386,7 @@ const getAllLeads = async (req, res) => {
         // 1. Build Query
         const query = {};
         if (location && location !== "All") query.location = location;
+        applyFollowUpStatusFilter(query, followUpStatus);
 
         // Status Filter Logic
         if (status && status !== "All") {
@@ -566,7 +607,8 @@ const getLeadsForManager = async (req, res) => {
             sortBy = "createdAt",
             sortOrder = "desc",
             filterByStatus, // 'called', 'whatsapped', 'pending', 'all'
-            status // 'Done', 'Sent', 'Pending', 'All'
+            status, // 'Done', 'Sent', 'Pending', 'All'
+            followUpStatus
         } = req.query;
 
         if (!managerId) {
@@ -636,6 +678,7 @@ const getLeadsForManager = async (req, res) => {
         const query = {
             location: { $in: locationRegexes }
         };
+        applyFollowUpStatusFilter(query, followUpStatus);
 
         // Manager Specific Status Filtering
         if (status && status !== "All") {
@@ -731,6 +774,7 @@ const getLeadsForManager = async (req, res) => {
                 isCalled: showCalled,
                 isWhatsapp: showWhatsapp,
                 status: showCalled ? 'called' : (showWhatsapp ? 'whatsapped' : 'pending'),
+                followUp: buildFollowUp(lead),
 
                 // Hide Details of others
                 callDetails: showCalled ? {
@@ -992,7 +1036,8 @@ const getLeadsForAdmin = async (req, res) => {
             sortBy = "createdAt",
             sortOrder = "desc",
             filterByStatus, // 'called', 'whatsapped', 'pending', 'all' (Legacy/Contact Filter)
-            status // New Main Status Filter: 'Done', 'Sent', 'Pending', 'All'
+            status, // New Main Status Filter: 'Done', 'Sent', 'Pending', 'All'
+            followUpStatus
         } = req.query;
 
         if (!adminId) {
@@ -1017,6 +1062,7 @@ const getLeadsForAdmin = async (req, res) => {
         if (location && location !== "All") {
             query.location = location;
         }
+        applyFollowUpStatusFilter(query, followUpStatus);
 
         // New Status Filter Logic (Global)
         if (status && status !== "All") {
@@ -1103,6 +1149,7 @@ const getLeadsForAdmin = async (req, res) => {
             statusUpdatedAt: lead.statusUpdatedAt,
             statusUpdatedBy: lead.statusUpdatedBy,
             remarks: lead.remarks || [], // Return remarks history
+            followUp: buildFollowUp(lead),
             contactStatus: {
                 isCalled: lead.isCalled,
                 isWhatsapp: lead.isWhatsapp,
@@ -1408,7 +1455,93 @@ const addLeadRemark = async (req, res) => {
 };
 
 // ==========================================
-// FUNCTION 8: Double Tick Webhook (Direct API)
+// FUNCTION 8: Update Follow-up
+// ==========================================
+const updateLeadFollowUp = async (req, res) => {
+    try {
+        const { leadId, status, remark, nextFollowUpAt } = req.body;
+        const followUpStatus = normalizeFollowUpStatus(status);
+
+        if (!leadId || !followUpStatus || !FOLLOW_UP_STATUSES.includes(followUpStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid leadId or follow-up status"
+            });
+        }
+
+        const updatedBy = req.user ? (req.user.name || req.user.email || req.user.id) : 'Unknown';
+        const update = {
+            $set: {
+                "followUp.status": followUpStatus,
+                "followUp.updatedAt": new Date(),
+                "followUp.updatedBy": updatedBy,
+                lastModified: new Date()
+            }
+        };
+
+        if (nextFollowUpAt) {
+            const nextDate = new Date(nextFollowUpAt);
+            if (Number.isNaN(nextDate.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid next follow-up date"
+                });
+            }
+            update.$set["followUp.nextFollowUpAt"] = nextDate;
+        } else if (nextFollowUpAt === null || nextFollowUpAt === "") {
+            update.$unset = { "followUp.nextFollowUpAt": "" };
+        }
+
+        if (remark && remark.trim()) {
+            update.$push = {
+                "followUp.remarks": {
+                    text: remark.trim(),
+                    by: updatedBy,
+                    createdAt: new Date()
+                }
+            };
+        }
+
+        const lead = await GoogleSheetLead.findByIdAndUpdate(leadId, update, {
+            new: true,
+            runValidators: true
+        }).lean();
+
+        if (!lead) {
+            return res.status(404).json({ success: false, message: "Lead not found" });
+        }
+
+        try {
+            const { emitToAll } = require('../config/socket');
+            emitToAll('lead_follow_up_updated', {
+                leadId: lead._id,
+                followUp: buildFollowUp(lead)
+            });
+        } catch (socketError) {
+            console.error("[Follow-up] Socket Emit Error:", socketError.message);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Follow-up updated successfully",
+            data: {
+                leadId: lead._id,
+                followUp: buildFollowUp(lead),
+                lastModified: lead.lastModified
+            }
+        });
+    } catch (error) {
+        console.error("[Update Follow-up] Error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update follow-up",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 9: Double Tick Webhook (Direct API)
 // ==========================================
 const receiveWebhookLead = async (req, res) => {
     try {
@@ -1617,6 +1750,7 @@ module.exports = {
     getLeadAnalytics,
     getManagersByLocation,
     addLeadRemark,
+    updateLeadFollowUp,
     receiveWebhookLead,
     getPendingLeadsCountAdmin,
     getPendingLeadsCountManager

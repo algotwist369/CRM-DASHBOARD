@@ -44,6 +44,9 @@ router.post('/leads/update-status', protect, roleMiddleware(['manager']), google
 // Add Remark
 router.post('/leads/remark', protect, roleMiddleware(['admin', 'manager']), googleSheetController.addLeadRemark);
 
+// Update follow-up status and optional follow-up remark
+router.post('/leads/follow-up', protect, roleMiddleware(['admin', 'manager']), googleSheetController.updateLeadFollowUp);
+
 // ==========================================
 // PENDING LEADS COUNT (For Sidebar Badges)
 // ==========================================

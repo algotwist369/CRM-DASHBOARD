@@ -87,7 +87,30 @@ const googleSheetLeadSchema = new mongoose.Schema(
             text: { type: String, required: true },
             by: { type: String, required: true },
             createdAt: { type: Date, default: Date.now }
-        }]
+        }],
+        followUp: {
+            status: {
+                type: String,
+                enum: ['processing', 'booked', 'completed', 'canceled'],
+                default: 'processing',
+                index: true
+            },
+            nextFollowUpAt: {
+                type: Date,
+                index: true
+            },
+            remarks: [{
+                text: { type: String, required: true },
+                by: { type: String, required: true },
+                createdAt: { type: Date, default: Date.now }
+            }],
+            updatedAt: {
+                type: Date
+            },
+            updatedBy: {
+                type: String
+            }
+        }
     },
     {
         timestamps: true
@@ -108,6 +131,8 @@ googleSheetLeadSchema.index({ location: 1, status: 1, createdAt: -1 });
 googleSheetLeadSchema.index({ location: 1, createdAt: -1 });
 // optimize "Get Leads by Global Status" (Admin View)
 googleSheetLeadSchema.index({ status: 1, createdAt: -1 });
+// optimize admin follow-up board filters
+googleSheetLeadSchema.index({ "followUp.status": 1, createdAt: -1 });
 
 // Text Index for High-Performance Search
 googleSheetLeadSchema.index(
