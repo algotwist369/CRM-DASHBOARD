@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const AdminNotification = require("../models/AdminNotification");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { emitToUser } = require("../config/socket");

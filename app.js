@@ -33,6 +33,7 @@ const loyaltyRoutes = require("./routes/loyaltyRoutes");
 const leadRoutes = require("./routes/leadRoutes");
 const inquiryRoutes = require("./routes/inquiryRoutes");
 const googleSheetRoutes = require("./routes/googleSheetRoutes");
+const freeListingRoutes = require("./routes/freeListingRoutes");
 
 const app = express();
 
@@ -214,6 +215,8 @@ app.use("/api/settings", businessSettingsRoutes);
 app.use("/api/loyalty", loyaltyRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/inquiries", inquiryRoutes);
+app.use("/api/free-listing", freeListingRoutes);
+app.use("/api/freelistings", freeListingRoutes);
 app.use("/api/payments", require("./routes/paymentRoutes"));
 
 // === PHASE 2 ENHANCEMENT: New Routes ===

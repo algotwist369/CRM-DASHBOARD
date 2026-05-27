@@ -1,7 +1,7 @@
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Business = require("../models/Business");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 // Enhanced credential loading with comprehensive whitespace removal
 const cleanCredential = (value) => {

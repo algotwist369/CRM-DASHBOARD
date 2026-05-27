@@ -116,7 +116,7 @@ class WhatsAppWebService extends EventEmitter {
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Force env reload just in case
-        require('dotenv').config();
+        require('dotenv').config({ quiet: true });
 
         await this.initialize();
     }

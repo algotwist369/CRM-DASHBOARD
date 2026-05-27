@@ -1,21 +1,23 @@
 require("dotenv").config({ quiet: true });
 const http = require("http");
-const app = require("./app");
 const { connectDB } = require("./config/database");
 const { initializeSocket } = require("./config/socket");
-const { startCampaignScheduler } = require("./utils/campaignScheduler");
-const whatsappWebService = require("./services/whatsappWebService");
-const { startGoogleSheetSync, stopGoogleSheetSync } = require("./services/googleSheetSyncService");
-const { scheduleCleanupJob } = require("./jobs/cleanupJob");
 const cluster = require('cluster');
 const os = require('os');
 const { redis, shutdown: redisShutdown } = require('./config/redis');
 const { shutdown: socketShutdown } = require('./config/socket');
 
-const numCPUs = os.cpus().length;
+const numCPUs = process.env.NODE_ENV === 'production'
+    ? parseInt(process.env.WEB_CONCURRENCY, 10) || os.cpus().length
+    : parseInt(process.env.WEB_CONCURRENCY, 10) || 1;
 const PORT = process.env.PORT || 5000;
 
 if (cluster.isPrimary) {
+    const { startCampaignScheduler } = require("./utils/campaignScheduler");
+    const whatsappWebService = require("./services/whatsappWebService");
+    const { startGoogleSheetSync, stopGoogleSheetSync } = require("./services/googleSheetSyncService");
+    const { scheduleCleanupJob } = require("./jobs/cleanupJob");
+
     console.log(`🚀 Master process ${process.pid} is running`);
 
     // ================================================================
@@ -48,7 +50,7 @@ if (cluster.isPrimary) {
     });
 
     // Fork workers
-    console.log(`Forking ${numCPUs} workers...`);
+    console.log(`Forking ${numCPUs} worker(s)...`);
     for (let i = 0; i < numCPUs; i++) {
         cluster.fork();
     }
@@ -85,6 +87,8 @@ if (cluster.isPrimary) {
     // Async wrapper to ensure DB connects before starting server
     (async () => {
         try {
+            const app = require("./app");
+
             // Connect to MongoDB (each worker needs its own connection)
             await connectDB();
             console.log(`✅ Worker ${process.pid} connected to MongoDB`);

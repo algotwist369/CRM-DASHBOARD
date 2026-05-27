@@ -8,7 +8,7 @@ const {
     Special_Offer_Inquiry_Template,
     Membership_Inquiry_Template
 } = require('../whatsappTemplate/Inqury');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 // Helper function to send via DoubleTick.io with templates
 const sendViaDoubleTick = async (phone, templateName, placeholders) => {

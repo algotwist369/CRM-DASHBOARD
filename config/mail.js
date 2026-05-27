@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 const nodemailer = require("nodemailer");
 const twilio = require("twilio");
 

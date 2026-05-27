@@ -5,7 +5,7 @@ const Manager = require("../models/Manager");
 const Appointment = require("../models/Appointment");
 const { setCache, getCache, deleteCache } = require("../utils/cache");
 const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 // ================== Create Service ==================
 const createService = async (req, res, next) => {

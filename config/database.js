@@ -1,6 +1,6 @@
 // database.js - Optimized database configuration with connection pooling
 const mongoose = require('mongoose');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 // Database connection options for high performance
 const dbOptions = {

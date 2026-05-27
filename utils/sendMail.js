@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 
 const TEMPLATE_MAP = {

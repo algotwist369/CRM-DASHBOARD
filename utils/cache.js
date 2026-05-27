@@ -1,6 +1,6 @@
 const NodeCache = require("node-cache");
 const { cacheManager } = require("../config/redis");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 // Create in-memory cache instance as fallback
 const memoryCache = new NodeCache({

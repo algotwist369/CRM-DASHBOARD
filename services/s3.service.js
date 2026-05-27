@@ -1,7 +1,7 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { Upload } = require("@aws-sdk/lib-storage");
 const path = require("path");
-require("dotenv").config()
+require("dotenv").config({ quiet: true })
 
 const REGION = process.env.AWS_REGION || "eu-north-1";
 

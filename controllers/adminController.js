@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const Admin = require("../models/Admin");
 const Business = require("../models/Business");
 const Manager = require("../models/Manager");

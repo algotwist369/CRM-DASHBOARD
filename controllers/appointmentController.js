@@ -18,7 +18,7 @@ const { sendTemplateMail } = require("../utils/sendMail");
 const { validateAppointmentBooking } = require("../utils/appointmentUtils");
 // Calculate pricing (handle both old format and new pricingOptions)
 const { getServicePriceAndDuration } = require("../utils/appointmentUtils");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 // Helper to notify all relevant users of a business (Admin + Managers)
 const notifyBusinessStaff = async (businessId, event, data, notificationData = null) => {

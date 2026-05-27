@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 const Notification = require("../models/Notification");
 const Campaign = require("../models/Campaign");
 const Customer = require("../models/Customer");

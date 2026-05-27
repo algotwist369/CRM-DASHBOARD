@@ -1,6 +1,6 @@
 // sendWhatsAppDoubleTick.js - DoubleTick.io WhatsApp API Integration
 // Load environment variables first
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const axios = require('axios');
 const { withRetry } = require('./performanceHelper');

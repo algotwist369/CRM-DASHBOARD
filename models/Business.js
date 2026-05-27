@@ -213,12 +213,8 @@ const businessSchema = new mongoose.Schema(
 );
 
 // COMPOUND AND SINGLE FIELD INDEXES FOR PERFORMANCE
-businessSchema.index({ name: 1 });
-businessSchema.index({ branch: 1 });
 businessSchema.index({ city: 1 });
 businessSchema.index({ state: 1 });
-businessSchema.index({ businessLink: 1 });
-businessSchema.index({ type: 1 });
 
 businessSchema.index({ location: "2dsphere" });
 

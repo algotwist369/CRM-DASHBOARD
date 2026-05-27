@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 // Reduced from 10 to 8 for better performance (still secure)
 // Each increment doubles the time - 8 is ~150ms, 10 is ~600ms, 12 is ~2.4s
