@@ -3,6 +3,12 @@ const Otp = require("../models/OTP");
 const { createAndSendOTP, verifyOTP } = require("../utils/sendOTP");
 
 const normalizePhone = (phone) => String(phone || "").replace(/[^0-9]/g, "");
+const FREE_LISTING_ACCESS_CODE = "7388480128";
+
+const hasValidAccessCode = (req) => {
+    const code = req.body?.code || req.query?.code || req.headers["x-free-listing-code"];
+    return String(code || "").trim() === FREE_LISTING_ACCESS_CODE;
+};
 
 const validateListingPayload = (payload) => {
     const errors = [];
@@ -109,6 +115,10 @@ const createFreeListing = async (req, res) => {
 
 const getAllFreeListings = async (req, res) => {
     try {
+        if (!hasValidAccessCode(req)) {
+            return res.status(403).json({ success: false, message: "Invalid access code" });
+        }
+
         const { page = 1, limit = 10, search, status } = req.query;
         const filter = {};
 
@@ -147,6 +157,10 @@ const getAllFreeListings = async (req, res) => {
 
 const getFreeListingById = async (req, res) => {
     try {
+        if (!hasValidAccessCode(req)) {
+            return res.status(403).json({ success: false, message: "Invalid access code" });
+        }
+
         const listing = await FreeListing.findById(req.params.id).lean();
 
         if (!listing) {
@@ -161,7 +175,16 @@ const getFreeListingById = async (req, res) => {
 
 const updateFreeListing = async (req, res) => {
     try {
+        if (!hasValidAccessCode(req)) {
+            return res.status(403).json({ success: false, message: "Invalid access code" });
+        }
+
         const update = { ...req.body };
+        delete update.code;
+
+        if (update.status && !["pending", "contacted", "approved", "rejected"].includes(update.status)) {
+            return res.status(400).json({ success: false, message: "Invalid listing status" });
+        }
 
         if (update.user_phone) update.user_phone = normalizePhone(update.user_phone);
         if (update.user_email) update.user_email = update.user_email.trim().toLowerCase();
@@ -187,6 +210,10 @@ const updateFreeListing = async (req, res) => {
 
 const deleteFreeListing = async (req, res) => {
     try {
+        if (!hasValidAccessCode(req)) {
+            return res.status(403).json({ success: false, message: "Invalid access code" });
+        }
+
         const listing = await FreeListing.findByIdAndDelete(req.params.id);
 
         if (!listing) {
