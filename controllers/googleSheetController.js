@@ -9,6 +9,10 @@ let locationCache = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache duration
 const FOLLOW_UP_STATUSES = ['processing', 'booked', 'completed', 'canceled'];
 
+const clearGoogleSheetLeadCache = () => {
+    locationCache = {};
+};
+
 const normalizeFollowUpStatus = (status) => {
     if (!status) return null;
     const normalized = String(status).trim().toLowerCase();
@@ -347,7 +351,7 @@ const syncGoogleSheet = async (req, res) => {
         // Clear manager location cache on sync IF data actually changed
         // This prevents cache invalidation on "no-change" syncs
         if (stats.new > 0 || stats.updated > 0) {
-            locationCache = {};
+            clearGoogleSheetLeadCache();
         }
 
         console.log(`[GoogleSheet Sync] Done - New: ${stats.new}, Updated: ${stats.updated}, Unchanged: ${stats.unchanged}`);
@@ -573,6 +577,7 @@ const forwardLeadToManagers = async (req, res) => {
                 statusUpdatedAt: new Date(),
                 lastModified: new Date()
             });
+            clearGoogleSheetLeadCache();
         }
 
         return res.status(200).json({
@@ -946,6 +951,7 @@ const updateLeadContactStatus = async (req, res) => {
             { $set: updatePayload },
             { new: true }
         ).lean();
+        clearGoogleSheetLeadCache();
 
         // Manually fetch manager details (can't use populate due to separate DB)
         let callDetails = null;
@@ -1248,6 +1254,7 @@ const updateLeadAdminStatus = async (req, res) => {
                 message: "Lead not found"
             });
         }
+        clearGoogleSheetLeadCache();
 
         res.status(200).json({
             success: true,
@@ -1398,7 +1405,163 @@ const getManagersByLocation = async (req, res) => {
 };
 
 // ==========================================
-// FUNCTION 7: Add Remark
+// FUNCTION 7: Create Manual Lead (Admin)
+// ==========================================
+const createManualGoogleSheetLead = async (req, res) => {
+    try {
+        const { location, customerPhone, customerName, followUpStatus, followUp, remark } = req.body;
+        const normalizedPhone = normalizePhoneNumber(customerPhone);
+        const trimmedLocation = String(location || "").trim();
+        const trimmedName = String(customerName || "").trim() || "guest";
+        const requestedStatus = normalizeFollowUpStatus(followUpStatus || followUp?.status) || "processing";
+
+        if (!trimmedLocation || !normalizedPhone) {
+            return res.status(400).json({
+                success: false,
+                message: "Location and customer phone are required"
+            });
+        }
+
+        if (!FOLLOW_UP_STATUSES.includes(requestedStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid follow-up status"
+            });
+        }
+
+        const updatedBy = req.user ? (req.user.name || req.user.email || req.user.id) : "Admin";
+        const now = new Date();
+        const update = {
+            $set: {
+                customerName: trimmedName,
+                syncedAt: now,
+                lastModified: now,
+                "followUp.status": requestedStatus,
+                "followUp.updatedAt": now,
+                "followUp.updatedBy": updatedBy
+            },
+            $setOnInsert: {
+                location: trimmedLocation,
+                customerPhone: normalizedPhone,
+                createdAt: now,
+                status: "pending",
+                isCalled: false,
+                isWhatsapp: false
+            }
+        };
+
+        if (followUp?.nextFollowUpAt) {
+            const nextDate = new Date(followUp.nextFollowUpAt);
+            if (Number.isNaN(nextDate.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid next follow-up date"
+                });
+            }
+            update.$set["followUp.nextFollowUpAt"] = nextDate;
+        }
+
+        if (remark && String(remark).trim()) {
+            update.$push = {
+                remarks: {
+                    text: String(remark).trim(),
+                    by: updatedBy,
+                    createdAt: now
+                },
+                "followUp.remarks": {
+                    text: String(remark).trim(),
+                    by: updatedBy,
+                    createdAt: now
+                }
+            };
+        }
+
+        const lead = await GoogleSheetLead.findOneAndUpdate(
+            { location: trimmedLocation, customerPhone: normalizedPhone },
+            update,
+            {
+                new: true,
+                upsert: true,
+                runValidators: true,
+                setDefaultsOnInsert: true
+            }
+        ).lean();
+        clearGoogleSheetLeadCache();
+
+        return res.status(201).json({
+            success: true,
+            message: "Lead added successfully",
+            data: {
+                ...lead,
+                followUp: buildFollowUp(lead)
+            }
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "Lead already exists for this location and phone"
+            });
+        }
+
+        console.error("[Manual GoogleSheet Lead] Error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to add lead manually",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 8: Delete Lead (Admin, code protected)
+// ==========================================
+const deleteGoogleSheetLead = async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        const { code } = req.body;
+
+        if (!leadId) {
+            return res.status(400).json({
+                success: false,
+                message: "Lead ID is required"
+            });
+        }
+
+        if (String(code || "").trim() !== "7388480128") {
+            return res.status(403).json({
+                success: false,
+                message: "Invalid delete code"
+            });
+        }
+
+        const lead = await GoogleSheetLead.findByIdAndDelete(leadId);
+
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found"
+            });
+        }
+        clearGoogleSheetLeadCache();
+
+        return res.status(200).json({
+            success: true,
+            message: "Lead deleted successfully",
+            data: { leadId }
+        });
+    } catch (error) {
+        console.error("[Delete GoogleSheet Lead] Error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to delete lead",
+            error: error.message
+        });
+    }
+};
+
+// ==========================================
+// FUNCTION 9: Add Remark
 // ==========================================
 const addLeadRemark = async (req, res) => {
     try {
@@ -1425,6 +1588,7 @@ const addLeadRemark = async (req, res) => {
         if (!lead) {
             return res.status(404).json({ success: false, message: "Lead not found" });
         }
+        clearGoogleSheetLeadCache();
 
         // EMIT REAL-TIME UPDATE
         try {
@@ -1510,6 +1674,7 @@ const updateLeadFollowUp = async (req, res) => {
         if (!lead) {
             return res.status(404).json({ success: false, message: "Lead not found" });
         }
+        clearGoogleSheetLeadCache();
 
         try {
             const { emitToAll } = require('../config/socket');
@@ -1604,6 +1769,7 @@ const receiveWebhookLead = async (req, res) => {
             console.error("[Webhook] No lead document returned!");
             return res.status(500).json({ success: false, message: "Database error: No document returned" });
         }
+        clearGoogleSheetLeadCache();
 
         // 4. Trigger Notifications if NEW
         if (isNew) {
@@ -1749,6 +1915,8 @@ module.exports = {
     updateLeadAdminStatus,
     getLeadAnalytics,
     getManagersByLocation,
+    createManualGoogleSheetLead,
+    deleteGoogleSheetLead,
     addLeadRemark,
     updateLeadFollowUp,
     receiveWebhookLead,

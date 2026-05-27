@@ -4,6 +4,12 @@ const googleSheetController = require('../controllers/googleSheetController');
 const protect = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 
+router.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
 
 // ==========================================
 // PUBLIC WEBHOOKS (Double Tick)
@@ -20,6 +26,12 @@ router.post('/forward-lead', protect, roleMiddleware(['admin']), googleSheetCont
 
 // Get all leads with manager tracking (Admin view)
 router.get('/leads/admin', protect, roleMiddleware(['admin']), googleSheetController.getLeadsForAdmin);
+
+// Add a lead manually into the Google Sheet lead database
+router.post('/leads/manual', protect, roleMiddleware(['admin']), googleSheetController.createManualGoogleSheetLead);
+
+// Delete a lead only when admin provides the required delete code
+router.delete('/leads/:leadId', protect, roleMiddleware(['admin']), googleSheetController.deleteGoogleSheetLead);
 
 // Analytics
 router.get('/leads/analytics', protect, roleMiddleware(['admin']), googleSheetController.getLeadAnalytics);
